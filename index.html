@@ -6,7 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/frappe-gantt@0.6.1/dist/frappe-gantt.css" />
 
   <style>
     *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; font-family:'Inter', sans-serif; }
@@ -101,11 +100,26 @@
     /* ===== GANTT ===== */
     #gantt { background:white; padding:20px; border-radius:12px; min-height:400px; box-shadow:0 1px 4px rgba(0,0,0,.06); }
 
-    /* ===== GANTT CUSTOM COLORS ===== */
-    .gantt .bar-group rect { fill:#1e3a8a !important; }
-    .gantt .bar-action rect { fill:#2563eb !important; }
-    .gantt .bar-delayed rect { fill:#dc2626 !important; }
-    .gantt .bar-complete rect { fill:#16a34a !important; }
+    /* ===== CUSTOM GANTT ===== */
+    .gc-wrap { overflow-x:auto; }
+    .gc-header, .gc-row { display:flex; border-bottom:1px solid #f3f4f6; }
+    .gc-header { border-bottom:2px solid #e5e7eb; background:#fff; }
+    .gc-label { width:240px; min-width:240px; padding:8px 12px; font-size:13px; color:#374151; display:flex; align-items:center; border-right:1px solid #e5e7eb; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+    .gc-label-head { font-weight:700; font-size:11px; text-transform:uppercase; color:#9ca3af; height:32px; }
+    .gc-label-task { padding-left:28px; font-size:12px; }
+    .gc-timeline { flex:1; min-width:600px; position:relative; height:40px; }
+    .gc-timeline-head { height:32px; }
+    .gc-month { position:absolute; top:0; height:100%; display:flex; align-items:center; padding:0 6px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#6b7280; border-left:1px solid #e5e7eb; }
+    .gc-bar { position:absolute; top:50%; transform:translateY(-50%); height:18px; border-radius:4px; min-width:4px; }
+    .gc-bar-group { background:#1e3a8a; }
+    .gc-bar-action { background:#2563eb; }
+    .gc-bar-delayed { background:#dc2626; }
+    .gc-bar-complete { background:#16a34a; }
+    .gc-row-group { cursor:pointer; }
+    .gc-row-group .gc-label { font-weight:700; background:#f8fafc; }
+    .gc-row-group:hover .gc-label { background:#f1f5f9; }
+    .gc-row-task { cursor:pointer; }
+    .gc-row-task:hover { background:#f9fafb; }
 
     /* ===== ACTION DETAIL MODAL ===== */
     .modal-backdrop {
@@ -299,8 +313,6 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/frappe-gantt@0.6.1/dist/frappe-gantt.min.js"></script>
-
 <script>
 
 document.addEventListener("DOMContentLoaded", function() {
@@ -399,6 +411,7 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   function truncate(str, max){ if(!str) return ''; return str.length > max ? str.slice(0,max)+"…" : str; }
+  function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
   function getGroups(){
     const groups = {};
@@ -551,66 +564,84 @@ document.addEventListener("DOMContentLoaded", function() {
   function renderGantt(){
     const container = document.getElementById("gantt");
     container.innerHTML = "";
+    if(!allActions.length){ container.innerHTML = '<p style="padding:20px;color:#6b7280">Nenhuma ação cadastrada.</p>'; return; }
 
-    const groups = getGroups();
-    const tasks = [];
-    const groupIdMap = {};
-    const taskIdMap = {};
-    let groupIndex = 0;
+    // Overall date range
+    const allS = allActions.map(a=>a.start).sort();
+    const allE = allActions.map(a=>a.end).sort();
+    const dMin = new Date(allS[0]); dMin.setDate(1);
+    const dMaxRaw = new Date(allE[allE.length-1]);
+    const dMax = new Date(dMaxRaw.getFullYear(), dMaxRaw.getMonth()+1, 1);
+    const totalMs = dMax - dMin;
 
-    Object.keys(groups).forEach(groupName => {
-      const items = groups[groupName];
+    function pct(ds){ return ((new Date(ds)-dMin)/totalMs*100).toFixed(2); }
+    function wid(s,e){ return ((new Date(e)-new Date(s))/totalMs*100).toFixed(2); }
 
-      const minStart = items.reduce((min,i)=> i.start < min ? i.start : min, items[0].start);
-      const maxEnd = items.reduce((max,i)=> i.end > max ? i.end : max, items[0].end);
-
-      const safeGroupId = "group_" + groupIndex++;
-      groupIdMap[safeGroupId] = groupName;
-
-      tasks.push({
-        id: safeGroupId,
-        name: expandedGroup === groupName ? "▼ " + groupName : "► " + groupName,
-        start: minStart,
-        end: maxEnd,
-        progress: 0,
-        custom_class: "bar-group"
+    // Month header
+    const months = [];
+    let d = new Date(dMin);
+    while(d < dMax){
+      const nxt = new Date(d.getFullYear(), d.getMonth()+1, 1);
+      months.push({
+        left: ((d-dMin)/totalMs*100).toFixed(2),
+        width: ((Math.min(nxt,dMax)-d)/totalMs*100).toFixed(2),
+        label: d.toLocaleString('pt-BR',{month:'short',year:'2-digit'}).toUpperCase()
       });
+      d = nxt;
+    }
+    const monthHTML = months.map(m=>
+      `<div class="gc-month" style="left:${m.left}%;width:${m.width}%">${m.label}</div>`
+    ).join('');
 
-      if(expandedGroup === groupName){
-        items.forEach(i => {
-          let statusClass = "bar-action";
-          if(i.status === "delayed") statusClass = "bar-delayed";
-          if(i.status === "complete") statusClass = "bar-complete";
-
-          const taskId = "task_" + i.id;
-          taskIdMap[taskId] = i.id;
-
-          tasks.push({
-            id: taskId,
-            name: "↳ #" + i.id + " " + truncate(i.desc, 40),
-            start: i.start,
-            end: i.end,
-            progress: i.status === "complete" ? 100 : 40,
-            custom_class: statusClass
-          });
+    // Rows
+    const groups = getGroups();
+    let rowsHTML = '';
+    Object.keys(groups).forEach(groupName=>{
+      const items = groups[groupName];
+      const gS = items.reduce((m,i)=>i.start<m?i.start:m, items[0].start);
+      const gE = items.reduce((m,i)=>i.end>m?i.end:m, items[0].end);
+      const open = expandedGroup === groupName;
+      const safeG = escHtml(groupName);
+      rowsHTML += `<div class="gc-row gc-row-group" data-group="${safeG}">
+        <div class="gc-label">${open?'▼':'►'} ${safeG}</div>
+        <div class="gc-timeline">
+          <div class="gc-bar gc-bar-group" style="left:${pct(gS)}%;width:${wid(gS,gE)}%"></div>
+        </div>
+      </div>`;
+      if(open){
+        items.forEach(i=>{
+          const cls = i.status==='delayed'?'gc-bar-delayed':i.status==='complete'?'gc-bar-complete':'gc-bar-action';
+          rowsHTML += `<div class="gc-row gc-row-task" data-task-id="${i.id}">
+            <div class="gc-label gc-label-task">↳ #${i.id} ${escHtml(truncate(i.desc,38))}</div>
+            <div class="gc-timeline">
+              <div class="gc-bar ${cls}" style="left:${pct(i.start)}%;width:${wid(i.start,i.end)}%"></div>
+            </div>
+          </div>`;
         });
       }
     });
 
-    new Gantt("#gantt", tasks, {
-      view_mode: "Month",
-      date_format: "YYYY-MM-DD",
-      on_click: function(task){
-        if(task.id.startsWith("group_")){
-          const realGroupName = groupIdMap[task.id];
-          expandedGroup = expandedGroup === realGroupName ? null : realGroupName;
-          renderGantt();
-        } else if(task.id.startsWith("task_")){
-          const actionId = taskIdMap[task.id];
-          const action = allActions.find(a => a.id === actionId);
-          if(action) openModal(action);
-        }
-      }
+    container.innerHTML = `<div class="gc-wrap">
+      <div class="gc-header">
+        <div class="gc-label gc-label-head">Ação / Grupo</div>
+        <div class="gc-timeline gc-timeline-head">${monthHTML}</div>
+      </div>
+      <div class="gc-body">${rowsHTML}</div>
+    </div>`;
+
+    container.querySelectorAll('.gc-row-group').forEach(row=>{
+      row.addEventListener('click',()=>{
+        const gn = row.dataset.group;
+        expandedGroup = expandedGroup===gn ? null : gn;
+        renderGantt();
+      });
+    });
+    container.querySelectorAll('.gc-row-task').forEach(row=>{
+      row.addEventListener('click',()=>{
+        const tid = parseInt(row.dataset.taskId, 10);
+        const action = allActions.find(a=>a.id===tid);
+        if(action) openModal(action);
+      });
     });
   }
 
