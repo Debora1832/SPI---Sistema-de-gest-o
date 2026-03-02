@@ -9,54 +9,190 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/frappe-gantt@0.6.1/dist/frappe-gantt.css" />
 
   <style>
-    * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter', sans-serif; }
-    body { display:flex; background:#f5f7fa; height:100vh; }
-    .sidebar { width:240px; background:#111827; color:white; padding:20px; }
-    .sidebar h2 { margin-bottom:30px; font-size:18px; font-weight:600; }
-    .sidebar ul { list-style:none; }
-    .sidebar li { padding:12px 0; cursor:pointer; opacity:.85; }
-    .sidebar li.active, .sidebar li:hover { opacity:1; font-weight:600; }
-    .main { flex:1; padding:30px; overflow:auto; }
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; font-family:'Inter', sans-serif; }
+
+    body { display:flex; background:#f0f2f5; min-height:100vh; }
+
+    /* ===== SIDEBAR ===== */
+    .sidebar {
+      width:240px; min-width:240px; background:#111827; color:white;
+      padding:24px 16px; display:flex; flex-direction:column; gap:8px;
+    }
+    .sidebar-logo {
+      display:flex; align-items:center; gap:10px;
+      padding:0 8px 24px; border-bottom:1px solid rgba(255,255,255,.1);
+    }
+    .sidebar-logo .logo-icon {
+      width:36px; height:36px; background:#2563eb; border-radius:8px;
+      display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;
+    }
+    .sidebar-logo h2 { font-size:15px; font-weight:700; line-height:1.3; }
+    .sidebar-logo span { font-size:11px; color:#9ca3af; }
+    .sidebar-nav { margin-top:16px; list-style:none; display:flex; flex-direction:column; gap:4px; }
+    .sidebar-nav li {
+      padding:10px 12px; border-radius:8px; cursor:pointer;
+      display:flex; align-items:center; gap:10px; font-size:14px;
+      color:#d1d5db; transition:background .15s, color .15s;
+    }
+    .sidebar-nav li .nav-icon { font-size:16px; width:20px; text-align:center; }
+    .sidebar-nav li.active { background:#2563eb; color:white; font-weight:600; }
+    .sidebar-nav li:not(.active):hover { background:rgba(255,255,255,.07); color:white; }
+    .sidebar-footer { margin-top:auto; padding-top:16px; border-top:1px solid rgba(255,255,255,.1); font-size:11px; color:#6b7280; text-align:center; }
+
+    /* ===== MAIN ===== */
+    .main { flex:1; padding:28px 32px; overflow:auto; }
+    .page-header { margin-bottom:24px; }
+    .page-header h1 { font-size:22px; font-weight:700; color:#111827; }
+    .page-header p { font-size:13px; color:#6b7280; margin-top:4px; }
+
+    /* ===== PAGES ===== */
     .page { display:none; }
     .page.active { display:block; }
-    .card { background:white; padding:20px; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,.05); }
+
+    /* ===== KPI CARDS ===== */
+    .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:16px; margin-bottom:24px; }
+    .kpi-card {
+      background:white; padding:20px; border-radius:12px;
+      box-shadow:0 1px 4px rgba(0,0,0,.06); border-left:4px solid transparent;
+    }
+    .kpi-card.total { border-color:#2563eb; }
+    .kpi-card.complete { border-color:#16a34a; }
+    .kpi-card.on_going { border-color:#ca8a04; }
+    .kpi-card.delayed { border-color:#dc2626; }
+    .kpi-card .kpi-label { font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:#6b7280; margin-bottom:6px; }
+    .kpi-card .kpi-value { font-size:32px; font-weight:700; color:#111827; line-height:1; }
+    .kpi-card .kpi-sub { font-size:12px; color:#9ca3af; margin-top:6px; }
+
+    /* ===== PROGRESS BAR ===== */
+    .progress-section { background:white; padding:20px; border-radius:12px; box-shadow:0 1px 4px rgba(0,0,0,.06); margin-bottom:24px; }
+    .progress-section h3 { font-size:14px; font-weight:600; color:#374151; margin-bottom:14px; }
+    .progress-bar-wrap { background:#f3f4f6; border-radius:999px; height:12px; overflow:hidden; }
+    .progress-bar-fill { height:100%; border-radius:999px; background:linear-gradient(90deg,#2563eb,#16a34a); transition:width .6s ease; }
+    .progress-labels { display:flex; justify-content:space-between; margin-top:8px; font-size:12px; color:#6b7280; }
+
+    /* ===== GROUP SUMMARY TABLE ===== */
+    .card { background:white; padding:20px; border-radius:12px; box-shadow:0 1px 4px rgba(0,0,0,.06); }
+    .card h3 { font-size:14px; font-weight:600; color:#374151; margin-bottom:14px; }
     table { width:100%; border-collapse:collapse; }
-    th, td { padding:8px; border-bottom:1px solid #eee; font-size:13px; }
-    .status-delayed { background:#fee2e2; color:#b91c1c; font-weight:600; }
-    .status-complete { background:#dcfce7; color:#166534; font-weight:600; }
-    .status-on_going { background:#fef9c3; color:#854d0e; font-weight:600; }
-    #gantt { background:white; padding:20px; border-radius:12px; min-height:400px; }
+    thead th { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#6b7280; padding:8px 10px; border-bottom:2px solid #f3f4f6; text-align:left; }
+    tbody td { padding:10px 10px; border-bottom:1px solid #f9fafb; font-size:13px; color:#374151; }
+    tbody tr:last-child td { border-bottom:none; }
+    tbody tr:hover td { background:#f9fafb; }
+    .badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:600; }
+    .badge-delayed { background:#fee2e2; color:#b91c1c; }
+    .badge-complete { background:#dcfce7; color:#166534; }
+    .badge-on_going { background:#fef9c3; color:#854d0e; }
+
+    /* ===== PROJECTS FILTER ===== */
+    .filter-row { display:flex; gap:12px; align-items:center; margin-bottom:16px; flex-wrap:wrap; }
+    .filter-row label { font-size:13px; font-weight:600; color:#374151; }
+    .filter-row select {
+      padding:7px 12px; border-radius:8px; border:1px solid #d1d5db;
+      font-size:13px; color:#374151; background:white; cursor:pointer; outline:none;
+    }
+    .filter-row select:focus { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.1); }
+
+    /* ===== GANTT ===== */
+    #gantt { background:white; padding:20px; border-radius:12px; min-height:400px; box-shadow:0 1px 4px rgba(0,0,0,.06); }
 
     /* ===== GANTT CUSTOM COLORS ===== */
-    .gantt .bar-group { fill:#1e3a8a !important; }
-    .gantt .bar-action { fill:#2563eb !important; }
-    .gantt .bar-delayed { fill:#dc2626 !important; }
-    .gantt .bar-complete { fill:#16a34a !important; }
+    .gantt .bar-group rect { fill:#1e3a8a !important; }
+    .gantt .bar-action rect { fill:#2563eb !important; }
+    .gantt .bar-delayed rect { fill:#dc2626 !important; }
+    .gantt .bar-complete rect { fill:#16a34a !important; }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width:680px) {
+      body { flex-direction:column; }
+      .sidebar { width:100%; min-width:unset; flex-direction:row; flex-wrap:wrap; padding:12px 16px; }
+      .sidebar-logo { padding-bottom:0; border-bottom:none; padding-right:16px; }
+      .sidebar-nav { flex-direction:row; margin-top:0; gap:4px; }
+      .main { padding:16px; }
+    }
   </style>
 </head>
 <body>
 
 <div class="sidebar">
-  <h2>SIP Governance</h2>
-  <ul>
-    <li data-page="dashboard" class="active">Dashboard</li>
-    <li data-page="projects">Projetos</li>
-    <li data-page="ganttPage">Gantt</li>
+  <div class="sidebar-logo">
+    <div class="logo-icon">⚙️</div>
+    <div>
+      <h2>SIP Governance</h2>
+      <span>SSQE · MAGIUS</span>
+    </div>
+  </div>
+  <ul class="sidebar-nav">
+    <li data-page="dashboard" class="active"><span class="nav-icon">📊</span>Dashboard</li>
+    <li data-page="projects"><span class="nav-icon">📋</span>Projetos</li>
+    <li data-page="ganttPage"><span class="nav-icon">📅</span>Gantt</li>
   </ul>
+  <div class="sidebar-footer">v1.0 · 2025</div>
 </div>
 
 <div class="main">
 
+  <!-- DASHBOARD -->
   <div id="dashboard" class="page active">
-    <div class="card">Dashboard operacional</div>
-  </div>
+    <div class="page-header">
+      <h1>Dashboard Operacional</h1>
+      <p>Visão geral de todas as ações do plano SIP</p>
+    </div>
 
-  <div id="projects" class="page">
+    <div class="kpi-grid" id="kpiGrid"></div>
+
+    <div class="progress-section">
+      <h3>Progresso geral do plano</h3>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="progressFill"></div>
+      </div>
+      <div class="progress-labels">
+        <span id="progressLabel"></span>
+        <span id="progressPercent"></span>
+      </div>
+    </div>
+
     <div class="card">
+      <h3>Resumo por grupo</h3>
       <table>
         <thead>
           <tr>
-            <th>Ação</th>
+            <th>Grupo</th>
+            <th>Total</th>
+            <th>Concluídas</th>
+            <th>Em andamento</th>
+            <th>Atrasadas</th>
+          </tr>
+        </thead>
+        <tbody id="groupSummaryTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PROJECTS -->
+  <div id="projects" class="page">
+    <div class="page-header">
+      <h1>Projetos &amp; Ações</h1>
+      <p>Lista detalhada de todas as ações cadastradas</p>
+    </div>
+    <div class="card">
+      <div class="filter-row">
+        <label for="groupFilter">Grupo:</label>
+        <select id="groupFilter">
+          <option value="">Todos os grupos</option>
+        </select>
+        <label for="statusFilter">Status:</label>
+        <select id="statusFilter">
+          <option value="">Todos</option>
+          <option value="complete">Concluído</option>
+          <option value="on_going">Em andamento</option>
+          <option value="delayed">Atrasado</option>
+        </select>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Grupo</th>
             <th>Status</th>
             <th>Início</th>
             <th>Prazo</th>
@@ -68,7 +204,12 @@
     </div>
   </div>
 
+  <!-- GANTT -->
   <div id="ganttPage" class="page">
+    <div class="page-header">
+      <h1>Cronograma Gantt</h1>
+      <p>Clique em um grupo para expandir as ações individuais</p>
+    </div>
     <div id="gantt"></div>
   </div>
 
@@ -123,7 +264,11 @@ document.addEventListener("DOMContentLoaded", function() {
     {id:30, group:"Melhoria Continua", status:"on_going", start:"2025-07-04", end:"2026-02-20"}
   ];
 
+  const STATUS_LABEL = { complete:"Concluído", on_going:"Em andamento", delayed:"Atrasado" };
+
   let expandedGroup = null;
+
+  // ── helpers ──────────────────────────────────────────────────────────────
 
   function calculateDelay(end, status){
     if(status === "complete") return 0;
@@ -133,34 +278,132 @@ document.addEventListener("DOMContentLoaded", function() {
     return diff > 0 ? diff : 0;
   }
 
+  function fmtDate(dateStr){
+    const [y,m,d] = dateStr.split("-");
+    return d+"/"+m+"/"+y;
+  }
+
+  function getGroups(){
+    const groups = {};
+    allActions.forEach(a => {
+      if(!groups[a.group]) groups[a.group] = [];
+      groups[a.group].push(a);
+    });
+    return groups;
+  }
+
+  function calcPercent(count, total){ return Math.round((count/total)*100); }
+
+  function statusBadge(count, status){ return count > 0 ? '<span class="badge badge-'+status+'">'+count+'</span>' : '-'; }
+
+  // ── Dashboard ─────────────────────────────────────────────────────────────
+
+  function renderDashboard(){
+    const total = allActions.length;
+    const complete = allActions.filter(a=>a.status==="complete").length;
+    const on_going = allActions.filter(a=>a.status==="on_going").length;
+    const delayed  = allActions.filter(a=>a.status==="delayed").length;
+    const pct = Math.round((complete/total)*100);
+
+    // KPI cards
+    const kpiGrid = document.getElementById("kpiGrid");
+    kpiGrid.innerHTML = `
+      <div class="kpi-card total">
+        <div class="kpi-label">Total de Ações</div>
+        <div class="kpi-value">${total}</div>
+        <div class="kpi-sub">100% do plano</div>
+      </div>
+      <div class="kpi-card complete">
+        <div class="kpi-label">Concluídas</div>
+        <div class="kpi-value">${complete}</div>
+        <div class="kpi-sub">${calcPercent(complete,total)}% do total</div>
+      </div>
+      <div class="kpi-card on_going">
+        <div class="kpi-label">Em andamento</div>
+        <div class="kpi-value">${on_going}</div>
+        <div class="kpi-sub">${calcPercent(on_going,total)}% do total</div>
+      </div>
+      <div class="kpi-card delayed">
+        <div class="kpi-label">Atrasadas</div>
+        <div class="kpi-value">${delayed}</div>
+        <div class="kpi-sub">${calcPercent(delayed,total)}% do total</div>
+      </div>
+    `;
+
+    // Progress bar
+    document.getElementById("progressFill").style.width = pct + "%";
+    document.getElementById("progressLabel").textContent = complete + " de " + total + " ações concluídas";
+    document.getElementById("progressPercent").textContent = pct + "%";
+
+    // Group summary
+    const groups = getGroups();
+    const tbody = document.getElementById("groupSummaryTable");
+    tbody.innerHTML = "";
+    Object.keys(groups).forEach(groupName => {
+      const items = groups[groupName];
+      const gc = items.filter(i=>i.status==="complete").length;
+      const go = items.filter(i=>i.status==="on_going").length;
+      const gd = items.filter(i=>i.status==="delayed").length;
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${groupName}</td>
+        <td>${items.length}</td>
+        <td>${statusBadge(gc,"complete")}</td>
+        <td>${statusBadge(go,"on_going")}</td>
+        <td>${statusBadge(gd,"delayed")}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ── Projects ──────────────────────────────────────────────────────────────
+
+  function populateFilters(){
+    const groupSel = document.getElementById("groupFilter");
+    const groups = Object.keys(getGroups());
+    groups.forEach(g => {
+      const opt = document.createElement("option");
+      opt.value = g;
+      opt.textContent = g;
+      groupSel.appendChild(opt);
+    });
+    groupSel.addEventListener("change", renderTable);
+    document.getElementById("statusFilter").addEventListener("change", renderTable);
+  }
+
   function renderTable(){
+    const groupVal  = document.getElementById("groupFilter").value;
+    const statusVal = document.getElementById("statusFilter").value;
     const table = document.getElementById("projectsTable");
     table.innerHTML = "";
 
-    allActions.forEach(a => {
+    const filtered = allActions.filter(a =>
+      (!groupVal  || a.group === groupVal) &&
+      (!statusVal || a.status === statusVal)
+    );
+
+    filtered.forEach(a => {
       const delay = calculateDelay(a.end, a.status);
       const row = document.createElement("tr");
       row.innerHTML = `
-        <td>${a.group} #${a.id}</td>
-        <td class="status-${a.status}">${a.status}</td>
-        <td>${a.start}</td>
-        <td>${a.end}</td>
+        <td>${a.id}</td>
+        <td>${a.group}</td>
+        <td><span class="badge badge-${a.status}">${STATUS_LABEL[a.status] || a.status}</span></td>
+        <td>${fmtDate(a.start)}</td>
+        <td>${fmtDate(a.end)}</td>
         <td>${delay || '-'}</td>
       `;
       table.appendChild(row);
     });
   }
 
+  // ── Gantt ─────────────────────────────────────────────────────────────────
+
   function renderGantt(){
     const container = document.getElementById("gantt");
     container.innerHTML = "";
 
-    const groups = {};
-    allActions.forEach(a => {
-      if(!groups[a.group]) groups[a.group] = [];
-      groups[a.group].push(a);
-    });
-
+    const groups = getGroups();
     const tasks = [];
     const groupIdMap = {};
     let groupIndex = 0;
@@ -214,21 +457,25 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   }
 
-  document.querySelectorAll(".sidebar li").forEach(item => {
+  // ── Navigation ────────────────────────────────────────────────────────────
+
+  document.querySelectorAll(".sidebar-nav li").forEach(item => {
     item.addEventListener("click", () => {
-      document.querySelectorAll(".sidebar li").forEach(i=>i.classList.remove("active"));
+      document.querySelectorAll(".sidebar-nav li").forEach(i=>i.classList.remove("active"));
       document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
 
       item.classList.add("active");
       const pageId = item.dataset.page;
       document.getElementById(pageId).classList.add("active");
 
-      if(pageId === "ganttPage"){
-        setTimeout(renderGantt, 100);
-      }
+      if(pageId === "ganttPage") setTimeout(renderGantt, 100);
     });
   });
 
+  // ── Init ──────────────────────────────────────────────────────────────────
+
+  renderDashboard();
+  populateFilters();
   renderTable();
 
 });
