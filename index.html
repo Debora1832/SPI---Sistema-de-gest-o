@@ -92,6 +92,12 @@
     }
     .filter-row select:focus { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.1); }
 
+    /* ===== TABLE SCROLL ===== */
+    .table-wrap { overflow-x:auto; }
+    .col-nowrap { white-space:nowrap; }
+    .col-desc { max-width:280px; }
+    .col-comments { max-width:200px; }
+
     /* ===== GANTT ===== */
     #gantt { background:white; padding:20px; border-radius:12px; min-height:400px; box-shadow:0 1px 4px rgba(0,0,0,.06); }
 
@@ -100,6 +106,30 @@
     .gantt .bar-action rect { fill:#2563eb !important; }
     .gantt .bar-delayed rect { fill:#dc2626 !important; }
     .gantt .bar-complete rect { fill:#16a34a !important; }
+
+    /* ===== ACTION DETAIL MODAL ===== */
+    .modal-backdrop {
+      display:none; position:fixed; inset:0; background:rgba(0,0,0,.45);
+      z-index:1000; align-items:center; justify-content:center;
+    }
+    .modal-backdrop.open { display:flex; }
+    .modal {
+      background:white; border-radius:16px; padding:28px 32px; max-width:560px; width:90%;
+      box-shadow:0 8px 40px rgba(0,0,0,.18); position:relative; max-height:90vh; overflow-y:auto;
+    }
+    .modal-close {
+      position:absolute; top:14px; right:18px; background:none; border:none;
+      font-size:22px; cursor:pointer; color:#6b7280; line-height:1;
+    }
+    .modal-close:hover { color:#111827; }
+    .modal h2 { font-size:16px; font-weight:700; color:#111827; margin-bottom:4px; padding-right:24px; }
+    .modal .modal-group { font-size:12px; color:#6b7280; margin-bottom:16px; }
+    .modal-fields { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .modal-field label { display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#9ca3af; margin-bottom:3px; }
+    .modal-field span { font-size:13px; color:#374151; }
+    .modal-desc { grid-column:1/-1; }
+    .modal-comments { grid-column:1/-1; }
+    .modal-comments span, .modal-desc span { white-space:pre-wrap; }
 
     /* ===== RESPONSIVE ===== */
     @media (max-width:680px) {
@@ -188,19 +218,26 @@
           <option value="delayed">Atrasado</option>
         </select>
       </div>
+      <div class="table-wrap">
       <table>
         <thead>
           <tr>
             <th>#</th>
             <th>Grupo</th>
+            <th>Descrição</th>
+            <th>Equipe</th>
+            <th>Responsável</th>
             <th>Status</th>
             <th>Início</th>
             <th>Prazo</th>
+            <th>Conclusão</th>
             <th>Atraso (dias)</th>
+            <th>Comentários</th>
           </tr>
         </thead>
         <tbody id="projectsTable"></tbody>
       </table>
+      </div>
     </div>
   </div>
 
@@ -208,11 +245,58 @@
   <div id="ganttPage" class="page">
     <div class="page-header">
       <h1>Cronograma Gantt</h1>
-      <p>Clique em um grupo para expandir as ações individuais</p>
+      <p>Clique em um grupo para expandir as ações individuais. Clique em uma ação para ver os detalhes.</p>
     </div>
     <div id="gantt"></div>
   </div>
 
+</div>
+
+<!-- ACTION DETAIL MODAL -->
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal" role="dialog" aria-modal="true">
+    <button class="modal-close" id="modalClose" aria-label="Fechar">✕</button>
+    <h2 id="modalTitle"></h2>
+    <div class="modal-group" id="modalGroup"></div>
+    <div class="modal-fields">
+      <div class="modal-field modal-desc">
+        <label>Descrição</label>
+        <span id="modalDesc"></span>
+      </div>
+      <div class="modal-field">
+        <label>Status</label>
+        <span id="modalStatus"></span>
+      </div>
+      <div class="modal-field">
+        <label>Equipe</label>
+        <span id="modalTeam"></span>
+      </div>
+      <div class="modal-field">
+        <label>Responsável</label>
+        <span id="modalLead"></span>
+      </div>
+      <div class="modal-field">
+        <label>Início</label>
+        <span id="modalStart"></span>
+      </div>
+      <div class="modal-field">
+        <label>Prazo</label>
+        <span id="modalEnd"></span>
+      </div>
+      <div class="modal-field">
+        <label>Conclusão</label>
+        <span id="modalCompletion"></span>
+      </div>
+      <div class="modal-field">
+        <label>Atraso (dias)</label>
+        <span id="modalDelay"></span>
+      </div>
+      <div class="modal-field modal-comments">
+        <label>Comentários</label>
+        <span id="modalComments"></span>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/frappe-gantt@0.6.1/dist/frappe-gantt.min.js"></script>
@@ -222,46 +306,76 @@
 document.addEventListener("DOMContentLoaded", function() {
 
   const allActions = [
-    {id:1, group:"PFMEA e Plano de Controle", status:"delayed", start:"2025-06-11", end:"2025-07-04"},
-    {id:2, group:"PFMEA e Plano de Controle", status:"complete", start:"2025-06-30", end:"2025-07-01"},
-    {id:3, group:"PFMEA e Plano de Controle", status:"delayed", start:"2025-07-01", end:"2025-09-30"},
-    {id:4, group:"PFMEA e Plano de Controle", status:"on_going", start:"2025-06-30", end:"2025-07-11"},
-    {id:5, group:"PFMEA e Plano de Controle", status:"on_going", start:"2025-07-01", end:"2025-07-11"},
-    {id:6, group:"PFMEA e Plano de Controle", status:"on_going", start:"2025-06-25", end:"2025-07-30"},
-    {id:7, group:"PFMEA e Plano de Controle", status:"on_going", start:"2025-06-30", end:"2025-12-19"},
+    {id:1,  group:"PFMEA e Plano de Controle",      status:"delayed",  start:"2025-06-11", end:"2025-07-04", completionDate:"",          team:"QUALIDADE",  lead:"EDVAN",        comments:"Concluido em 14/07/2025",
+      desc:"Redefinir responsabilidades sob criação, gestão dos Planos de Controle e PFMEA. Passar de produto para qualidade"},
+    {id:2,  group:"PFMEA e Plano de Controle",      status:"complete", start:"2025-06-30", end:"2025-07-01", completionDate:"2025-07-01", team:"ENGENHARIA", lead:"EDVAN",        comments:"355 itens ativos para a John Deere e que necessitam revisão",
+      desc:"Avaliar quantidade de PFMEA e Planos de Controle que estão atualizados e adequados e quantos não estão"},
+    {id:3,  group:"PFMEA e Plano de Controle",      status:"delayed",  start:"2025-07-01", end:"2025-09-30", completionDate:"",          team:"ENGENHARIA", lead:"ANDRÉ KEIJI",  comments:"330 itens - Ver prazo com André",
+      desc:"Definir estratégia de contenção para itens com plano de controle desatualizados"},
+    {id:4,  group:"PFMEA e Plano de Controle",      status:"on_going", start:"2025-06-30", end:"2025-07-11", completionDate:"",          team:"ENGENHARIA", lead:"ANDRÉ KEIJI",  comments:"Já existe a gestão",
+      desc:"Implementar gestão de PFMEA e Planos de controle"},
+    {id:5,  group:"PFMEA e Plano de Controle",      status:"on_going", start:"2025-07-01", end:"2025-07-11", completionDate:"",          team:"ENGENHARIA", lead:"ANDRÉ KEIJI",  comments:"Ver com ANDRÉ - Adequação de processo após a revisão?",
+      desc:"Elaborar plano de ação (5W2H) para adequação dos PFMEA e Plano de controle não adequados"},
+    {id:6,  group:"PFMEA e Plano de Controle",      status:"on_going", start:"2025-06-25", end:"2025-07-30", completionDate:"",          team:"TBD",        lead:"ELISANGELA",   comments:"Ver evidência com Elisangela.",
+      desc:"Definir estratégia para plano de reação e contenção em caso de reprovações"},
+    {id:7,  group:"PFMEA e Plano de Controle",      status:"on_going", start:"2025-06-30", end:"2025-12-19", completionDate:"",          team:"ENGENHARIA", lead:"ANDRÉ KEIJI",  comments:"Ver com o André prazos",
+      desc:"Concluir a avaliação e revisão do PFMEA e do Plano de Controle dos 355 PN mapeados (evolução de acordo com o plano de ação criado na atividade n° 8)"},
 
-    {id:8, group:"Plano de Controle e Setup", status:"complete", start:"2025-06-16", end:"2026-02-27"},
-    {id:9, group:"Plano de Controle e Setup", status:"complete", start:"2025-06-11", end:"2025-06-26"},
-    {id:10, group:"Plano de Controle e Setup", status:"delayed", start:"2025-07-01", end:"2025-07-04"},
-    {id:11, group:"Plano de Controle e Setup", status:"complete", start:"2025-07-01", end:"2025-07-01"},
-    {id:12, group:"Plano de Controle e Setup", status:"on_going", start:"2025-07-01", end:"2025-07-11"},
-    {id:13, group:"Plano de Controle e Setup", status:"on_going", start:"2025-07-01", end:"2025-11-28"},
-    {id:14, group:"Plano de Controle e Setup", status:"on_going", start:"2025-07-01", end:"2025-08-28"},
+    {id:8,  group:"Plano de Controle e Setup",      status:"complete", start:"2025-06-16", end:"2026-02-27", completionDate:"2025-07-01", team:"QUALIDADE",  lead:"MIKE",         comments:"",
+      desc:"Redefinir execução do plano de controle e setup de itens na produção (foco na area de estamparia, solda e usinagem - alterar da qualidade para operações a responsabilidade da verificação da conformidade dos itens)"},
+    {id:9,  group:"Plano de Controle e Setup",      status:"complete", start:"2025-06-11", end:"2025-06-26", completionDate:"2025-07-01", team:"QUALIDADE",  lead:"ERON",         comments:"",
+      desc:"Avaliar se as áreas de operação estão treinadas para execução do setup"},
+    {id:10, group:"Plano de Controle e Setup",      status:"delayed",  start:"2025-07-01", end:"2025-07-04", completionDate:"",          team:"QUALIDADE",  lead:"ERON",         comments:"Cobrar Eron",
+      desc:"Elaborar cronograma de treinamento para operadores execução setup"},
+    {id:11, group:"Plano de Controle e Setup",      status:"complete", start:"2025-07-01", end:"2025-07-01", completionDate:"2025-07-01", team:"QUALIDADE",  lead:"ERON",         comments:"59 postos mapeados",
+      desc:"Mapear quantidade de pontos afetados pelo escopo desta estratégia (estamparia, solda e usinagem)"},
+    {id:12, group:"Plano de Controle e Setup",      status:"on_going", start:"2025-07-01", end:"2025-07-11", completionDate:"",          team:"QUALIDADE",  lead:"ERON",         comments:"",
+      desc:"Elaborar cronograma para KICKOFF da nova estratégia para cada um dos postos mapeados (59)"},
+    {id:13, group:"Plano de Controle e Setup",      status:"on_going", start:"2025-07-01", end:"2025-11-28", completionDate:"",          team:"QUALIDADE",  lead:"ERON",         comments:"",
+      desc:"Executar Kick off da nova estrategia de Setup nos 59 postos de trabalho mapeados"},
+    {id:14, group:"Plano de Controle e Setup",      status:"on_going", start:"2025-07-01", end:"2025-08-28", completionDate:"",          team:"QUALIDADE",  lead:"ERON",         comments:"",
+      desc:"Treinar colaboradores na operação para executar setup conforme cronograma elaborado na atividade 12"},
 
-    {id:15, group:"Inspeção Volante da Qualidade", status:"on_going", start:"2025-06-25", end:"2025-11-28"},
-    {id:16, group:"Inspeção Volante da Qualidade", status:"on_going", start:"2025-06-25", end:"2025-12-06"},
-    {id:17, group:"Inspeção Volante da Qualidade", status:"on_going", start:"2025-06-25", end:"2025-08-29"},
+    {id:15, group:"Inspeção Volante da Qualidade",  status:"on_going", start:"2025-06-25", end:"2025-11-28", completionDate:"",          team:"QUALIDADE",  lead:"ERON",         comments:"",
+      desc:"Mapear todas as inspeções necessárias a partir dos PCs existentes"},
+    {id:16, group:"Inspeção Volante da Qualidade",  status:"on_going", start:"2025-06-25", end:"2025-12-06", completionDate:"",          team:"QUALIDADE",  lead:"ERON",         comments:"Ver evidência com Eron",
+      desc:"Elaborar e definir estratégia de priorização e execução Inspeção Volante da Qualidade (IVQ)"},
+    {id:17, group:"Inspeção Volante da Qualidade",  status:"on_going", start:"2025-06-25", end:"2025-08-29", completionDate:"",          team:"QUALIDADE",  lead:"ERON",         comments:"Ver evidência com Eron",
+      desc:"Elaborar e definir cronograma para Kickoff da Inspeção Volante da Qualidade (IVQ)"},
 
-    {id:18, group:"Gestão de sucata / refugo", status:"complete", start:"2025-03-17", end:"2025-06-30"},
+    {id:18, group:"Gestão de sucata / refugo",      status:"complete", start:"2025-03-17", end:"2025-06-30", completionDate:"2025-06-23", team:"QUALIDADE",  lead:"NADJA",        comments:"",
+      desc:"Definir rotina na fabrica para tratar sucata / refugo (QR1, QR2, QR3)"},
 
-    {id:19, group:"Gestão de Calibrações", status:"on_going", start:"2025-03-17", end:"2025-09-30"},
-    {id:20, group:"Gestão de Calibrações", status:"on_going", start:"2025-03-17", end:"2025-09-30"},
+    {id:19, group:"Gestão de Calibrações",          status:"on_going", start:"2025-03-17", end:"2025-09-30", completionDate:"",          team:"QUALIDADE",  lead:"RODRIGO",      comments:"Ver evidência com Rodrigo",
+      desc:"Implementar gestão e monitoramento de equipamentos de calibração"},
+    {id:20, group:"Gestão de Calibrações",          status:"on_going", start:"2025-03-17", end:"2025-09-30", completionDate:"",          team:"QUALIDADE",  lead:"RODRIGO",      comments:"Ver evidência com Rodrigo",
+      desc:"Executar calibração de equipamentos com calibração pendente"},
 
-    {id:21, group:"Fluxo de Processo", status:"on_going", start:"2025-06-11", end:"2025-07-18"},
+    {id:21, group:"Fluxo de Processo",              status:"on_going", start:"2025-06-11", end:"2025-07-18", completionDate:"",          team:"LOGISTICA",  lead:"JORGE",        comments:"Conversar com Jorge Miguel sobre esta ação (e-mail de 01/07).",
+      desc:"Definir fluxo de processo para desembarque e embarque de peças no HUB - foco em peças oleadas"},
 
-    {id:22, group:"Embalamento", status:"on_going", start:"2025-07-04", end:"2025-08-29"},
+    {id:22, group:"Embalamento",                    status:"on_going", start:"2025-07-04", end:"2025-08-29", completionDate:"",          team:"QUALIDADE",  lead:"MIKE",         comments:"",
+      desc:"Criar guide line de embalamento de peças em metal fab"},
 
-    {id:23, group:"Dispositivos de Medição", status:"on_going", start:"2025-06-16", end:"2025-09-16"},
-    {id:24, group:"Dispositivos de Medição", status:"complete", start:"2025-06-16", end:"2025-06-27"},
-    {id:25, group:"Dispositivos de Medição", status:"complete", start:"2025-06-23", end:"2025-07-04"},
-    {id:26, group:"Dispositivos de Medição", status:"on_going", start:"2025-07-01", end:"2025-07-11"},
+    {id:23, group:"Dispositivos de Medição",        status:"on_going", start:"2025-06-16", end:"2025-09-16", completionDate:"",          team:"QUALIDADE",  lead:"RODRIGO",      comments:"Mapeado a necessidade de medir 410 dispositivos - Ver com Rodrigo",
+      desc:"Avaliar quantidade de itens que estão com dispositivo de medição adequados e a disposição da operação e os que não estão"},
+    {id:24, group:"Dispositivos de Medição",        status:"complete", start:"2025-06-16", end:"2025-06-27", completionDate:"",          team:"QUALIDADE",  lead:"RODRIGO",      comments:"",
+      desc:"Implementar gestão de dispositivos de verificação (go/non go gage)"},
+    {id:25, group:"Dispositivos de Medição",        status:"complete", start:"2025-06-23", end:"2025-07-04", completionDate:"2025-07-04", team:"QUALIDADE",  lead:"IZABELLA",     comments:"",
+      desc:"Avaliar disponibilidade de equipamentos de medição e execução dos controles na fábrica"},
+    {id:26, group:"Dispositivos de Medição",        status:"on_going", start:"2025-07-01", end:"2025-07-11", completionDate:"",          team:"QUALIDADE",  lead:"RODRIGO",      comments:"Ver com Rodrigo tratativas",
+      desc:"Elaborar plano de ação (5W2H) para adequação dos dispositivos de verificação (go/non go gages) na fábrica"},
 
-    {id:27, group:"CARs John Deere", status:"complete", start:"2025-04-24", end:"2025-07-07"},
+    {id:27, group:"CARs John Deere",                status:"complete", start:"2025-04-24", end:"2025-07-07", completionDate:"2025-07-04", team:"QUALIDADE",  lead:"LEONARDO",     comments:"Evidencias submetidas pela MAGIUS e aguardo aprovação da Deere",
+      desc:"Finalizar as CARs de BM (25921369, 26018294, 26469206)"},
 
-    {id:28, group:"Analise de Causa Raiz", status:"complete", start:"2025-03-17", end:"2025-08-30"},
-    {id:29, group:"Analise de Causa Raiz", status:"complete", start:"2025-03-17", end:"2025-08-30"},
+    {id:28, group:"Analise de Causa Raiz",          status:"complete", start:"2025-03-17", end:"2025-08-30", completionDate:"2025-07-04", team:"QUALIDADE",  lead:"AILEN",        comments:"",
+      desc:"Estruturar SAC - equipe, alerta, matriz e procedimentos"},
+    {id:29, group:"Analise de Causa Raiz",          status:"complete", start:"2025-03-17", end:"2025-08-30", completionDate:"2025-07-04", team:"QUALIDADE",  lead:"AILEN",        comments:"",
+      desc:"Aplicar metodologia de fast response (dentro da RRQ - modelo inicial)"},
 
-    {id:30, group:"Melhoria Continua", status:"on_going", start:"2025-07-04", end:"2026-02-20"}
+    {id:30, group:"Melhoria Continua",              status:"on_going", start:"2025-07-04", end:"2026-02-20", completionDate:"",          team:"OPERAÇÕES",  lead:"NADJA",        comments:"Ver com Edvan se esta ação permanece",
+      desc:"Criar programa de CI - possibilitar que os operadores realizem sugestões de melhorias (processo, dispositivos, controles, etc)"}
   ];
 
   const STATUS_LABEL = { complete:"Concluído", on_going:"Em andamento", delayed:"Atrasado" };
@@ -279,9 +393,12 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   function fmtDate(dateStr){
+    if(!dateStr || dateStr === '') return "-";
     const [y,m,d] = dateStr.split("-");
     return d+"/"+m+"/"+y;
   }
+
+  function truncate(str, max){ if(!str) return ''; return str.length > max ? str.slice(0,max)+"…" : str; }
 
   function getGroups(){
     const groups = {};
@@ -305,7 +422,6 @@ document.addEventListener("DOMContentLoaded", function() {
     const delayed  = allActions.filter(a=>a.status==="delayed").length;
     const pct = Math.round((complete/total)*100);
 
-    // KPI cards
     const kpiGrid = document.getElementById("kpiGrid");
     kpiGrid.innerHTML = `
       <div class="kpi-card total">
@@ -330,12 +446,10 @@ document.addEventListener("DOMContentLoaded", function() {
       </div>
     `;
 
-    // Progress bar
     document.getElementById("progressFill").style.width = pct + "%";
     document.getElementById("progressLabel").textContent = complete + " de " + total + " ações concluídas";
     document.getElementById("progressPercent").textContent = pct + "%";
 
-    // Group summary
     const groups = getGroups();
     const tbody = document.getElementById("groupSummaryTable");
     tbody.innerHTML = "";
@@ -387,15 +501,50 @@ document.addEventListener("DOMContentLoaded", function() {
       const row = document.createElement("tr");
       row.innerHTML = `
         <td>${a.id}</td>
-        <td>${a.group}</td>
+        <td class="col-nowrap">${a.group}</td>
+        <td class="col-desc">${a.desc}</td>
+        <td class="col-nowrap">${a.team}</td>
+        <td class="col-nowrap">${a.lead}</td>
         <td><span class="badge badge-${a.status}">${STATUS_LABEL[a.status] || a.status}</span></td>
-        <td>${fmtDate(a.start)}</td>
-        <td>${fmtDate(a.end)}</td>
+        <td class="col-nowrap">${fmtDate(a.start)}</td>
+        <td class="col-nowrap">${fmtDate(a.end)}</td>
+        <td class="col-nowrap">${fmtDate(a.completionDate)}</td>
         <td>${delay || '-'}</td>
+        <td class="col-comments">${a.comments || '-'}</td>
       `;
       table.appendChild(row);
     });
   }
+
+  // ── Modal ─────────────────────────────────────────────────────────────────
+
+  function openModal(action){
+    const delay = calculateDelay(action.end, action.status);
+    document.getElementById("modalTitle").textContent = "Ação #" + action.id;
+    document.getElementById("modalGroup").textContent = action.group;
+    document.getElementById("modalDesc").textContent = action.desc;
+    document.getElementById("modalStatus").innerHTML = '<span class="badge badge-'+action.status+'">'+STATUS_LABEL[action.status]+'</span>';
+    document.getElementById("modalTeam").textContent = action.team;
+    document.getElementById("modalLead").textContent = action.lead;
+    document.getElementById("modalStart").textContent = fmtDate(action.start);
+    document.getElementById("modalEnd").textContent = fmtDate(action.end);
+    document.getElementById("modalCompletion").textContent = fmtDate(action.completionDate);
+    document.getElementById("modalDelay").textContent = delay || '-';
+    document.getElementById("modalComments").textContent = action.comments || '-';
+    document.getElementById("modalBackdrop").classList.add("open");
+  }
+
+  function closeModal(){
+    document.getElementById("modalBackdrop").classList.remove("open");
+  }
+
+  document.getElementById("modalClose").addEventListener("click", closeModal);
+  document.getElementById("modalBackdrop").addEventListener("click", function(e){
+    if(e.target === this) closeModal();
+  });
+  document.addEventListener("keydown", function(e){
+    if(e.key === "Escape") closeModal();
+  });
 
   // ── Gantt ─────────────────────────────────────────────────────────────────
 
@@ -406,6 +555,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const groups = getGroups();
     const tasks = [];
     const groupIdMap = {};
+    const taskIdMap = {};
     let groupIndex = 0;
 
     Object.keys(groups).forEach(groupName => {
@@ -432,9 +582,12 @@ document.addEventListener("DOMContentLoaded", function() {
           if(i.status === "delayed") statusClass = "bar-delayed";
           if(i.status === "complete") statusClass = "bar-complete";
 
+          const taskId = "task_" + i.id;
+          taskIdMap[taskId] = i.id;
+
           tasks.push({
-            id: "task_" + i.id,
-            name: "↳ Ação " + i.id,
+            id: taskId,
+            name: "↳ #" + i.id + " " + truncate(i.desc, 40),
             start: i.start,
             end: i.end,
             progress: i.status === "complete" ? 100 : 40,
@@ -452,6 +605,10 @@ document.addEventListener("DOMContentLoaded", function() {
           const realGroupName = groupIdMap[task.id];
           expandedGroup = expandedGroup === realGroupName ? null : realGroupName;
           renderGantt();
+        } else if(task.id.startsWith("task_")){
+          const actionId = taskIdMap[task.id];
+          const action = allActions.find(a => a.id === actionId);
+          if(action) openModal(action);
         }
       }
     });
