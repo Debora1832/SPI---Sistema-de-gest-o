@@ -100,6 +100,13 @@
     .col-desc { max-width:280px; }
     .col-comments { max-width:200px; }
 
+    /* ===== SORTABLE HEADERS ===== */
+    thead th[data-sort] { cursor:pointer; user-select:none; white-space:nowrap; }
+    thead th[data-sort]:hover { background:#2A6121; }
+    thead th[data-sort]::after { content:" ⇅"; font-size:10px; opacity:.5; }
+    thead th[data-sort].sort-asc::after  { content:" ▲"; opacity:1; }
+    thead th[data-sort].sort-desc::after { content:" ▼"; opacity:1; }
+
     /* ===== GANTT ===== */
     #gantt { background:white; padding:20px; border-radius:12px; min-height:400px; box-shadow:0 1px 4px rgba(0,0,0,.06); }
 
@@ -341,17 +348,17 @@
       <table>
         <thead>
           <tr>
-            <th>#</th>
-            <th>Grupo</th>
-            <th>Descrição</th>
-            <th>Equipe</th>
-            <th>Responsável</th>
-            <th>Status</th>
-            <th>Início</th>
-            <th>Prazo</th>
-            <th>Reprazo</th>
-            <th>Conclusão</th>
-            <th>Atraso (dias)</th>
+            <th data-sort="id">#</th>
+            <th data-sort="group">Grupo</th>
+            <th data-sort="desc">Descrição</th>
+            <th data-sort="team">Equipe</th>
+            <th data-sort="lead">Responsável</th>
+            <th data-sort="status">Status</th>
+            <th data-sort="start">Início</th>
+            <th data-sort="end">Prazo</th>
+            <th data-sort="reprazo">Reprazo</th>
+            <th data-sort="completionDate">Conclusão</th>
+            <th data-sort="delay">Atraso (dias)</th>
             <th>Comentários</th>
             <th>Ações</th>
           </tr>
@@ -692,16 +699,52 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById("statusFilter").addEventListener("change", renderTable);
   }
 
+  let sortCol = null;   // key name or null
+  let sortDir = "asc";  // "asc" | "desc"
+
   function renderTable(){
     const groupVal  = document.getElementById("groupFilter").value;
     const statusVal = document.getElementById("statusFilter").value;
     const table = document.getElementById("projectsTable");
     table.innerHTML = "";
 
-    const filtered = allActions.filter(a =>
+    let filtered = allActions.filter(a =>
       (!groupVal  || a.group === groupVal) &&
       (!statusVal || resolveStatus(a) === statusVal)
     );
+
+    // ── sort ──
+    if(sortCol){
+      if(sortCol === "delay" || sortCol === "status"){
+        // pre-compute per-row value once to avoid repeated calls during sort
+        const cache = new Map(filtered.map(a => [a.id,
+          sortCol === "delay"
+            ? calculateDelay(a.end, resolveStatus(a))
+            : resolveStatus(a)
+        ]));
+        filtered.sort((a, b) => {
+          const va = cache.get(a.id), vb = cache.get(b.id);
+          if(va < vb) return sortDir === "asc" ? -1 :  1;
+          if(va > vb) return sortDir === "asc" ?  1 : -1;
+          return 0;
+        });
+      } else {
+        filtered.sort((a, b) => {
+          const va = a[sortCol] || "", vb = b[sortCol] || "";
+          if(va < vb) return sortDir === "asc" ? -1 :  1;
+          if(va > vb) return sortDir === "asc" ?  1 : -1;
+          return 0;
+        });
+      }
+    }
+
+    // update header indicators
+    document.querySelectorAll("#projects thead th[data-sort]").forEach(th => {
+      th.classList.remove("sort-asc", "sort-desc");
+      if(th.dataset.sort === sortCol){
+        th.classList.add(sortDir === "asc" ? "sort-asc" : "sort-desc");
+      }
+    });
 
     filtered.forEach(a => {
       const delay = calculateDelay(a.end, resolveStatus(a));
@@ -736,7 +779,19 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   }
 
-  // ── Edit / New action modal ───────────────────────────────────────────────
+  // ── Sortable headers ──────────────────────────────────────────────────────
+  document.querySelectorAll("#projects thead th[data-sort]").forEach(th => {
+    th.addEventListener("click", () => {
+      const col = th.dataset.sort;
+      if(sortCol === col){
+        sortDir = sortDir === "asc" ? "desc" : "asc";
+      } else {
+        sortCol = col;
+        sortDir = "asc";
+      }
+      renderTable();
+    });
+  });
 
   let editingId = null; // null = new action
 
