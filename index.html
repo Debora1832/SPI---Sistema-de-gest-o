@@ -113,10 +113,10 @@
     .gc-timeline-head { height:32px; }
     .gc-month { position:absolute; top:0; height:100%; display:flex; align-items:center; padding:0 6px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#367C2B; border-left:1px solid #d4e8ce; }
     .gc-bar { position:absolute; top:50%; transform:translateY(-50%); height:18px; border-radius:4px; min-width:4px; }
-    .gc-bar-group { background:#1E4D17; }
-    .gc-bar-action { background:#367C2B; }
-    .gc-bar-delayed { background:#dc2626; }
-    .gc-bar-complete { background:#FFDE00; }
+    .gc-bar-group   { background:rgba(21,101,192,.28);  border-left:3px solid #1565C0; }  /* blue  – group summary */
+    .gc-bar-delayed { background:rgba(220,38,38,.22);   border-left:3px solid #dc2626; }  /* red   – atrasado      */
+    .gc-bar-action  { background:rgba(245,158,11,.28);  border-left:3px solid #F59E0B; }  /* amber – em andamento  */
+    .gc-bar-complete{ background:rgba(22,163,74,.22);   border-left:3px solid #16a34a; }  /* green – concluído     */
     .gc-row-group { cursor:pointer; }
     .gc-row-group .gc-label { font-weight:700; background:#eef5eb; }
     .gc-row-group:hover .gc-label { background:#e2f0db; }
@@ -147,6 +147,59 @@
     .modal-desc { grid-column:1/-1; }
     .modal-comments { grid-column:1/-1; }
     .modal-comments span, .modal-desc span { white-space:pre-wrap; }
+
+    /* ===== BUTTONS ===== */
+    .btn-primary {
+      display:inline-flex; align-items:center; gap:6px;
+      background:#367C2B; color:#fff; border:none; border-radius:8px;
+      padding:8px 16px; font-size:13px; font-weight:600; cursor:pointer;
+      transition:background .15s;
+    }
+    .btn-primary:hover { background:#2A6121; }
+    .btn-edit {
+      background:#f3f6f0; color:#374151; border:1px solid #c8ddc3;
+      border-radius:6px; padding:4px 10px; font-size:11px; font-weight:600;
+      cursor:pointer; transition:background .15s;
+    }
+    .btn-edit:hover { background:#e2f0db; color:#1E4D17; }
+
+    /* ===== EDIT/NEW ACTION MODAL ===== */
+    .edit-modal-backdrop {
+      display:none; position:fixed; inset:0; background:rgba(0,0,0,.45);
+      z-index:2000; align-items:center; justify-content:center;
+    }
+    .edit-modal-backdrop.open { display:flex; }
+    .edit-modal {
+      background:white; border-radius:16px; padding:28px 32px; max-width:640px; width:92%;
+      box-shadow:0 8px 40px rgba(0,0,0,.2); position:relative; max-height:90vh; overflow-y:auto;
+      border-top:4px solid #367C2B;
+    }
+    .edit-modal h2 { font-size:17px; font-weight:700; color:#1E4D17; margin-bottom:20px; padding-right:32px; }
+    .edit-modal-close {
+      position:absolute; top:14px; right:18px; background:none; border:none;
+      font-size:22px; cursor:pointer; color:#6b7280; line-height:1;
+    }
+    .edit-modal-close:hover { color:#1E4D17; }
+    .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    .form-field { display:flex; flex-direction:column; gap:4px; }
+    .form-field.full { grid-column:1/-1; }
+    .form-field label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#367C2B; }
+    .form-field input, .form-field select, .form-field textarea {
+      padding:8px 10px; border-radius:8px; border:1px solid #c8ddc3; font-size:13px;
+      color:#374151; background:#fff; outline:none; font-family:inherit;
+    }
+    .form-field input:focus, .form-field select:focus, .form-field textarea:focus {
+      border-color:#367C2B; box-shadow:0 0 0 3px rgba(54,124,43,.12);
+    }
+    .form-field textarea { resize:vertical; min-height:70px; }
+    .form-actions { display:flex; justify-content:flex-end; align-items:center; gap:10px; margin-top:20px; flex-wrap:wrap; }
+    .btn-cancel {
+      background:#f3f4f6; color:#374151; border:1px solid #d1d5db;
+      border-radius:8px; padding:8px 18px; font-size:13px; font-weight:600; cursor:pointer;
+    }
+    .btn-cancel:hover { background:#e5e7eb; }
+    .btn-save { background:#367C2B; color:#fff; border:none; border-radius:8px; padding:8px 22px; font-size:13px; font-weight:600; cursor:pointer; }
+    .btn-save:hover { background:#2A6121; }
 
     /* ===== RESPONSIVE ===== */
     @media (max-width:680px) {
@@ -239,9 +292,15 @@
 
   <!-- PROJECTS -->
   <div id="projects" class="page">
-    <div class="page-header">
-      <h1>Projetos &amp; Ações</h1>
-      <p>Lista detalhada de todas as ações cadastradas</p>
+    <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+      <div>
+        <h1>Projetos &amp; Ações</h1>
+        <p>Lista detalhada de todas as ações cadastradas</p>
+      </div>
+      <button class="btn-primary" id="btnNewAction" style="margin-top:4px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/></svg>
+        Nova Ação
+      </button>
     </div>
     <div class="card">
       <div class="filter-row">
@@ -272,6 +331,7 @@
             <th>Conclusão</th>
             <th>Atraso (dias)</th>
             <th>Comentários</th>
+            <th>Ações</th>
           </tr>
         </thead>
         <tbody id="projectsTable"></tbody>
@@ -334,6 +394,62 @@
         <label>Comentários</label>
         <span id="modalComments"></span>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT / NEW ACTION MODAL -->
+<div class="edit-modal-backdrop" id="editModalBackdrop">
+  <div class="edit-modal" role="dialog" aria-modal="true">
+    <button class="edit-modal-close" id="editModalClose" aria-label="Fechar">✕</button>
+    <h2 id="editModalTitle">Nova Ação</h2>
+    <div class="form-grid">
+      <div class="form-field full">
+        <label for="ef-group">Grupo</label>
+        <input type="text" id="ef-group" placeholder="Nome do grupo" />
+      </div>
+      <div class="form-field full">
+        <label for="ef-desc">Descrição</label>
+        <textarea id="ef-desc" placeholder="Descrição da ação"></textarea>
+      </div>
+      <div class="form-field">
+        <label for="ef-team">Equipe</label>
+        <input type="text" id="ef-team" placeholder="Ex: QUALIDADE" />
+      </div>
+      <div class="form-field">
+        <label for="ef-lead">Responsável</label>
+        <input type="text" id="ef-lead" placeholder="Nome do responsável" />
+      </div>
+      <div class="form-field">
+        <label for="ef-status">Status</label>
+        <select id="ef-status">
+          <option value="on_going">Em andamento</option>
+          <option value="complete">Concluído</option>
+          <option value="delayed">Atrasado</option>
+        </select>
+      </div>
+      <div class="form-field"><!-- spacer --></div>
+      <div class="form-field">
+        <label for="ef-start">Início</label>
+        <input type="date" id="ef-start" />
+      </div>
+      <div class="form-field">
+        <label for="ef-end">Prazo</label>
+        <input type="date" id="ef-end" />
+      </div>
+      <div class="form-field">
+        <label for="ef-completion">Data de Conclusão</label>
+        <input type="date" id="ef-completion" />
+      </div>
+      <div class="form-field full">
+        <label for="ef-comments">Comentários</label>
+        <textarea id="ef-comments" placeholder="Observações"></textarea>
+      </div>
+    </div>
+    <div class="form-actions">
+      <div id="editFormError" style="color:#b91c1c;font-size:12px;font-weight:600;align-self:center;display:none;"></div>
+      <button class="btn-cancel" id="editModalCancel">Cancelar</button>
+      <button class="btn-save" id="editModalSave">Salvar</button>
     </div>
   </div>
 </div>
@@ -549,10 +665,85 @@ document.addEventListener("DOMContentLoaded", function() {
         <td class="col-nowrap">${fmtDate(a.completionDate)}</td>
         <td>${delay || '-'}</td>
         <td class="col-comments">${a.comments || '-'}</td>
+        <td><button class="btn-edit" data-edit-id="${a.id}">Editar</button></td>
       `;
+      row.querySelector('.btn-edit').addEventListener('click', (e) => {
+        e.stopPropagation();
+        openEditModal(a.id);
+      });
       table.appendChild(row);
     });
   }
+
+  // ── Edit / New action modal ───────────────────────────────────────────────
+
+  let editingId = null; // null = new action
+
+  function openEditModal(id){
+    editingId = id != null ? id : null;
+    const a = id != null ? allActions.find(x=>x.id===id) : null;
+    document.getElementById("editModalTitle").textContent = a ? "Editar Ação #"+a.id : "Nova Ação";
+    document.getElementById("editFormError").style.display = "none";
+    document.getElementById("ef-group").value       = a ? a.group         : "";
+    document.getElementById("ef-desc").value        = a ? a.desc          : "";
+    document.getElementById("ef-team").value        = a ? a.team          : "";
+    document.getElementById("ef-lead").value        = a ? a.lead          : "";
+    document.getElementById("ef-status").value      = a ? a.status        : "on_going";
+    document.getElementById("ef-start").value       = a ? a.start         : "";
+    document.getElementById("ef-end").value         = a ? a.end           : "";
+    document.getElementById("ef-completion").value  = a ? a.completionDate: "";
+    document.getElementById("ef-comments").value    = a ? a.comments      : "";
+    document.getElementById("editModalBackdrop").classList.add("open");
+  }
+
+  function closeEditModal(){
+    document.getElementById("editModalBackdrop").classList.remove("open");
+  }
+
+  function saveEditModal(){
+    const group       = document.getElementById("ef-group").value.trim();
+    const desc        = document.getElementById("ef-desc").value.trim();
+    const team        = document.getElementById("ef-team").value.trim();
+    const lead        = document.getElementById("ef-lead").value.trim();
+    const status      = document.getElementById("ef-status").value;
+    const start       = document.getElementById("ef-start").value;
+    const end         = document.getElementById("ef-end").value;
+    const completion  = document.getElementById("ef-completion").value;
+    const comments    = document.getElementById("ef-comments").value.trim();
+
+    if(!group || !desc || !start || !end){
+      const errEl = document.getElementById("editFormError");
+      errEl.textContent = "Preencha os campos obrigatórios: Grupo, Descrição, Início e Prazo.";
+      errEl.style.display = "block";
+      return;
+    }
+    document.getElementById("editFormError").style.display = "none";
+
+    if(editingId != null){
+      const idx = allActions.findIndex(x=>x.id===editingId);
+      if(idx > -1){
+        allActions[idx] = { ...allActions[idx], group, desc, team, lead, status, start, end,
+          completionDate:completion, comments };
+      }
+    } else {
+      const newId = allActions.reduce((maxId,x)=>x.id>maxId?x.id:maxId, 0) + 1;
+      allActions.push({ id:newId, group, desc, team, lead, status, start, end,
+        completionDate:completion, comments });
+    }
+
+    closeEditModal();
+    renderDashboard();
+    renderTable();
+    if(expandedGroup !== null) renderGantt();
+  }
+
+  document.getElementById("editModalClose").addEventListener("click", closeEditModal);
+  document.getElementById("editModalCancel").addEventListener("click", closeEditModal);
+  document.getElementById("editModalSave").addEventListener("click", saveEditModal);
+  document.getElementById("editModalBackdrop").addEventListener("click", function(e){
+    if(e.target === this) closeEditModal();
+  });
+  document.getElementById("btnNewAction").addEventListener("click", ()=> openEditModal(null));
 
   // ── Modal ─────────────────────────────────────────────────────────────────
 
