@@ -27,6 +27,7 @@
     }
     .sidebar-logo h2 { font-size:15px; font-weight:700; line-height:1.3; color:#fff; }
     .sidebar-logo span { font-size:11px; color:#a8c89e; }
+    .logo-initials { font-size:17px; font-weight:900; color:#1E4D17; letter-spacing:-0.5px; }
     .sidebar-nav { margin-top:16px; list-style:none; display:flex; flex-direction:column; gap:4px; }
     .sidebar-nav li {
       padding:10px 12px; border-radius:8px; cursor:pointer;
@@ -99,6 +100,13 @@
     .col-desc { max-width:280px; }
     .col-comments { max-width:200px; }
 
+    /* ===== SORTABLE HEADERS ===== */
+    thead th[data-sort] { cursor:pointer; user-select:none; white-space:nowrap; }
+    thead th[data-sort]:hover { background:#2A6121; }
+    thead th[data-sort]::after { content:" ⇅"; font-size:10px; opacity:.5; }
+    thead th[data-sort].sort-asc::after  { content:" ▲"; opacity:1; }
+    thead th[data-sort].sort-desc::after { content:" ▼"; opacity:1; }
+
     /* ===== GANTT ===== */
     #gantt { background:white; padding:20px; border-radius:12px; min-height:400px; box-shadow:0 1px 4px rgba(0,0,0,.06); }
 
@@ -162,6 +170,30 @@
       cursor:pointer; transition:background .15s;
     }
     .btn-edit:hover { background:#e2f0db; color:#1E4D17; }
+    .btn-delete {
+      background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5;
+      border-radius:6px; padding:4px 10px; font-size:11px; font-weight:600;
+      cursor:pointer; transition:background .15s; margin-left:4px;
+    }
+    .btn-delete:hover { background:#fecaca; color:#7f1d1d; }
+
+    /* ===== CONFIRMATION MODAL ===== */
+    .confirm-backdrop {
+      display:none; position:fixed; inset:0; background:rgba(0,0,0,.45);
+      z-index:3000; align-items:center; justify-content:center;
+    }
+    .confirm-backdrop.open { display:flex; }
+    .confirm-modal {
+      background:white; border-radius:16px; padding:28px 32px; max-width:420px; width:90%;
+      box-shadow:0 8px 40px rgba(0,0,0,.22); border-top:4px solid #dc2626; text-align:center;
+    }
+    .confirm-modal h3 { font-size:16px; font-weight:700; color:#1E4D17; margin-bottom:8px; }
+    .confirm-modal p  { font-size:13px; color:#6b7280; margin-bottom:24px; }
+    .confirm-actions  { display:flex; justify-content:center; gap:12px; }
+    .btn-confirm-cancel { background:#f3f4f6; color:#374151; border:1px solid #d1d5db; border-radius:8px; padding:8px 22px; font-size:13px; font-weight:600; cursor:pointer; }
+    .btn-confirm-cancel:hover { background:#e5e7eb; }
+    .btn-confirm-delete { background:#dc2626; color:#fff; border:none; border-radius:8px; padding:8px 22px; font-size:13px; font-weight:600; cursor:pointer; }
+    .btn-confirm-delete:hover { background:#b91c1c; }
 
     /* ===== EDIT/NEW ACTION MODAL ===== */
     .edit-modal-backdrop {
@@ -200,6 +232,7 @@
     .btn-cancel:hover { background:#e5e7eb; }
     .btn-save { background:#367C2B; color:#fff; border:none; border-radius:8px; padding:8px 22px; font-size:13px; font-weight:600; cursor:pointer; }
     .btn-save:hover { background:#2A6121; }
+    .btn-export { background:#2A6121; }
 
     /* ===== RESPONSIVE ===== */
     @media (max-width:680px) {
@@ -216,16 +249,7 @@
 <div class="sidebar">
   <div class="sidebar-logo">
     <div class="logo-icon">
-      <!-- Abstract plant/growth icon - no trademark -->
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="26" height="26" fill="none" stroke="#1E4D17" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M16 28V14"/>
-        <path d="M16 14c0-6 6-10 10-8-1 6-5 9-10 8z"/>
-        <path d="M16 20c0-4-5-7-9-5 1 4 5 6 9 5z"/>
-      </svg>
-    </div>
-    <div>
-      <h2>John Deere</h2>
-      <span>Gestão SIP · SSQE</span>
+      <span class="logo-initials">JD</span>
     </div>
   </div>
   <ul class="sidebar-nav">
@@ -301,6 +325,10 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/></svg>
         Nova Ação
       </button>
+      <button class="btn-primary btn-export" id="btnExport" style="margin-top:4px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+        Exportar Planilha
+      </button>
     </div>
     <div class="card">
       <div class="filter-row">
@@ -320,16 +348,17 @@
       <table>
         <thead>
           <tr>
-            <th>#</th>
-            <th>Grupo</th>
-            <th>Descrição</th>
-            <th>Equipe</th>
-            <th>Responsável</th>
-            <th>Status</th>
-            <th>Início</th>
-            <th>Prazo</th>
-            <th>Conclusão</th>
-            <th>Atraso (dias)</th>
+            <th data-sort="id">#</th>
+            <th data-sort="group">Grupo</th>
+            <th data-sort="desc">Descrição</th>
+            <th data-sort="team">Equipe</th>
+            <th data-sort="lead">Responsável</th>
+            <th data-sort="status">Status</th>
+            <th data-sort="start">Início</th>
+            <th data-sort="end">Prazo</th>
+            <th data-sort="reprazo">Reprazo</th>
+            <th data-sort="completionDate">Conclusão</th>
+            <th data-sort="delay">Atraso (dias)</th>
             <th>Comentários</th>
             <th>Ações</th>
           </tr>
@@ -381,6 +410,10 @@
       <div class="modal-field">
         <label>Prazo</label>
         <span id="modalEnd"></span>
+      </div>
+      <div class="modal-field">
+        <label>Reprazo</label>
+        <span id="modalReprazo"></span>
       </div>
       <div class="modal-field">
         <label>Conclusão</label>
@@ -441,6 +474,10 @@
         <label for="ef-completion">Data de Conclusão</label>
         <input type="date" id="ef-completion" />
       </div>
+      <div class="form-field">
+        <label for="ef-reprazo">Nova Data Final (Reprazo)</label>
+        <input type="date" id="ef-reprazo" />
+      </div>
       <div class="form-field full">
         <label for="ef-comments">Comentários</label>
         <textarea id="ef-comments" placeholder="Observações"></textarea>
@@ -450,6 +487,18 @@
       <div id="editFormError" style="color:#b91c1c;font-size:12px;font-weight:600;align-self:center;display:none;"></div>
       <button class="btn-cancel" id="editModalCancel">Cancelar</button>
       <button class="btn-save" id="editModalSave">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRMATION DELETE MODAL -->
+<div class="confirm-backdrop" id="confirmBackdrop">
+  <div class="confirm-modal" role="dialog" aria-modal="true">
+    <h3>Excluir ação?</h3>
+    <p id="confirmMsg">Esta operação não pode ser desfeita.</p>
+    <div class="confirm-actions">
+      <button class="btn-confirm-cancel" id="confirmCancelBtn">Cancelar</button>
+      <button class="btn-confirm-delete" id="confirmDeleteBtn">Excluir</button>
     </div>
   </div>
 </div>
@@ -650,16 +699,52 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById("statusFilter").addEventListener("change", renderTable);
   }
 
+  let sortCol = null;   // key name or null
+  let sortDir = "asc";  // "asc" | "desc"
+
   function renderTable(){
     const groupVal  = document.getElementById("groupFilter").value;
     const statusVal = document.getElementById("statusFilter").value;
     const table = document.getElementById("projectsTable");
     table.innerHTML = "";
 
-    const filtered = allActions.filter(a =>
+    let filtered = allActions.filter(a =>
       (!groupVal  || a.group === groupVal) &&
       (!statusVal || resolveStatus(a) === statusVal)
     );
+
+    // ── sort ──
+    if(sortCol){
+      if(sortCol === "delay" || sortCol === "status"){
+        // pre-compute per-row value once to avoid repeated calls during sort
+        const cache = new Map(filtered.map(a => [a.id,
+          sortCol === "delay"
+            ? calculateDelay(a.end, resolveStatus(a))
+            : resolveStatus(a)
+        ]));
+        filtered.sort((a, b) => {
+          const va = cache.get(a.id), vb = cache.get(b.id);
+          if(va < vb) return sortDir === "asc" ? -1 :  1;
+          if(va > vb) return sortDir === "asc" ?  1 : -1;
+          return 0;
+        });
+      } else {
+        filtered.sort((a, b) => {
+          const va = a[sortCol] || "", vb = b[sortCol] || "";
+          if(va < vb) return sortDir === "asc" ? -1 :  1;
+          if(va > vb) return sortDir === "asc" ?  1 : -1;
+          return 0;
+        });
+      }
+    }
+
+    // update header indicators
+    document.querySelectorAll("#projects thead th[data-sort]").forEach(th => {
+      th.classList.remove("sort-asc", "sort-desc");
+      if(th.dataset.sort === sortCol){
+        th.classList.add(sortDir === "asc" ? "sort-asc" : "sort-desc");
+      }
+    });
 
     filtered.forEach(a => {
       const delay = calculateDelay(a.end, resolveStatus(a));
@@ -673,20 +758,40 @@ document.addEventListener("DOMContentLoaded", function() {
         <td><span class="badge badge-${resolveStatus(a)}">${STATUS_LABEL[resolveStatus(a)] || resolveStatus(a)}</span></td>
         <td class="col-nowrap">${fmtDate(a.start)}</td>
         <td class="col-nowrap">${fmtDate(a.end)}</td>
+        <td class="col-nowrap">${a.reprazo ? fmtDate(a.reprazo) : '-'}</td>
         <td class="col-nowrap">${fmtDate(a.completionDate)}</td>
         <td>${delay || '-'}</td>
         <td class="col-comments">${a.comments || '-'}</td>
-        <td><button class="btn-edit" data-edit-id="${a.id}">Editar</button></td>
+        <td>
+          <button class="btn-edit" data-edit-id="${a.id}">Editar</button>
+          <button class="btn-delete" data-del-id="${a.id}">Excluir</button>
+        </td>
       `;
       row.querySelector('.btn-edit').addEventListener('click', (e) => {
         e.stopPropagation();
         openEditModal(a.id);
       });
+      row.querySelector('.btn-delete').addEventListener('click', (e) => {
+        e.stopPropagation();
+        openConfirmDelete(a.id);
+      });
       table.appendChild(row);
     });
   }
 
-  // ── Edit / New action modal ───────────────────────────────────────────────
+  // ── Sortable headers ──────────────────────────────────────────────────────
+  document.querySelectorAll("#projects thead th[data-sort]").forEach(th => {
+    th.addEventListener("click", () => {
+      const col = th.dataset.sort;
+      if(sortCol === col){
+        sortDir = sortDir === "asc" ? "desc" : "asc";
+      } else {
+        sortCol = col;
+        sortDir = "asc";
+      }
+      renderTable();
+    });
+  });
 
   let editingId = null; // null = new action
 
@@ -703,6 +808,7 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById("ef-start").value       = a ? a.start         : "";
     document.getElementById("ef-end").value         = a ? a.end           : "";
     document.getElementById("ef-completion").value  = a ? a.completionDate: "";
+    document.getElementById("ef-reprazo").value     = a ? (a.reprazo || "") : "";
     document.getElementById("ef-comments").value    = a ? a.comments      : "";
     document.getElementById("editModalBackdrop").classList.add("open");
   }
@@ -720,6 +826,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const start       = document.getElementById("ef-start").value;
     const end         = document.getElementById("ef-end").value;
     const completion  = document.getElementById("ef-completion").value;
+    const reprazo     = document.getElementById("ef-reprazo").value;
     const comments    = document.getElementById("ef-comments").value.trim();
 
     if(!group || !desc || !start || !end){
@@ -734,12 +841,12 @@ document.addEventListener("DOMContentLoaded", function() {
       const idx = allActions.findIndex(x=>x.id===editingId);
       if(idx > -1){
         allActions[idx] = { ...allActions[idx], group, desc, team, lead, status, start, end,
-          completionDate:completion, comments };
+          completionDate:completion, reprazo, comments };
       }
     } else {
       const newId = allActions.reduce((maxId,x)=>x.id>maxId?x.id:maxId, 0) + 1;
       allActions.push({ id:newId, group, desc, team, lead, status, start, end,
-        completionDate:completion, comments });
+        completionDate:completion, reprazo, comments });
     }
 
     closeEditModal();
@@ -755,6 +862,81 @@ document.addEventListener("DOMContentLoaded", function() {
     if(e.target === this) closeEditModal();
   });
   document.getElementById("btnNewAction").addEventListener("click", ()=> openEditModal(null));
+  document.getElementById("btnExport").addEventListener("click", exportCSV);
+
+  function exportCSV(){
+    const groupVal  = document.getElementById("groupFilter").value;
+    const statusVal = document.getElementById("statusFilter").value;
+    const filtered  = allActions.filter(a =>
+      (!groupVal  || a.group === groupVal) &&
+      (!statusVal || resolveStatus(a) === statusVal)
+    );
+
+    function escapeCsvValue(v){ return '"' + String(v).replace(/"/g, '""') + '"'; }
+
+    const columns = [
+      { header:"#",             fn: a => a.id },
+      { header:"Grupo",         fn: a => a.group },
+      { header:"Descrição",     fn: a => a.desc },
+      { header:"Equipe",        fn: a => a.team },
+      { header:"Responsável",   fn: a => a.lead },
+      { header:"Status",        fn: a => STATUS_LABEL[resolveStatus(a)] || resolveStatus(a) },
+      { header:"Início",        fn: a => fmtDate(a.start) },
+      { header:"Prazo",         fn: a => fmtDate(a.end) },
+      { header:"Reprazo",       fn: a => a.reprazo ? fmtDate(a.reprazo) : "" },
+      { header:"Conclusão",     fn: a => fmtDate(a.completionDate) },
+      { header:"Atraso (dias)", fn: a => calculateDelay(a.end, resolveStatus(a)) || "" },
+      { header:"Comentários",   fn: a => a.comments || "" }
+    ];
+
+    const headerRow = columns.map(c => escapeCsvValue(c.header)).join(";");
+    const dataRows  = filtered.map(a =>
+      columns.map(c => escapeCsvValue(c.fn(a))).join(";")
+    );
+
+    const BOM = "\uFEFF";
+    const blob = new Blob([BOM + [headerRow, ...dataRows].join("\r\n")], { type:"text/csv;charset=utf-8;" });
+    const url  = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href     = url;
+    link.download = "plano_sip.csv";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  // ── Delete action (with confirmation) ────────────────────────────────────
+
+  let pendingDeleteId = null;
+
+  function openConfirmDelete(id){
+    const a = allActions.find(x=>x.id===id);
+    if(!a) return;
+    pendingDeleteId = id;
+    document.getElementById("confirmMsg").textContent =
+      'Tem certeza que deseja excluir a Ação #'+a.id+': "'+truncate(a.desc,60)+'"? Esta operação não pode ser desfeita.';
+    document.getElementById("confirmBackdrop").classList.add("open");
+  }
+
+  function closeConfirmModal(){
+    document.getElementById("confirmBackdrop").classList.remove("open");
+    pendingDeleteId = null;
+  }
+
+  document.getElementById("confirmCancelBtn").addEventListener("click", closeConfirmModal);
+  document.getElementById("confirmBackdrop").addEventListener("click", function(e){
+    if(e.target === this) closeConfirmModal();
+  });
+  document.getElementById("confirmDeleteBtn").addEventListener("click", function(){
+    if(pendingDeleteId === null) return;
+    const idx = allActions.findIndex(x=>x.id===pendingDeleteId);
+    if(idx > -1) allActions.splice(idx, 1);
+    closeConfirmModal();
+    renderDashboard();
+    renderTable();
+    if(expandedGroup !== null) renderGantt();
+  });
 
   // ── Modal ─────────────────────────────────────────────────────────────────
 
@@ -768,6 +950,7 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById("modalLead").textContent = action.lead;
     document.getElementById("modalStart").textContent = fmtDate(action.start);
     document.getElementById("modalEnd").textContent = fmtDate(action.end);
+    document.getElementById("modalReprazo").textContent = action.reprazo ? fmtDate(action.reprazo) : '-';
     document.getElementById("modalCompletion").textContent = fmtDate(action.completionDate);
     document.getElementById("modalDelay").textContent = delay || '-';
     document.getElementById("modalComments").textContent = action.comments || '-';
