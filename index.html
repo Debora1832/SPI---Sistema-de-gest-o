@@ -590,14 +590,18 @@ document.addEventListener("DOMContentLoaded", function() {
 
   // ── helpers ──────────────────────────────────────────────────────────────
 
-  // Returns the effective status: if the action is not complete and its
-  // effective end date (reprazo if set, otherwise end) has already passed,
-  // it is considered "delayed" regardless of the stored status value.
+  // Returns the effective status: if the action is not complete, use the
+  // reprazo date (if filled) as the effective deadline, otherwise use end.
+  // If the effective deadline has passed → "delayed".
+  // If reprazo is set and deadline hasn't passed → "on_going" (the reprazo
+  // extends the deadline, so it is now within the new deadline).
+  // If no reprazo and deadline hasn't passed → keep the stored status.
   function resolveStatus(a){
     if(a.status === "complete") return "complete";
     const today = new Date(); today.setHours(0,0,0,0);
     const due   = new Date(a.reprazo || a.end);
     if(due < today) return "delayed";
+    if(a.reprazo)   return "on_going";
     return a.status;
   }
 
