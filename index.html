@@ -27,6 +27,7 @@
     }
     .sidebar-logo h2 { font-size:15px; font-weight:700; line-height:1.3; color:#fff; }
     .sidebar-logo span { font-size:11px; color:#a8c89e; }
+    .logo-initials { font-size:17px; font-weight:900; color:#1E4D17; letter-spacing:-0.5px; }
     .sidebar-nav { margin-top:16px; list-style:none; display:flex; flex-direction:column; gap:4px; }
     .sidebar-nav li {
       padding:10px 12px; border-radius:8px; cursor:pointer;
@@ -224,6 +225,7 @@
     .btn-cancel:hover { background:#e5e7eb; }
     .btn-save { background:#367C2B; color:#fff; border:none; border-radius:8px; padding:8px 22px; font-size:13px; font-weight:600; cursor:pointer; }
     .btn-save:hover { background:#2A6121; }
+    .btn-export { background:#2A6121; }
 
     /* ===== RESPONSIVE ===== */
     @media (max-width:680px) {
@@ -240,31 +242,7 @@
 <div class="sidebar">
   <div class="sidebar-logo">
     <div class="logo-icon">
-      <!-- Leaping deer silhouette – John Deere style -->
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="26" height="26">
-        <!-- Body: filled tilted oval -->
-        <ellipse cx="18" cy="20" rx="9" ry="5" transform="rotate(-20,18,20)" fill="#1E4D17"/>
-        <!-- Head -->
-        <circle cx="7" cy="12" r="3.5" fill="#1E4D17"/>
-        <!-- Neck bridge -->
-        <polygon points="9,15 13,18 12,21 8,18" fill="#1E4D17"/>
-        <!-- Left antler beam + tine -->
-        <path d="M5,9 L3,5 L1,2 M3,5 L4,2" stroke="#1E4D17" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-        <!-- Right antler beam + tine -->
-        <path d="M8,9 L7,5 L8,2 M7,5 L10,3" stroke="#1E4D17" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-        <!-- Front legs (forward) -->
-        <line x1="12" y1="22" x2="9"  y2="29" stroke="#1E4D17" stroke-width="2" stroke-linecap="round"/>
-        <line x1="15" y1="23" x2="13" y2="30" stroke="#1E4D17" stroke-width="2" stroke-linecap="round"/>
-        <!-- Back legs (backward) -->
-        <line x1="22" y1="22" x2="24" y2="29" stroke="#1E4D17" stroke-width="2" stroke-linecap="round"/>
-        <line x1="25" y1="21" x2="28" y2="27" stroke="#1E4D17" stroke-width="2" stroke-linecap="round"/>
-        <!-- Tail -->
-        <path d="M24,15 C26,13 28,14 27,16" stroke="#1E4D17" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-      </svg>
-    </div>
-    <div>
-      <h2>John Deere</h2>
-      <span>Gestão SIP · SSQE</span>
+      <span class="logo-initials">JD</span>
     </div>
   </div>
   <ul class="sidebar-nav">
@@ -340,6 +318,10 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/></svg>
         Nova Ação
       </button>
+      <button class="btn-primary btn-export" id="btnExport" style="margin-top:4px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+        Exportar Planilha
+      </button>
     </div>
     <div class="card">
       <div class="filter-row">
@@ -367,6 +349,7 @@
             <th>Status</th>
             <th>Início</th>
             <th>Prazo</th>
+            <th>Reprazo</th>
             <th>Conclusão</th>
             <th>Atraso (dias)</th>
             <th>Comentários</th>
@@ -420,6 +403,10 @@
       <div class="modal-field">
         <label>Prazo</label>
         <span id="modalEnd"></span>
+      </div>
+      <div class="modal-field">
+        <label>Reprazo</label>
+        <span id="modalReprazo"></span>
       </div>
       <div class="modal-field">
         <label>Conclusão</label>
@@ -479,6 +466,10 @@
       <div class="form-field">
         <label for="ef-completion">Data de Conclusão</label>
         <input type="date" id="ef-completion" />
+      </div>
+      <div class="form-field">
+        <label for="ef-reprazo">Nova Data Final (Reprazo)</label>
+        <input type="date" id="ef-reprazo" />
       </div>
       <div class="form-field full">
         <label for="ef-comments">Comentários</label>
@@ -724,6 +715,7 @@ document.addEventListener("DOMContentLoaded", function() {
         <td><span class="badge badge-${resolveStatus(a)}">${STATUS_LABEL[resolveStatus(a)] || resolveStatus(a)}</span></td>
         <td class="col-nowrap">${fmtDate(a.start)}</td>
         <td class="col-nowrap">${fmtDate(a.end)}</td>
+        <td class="col-nowrap">${a.reprazo ? fmtDate(a.reprazo) : '-'}</td>
         <td class="col-nowrap">${fmtDate(a.completionDate)}</td>
         <td>${delay || '-'}</td>
         <td class="col-comments">${a.comments || '-'}</td>
@@ -761,6 +753,7 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById("ef-start").value       = a ? a.start         : "";
     document.getElementById("ef-end").value         = a ? a.end           : "";
     document.getElementById("ef-completion").value  = a ? a.completionDate: "";
+    document.getElementById("ef-reprazo").value     = a ? (a.reprazo || "") : "";
     document.getElementById("ef-comments").value    = a ? a.comments      : "";
     document.getElementById("editModalBackdrop").classList.add("open");
   }
@@ -778,6 +771,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const start       = document.getElementById("ef-start").value;
     const end         = document.getElementById("ef-end").value;
     const completion  = document.getElementById("ef-completion").value;
+    const reprazo     = document.getElementById("ef-reprazo").value;
     const comments    = document.getElementById("ef-comments").value.trim();
 
     if(!group || !desc || !start || !end){
@@ -792,12 +786,12 @@ document.addEventListener("DOMContentLoaded", function() {
       const idx = allActions.findIndex(x=>x.id===editingId);
       if(idx > -1){
         allActions[idx] = { ...allActions[idx], group, desc, team, lead, status, start, end,
-          completionDate:completion, comments };
+          completionDate:completion, reprazo, comments };
       }
     } else {
       const newId = allActions.reduce((maxId,x)=>x.id>maxId?x.id:maxId, 0) + 1;
       allActions.push({ id:newId, group, desc, team, lead, status, start, end,
-        completionDate:completion, comments });
+        completionDate:completion, reprazo, comments });
     }
 
     closeEditModal();
@@ -813,6 +807,49 @@ document.addEventListener("DOMContentLoaded", function() {
     if(e.target === this) closeEditModal();
   });
   document.getElementById("btnNewAction").addEventListener("click", ()=> openEditModal(null));
+  document.getElementById("btnExport").addEventListener("click", exportCSV);
+
+  function exportCSV(){
+    const groupVal  = document.getElementById("groupFilter").value;
+    const statusVal = document.getElementById("statusFilter").value;
+    const filtered  = allActions.filter(a =>
+      (!groupVal  || a.group === groupVal) &&
+      (!statusVal || resolveStatus(a) === statusVal)
+    );
+
+    function escapeCsvValue(v){ return '"' + String(v).replace(/"/g, '""') + '"'; }
+
+    const columns = [
+      { header:"#",             fn: a => a.id },
+      { header:"Grupo",         fn: a => a.group },
+      { header:"Descrição",     fn: a => a.desc },
+      { header:"Equipe",        fn: a => a.team },
+      { header:"Responsável",   fn: a => a.lead },
+      { header:"Status",        fn: a => STATUS_LABEL[resolveStatus(a)] || resolveStatus(a) },
+      { header:"Início",        fn: a => fmtDate(a.start) },
+      { header:"Prazo",         fn: a => fmtDate(a.end) },
+      { header:"Reprazo",       fn: a => a.reprazo ? fmtDate(a.reprazo) : "" },
+      { header:"Conclusão",     fn: a => fmtDate(a.completionDate) },
+      { header:"Atraso (dias)", fn: a => calculateDelay(a.end, resolveStatus(a)) || "" },
+      { header:"Comentários",   fn: a => a.comments || "" }
+    ];
+
+    const headerRow = columns.map(c => escapeCsvValue(c.header)).join(";");
+    const dataRows  = filtered.map(a =>
+      columns.map(c => escapeCsvValue(c.fn(a))).join(";")
+    );
+
+    const BOM = "\uFEFF";
+    const blob = new Blob([BOM + [headerRow, ...dataRows].join("\r\n")], { type:"text/csv;charset=utf-8;" });
+    const url  = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href     = url;
+    link.download = "plano_sip.csv";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
 
   // ── Delete action (with confirmation) ────────────────────────────────────
 
@@ -858,6 +895,7 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById("modalLead").textContent = action.lead;
     document.getElementById("modalStart").textContent = fmtDate(action.start);
     document.getElementById("modalEnd").textContent = fmtDate(action.end);
+    document.getElementById("modalReprazo").textContent = action.reprazo ? fmtDate(action.reprazo) : '-';
     document.getElementById("modalCompletion").textContent = fmtDate(action.completionDate);
     document.getElementById("modalDelay").textContent = delay || '-';
     document.getElementById("modalComments").textContent = action.comments || '-';
