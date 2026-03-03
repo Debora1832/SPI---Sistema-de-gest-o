@@ -537,6 +537,17 @@ document.addEventListener("DOMContentLoaded", function() {
 
   // ── helpers ──────────────────────────────────────────────────────────────
 
+  // Returns the effective status: if the action is not complete and its end
+  // date has already passed, it is considered "delayed" regardless of the
+  // stored status value.
+  function resolveStatus(a){
+    if(a.status === "complete") return "complete";
+    const today = new Date(); today.setHours(0,0,0,0);
+    const due   = new Date(a.end);
+    if(due < today) return "delayed";
+    return a.status;
+  }
+
   function calculateDelay(end, status){
     if(status === "complete") return 0;
     const today = new Date();
@@ -571,9 +582,9 @@ document.addEventListener("DOMContentLoaded", function() {
 
   function renderDashboard(){
     const total = allActions.length;
-    const complete = allActions.filter(a=>a.status==="complete").length;
-    const on_going = allActions.filter(a=>a.status==="on_going").length;
-    const delayed  = allActions.filter(a=>a.status==="delayed").length;
+    const complete = allActions.filter(a=>resolveStatus(a)==="complete").length;
+    const on_going = allActions.filter(a=>resolveStatus(a)==="on_going").length;
+    const delayed  = allActions.filter(a=>resolveStatus(a)==="delayed").length;
     const pct = Math.round((complete/total)*100);
 
     const kpiGrid = document.getElementById("kpiGrid");
@@ -609,9 +620,9 @@ document.addEventListener("DOMContentLoaded", function() {
     tbody.innerHTML = "";
     Object.keys(groups).forEach(groupName => {
       const items = groups[groupName];
-      const gc = items.filter(i=>i.status==="complete").length;
-      const go = items.filter(i=>i.status==="on_going").length;
-      const gd = items.filter(i=>i.status==="delayed").length;
+      const gc = items.filter(i=>resolveStatus(i)==="complete").length;
+      const go = items.filter(i=>resolveStatus(i)==="on_going").length;
+      const gd = items.filter(i=>resolveStatus(i)==="delayed").length;
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td>${groupName}</td>
@@ -647,11 +658,11 @@ document.addEventListener("DOMContentLoaded", function() {
 
     const filtered = allActions.filter(a =>
       (!groupVal  || a.group === groupVal) &&
-      (!statusVal || a.status === statusVal)
+      (!statusVal || resolveStatus(a) === statusVal)
     );
 
     filtered.forEach(a => {
-      const delay = calculateDelay(a.end, a.status);
+      const delay = calculateDelay(a.end, resolveStatus(a));
       const row = document.createElement("tr");
       row.innerHTML = `
         <td>${a.id}</td>
@@ -659,7 +670,7 @@ document.addEventListener("DOMContentLoaded", function() {
         <td class="col-desc">${a.desc}</td>
         <td class="col-nowrap">${a.team}</td>
         <td class="col-nowrap">${a.lead}</td>
-        <td><span class="badge badge-${a.status}">${STATUS_LABEL[a.status] || a.status}</span></td>
+        <td><span class="badge badge-${resolveStatus(a)}">${STATUS_LABEL[resolveStatus(a)] || resolveStatus(a)}</span></td>
         <td class="col-nowrap">${fmtDate(a.start)}</td>
         <td class="col-nowrap">${fmtDate(a.end)}</td>
         <td class="col-nowrap">${fmtDate(a.completionDate)}</td>
@@ -748,11 +759,11 @@ document.addEventListener("DOMContentLoaded", function() {
   // ── Modal ─────────────────────────────────────────────────────────────────
 
   function openModal(action){
-    const delay = calculateDelay(action.end, action.status);
+    const delay = calculateDelay(action.end, resolveStatus(action));
     document.getElementById("modalTitle").textContent = "Ação #" + action.id;
     document.getElementById("modalGroup").textContent = action.group;
     document.getElementById("modalDesc").textContent = action.desc;
-    document.getElementById("modalStatus").innerHTML = '<span class="badge badge-'+action.status+'">'+STATUS_LABEL[action.status]+'</span>';
+    document.getElementById("modalStatus").innerHTML = '<span class="badge badge-'+resolveStatus(action)+'">'+STATUS_LABEL[resolveStatus(action)]+'</span>';
     document.getElementById("modalTeam").textContent = action.team;
     document.getElementById("modalLead").textContent = action.lead;
     document.getElementById("modalStart").textContent = fmtDate(action.start);
@@ -826,7 +837,7 @@ document.addEventListener("DOMContentLoaded", function() {
       </div>`;
       if(open){
         items.forEach(i=>{
-          const cls = i.status==='delayed'?'gc-bar-delayed':i.status==='complete'?'gc-bar-complete':'gc-bar-action';
+          const cls = resolveStatus(i)==='delayed'?'gc-bar-delayed':resolveStatus(i)==='complete'?'gc-bar-complete':'gc-bar-action';
           rowsHTML += `<div class="gc-row gc-row-task" data-task-id="${i.id}">
             <div class="gc-label gc-label-task">↳ #${i.id} ${escHtml(truncate(i.desc,38))}</div>
             <div class="gc-timeline">
