@@ -162,6 +162,30 @@
       cursor:pointer; transition:background .15s;
     }
     .btn-edit:hover { background:#e2f0db; color:#1E4D17; }
+    .btn-delete {
+      background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5;
+      border-radius:6px; padding:4px 10px; font-size:11px; font-weight:600;
+      cursor:pointer; transition:background .15s; margin-left:4px;
+    }
+    .btn-delete:hover { background:#fecaca; color:#7f1d1d; }
+
+    /* ===== CONFIRMATION MODAL ===== */
+    .confirm-backdrop {
+      display:none; position:fixed; inset:0; background:rgba(0,0,0,.45);
+      z-index:3000; align-items:center; justify-content:center;
+    }
+    .confirm-backdrop.open { display:flex; }
+    .confirm-modal {
+      background:white; border-radius:16px; padding:28px 32px; max-width:420px; width:90%;
+      box-shadow:0 8px 40px rgba(0,0,0,.22); border-top:4px solid #dc2626; text-align:center;
+    }
+    .confirm-modal h3 { font-size:16px; font-weight:700; color:#1E4D17; margin-bottom:8px; }
+    .confirm-modal p  { font-size:13px; color:#6b7280; margin-bottom:24px; }
+    .confirm-actions  { display:flex; justify-content:center; gap:12px; }
+    .btn-confirm-cancel { background:#f3f4f6; color:#374151; border:1px solid #d1d5db; border-radius:8px; padding:8px 22px; font-size:13px; font-weight:600; cursor:pointer; }
+    .btn-confirm-cancel:hover { background:#e5e7eb; }
+    .btn-confirm-delete { background:#dc2626; color:#fff; border:none; border-radius:8px; padding:8px 22px; font-size:13px; font-weight:600; cursor:pointer; }
+    .btn-confirm-delete:hover { background:#b91c1c; }
 
     /* ===== EDIT/NEW ACTION MODAL ===== */
     .edit-modal-backdrop {
@@ -469,6 +493,18 @@
   </div>
 </div>
 
+<!-- CONFIRMATION DELETE MODAL -->
+<div class="confirm-backdrop" id="confirmBackdrop">
+  <div class="confirm-modal" role="dialog" aria-modal="true">
+    <h3>Excluir ação?</h3>
+    <p id="confirmMsg">Esta operação não pode ser desfeita.</p>
+    <div class="confirm-actions">
+      <button class="btn-confirm-cancel" id="confirmCancelBtn">Cancelar</button>
+      <button class="btn-confirm-delete" id="confirmDeleteBtn">Excluir</button>
+    </div>
+  </div>
+</div>
+
 <script>
 
 document.addEventListener("DOMContentLoaded", function() {
@@ -691,11 +727,18 @@ document.addEventListener("DOMContentLoaded", function() {
         <td class="col-nowrap">${fmtDate(a.completionDate)}</td>
         <td>${delay || '-'}</td>
         <td class="col-comments">${a.comments || '-'}</td>
-        <td><button class="btn-edit" data-edit-id="${a.id}">Editar</button></td>
+        <td>
+          <button class="btn-edit" data-edit-id="${a.id}">Editar</button>
+          <button class="btn-delete" data-del-id="${a.id}">Excluir</button>
+        </td>
       `;
       row.querySelector('.btn-edit').addEventListener('click', (e) => {
         e.stopPropagation();
         openEditModal(a.id);
+      });
+      row.querySelector('.btn-delete').addEventListener('click', (e) => {
+        e.stopPropagation();
+        openConfirmDelete(a.id);
       });
       table.appendChild(row);
     });
@@ -770,6 +813,38 @@ document.addEventListener("DOMContentLoaded", function() {
     if(e.target === this) closeEditModal();
   });
   document.getElementById("btnNewAction").addEventListener("click", ()=> openEditModal(null));
+
+  // ── Delete action (with confirmation) ────────────────────────────────────
+
+  let pendingDeleteId = null;
+
+  function openConfirmDelete(id){
+    const a = allActions.find(x=>x.id===id);
+    if(!a) return;
+    pendingDeleteId = id;
+    document.getElementById("confirmMsg").textContent =
+      'Tem certeza que deseja excluir a Ação #'+a.id+': "'+truncate(a.desc,60)+'"? Esta operação não pode ser desfeita.';
+    document.getElementById("confirmBackdrop").classList.add("open");
+  }
+
+  function closeConfirmModal(){
+    document.getElementById("confirmBackdrop").classList.remove("open");
+    pendingDeleteId = null;
+  }
+
+  document.getElementById("confirmCancelBtn").addEventListener("click", closeConfirmModal);
+  document.getElementById("confirmBackdrop").addEventListener("click", function(e){
+    if(e.target === this) closeConfirmModal();
+  });
+  document.getElementById("confirmDeleteBtn").addEventListener("click", function(){
+    if(pendingDeleteId === null) return;
+    const idx = allActions.findIndex(x=>x.id===pendingDeleteId);
+    if(idx > -1) allActions.splice(idx, 1);
+    closeConfirmModal();
+    renderDashboard();
+    renderTable();
+    if(expandedGroup !== null) renderGantt();
+  });
 
   // ── Modal ─────────────────────────────────────────────────────────────────
 
