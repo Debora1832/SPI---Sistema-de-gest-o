@@ -22,12 +22,12 @@
       padding:0 8px 24px; border-bottom:1px solid rgba(255,255,255,.15);
     }
     .sidebar-logo .logo-icon {
-      width:56px; height:56px; background:#FFDE00; border-radius:10px;
+      width:64px; height:64px; background:#FFDE00; border-radius:10px;
       display:flex; align-items:center; justify-content:center; flex-shrink:0;
     }
-    .sidebar-logo h2 { font-size:15px; font-weight:700; line-height:1.3; color:#fff; }
-    .sidebar-logo span { font-size:11px; color:#a8c89e; }
-    .logo-initials { font-size:28px; font-weight:900; color:#1E4D17; letter-spacing:-1px; }
+    .sidebar-logo h2 { font-size:30px; font-weight:700; line-height:1.3; color:#fff; }
+    .sidebar-logo span { font-size:20px; color:#a8c89e; }
+    .logo-initials { font-size:64px; font-weight:900; color:#1E4D17; letter-spacing:-1px; text-transform:uppercase; }
     .sidebar-nav { margin-top:16px; list-style:none; display:flex; flex-direction:column; gap:4px; }
     .sidebar-nav li {
       padding:10px 12px; border-radius:8px; cursor:pointer;
@@ -590,14 +590,18 @@ document.addEventListener("DOMContentLoaded", function() {
 
   // ── helpers ──────────────────────────────────────────────────────────────
 
-  // Returns the effective status: if the action is not complete and its end
-  // date has already passed, it is considered "delayed" regardless of the
-  // stored status value.
+  // Returns the effective status: if the action is not complete, use the
+  // reprazo date (if filled) as the effective deadline, otherwise use end.
+  // If the effective deadline has passed → "delayed".
+  // If reprazo is set and deadline hasn't passed → "on_going" (the reprazo
+  // extends the deadline, so it is now within the new deadline).
+  // If no reprazo and deadline hasn't passed → keep the stored status.
   function resolveStatus(a){
     if(a.status === "complete") return "complete";
     const today = new Date(); today.setHours(0,0,0,0);
-    const due   = new Date(a.end);
+    const due   = new Date(a.reprazo || a.end);
     if(due < today) return "delayed";
+    if(a.reprazo)   return "on_going";
     return a.status;
   }
 
@@ -723,7 +727,7 @@ document.addEventListener("DOMContentLoaded", function() {
         // pre-compute per-row value once to avoid repeated calls during sort
         const cache = new Map(filtered.map(a => [a.id,
           sortCol === "delay"
-            ? calculateDelay(a.end, resolveStatus(a))
+            ? calculateDelay(a.reprazo || a.end, resolveStatus(a))
             : resolveStatus(a)
         ]));
         filtered.sort((a, b) => {
@@ -751,7 +755,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 
     filtered.forEach(a => {
-      const delay = calculateDelay(a.end, resolveStatus(a));
+      const delay = calculateDelay(a.reprazo || a.end, resolveStatus(a));
       const row = document.createElement("tr");
       row.innerHTML = `
         <td>${a.id}</td>
@@ -889,7 +893,7 @@ document.addEventListener("DOMContentLoaded", function() {
       { header:"Prazo",         fn: a => fmtDate(a.end) },
       { header:"Reprazo",       fn: a => a.reprazo ? fmtDate(a.reprazo) : "" },
       { header:"Conclusão",     fn: a => fmtDate(a.completionDate) },
-      { header:"Atraso (dias)", fn: a => calculateDelay(a.end, resolveStatus(a)) || "" },
+      { header:"Atraso (dias)", fn: a => calculateDelay(a.reprazo || a.end, resolveStatus(a)) || "" },
       { header:"Comentários",   fn: a => a.comments || "" }
     ];
 
@@ -945,7 +949,7 @@ document.addEventListener("DOMContentLoaded", function() {
   // ── Modal ─────────────────────────────────────────────────────────────────
 
   function openModal(action){
-    const delay = calculateDelay(action.end, resolveStatus(action));
+    const delay = calculateDelay(action.reprazo || action.end, resolveStatus(action));
     document.getElementById("modalTitle").textContent = "Ação #" + action.id;
     document.getElementById("modalGroup").textContent = action.group;
     document.getElementById("modalDesc").textContent = action.desc;
