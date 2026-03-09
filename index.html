@@ -1093,7 +1093,12 @@ document.addEventListener("DOMContentLoaded", function() {
       btn.addEventListener('click', () => {
         const idx = parseInt(btn.dataset.idx, 10);
         const arr = attachmentsMap[currentModalActionId];
-        if(arr){ URL.revokeObjectURL(arr[idx].url); arr.splice(idx, 1); }
+        if(arr){
+          URL.revokeObjectURL(arr[idx].url);
+          arr.splice(idx, 1);
+          // Remove empty entry to avoid accumulating empty arrays
+          if(arr.length === 0) delete attachmentsMap[currentModalActionId];
+        }
         renderAttachments(currentModalActionId);
       });
     });
@@ -1123,6 +1128,10 @@ document.addEventListener("DOMContentLoaded", function() {
     if(!currentModalActionId) return;
     if(!attachmentsMap[currentModalActionId]) attachmentsMap[currentModalActionId] = [];
     Array.from(fileList).forEach(f => {
+      // Object URLs persist as long as the session is alive; they are only
+      // explicitly revoked when the user removes an individual attachment.
+      // Revoking on modal close would break the download links when the
+      // modal is reopened for the same action.
       attachmentsMap[currentModalActionId].push({ name: f.name, size: fmtSize(f.size), url: URL.createObjectURL(f) });
     });
     renderAttachments(currentModalActionId);
