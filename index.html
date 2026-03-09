@@ -258,6 +258,120 @@
     .btn-save:hover { background:#2A6121; }
     .btn-export { background:#2A6121; }
 
+    /* ===== TENANT SWITCHER ===== */
+    .tenant-switcher { padding-top:12px; border-top:1px solid rgba(255,255,255,.12); }
+    .tenant-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:rgba(255,255,255,.4); margin-bottom:6px; padding:0 4px; }
+    .tenant-btns { display:flex; gap:4px; }
+    .tenant-btn {
+      flex:1; padding:5px 4px; border:1px solid rgba(255,255,255,.22); border-radius:6px;
+      background:transparent; color:rgba(255,255,255,.65); font-size:10px; font-weight:700;
+      cursor:pointer; text-align:center; transition:all .15s; line-height:1.3;
+    }
+    .tenant-btn:hover { background:rgba(255,255,255,.12); color:#fff; }
+    .tenant-btn.active { background:rgba(255,255,255,.22); color:#fff; border-color:rgba(255,255,255,.55); }
+
+    /* ===== CAT THEME (yellow & black) ===== */
+    body.tenant-cat .sidebar { background:#1A1A1A; }
+    body.tenant-cat .sidebar-logo .logo-icon { background:#FFCD11; }
+    body.tenant-cat .logo-initials { color:#1A1A1A; font-size:24px; }
+    body.tenant-cat .sidebar-logo span { color:#aaaaaa; }
+    body.tenant-cat .sidebar-logo { border-bottom-color:rgba(255,255,255,.15); }
+    body.tenant-cat .sidebar-nav li { color:#cccccc; }
+    body.tenant-cat .sidebar-nav li.active { background:#FFCD11; color:#1A1A1A; }
+    body.tenant-cat .sidebar-nav li:not(.active):hover { background:rgba(255,255,255,.1); color:#fff; }
+    body.tenant-cat .sidebar-footer { color:#777; }
+    body.tenant-cat .page-header { border-left-color:#FFCD11; }
+    body.tenant-cat .page-header h1 { color:#1A1A1A; }
+    body.tenant-cat thead th { background:#1A1A1A; }
+    body.tenant-cat thead th[data-sort]:hover { background:#333; }
+    body.tenant-cat .kpi-card.total { border-color:#1A1A1A; }
+    body.tenant-cat .kpi-card.complete { border-color:#333; }
+    body.tenant-cat .kpi-card.on_going { border-color:#FFCD11; }
+    body.tenant-cat .kpi-card .kpi-value { color:#1A1A1A; }
+    body.tenant-cat .progress-bar-wrap { background:#fff5c2; }
+    body.tenant-cat .progress-bar-fill { background:linear-gradient(90deg,#1A1A1A,#444,#FFCD11); }
+    body.tenant-cat tbody tr:hover td { background:#fffdf0; }
+    body.tenant-cat .gc-header { background:#fffde7; border-bottom-color:#ffe082; }
+    body.tenant-cat .gc-row { border-bottom-color:#fff9e0; }
+    body.tenant-cat .gc-label { border-right-color:#ffe082; }
+    body.tenant-cat .gc-row-group .gc-label { background:#fffde7; }
+    body.tenant-cat .gc-row-group:hover .gc-label { background:#fff9c4; }
+    body.tenant-cat .gc-row-task:hover { background:#fffdf0; }
+    body.tenant-cat .gc-label-head { color:#1A1A1A; }
+    body.tenant-cat .gc-month { color:#1A1A1A; border-left-color:#ffe082; }
+    body.tenant-cat .modal { border-top-color:#FFCD11; }
+    body.tenant-cat .modal h2 { color:#1A1A1A; }
+    body.tenant-cat .modal-field label { color:#1A1A1A; }
+    body.tenant-cat .modal-edit-btn { color:#1A1A1A; border-color:#ffe082; background:#fffde7; }
+    body.tenant-cat .modal-edit-btn:hover { background:#fff9c4; }
+    body.tenant-cat .edit-modal { border-top-color:#FFCD11; }
+    body.tenant-cat .edit-modal h2 { color:#1A1A1A; }
+    body.tenant-cat .form-field label { color:#1A1A1A; }
+    body.tenant-cat .form-field input:focus, body.tenant-cat .form-field select:focus, body.tenant-cat .form-field textarea:focus { border-color:#FFCD11; box-shadow:0 0 0 3px rgba(255,205,17,.18); }
+    body.tenant-cat .filter-row select:focus { border-color:#FFCD11; box-shadow:0 0 0 3px rgba(255,205,17,.18); }
+    body.tenant-cat .filter-row select { border-color:#ffe082; }
+    body.tenant-cat .btn-primary { background:#1A1A1A; }
+    body.tenant-cat .btn-primary:hover { background:#333; }
+    body.tenant-cat .btn-export { background:#333; }
+    body.tenant-cat .btn-save { background:#1A1A1A; }
+    body.tenant-cat .btn-save:hover { background:#333; }
+    body.tenant-cat .attachment-drop-zone { border-color:#ffe082; }
+    body.tenant-cat .attachment-drop-zone:hover, body.tenant-cat .attachment-drop-zone.dragover { border-color:#FFCD11; background:#fffde7; color:#1A1A1A; }
+    body.tenant-cat .attachment-item { background:#fffde7; border-color:#ffe082; }
+    body.tenant-cat .attachment-link { color:#1A1A1A; }
+    body.tenant-cat .card { box-shadow:0 1px 4px rgba(0,0,0,.06); }
+    body.tenant-cat .tenant-btn.active { background:rgba(255,205,17,.25); color:#FFCD11; border-color:#FFCD11; }
+
+    /* ===== PESSOAL THEME (blue & red) ===== */
+    body.tenant-pessoal .sidebar { background:#1565C0; }
+    body.tenant-pessoal .sidebar-logo .logo-icon { background:#dc2626; }
+    body.tenant-pessoal .logo-initials { color:#fff; }
+    body.tenant-pessoal .sidebar-logo span { color:#90CAF9; }
+    body.tenant-pessoal .sidebar-logo { border-bottom-color:rgba(255,255,255,.2); }
+    body.tenant-pessoal .sidebar-nav li { color:#BBDEFB; }
+    body.tenant-pessoal .sidebar-nav li.active { background:#1976D2; color:#fff; }
+    body.tenant-pessoal .sidebar-nav li:not(.active):hover { background:rgba(255,255,255,.12); color:#fff; }
+    body.tenant-pessoal .sidebar-footer { color:#64B5F6; border-top-color:rgba(255,255,255,.15); }
+    body.tenant-pessoal .page-header { border-left-color:#dc2626; }
+    body.tenant-pessoal .page-header h1 { color:#1565C0; }
+    body.tenant-pessoal thead th { background:#1565C0; }
+    body.tenant-pessoal thead th[data-sort]:hover { background:#0D47A1; }
+    body.tenant-pessoal .kpi-card.total { border-color:#1565C0; }
+    body.tenant-pessoal .kpi-card.complete { border-color:#1976D2; }
+    body.tenant-pessoal .kpi-card.on_going { border-color:#1976D2; }
+    body.tenant-pessoal .kpi-card .kpi-value { color:#1565C0; }
+    body.tenant-pessoal .progress-bar-wrap { background:#BBDEFB; }
+    body.tenant-pessoal .progress-bar-fill { background:linear-gradient(90deg,#1565C0,#1976D2,#dc2626); }
+    body.tenant-pessoal tbody tr:hover td { background:#E3F2FD; }
+    body.tenant-pessoal .gc-header { background:#E3F2FD; border-bottom-color:#90CAF9; }
+    body.tenant-pessoal .gc-row { border-bottom-color:#E3F2FD; }
+    body.tenant-pessoal .gc-label { border-right-color:#90CAF9; }
+    body.tenant-pessoal .gc-row-group .gc-label { background:#E8F4FD; }
+    body.tenant-pessoal .gc-row-group:hover .gc-label { background:#BBDEFB; }
+    body.tenant-pessoal .gc-row-task:hover { background:#E3F2FD; }
+    body.tenant-pessoal .gc-label-head { color:#1565C0; }
+    body.tenant-pessoal .gc-month { color:#1565C0; border-left-color:#90CAF9; }
+    body.tenant-pessoal .modal { border-top-color:#dc2626; }
+    body.tenant-pessoal .modal h2 { color:#1565C0; }
+    body.tenant-pessoal .modal-field label { color:#1565C0; }
+    body.tenant-pessoal .modal-edit-btn { color:#1565C0; border-color:#90CAF9; }
+    body.tenant-pessoal .modal-edit-btn:hover { background:#E3F2FD; color:#1565C0; }
+    body.tenant-pessoal .edit-modal { border-top-color:#1565C0; }
+    body.tenant-pessoal .edit-modal h2 { color:#1565C0; }
+    body.tenant-pessoal .form-field label { color:#1565C0; }
+    body.tenant-pessoal .form-field input:focus, body.tenant-pessoal .form-field select:focus, body.tenant-pessoal .form-field textarea:focus { border-color:#1976D2; box-shadow:0 0 0 3px rgba(25,118,210,.15); }
+    body.tenant-pessoal .filter-row select:focus { border-color:#1976D2; box-shadow:0 0 0 3px rgba(25,118,210,.15); }
+    body.tenant-pessoal .filter-row select { border-color:#90CAF9; }
+    body.tenant-pessoal .btn-primary { background:#1565C0; }
+    body.tenant-pessoal .btn-primary:hover { background:#0D47A1; }
+    body.tenant-pessoal .btn-export { background:#0D47A1; }
+    body.tenant-pessoal .btn-save { background:#1565C0; }
+    body.tenant-pessoal .btn-save:hover { background:#0D47A1; }
+    body.tenant-pessoal .attachment-drop-zone { border-color:#90CAF9; }
+    body.tenant-pessoal .attachment-drop-zone:hover, body.tenant-pessoal .attachment-drop-zone.dragover { border-color:#1565C0; background:#E3F2FD; color:#1565C0; }
+    body.tenant-pessoal .attachment-item { background:#E3F2FD; border-color:#90CAF9; }
+    body.tenant-pessoal .attachment-link { color:#1565C0; }
+
     /* ===== RESPONSIVE ===== */
     @media (max-width:680px) {
       body { flex-direction:column; }
@@ -273,7 +387,7 @@
 <div class="sidebar">
   <div class="sidebar-logo">
     <div class="logo-icon">
-      <span class="logo-initials">JD</span>
+      <span class="logo-initials" id="logoInitials">JD</span>
     </div>
     <div>
       <h2>SPI</h2>
@@ -300,6 +414,14 @@
       Cronograma
     </li>
   </ul>
+  <div class="tenant-switcher">
+    <div class="tenant-label">Empresa</div>
+    <div class="tenant-btns" role="radiogroup" aria-label="Selecionar empresa">
+      <button class="tenant-btn active" data-tenant="jd" role="radio" aria-checked="true" aria-label="John Deere">John Deere</button>
+      <button class="tenant-btn" data-tenant="cat" role="radio" aria-checked="false" aria-label="CAT">CAT</button>
+      <button class="tenant-btn" data-tenant="pessoal" role="radio" aria-checked="false" aria-label="Pessoal">Pessoal</button>
+    </div>
+  </div>
   <div class="sidebar-footer">v1.0 · 2025</div>
 </div>
 
@@ -554,7 +676,7 @@
 
 document.addEventListener("DOMContentLoaded", function() {
 
-  const allActions = [
+  const JD_ACTIONS = [
     {id:1,  group:"PFMEA e Plano de Controle",      status:"complete",    start:"2025-06-11", end:"2025-07-04",  completionDate:"2025-07-25", reprazo:"2025-07-25",  team:"QUALIDADE",  lead:"EDVAN",
       comments:"29/07/2025: Realizado a reestruturação do departamento de engenharia - qualidade, produto e manufatura respondem agora para o mesmo gestor",
       desc:"Redefinir responsabilidades sob criação, gestão dos Planos de Controle e PFMEA. Passar de produto para qualidade"},
@@ -720,6 +842,15 @@ document.addEventListener("DOMContentLoaded", function() {
       desc:"Avaliar com alta direção a possibilidade de execução trimestrais com toda a operação da MAGIUS"}
   ];
 
+  // ── Multi-tenant data registry ────────────────────────────────────────────
+  const TENANTS = {
+    jd:      { label:'John Deere', initials:'JD',  bodyClass:'',               actions:JD_ACTIONS, attachments:{} },
+    cat:     { label:'CAT',        initials:'CAT', bodyClass:'tenant-cat',     actions:[],         attachments:{} },
+    pessoal: { label:'Pessoal',    initials:'P',   bodyClass:'tenant-pessoal', actions:[],         attachments:{} }
+  };
+  let currentTenant = 'jd';
+  let allActions    = TENANTS.jd.actions;
+
   const STATUS_LABEL = { complete:"Concluído", on_going:"Em andamento", delayed:"Atrasado" };
 
   let expandedGroup = null;
@@ -831,6 +962,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
   function populateFilters(){
     const groupSel = document.getElementById("groupFilter");
+    // Reset to the static default option before re-populating
+    groupSel.innerHTML = '<option value="">Todos os grupos</option>';
     const groups = Object.keys(getGroups());
     groups.forEach(g => {
       const opt = document.createElement("option");
@@ -1091,7 +1224,7 @@ document.addEventListener("DOMContentLoaded", function() {
   // ── Attachments (client-side, in-memory) ─────────────────────────────────
   // attachmentsMap is keyed by action id (number) or "__new__" for unsaved actions.
 
-  const attachmentsMap = {};
+  let attachmentsMap = TENANTS.jd.attachments;  // points to current tenant's map
   let currentModalActionId = null;  // used by the detail popup
   let currentEditActionId  = null;  // used by the edit/new modal (number or "__new__")
 
@@ -1337,6 +1470,39 @@ document.addEventListener("DOMContentLoaded", function() {
   });
 
   // ── Init ──────────────────────────────────────────────────────────────────
+
+  // Tenant switching
+  function switchTenant(key){
+    if(key === currentTenant) return;
+    // Persist attachments ref back before switching (actions are mutated in-place)
+    TENANTS[currentTenant].attachments = attachmentsMap;
+    currentTenant = key;
+    allActions    = TENANTS[key].actions;
+    attachmentsMap = TENANTS[key].attachments;
+    // Apply theme via body class
+    document.body.className = TENANTS[key].bodyClass;
+    // Update logo initials & page title
+    document.getElementById('logoInitials').textContent = TENANTS[key].initials;
+    document.title = 'SSQE - Gestão SPI | ' + TENANTS[key].label;
+    // Update tenant button active state + aria-checked
+    document.querySelectorAll('.tenant-btn').forEach(b => {
+      const isActive = b.dataset.tenant === key;
+      b.classList.toggle('active', isActive);
+      b.setAttribute('aria-checked', isActive ? 'true' : 'false');
+    });
+    // Reset sort and group filter
+    sortCol = null; sortDir = 'asc';
+    // Re-render all views
+    renderDashboard();
+    populateFilters();
+    renderTable();
+    // Close any open modal/gantt
+    expandedGroup = null;
+  }
+
+  document.querySelectorAll('.tenant-btn').forEach(btn => {
+    btn.addEventListener('click', () => switchTenant(btn.dataset.tenant));
+  });
 
   renderDashboard();
   populateFilters();
