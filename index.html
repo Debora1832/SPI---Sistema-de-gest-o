@@ -147,8 +147,15 @@
       font-size:22px; cursor:pointer; color:#6b7280; line-height:1;
     }
     .modal-close:hover { color:#1E4D17; }
-    .modal h2 { font-size:16px; font-weight:700; color:#1E4D17; margin-bottom:4px; padding-right:24px; }
-    .modal .modal-group { font-size:12px; color:#6b7280; margin-bottom:16px; }
+    .modal-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:4px; padding-right:36px; }
+    .modal h2 { font-size:16px; font-weight:700; color:#1E4D17; margin-bottom:0; }
+    .modal-edit-btn {
+      background:#f3f6f0; color:#367C2B; border:1px solid #c8ddc3; border-radius:7px;
+      padding:5px 14px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;
+      transition:background .15s; margin-left:10px; flex-shrink:0;
+    }
+    .modal-edit-btn:hover { background:#e2f0db; color:#1E4D17; }
+    .modal .modal-group { font-size:12px; color:#6b7280; margin-bottom:16px; margin-top:4px; }
     .modal-fields { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
     .modal-field label { display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#367C2B; margin-bottom:3px; }
     .modal-field span { font-size:13px; color:#374151; }
@@ -405,7 +412,10 @@
 <div class="modal-backdrop" id="modalBackdrop">
   <div class="modal" role="dialog" aria-modal="true">
     <button class="modal-close" id="modalClose" aria-label="Fechar">✕</button>
-    <h2 id="modalTitle"></h2>
+    <div class="modal-header">
+      <h2 id="modalTitle"></h2>
+      <button class="modal-edit-btn" id="modalEditBtn" aria-label="Editar ação">✏️ Editar</button>
+    </div>
     <div class="modal-group" id="modalGroup"></div>
     <div class="modal-fields">
       <div class="modal-field modal-desc">
@@ -510,6 +520,14 @@
       <div class="form-field full">
         <label for="ef-comments">Comentários</label>
         <textarea id="ef-comments" placeholder="Observações"></textarea>
+      </div>
+      <div class="form-field full">
+        <label>Evidências (Anexos)</label>
+        <div class="attachment-drop-zone" id="editDropZone" title="Clique ou arraste arquivos aqui">
+          <input type="file" id="editFileInput" multiple />
+          📎 Clique ou arraste arquivos aqui para anexar evidências
+        </div>
+        <div class="attachment-list" id="editAttachmentList"></div>
       </div>
     </div>
     <div class="form-actions">
@@ -922,6 +940,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
   function openEditModal(id){
     editingId = id != null ? id : null;
+    currentEditActionId = id != null ? id : "__new__";
     const a = id != null ? allActions.find(x=>x.id===id) : null;
     document.getElementById("editModalTitle").textContent = a ? "Editar Ação #"+a.id : "Nova Ação";
     document.getElementById("editFormError").style.display = "none";
@@ -935,6 +954,7 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById("ef-completion").value  = a ? a.completionDate: "";
     document.getElementById("ef-reprazo").value     = a ? (a.reprazo || "") : "";
     document.getElementById("ef-comments").value    = a ? a.comments      : "";
+    renderEditAttachments(currentEditActionId);
     document.getElementById("editModalBackdrop").classList.add("open");
   }
 
@@ -972,6 +992,11 @@ document.addEventListener("DOMContentLoaded", function() {
       const newId = allActions.reduce((maxId,x)=>x.id>maxId?x.id:maxId, 0) + 1;
       allActions.push({ id:newId, group, desc, team, lead, status, start, end,
         completionDate:completion, reprazo, comments });
+      // Transfer any attachments added under the temp key to the real id
+      if(attachmentsMap["__new__"]){
+        attachmentsMap[newId] = attachmentsMap["__new__"];
+        delete attachmentsMap["__new__"];
+      }
     }
 
     closeEditModal();
@@ -1064,9 +1089,11 @@ document.addEventListener("DOMContentLoaded", function() {
   });
 
   // ── Attachments (client-side, in-memory) ─────────────────────────────────
+  // attachmentsMap is keyed by action id (number) or "__new__" for unsaved actions.
 
-  const attachmentsMap = {}; // { [actionId]: [{name, size, url}] }
-  let currentModalActionId = null;
+  const attachmentsMap = {};
+  let currentModalActionId = null;  // used by the detail popup
+  let currentEditActionId  = null;  // used by the edit/new modal (number or "__new__")
 
   function fmtSize(bytes){
     if(bytes < 1024) return bytes + ' B';
@@ -1074,9 +1101,11 @@ document.addEventListener("DOMContentLoaded", function() {
     return (bytes/(1024*1024)).toFixed(1) + ' MB';
   }
 
-  function renderAttachments(id){
-    const list = document.getElementById("modalAttachmentList");
-    const files = attachmentsMap[id] || [];
+  // Generic: render an attachment list into any container, allowing removal
+  // from a given key in attachmentsMap.
+  function renderAttachmentList(containerId, key){
+    const list = document.getElementById(containerId);
+    const files = attachmentsMap[key] || [];
     if(!files.length){
       list.innerHTML = '<span class="attachment-empty">Nenhuma evidência anexada.</span>';
       return;
@@ -1092,22 +1121,34 @@ document.addEventListener("DOMContentLoaded", function() {
     list.querySelectorAll('.attachment-remove').forEach(btn => {
       btn.addEventListener('click', () => {
         const idx = parseInt(btn.dataset.idx, 10);
-        const arr = attachmentsMap[currentModalActionId];
+        const arr = attachmentsMap[key];
         if(arr){
           URL.revokeObjectURL(arr[idx].url);
           arr.splice(idx, 1);
-          // Remove empty entry to avoid accumulating empty arrays
-          if(arr.length === 0) delete attachmentsMap[currentModalActionId];
+          if(arr.length === 0) delete attachmentsMap[key];
         }
-        renderAttachments(currentModalActionId);
+        renderAttachmentList(containerId, key);
       });
     });
   }
 
+  function renderAttachments(id){ renderAttachmentList("modalAttachmentList", id); }
+  function renderEditAttachments(key){ renderAttachmentList("editAttachmentList", key); }
+
+  function addFiles(key, fileList){
+    if(!key) return;
+    if(!attachmentsMap[key]) attachmentsMap[key] = [];
+    Array.from(fileList).forEach(f => {
+      // Object URLs persist as long as the session is alive; revoked only on
+      // explicit removal so download links stay valid after modal re-opens.
+      attachmentsMap[key].push({ name: f.name, size: fmtSize(f.size), url: URL.createObjectURL(f) });
+    });
+  }
+
+  // Detail popup drop zone
   document.getElementById("modalDropZone").addEventListener("click", function(){
     document.getElementById("modalFileInput").click();
   });
-
   document.getElementById("modalDropZone").addEventListener("dragover", function(e){
     e.preventDefault(); this.classList.add("dragover");
   });
@@ -1116,26 +1157,35 @@ document.addEventListener("DOMContentLoaded", function() {
   });
   document.getElementById("modalDropZone").addEventListener("drop", function(e){
     e.preventDefault(); this.classList.remove("dragover");
-    handleAttachmentFiles(e.dataTransfer.files);
+    addFiles(currentModalActionId, e.dataTransfer.files);
+    renderAttachments(currentModalActionId);
   });
-
   document.getElementById("modalFileInput").addEventListener("change", function(){
-    handleAttachmentFiles(this.files);
+    addFiles(currentModalActionId, this.files);
+    renderAttachments(currentModalActionId);
     this.value = "";
   });
 
-  function handleAttachmentFiles(fileList){
-    if(!currentModalActionId) return;
-    if(!attachmentsMap[currentModalActionId]) attachmentsMap[currentModalActionId] = [];
-    Array.from(fileList).forEach(f => {
-      // Object URLs persist as long as the session is alive; they are only
-      // explicitly revoked when the user removes an individual attachment.
-      // Revoking on modal close would break the download links when the
-      // modal is reopened for the same action.
-      attachmentsMap[currentModalActionId].push({ name: f.name, size: fmtSize(f.size), url: URL.createObjectURL(f) });
-    });
-    renderAttachments(currentModalActionId);
-  }
+  // Edit modal drop zone
+  document.getElementById("editDropZone").addEventListener("click", function(){
+    document.getElementById("editFileInput").click();
+  });
+  document.getElementById("editDropZone").addEventListener("dragover", function(e){
+    e.preventDefault(); this.classList.add("dragover");
+  });
+  document.getElementById("editDropZone").addEventListener("dragleave", function(){
+    this.classList.remove("dragover");
+  });
+  document.getElementById("editDropZone").addEventListener("drop", function(e){
+    e.preventDefault(); this.classList.remove("dragover");
+    addFiles(currentEditActionId, e.dataTransfer.files);
+    renderEditAttachments(currentEditActionId);
+  });
+  document.getElementById("editFileInput").addEventListener("change", function(){
+    addFiles(currentEditActionId, this.files);
+    renderEditAttachments(currentEditActionId);
+    this.value = "";
+  });
 
   // ── Modal ─────────────────────────────────────────────────────────────────
 
@@ -1162,12 +1212,25 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById("modalBackdrop").classList.remove("open");
   }
 
+  // "Editar" button inside detail popup → jump to edit modal
+  document.getElementById("modalEditBtn").addEventListener("click", function(){
+    const id = currentModalActionId;
+    closeModal();
+    openEditModal(id);
+  });
+
   document.getElementById("modalClose").addEventListener("click", closeModal);
   document.getElementById("modalBackdrop").addEventListener("click", function(e){
     if(e.target === this) closeModal();
   });
   document.addEventListener("keydown", function(e){
-    if(e.key === "Escape") closeModal();
+    if(e.key === "Escape"){
+      if(document.getElementById("editModalBackdrop").classList.contains("open")){
+        closeEditModal();
+      } else if(document.getElementById("modalBackdrop").classList.contains("open")){
+        closeModal();
+      }
+    }
   });
 
   // ── Gantt ─────────────────────────────────────────────────────────────────
