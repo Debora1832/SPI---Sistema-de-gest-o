@@ -414,7 +414,7 @@
     <button class="modal-close" id="modalClose" aria-label="Fechar">✕</button>
     <div class="modal-header">
       <h2 id="modalTitle"></h2>
-      <button class="modal-edit-btn" id="modalEditBtn">✏️ Editar</button>
+      <button class="modal-edit-btn" id="modalEditBtn" aria-label="Editar ação">✏️ Editar</button>
     </div>
     <div class="modal-group" id="modalGroup"></div>
     <div class="modal-fields">
@@ -1225,8 +1225,11 @@ document.addEventListener("DOMContentLoaded", function() {
   });
   document.addEventListener("keydown", function(e){
     if(e.key === "Escape"){
-      if(document.getElementById("editModalBackdrop").classList.contains("open")) return;
-      closeModal();
+      if(document.getElementById("editModalBackdrop").classList.contains("open")){
+        closeEditModal();
+      } else if(document.getElementById("modalBackdrop").classList.contains("open")){
+        closeModal();
+      }
     }
   });
 
