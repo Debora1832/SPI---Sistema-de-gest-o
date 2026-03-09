@@ -25,9 +25,9 @@
       width:64px; height:64px; background:#FFDE00; border-radius:10px;
       display:flex; align-items:center; justify-content:center; flex-shrink:0;
     }
-    .sidebar-logo h2 { font-size:30px; font-weight:700; line-height:1.3; color:#fff; }
-    .sidebar-logo span { font-size:20px; color:#a8c89e; }
-    .logo-initials { font-size:60px; font-weight:900; color:#0A2008; letter-spacing:-1px; text-transform:uppercase; }
+    .sidebar-logo h2 { font-size:15px; font-weight:700; line-height:1.3; color:#fff; }
+    .sidebar-logo span { font-size:11px; color:#a8c89e; }
+    .logo-initials { font-size:42px; font-weight:900; color:#0A2008; letter-spacing:-1px; text-transform:uppercase; }
     .sidebar-nav { margin-top:16px; list-style:none; display:flex; flex-direction:column; gap:4px; }
     .sidebar-nav li {
       padding:10px 12px; border-radius:8px; cursor:pointer;
@@ -155,6 +155,23 @@
     .modal-desc { grid-column:1/-1; }
     .modal-comments { grid-column:1/-1; }
     .modal-comments span, .modal-desc span { white-space:pre-wrap; }
+    .modal-attachments { grid-column:1/-1; }
+    .attachment-drop-zone {
+      border:2px dashed #c8ddc3; border-radius:10px; padding:16px 12px; text-align:center;
+      cursor:pointer; color:#6b7280; font-size:13px; transition:border-color .15s, background .15s;
+      margin-bottom:10px;
+    }
+    .attachment-drop-zone:hover, .attachment-drop-zone.dragover { border-color:#367C2B; background:#f4f9f0; color:#1E4D17; }
+    .attachment-drop-zone input[type=file] { display:none; }
+    .attachment-list { display:flex; flex-direction:column; gap:6px; }
+    .attachment-item { display:flex; align-items:center; gap:8px; background:#f4f9f0; border:1px solid #d4e8ce; border-radius:6px; padding:6px 10px; font-size:12px; }
+    .attachment-item .attachment-icon { font-size:16px; flex-shrink:0; }
+    .attachment-link { flex:1; color:#1E4D17; font-weight:600; text-decoration:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .attachment-link:hover { text-decoration:underline; }
+    .attachment-size { color:#9ca3af; font-size:11px; flex-shrink:0; }
+    .attachment-remove { background:none; border:none; color:#9ca3af; cursor:pointer; font-size:14px; padding:0 2px; flex-shrink:0; line-height:1; }
+    .attachment-remove:hover { color:#b91c1c; }
+    .attachment-empty { font-size:12px; color:#9ca3af; font-style:italic; }
 
     /* ===== BUTTONS ===== */
     .btn-primary {
@@ -252,7 +269,7 @@
       <span class="logo-initials">JD</span>
     </div>
     <div>
-      <h2>SIP</h2>
+      <h2>SPI</h2>
       <span>Gestão do Projeto</span>
     </div>
   </div>
@@ -360,7 +377,7 @@
             <th data-sort="status">Status</th>
             <th data-sort="start">Início</th>
             <th data-sort="end">Prazo</th>
-            <th data-sort="reprazo">Reprazo</th>
+            <th data-sort="reprazo">Prorrogação do Prazo</th>
             <th data-sort="completionDate">Conclusão</th>
             <th data-sort="delay">Atraso (dias)</th>
             <th>Comentários</th>
@@ -416,7 +433,7 @@
         <span id="modalEnd"></span>
       </div>
       <div class="modal-field">
-        <label>Reprazo</label>
+        <label>Prorrogação do Prazo</label>
         <span id="modalReprazo"></span>
       </div>
       <div class="modal-field">
@@ -430,6 +447,14 @@
       <div class="modal-field modal-comments">
         <label>Comentários</label>
         <span id="modalComments"></span>
+      </div>
+      <div class="modal-field modal-attachments">
+        <label>Evidências (Anexos)</label>
+        <div class="attachment-drop-zone" id="modalDropZone" title="Clique ou arraste arquivos aqui">
+          <input type="file" id="modalFileInput" multiple />
+          📎 Clique ou arraste arquivos aqui para anexar evidências
+        </div>
+        <div class="attachment-list" id="modalAttachmentList"></div>
       </div>
     </div>
   </div>
@@ -479,7 +504,7 @@
         <input type="date" id="ef-completion" />
       </div>
       <div class="form-field">
-        <label for="ef-reprazo">Nova Data Final (Reprazo)</label>
+        <label for="ef-reprazo">Prorrogação do Prazo</label>
         <input type="date" id="ef-reprazo" />
       </div>
       <div class="form-field full">
@@ -512,76 +537,169 @@
 document.addEventListener("DOMContentLoaded", function() {
 
   const allActions = [
-    {id:1,  group:"PFMEA e Plano de Controle",      status:"delayed",  start:"2025-06-11", end:"2025-07-04", completionDate:"",          team:"QUALIDADE",  lead:"EDVAN",        comments:"Concluido em 14/07/2025",
+    {id:1,  group:"PFMEA e Plano de Controle",      status:"complete",    start:"2025-06-11", end:"2025-07-04",  completionDate:"2025-07-25", reprazo:"2025-07-25",  team:"QUALIDADE",  lead:"EDVAN",
+      comments:"29/07/2025: Realizado a reestruturação do departamento de engenharia - qualidade, produto e manufatura respondem agora para o mesmo gestor",
       desc:"Redefinir responsabilidades sob criação, gestão dos Planos de Controle e PFMEA. Passar de produto para qualidade"},
-    {id:2,  group:"PFMEA e Plano de Controle",      status:"complete", start:"2025-06-30", end:"2025-07-01", completionDate:"2025-07-01", team:"ENGENHARIA", lead:"EDVAN",        comments:"355 itens ativos para a John Deere e que necessitam revisão",
+    {id:2,  group:"PFMEA e Plano de Controle",      status:"complete",    start:"2025-06-30", end:"2025-07-01",  completionDate:"2025-07-01", reprazo:"2025-07-01",  team:"ENGENHARIA", lead:"EDVAN",
+      comments:"355 itens ativos para a John Deere e que necessitam revisão",
       desc:"Avaliar quantidade de PFMEA e Planos de Controle que estão atualizados e adequados e quantos não estão"},
-    {id:3,  group:"PFMEA e Plano de Controle",      status:"delayed",  start:"2025-07-01", end:"2025-09-30", completionDate:"",          team:"ENGENHARIA", lead:"ANDRÉ KEIJI",  comments:"330 itens - Ver prazo com André",
+    {id:3,  group:"PFMEA e Plano de Controle",      status:"complete",    start:"2025-07-01", end:"2025-07-04",  completionDate:"2025-08-11", reprazo:"2025-08-11",  team:"QUALIDADE",  lead:"ANDRE",
+      comments:"355 itens\n29/07/2025: Novo Prazo - 05/08/2025\n06/08/2025: Mapeado que até 31 de Outubro, 89 códigos representam 80% das entregas (quantidade de peças) para a John Deere - faltando definição da contenção - novo prazo - 08/08/2025\n27/08/2025: definindo a implementação de embarque controlado interno",
       desc:"Definir estratégia de contenção para itens com plano de controle desatualizados"},
-    {id:4,  group:"PFMEA e Plano de Controle",      status:"on_going", start:"2025-06-30", end:"2025-07-11", completionDate:"",          team:"ENGENHARIA", lead:"ANDRÉ KEIJI",  comments:"Já existe a gestão",
+    {id:4,  group:"PFMEA e Plano de Controle",      status:"complete",    start:"2025-06-30", end:"2025-07-11",  completionDate:"2025-07-29", reprazo:"2025-07-29",  team:"ENGENHARIA", lead:"EDVAN",
+      comments:"Gestão sendo realizada via sistema pipefy",
       desc:"Implementar gestão de PFMEA e Planos de controle"},
-    {id:5,  group:"PFMEA e Plano de Controle",      status:"on_going", start:"2025-07-01", end:"2025-07-11", completionDate:"",          team:"ENGENHARIA", lead:"ANDRÉ KEIJI",  comments:"Ver com ANDRÉ - Adequação de processo após a revisão?",
+    {id:5,  group:"PFMEA e Plano de Controle",      status:"complete",    start:"2025-07-01", end:"2025-07-11",  completionDate:"2025-08-11", reprazo:"2025-08-11",  team:"ENGENHARIA", lead:"EDVAN",
+      comments:"29/07/2025: Novo prazo: 05/08/2025\n06/08/2025: Novo prazo: 11/08/2025",
       desc:"Elaborar plano de ação (5W2H) para adequação dos PFMEA e Plano de controle não adequados"},
-    {id:6,  group:"PFMEA e Plano de Controle",      status:"on_going", start:"2025-06-25", end:"2025-07-30", completionDate:"",          team:"TBD",        lead:"ELISANGELA",   comments:"Ver evidência com Elisangela.",
+    {id:6,  group:"PFMEA e Plano de Controle",      status:"complete",    start:"2025-06-25", end:"2025-07-30",  completionDate:"2025-07-31", reprazo:"2025-07-31",  team:"ENGENHARIA", lead:"ELISANGELA",
+      comments:"06/08/2025: Definido o fluxo para acionamento de líder de produção e definição imediata in loco",
       desc:"Definir estratégia para plano de reação e contenção em caso de reprovações"},
-    {id:7,  group:"PFMEA e Plano de Controle",      status:"on_going", start:"2025-06-30", end:"2025-12-19", completionDate:"",          team:"ENGENHARIA", lead:"ANDRÉ KEIJI",  comments:"Ver com o André prazos",
-      desc:"Concluir a avaliação e revisão do PFMEA e do Plano de Controle dos 355 PN mapeados (evolução de acordo com o plano de ação criado na atividade n° 8)"},
+    {id:7,  group:"PFMEA e Plano de Controle",      status:"complete",    start:"2025-06-30", end:"2025-12-19",  completionDate:"2026-01-05", reprazo:"2026-01-05",  team:"ENGENHARIA", lead:"ANDRE",
+      comments:"",
+      desc:"Concluir a avaliação e revisão do PFMEA e do Plano de Controle dos 355 PN mapeados na atividade n°2 (evolução de acordo com o plano de ação criado na atividade n° 8)"},
 
-    {id:8,  group:"Plano de Controle e Setup",      status:"complete", start:"2025-06-16", end:"2026-02-27", completionDate:"2025-07-01", team:"QUALIDADE",  lead:"MIKE",         comments:"",
+    {id:8,  group:"Plano de Controle e Setup",      status:"complete",    start:"2025-06-16", end:"2026-02-27",  completionDate:"2025-07-01", reprazo:"2025-07-01",  team:"QUALIDADE",  lead:"MIKE",
+      comments:"",
       desc:"Redefinir execução do plano de controle e setup de itens na produção (foco na area de estamparia, solda e usinagem - alterar da qualidade para operações a responsabilidade da verificação da conformidade dos itens)"},
-    {id:9,  group:"Plano de Controle e Setup",      status:"complete", start:"2025-06-11", end:"2025-06-26", completionDate:"2025-07-01", team:"QUALIDADE",  lead:"ERON",         comments:"",
+    {id:9,  group:"Plano de Controle e Setup",      status:"complete",    start:"2025-06-11", end:"2025-06-26",  completionDate:"2025-07-01", reprazo:"2025-07-01",  team:"QUALIDADE",  lead:"ERON",
+      comments:"",
       desc:"Avaliar se as áreas de operação estão treinadas para execução do setup"},
-    {id:10, group:"Plano de Controle e Setup",      status:"delayed",  start:"2025-07-01", end:"2025-07-04", completionDate:"",          team:"QUALIDADE",  lead:"ERON",         comments:"Cobrar Eron",
+    {id:10, group:"Plano de Controle e Setup",      status:"complete",    start:"2025-07-01", end:"2025-07-04",  completionDate:"2025-09-12", reprazo:"2025-09-12",  team:"QUALIDADE",  lead:"AILEN",
+      comments:"29/07/2025: Novo Prazo - 05/08/2025\n06/08/2025: Novo prazo: 08/08/2025\n27/08/2025: Novo Prazo - 02/09/2025\n02/09/2025: Novo prazo - 16/09/2025",
       desc:"Elaborar cronograma de treinamento para operadores execução setup"},
-    {id:11, group:"Plano de Controle e Setup",      status:"complete", start:"2025-07-01", end:"2025-07-01", completionDate:"2025-07-01", team:"QUALIDADE",  lead:"ERON",         comments:"59 postos mapeados",
+    {id:11, group:"Plano de Controle e Setup",      status:"complete",    start:"2025-07-01", end:"2025-07-01",  completionDate:"2025-07-01", reprazo:"2025-07-01",  team:"QUALIDADE",  lead:"ERON",
+      comments:"59 postos mapeados",
       desc:"Mapear quantidade de pontos afetados pelo escopo desta estratégia (estamparia, solda e usinagem)"},
-    {id:12, group:"Plano de Controle e Setup",      status:"on_going", start:"2025-07-01", end:"2025-07-11", completionDate:"",          team:"QUALIDADE",  lead:"ERON",         comments:"",
+    {id:12, group:"Plano de Controle e Setup",      status:"complete",    start:"2025-07-01", end:"2025-07-11",  completionDate:"2025-09-12", reprazo:"2025-09-12",  team:"QUALIDADE",  lead:"AILEN",
+      comments:"29/07/2025: Novo Prazo - 05/08/2025\n06/08/2025: Novo prazo: 08/08/2025\n27/08/2025: Novo Prazo - 02/09/2025\n02/09/2025: Novo prazo - 16/09/2025",
       desc:"Elaborar cronograma para KICKOFF da nova estratégia para cada um dos postos mapeados (59)"},
-    {id:13, group:"Plano de Controle e Setup",      status:"on_going", start:"2025-07-01", end:"2025-11-28", completionDate:"",          team:"QUALIDADE",  lead:"ERON",         comments:"",
+    {id:13, group:"Plano de Controle e Setup",      status:"complete",    start:"2025-07-01", end:"2025-11-28",  completionDate:"2025-12-10", reprazo:"2025-12-10",  team:"QUALIDADE",  lead:"EDVAN",
+      comments:"",
       desc:"Executar Kick off da nova estrategia de Setup nos 59 postos de trabalho mapeados"},
-    {id:14, group:"Plano de Controle e Setup",      status:"on_going", start:"2025-07-01", end:"2025-08-28", completionDate:"",          team:"QUALIDADE",  lead:"ERON",         comments:"",
+    {id:14, group:"Plano de Controle e Setup",      status:"complete",    start:"2025-07-01", end:"2025-11-28",  completionDate:"2025-12-10", reprazo:"2025-12-10",  team:"QUALIDADE",  lead:"EDVAN",
+      comments:"",
       desc:"Treinar colaboradores na operação para executar setup conforme cronograma elaborado na atividade 12"},
 
-    {id:15, group:"Inspeção Volante da Qualidade",  status:"on_going", start:"2025-06-25", end:"2025-11-28", completionDate:"",          team:"QUALIDADE",  lead:"ERON",         comments:"",
+    {id:15, group:"Inspeção Volante da Qualidade",  status:"complete",    start:"2025-06-25", end:"2025-11-28",  completionDate:"2025-12-10", reprazo:"2025-12-10",  team:"QUALIDADE",  lead:"AILEN",
+      comments:"",
       desc:"Mapear todas as inspeções necessárias a partir dos PCs existentes"},
-    {id:16, group:"Inspeção Volante da Qualidade",  status:"on_going", start:"2025-06-25", end:"2025-12-06", completionDate:"",          team:"QUALIDADE",  lead:"ERON",         comments:"Ver evidência com Eron",
+    {id:16, group:"Inspeção Volante da Qualidade",  status:"complete",    start:"2025-06-25", end:"2025-12-06",  completionDate:"", reprazo:"",               team:"QUALIDADE",  lead:"AILEN",
+      comments:"",
       desc:"Elaborar e definir estratégia de priorização e execução Inspeção Volante da Qualidade (IVQ)"},
-    {id:17, group:"Inspeção Volante da Qualidade",  status:"on_going", start:"2025-06-25", end:"2025-08-29", completionDate:"",          team:"QUALIDADE",  lead:"ERON",         comments:"Ver evidência com Eron",
+    {id:17, group:"Inspeção Volante da Qualidade",  status:"complete",    start:"2025-06-25", end:"2025-08-29",  completionDate:"2025-10-07", reprazo:"2025-10-07",  team:"QUALIDADE",  lead:"AILEN",
+      comments:"",
       desc:"Elaborar e definir cronograma para Kickoff da Inspeção Volante da Qualidade (IVQ)"},
 
-    {id:18, group:"Gestão de sucata / refugo",      status:"complete", start:"2025-03-17", end:"2025-06-30", completionDate:"2025-06-23", team:"QUALIDADE",  lead:"NADJA",        comments:"",
+    {id:18, group:"Gestão de sucata / refugo",      status:"complete",    start:"2025-03-17", end:"2025-06-30",  completionDate:"2025-06-23", reprazo:"2025-06-23",  team:"QUALIDADE",  lead:"NADJA",
+      comments:"",
       desc:"Definir rotina na fabrica para tratar sucata / refugo (QR1, QR2, QR3)"},
 
-    {id:19, group:"Gestão de Calibrações",          status:"on_going", start:"2025-03-17", end:"2025-09-30", completionDate:"",          team:"QUALIDADE",  lead:"RODRIGO",      comments:"Ver evidência com Rodrigo",
+    {id:19, group:"Gestão de Calibrações",          status:"complete",    start:"2025-03-17", end:"2025-09-30",  completionDate:"2025-10-17", reprazo:"2025-10-17",  team:"QUALIDADE",  lead:"RODRIGO",
+      comments:"07/10/2025: Novo prazo - TBD (Ailen ira confirmar)",
       desc:"Implementar gestão e monitoramento de equipamentos de calibração"},
-    {id:20, group:"Gestão de Calibrações",          status:"on_going", start:"2025-03-17", end:"2025-09-30", completionDate:"",          team:"QUALIDADE",  lead:"RODRIGO",      comments:"Ver evidência com Rodrigo",
+    {id:20, group:"Gestão de Calibrações",          status:"complete",    start:"2025-03-17", end:"2025-09-30",  completionDate:"2025-10-17", reprazo:"2025-10-17",  team:"QUALIDADE",  lead:"RODRIGO",
+      comments:"07/10/2025: Novo prazo - TBD (Ailen ira confirmar)",
       desc:"Executar calibração de equipamentos com calibração pendente"},
 
-    {id:21, group:"Fluxo de Processo",              status:"on_going", start:"2025-06-11", end:"2025-07-18", completionDate:"",          team:"LOGISTICA",  lead:"JORGE",        comments:"Conversar com Jorge Miguel sobre esta ação (e-mail de 01/07).",
+    {id:21, group:"Fluxo de Processo",              status:"complete",    start:"2025-06-11", end:"2025-07-18",  completionDate:"2025-07-31", reprazo:"2025-07-31",  team:"LOGISTICA",  lead:"JORGE",
+      comments:"29/07/2025: Novo Prazo - 05/08/2025\n06/08/2025: Ação concluída e em monitoramento",
       desc:"Definir fluxo de processo para desembarque e embarque de peças no HUB - foco em peças oleadas"},
 
-    {id:22, group:"Embalamento",                    status:"on_going", start:"2025-07-04", end:"2025-08-29", completionDate:"",          team:"QUALIDADE",  lead:"MIKE",         comments:"",
+    {id:22, group:"Embalamento",                    status:"complete",    start:"2025-07-04", end:"2025-08-29",  completionDate:"", reprazo:"",               team:"QUALIDADE",  lead:"MIKE",
+      comments:"",
       desc:"Criar guide line de embalamento de peças em metal fab"},
 
-    {id:23, group:"Dispositivos de Medição",        status:"on_going", start:"2025-06-16", end:"2025-09-16", completionDate:"",          team:"QUALIDADE",  lead:"RODRIGO",      comments:"Mapeado a necessidade de medir 410 dispositivos - Ver com Rodrigo",
+    {id:23, group:"Dispositivos de Medição",        status:"complete",    start:"2025-06-16", end:"2025-09-16",  completionDate:"2025-09-12", reprazo:"2025-09-12",  team:"QUALIDADE",  lead:"EDVAN",
+      comments:"Mapeado a necessidade de medir 410 dispositivos",
       desc:"Avaliar quantidade de itens que estão com dispositivo de medição adequados e a disposição da operação e os que não estão"},
-    {id:24, group:"Dispositivos de Medição",        status:"complete", start:"2025-06-16", end:"2025-06-27", completionDate:"",          team:"QUALIDADE",  lead:"RODRIGO",      comments:"",
+    {id:24, group:"Dispositivos de Medição",        status:"complete",    start:"2025-06-16", end:"2025-06-27",  completionDate:"", reprazo:"",               team:"QUALIDADE",  lead:"MIKE",
+      comments:"",
       desc:"Implementar gestão de dispositivos de verificação (go/non go gage)"},
-    {id:25, group:"Dispositivos de Medição",        status:"complete", start:"2025-06-23", end:"2025-07-04", completionDate:"2025-07-04", team:"QUALIDADE",  lead:"IZABELLA",     comments:"",
+    {id:25, group:"Dispositivos de Medição",        status:"complete",    start:"2025-06-23", end:"2025-07-04",  completionDate:"2025-07-04", reprazo:"2025-07-04",  team:"QUALIDADE",  lead:"IZABELLA",
+      comments:"",
       desc:"Avaliar disponibilidade de equipamentos de medição e execução dos controles na fábrica"},
-    {id:26, group:"Dispositivos de Medição",        status:"on_going", start:"2025-07-01", end:"2025-07-11", completionDate:"",          team:"QUALIDADE",  lead:"RODRIGO",      comments:"Ver com Rodrigo tratativas",
+    {id:26, group:"Dispositivos de Medição",        status:"complete",    start:"2025-07-01", end:"2025-07-11",  completionDate:"2025-08-27", reprazo:"2025-08-27",  team:"QUALIDADE",  lead:"EDVAN",
+      comments:"29/07/2025: Novo Prazo - 05/08/2025\n06/08/2025: Novo Prazo - 05/08/2025",
       desc:"Elaborar plano de ação (5W2H) para adequação dos dispositivos de verificação (go/non go gages) na fábrica"},
 
-    {id:27, group:"CARs John Deere",                status:"complete", start:"2025-04-24", end:"2025-07-07", completionDate:"2025-07-04", team:"QUALIDADE",  lead:"LEONARDO",     comments:"Evidencias submetidas pela MAGIUS e aguardo aprovação da Deere",
+    {id:27, group:"CARs John Deere",                status:"complete",    start:"2025-04-24", end:"2025-07-07",  completionDate:"2025-07-04", reprazo:"2025-07-04",  team:"QUALIDADE",  lead:"LEONARDO",
+      comments:"Evidencias submetidas pela MAGIUS e aguardo aprovação da Deere",
       desc:"Finalizar as CARs de BM (25921369, 26018294, 26469206)"},
 
-    {id:28, group:"Analise de Causa Raiz",          status:"complete", start:"2025-03-17", end:"2025-08-30", completionDate:"2025-07-04", team:"QUALIDADE",  lead:"AILEN",        comments:"",
+    {id:28, group:"Analise de Causa Raiz",          status:"complete",    start:"2025-03-17", end:"2025-08-30",  completionDate:"2025-07-04", reprazo:"2025-07-04",  team:"QUALIDADE",  lead:"AILEN",
+      comments:"",
       desc:"Estruturar SAC - equipe, alerta, matriz e procedimentos"},
-    {id:29, group:"Analise de Causa Raiz",          status:"complete", start:"2025-03-17", end:"2025-08-30", completionDate:"2025-07-04", team:"QUALIDADE",  lead:"AILEN",        comments:"",
+    {id:29, group:"Analise de Causa Raiz",          status:"complete",    start:"2025-03-17", end:"2025-08-30",  completionDate:"2025-07-04", reprazo:"2025-07-04",  team:"QUALIDADE",  lead:"AILEN",
+      comments:"",
       desc:"Aplicar metodologia de fast response (dentro da RRQ - modelo inicial)"},
 
-    {id:30, group:"Melhoria Continua",              status:"on_going", start:"2025-07-04", end:"2026-02-20", completionDate:"",          team:"OPERAÇÕES",  lead:"NADJA",        comments:"Ver com Edvan se esta ação permanece",
-      desc:"Criar programa de CI - possibilitar que os operadores realizem sugestões de melhorias (processo, dispositivos, controles, etc)"}
+    {id:30, group:"Melhoria Continua",              status:"not_started", start:"2025-07-04", end:"2026-02-20",  completionDate:"", reprazo:"",               team:"OPERAÇÕES",  lead:"NADIA",
+      comments:"",
+      desc:"Criar programa de CI - possibilitar que os operadores realizem sugestões de melhorias (processo, dispositivos, controles, etc)"},
+
+    {id:31, group:"Dispositivos de Medição",        status:"complete",    start:"2025-07-01", end:"2025-09-30",  completionDate:"2025-09-25", reprazo:"2025-09-25",  team:"QUALIDADE",  lead:"AILEN",
+      comments:"",
+      desc:"Adequação dos dispositivos de verificação (go/non go gages) na fábrica"},
+
+    {id:32, group:"Embarque Controlado Nível 2",    status:"on_going",    start:"2025-12-10", end:"2025-12-12",  completionDate:"", reprazo:"",               team:"QUALIDADE",  lead:"MAISA",
+      comments:"",
+      desc:"Mapear lista de itens a serem entregues nos meses de Dezembro de 2025, Janeiro, Fevereiro e Março de 2026"},
+    {id:33, group:"Embarque Controlado Nível 2",    status:"on_going",    start:"2025-12-10", end:"2025-12-19",  completionDate:"", reprazo:"",               team:"QUALIDADE",  lead:"MAISA",
+      comments:"08/01/2026: Novo prazo 17/01/2026\n20/01/2026: Novo prazo 03/02/2026",
+      desc:"Reavaliar e criar planos de inspeção do CSL2 para os itens a serem entregues nos meses de Dezembro de 2025, Janeiro, Fevereiro e Março de 2026"},
+    {id:34, group:"Embarque Controlado Nível 2",    status:"complete",    start:"2025-12-10", end:"2025-12-19",  completionDate:"2025-12-19", reprazo:"2025-12-19",  team:"QUALIDADE",  lead:"MAISA",
+      comments:"",
+      desc:"Revisar os planos de inspeções com os SQEs das plantas da John Deere - plano existem + planos novos"},
+    {id:35, group:"Embarque Controlado Nível 2",    status:"complete",    start:"2025-12-10", end:"2025-12-17",  completionDate:"2025-12-17", reprazo:"2025-12-17",  team:"QUALIDADE",  lead:"CANSI",
+      comments:"",
+      desc:"Formalizar o CSL2 com a empresa terceira"},
+
+    {id:36, group:"PFMEA e Plano de Controle",      status:"complete",    start:"2025-12-10", end:"2025-12-26",  completionDate:"", reprazo:"",               team:"PRODUTO",    lead:"ANDRE",
+      comments:"08/01/2026: Novo prazo 20/01/2026",
+      desc:"Elaborar estratégia para medição da eficácia das atualização dos PFMEAs e Planos de Controles"},
+
+    {id:37, group:"APQP",                           status:"on_going",    start:"2025-12-10", end:"2026-01-09",  completionDate:"", reprazo:"",               team:"PRODUTO",    lead:"ANDRE",
+      comments:"",
+      desc:"Revisar processo de APQP a fim de garantir que o mesmo não seja finalizado antes do PSW aprovado, bem como garantir que todas as revisões de documentos necessárias sejam realizadas - ex. PFMEA"},
+    {id:38, group:"APQP",                           status:"on_going",    start:"2025-12-10", end:"2026-01-29",  completionDate:"", reprazo:"",               team:"PRODUTO",    lead:"ANDRE",
+      comments:"",
+      desc:"Revisar processo de CPK - estruturar estragia para garantir a realização recorrente dos estudos, bem como ações necessárias para melhorar a capacidade dos processos"},
+
+    {id:39, group:"CPK",                            status:"not_started", start:"2025-12-10", end:"2026-05-22",  completionDate:"", reprazo:"",               team:"PRODUTO",    lead:"ANDRE",
+      comments:"",
+      desc:"Avaliar que itens da John Deere possuem KCs"},
+    {id:40, group:"CPK",                            status:"complete",    start:"2025-12-10", end:"2026-01-20",  completionDate:"2026-01-20", reprazo:"",        team:"PRODUTO",    lead:"ANDRE",
+      comments:"",
+      desc:"Elaborar cronograma para realização dos estudos CPK pendentes"},
+    {id:41, group:"CPK",                            status:"not_started", start:"2025-12-10", end:"2026-05-22",  completionDate:"", reprazo:"",               team:"PRODUTO",    lead:"ANDRE",
+      comments:"",
+      desc:"Concluir estudos de CPK para itens da John Deere"},
+
+    {id:42, group:"Resourcing",                     status:"not_started", start:"2025-12-10", end:"2026-01-20",  completionDate:"", reprazo:"",               team:"QUALIDADE",  lead:"EDVAN",
+      comments:"",
+      desc:"Revisar e compartilhar lista de itens da John Deere que a MAGIUS tem com intenção/proposta declinar devido a não capacidade de processo - justificar o entendimento de que essa é a decisão mais assertiva e que suportará a melhoria da performance da qualidade"},
+    {id:43, group:"Resourcing",                     status:"not_started", start:"2025-12-10", end:"2026-01-20",  completionDate:"", reprazo:"",               team:"QUALIDADE",  lead:"EDVAN",
+      comments:"",
+      desc:"Elaborar lista de itens para os quais na avaliação da MAGIUS, o processo de fabricação deveria ser movido por completo para MG Press, a fim de promover a melhoria e garantia de qualidade deles"},
+    {id:44, group:"Resourcing",                     status:"not_started", start:"2026-01-20", end:"2026-01-28",  completionDate:"", reprazo:"",               team:"QUALIDADE",  lead:"EDVAN",
+      comments:"",
+      desc:"Avaliar por que os planos de controles não foram seguidos nas 21 ocorrencias (Qnotas que chegaram JD) evidenciados após a atualização dos planos de controle"},
+    {id:45, group:"Resourcing",                     status:"not_started", start:"2026-01-20", end:"2026-01-28",  completionDate:"", reprazo:"",               team:"QUALIDADE",  lead:"ANDRE",
+      comments:"",
+      desc:"Realizar mesma analise para QPPM como for realizada para ocorrencia"},
+    {id:46, group:"Quality Culture",                status:"not_started", start:"2026-03-05", end:"2026-03-18",  completionDate:"", reprazo:"",               team:"QUALIDADE",  lead:"EDVAN",
+      comments:"",
+      desc:"Definir estrategia e iniciar reuniao diaria por area da operação"},
+    {id:47, group:"Resourcing",                     status:"not_started", start:"2026-03-05", end:"2026-03-10",  completionDate:"", reprazo:"",               team:"QUALIDADE",  lead:"DEBORA",
+      comments:"",
+      desc:"Confirmar lista de itens a serem passados para MG Press"},
+    {id:48, group:"Resourcing",                     status:"not_started", start:"2026-03-05", end:"2026-03-10",  completionDate:"", reprazo:"",               team:"QUALIDADE",  lead:"DEBORA",
+      comments:"",
+      desc:"Confirma lista de itens a serem declinados"},
+    {id:49, group:"Resourcing",                     status:"not_started", start:"2026-03-05", end:"2026-03-18",  completionDate:"", reprazo:"",               team:"QUALIDADE",  lead:"EDVAN",
+      comments:"",
+      desc:"Avaliar com alta direção a possibilidade de execução trimestrais com toda a operação da MAGIUS"}
   ];
 
   const STATUS_LABEL = { complete:"Concluído", on_going:"Em andamento", delayed:"Atrasado" };
@@ -590,19 +708,18 @@ document.addEventListener("DOMContentLoaded", function() {
 
   // ── helpers ──────────────────────────────────────────────────────────────
 
-  // Returns the effective status: if the action is not complete, use the
-  // reprazo date (if filled) as the effective deadline, otherwise use end.
-  // If the effective deadline has passed → "delayed".
-  // If reprazo is set and deadline hasn't passed → "on_going" (the reprazo
-  // extends the deadline, so it is now within the new deadline).
-  // If no reprazo and deadline hasn't passed → keep the stored status.
+  // Returns the effective status based on the deadline.
+  // If complete → "complete".
+  // Uses prorrogação (reprazo) date when filled as the effective deadline.
+  // If effective deadline has passed → "delayed".
+  // If reprazo is set and deadline hasn't passed → "on_going".
+  // Otherwise keep the stored status (on_going / delayed).
   function resolveStatus(a){
     if(a.status === "complete") return "complete";
     const today = new Date(); today.setHours(0,0,0,0);
     const due   = new Date(a.reprazo || a.end);
     if(due < today) return "delayed";
-    if(a.reprazo)   return "on_going";
-    return a.status;
+    return "on_going";
   }
 
   function calculateDelay(end, status){
@@ -891,7 +1008,7 @@ document.addEventListener("DOMContentLoaded", function() {
       { header:"Status",        fn: a => STATUS_LABEL[resolveStatus(a)] || resolveStatus(a) },
       { header:"Início",        fn: a => fmtDate(a.start) },
       { header:"Prazo",         fn: a => fmtDate(a.end) },
-      { header:"Reprazo",       fn: a => a.reprazo ? fmtDate(a.reprazo) : "" },
+      { header:"Prorrogação do Prazo", fn: a => a.reprazo ? fmtDate(a.reprazo) : "" },
       { header:"Conclusão",     fn: a => fmtDate(a.completionDate) },
       { header:"Atraso (dias)", fn: a => calculateDelay(a.reprazo || a.end, resolveStatus(a)) || "" },
       { header:"Comentários",   fn: a => a.comments || "" }
@@ -946,9 +1063,84 @@ document.addEventListener("DOMContentLoaded", function() {
     if(expandedGroup !== null) renderGantt();
   });
 
+  // ── Attachments (client-side, in-memory) ─────────────────────────────────
+
+  const attachmentsMap = {}; // { [actionId]: [{name, size, url}] }
+  let currentModalActionId = null;
+
+  function fmtSize(bytes){
+    if(bytes < 1024) return bytes + ' B';
+    if(bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+    return (bytes/(1024*1024)).toFixed(1) + ' MB';
+  }
+
+  function renderAttachments(id){
+    const list = document.getElementById("modalAttachmentList");
+    const files = attachmentsMap[id] || [];
+    if(!files.length){
+      list.innerHTML = '<span class="attachment-empty">Nenhuma evidência anexada.</span>';
+      return;
+    }
+    list.innerHTML = files.map((f, i) => `
+      <div class="attachment-item">
+        <span class="attachment-icon">📎</span>
+        <a href="${escHtml(f.url)}" download="${escHtml(f.name)}" class="attachment-link">${escHtml(f.name)}</a>
+        <span class="attachment-size">${escHtml(f.size)}</span>
+        <button class="attachment-remove" data-idx="${i}" title="Remover">✕</button>
+      </div>
+    `).join('');
+    list.querySelectorAll('.attachment-remove').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.idx, 10);
+        const arr = attachmentsMap[currentModalActionId];
+        if(arr){
+          URL.revokeObjectURL(arr[idx].url);
+          arr.splice(idx, 1);
+          // Remove empty entry to avoid accumulating empty arrays
+          if(arr.length === 0) delete attachmentsMap[currentModalActionId];
+        }
+        renderAttachments(currentModalActionId);
+      });
+    });
+  }
+
+  document.getElementById("modalDropZone").addEventListener("click", function(){
+    document.getElementById("modalFileInput").click();
+  });
+
+  document.getElementById("modalDropZone").addEventListener("dragover", function(e){
+    e.preventDefault(); this.classList.add("dragover");
+  });
+  document.getElementById("modalDropZone").addEventListener("dragleave", function(){
+    this.classList.remove("dragover");
+  });
+  document.getElementById("modalDropZone").addEventListener("drop", function(e){
+    e.preventDefault(); this.classList.remove("dragover");
+    handleAttachmentFiles(e.dataTransfer.files);
+  });
+
+  document.getElementById("modalFileInput").addEventListener("change", function(){
+    handleAttachmentFiles(this.files);
+    this.value = "";
+  });
+
+  function handleAttachmentFiles(fileList){
+    if(!currentModalActionId) return;
+    if(!attachmentsMap[currentModalActionId]) attachmentsMap[currentModalActionId] = [];
+    Array.from(fileList).forEach(f => {
+      // Object URLs persist as long as the session is alive; they are only
+      // explicitly revoked when the user removes an individual attachment.
+      // Revoking on modal close would break the download links when the
+      // modal is reopened for the same action.
+      attachmentsMap[currentModalActionId].push({ name: f.name, size: fmtSize(f.size), url: URL.createObjectURL(f) });
+    });
+    renderAttachments(currentModalActionId);
+  }
+
   // ── Modal ─────────────────────────────────────────────────────────────────
 
   function openModal(action){
+    currentModalActionId = action.id;
     const delay = calculateDelay(action.reprazo || action.end, resolveStatus(action));
     document.getElementById("modalTitle").textContent = "Ação #" + action.id;
     document.getElementById("modalGroup").textContent = action.group;
@@ -962,6 +1154,7 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById("modalCompletion").textContent = fmtDate(action.completionDate);
     document.getElementById("modalDelay").textContent = delay || '-';
     document.getElementById("modalComments").textContent = action.comments || '-';
+    renderAttachments(action.id);
     document.getElementById("modalBackdrop").classList.add("open");
   }
 
@@ -984,9 +1177,9 @@ document.addEventListener("DOMContentLoaded", function() {
     container.innerHTML = "";
     if(!allActions.length){ container.innerHTML = '<p style="padding:20px;color:#6b7280">Nenhuma ação cadastrada.</p>'; return; }
 
-    // Overall date range
-    const allS = allActions.map(a=>a.start).sort();
-    const allE = allActions.map(a=>a.end).sort();
+    // Overall date range (skip items with no valid end date)
+    const allS = allActions.map(a=>a.start).filter(s=>s).sort();
+    const allE = allActions.map(a=>a.end).filter(e=>e && e !== '').sort();
     const dMin = new Date(allS[0]); dMin.setDate(1);
     const dMaxRaw = new Date(allE[allE.length-1]);
     const dMax = new Date(dMaxRaw.getFullYear(), dMaxRaw.getMonth()+1, 1);
@@ -1017,7 +1210,7 @@ document.addEventListener("DOMContentLoaded", function() {
     Object.keys(groups).forEach(groupName=>{
       const items = groups[groupName];
       const gS = items.reduce((m,i)=>i.start<m?i.start:m, items[0].start);
-      const gE = items.reduce((m,i)=>i.end>m?i.end:m, items[0].end);
+      const gE = items.reduce((m,i)=>{const e=i.end||i.start; return e>m?e:m;}, items[0].end||items[0].start);
       const open = expandedGroup === groupName;
       const safeG = escHtml(groupName);
       rowsHTML += `<div class="gc-row gc-row-group" data-group="${safeG}">
@@ -1028,11 +1221,13 @@ document.addEventListener("DOMContentLoaded", function() {
       </div>`;
       if(open){
         items.forEach(i=>{
-          const cls = resolveStatus(i)==='delayed'?'gc-bar-delayed':resolveStatus(i)==='complete'?'gc-bar-complete':'gc-bar-action';
+          const iEnd = i.end || i.start; // fallback for items without end date
+          const st = resolveStatus(i);
+          const cls = st==='delayed'?'gc-bar-delayed':st==='complete'?'gc-bar-complete':'gc-bar-action';
           rowsHTML += `<div class="gc-row gc-row-task" data-task-id="${i.id}">
             <div class="gc-label gc-label-task">↳ #${i.id} ${escHtml(truncate(i.desc,38))}</div>
             <div class="gc-timeline">
-              <div class="gc-bar ${cls}" style="left:${pct(i.start)}%;width:${wid(i.start,i.end)}%"></div>
+              <div class="gc-bar ${cls}" style="left:${pct(i.start)}%;width:${wid(i.start,iEnd)}%"></div>
             </div>
           </div>`;
         });
