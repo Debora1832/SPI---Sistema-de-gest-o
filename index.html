@@ -126,8 +126,14 @@
     .gc-bar-action  { background:rgba(245,158,11,.28);  border-left:3px solid #F59E0B; }  /* amber – em andamento  */
     .gc-bar-complete{ background:rgba(22,163,74,.22);   border-left:3px solid #16a34a; }  /* green – concluído     */
     .gc-row-group { cursor:pointer; }
-    .gc-row-group .gc-label { font-weight:700; background:#eef5eb; }
+    .gc-row-group .gc-label { font-weight:700; background:#eef5eb; justify-content:space-between; overflow:visible; }
     .gc-row-group:hover .gc-label { background:#e2f0db; }
+    .gc-status-pills { display:flex; gap:3px; flex-shrink:0; }
+    .gc-pill { display:inline-flex; align-items:center; justify-content:center; min-width:20px; height:18px; padding:0 5px; border-radius:10px; font-size:10px; font-weight:700; line-height:1; }
+    .gc-pill-complete { background:#d1f0d4; color:#1E4D17; }
+    .gc-pill-on_going { background:#fffbe6; color:#7a5c00; border:1px solid #FFDE00; }
+    .gc-pill-delayed  { background:#fee2e2; color:#b91c1c; }
+    .gc-label-text { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; flex:1; min-width:0; }
     .gc-row-task { cursor:pointer; }
     .gc-row-task:hover { background:#f4f9f0; }
 
@@ -1409,8 +1415,21 @@ document.addEventListener("DOMContentLoaded", function() {
       const gE = items.reduce((m,i)=>{const e=i.end||i.start; return e>m?e:m;}, items[0].end||items[0].start);
       const open = expandedGroup === groupName;
       const safeG = escHtml(groupName);
+      // Per-group status counts for mini status pills (single pass)
+      const statusCounts = items.reduce((acc, i) => { acc[resolveStatus(i)] = (acc[resolveStatus(i)] || 0) + 1; return acc; }, {});
+      const completeCount = statusCounts.complete  || 0;
+      const onGoingCount  = statusCounts.on_going  || 0;
+      const delayedCount  = statusCounts.delayed   || 0;
+      const allDone = completeCount === items.length;
+      let pillsHTML = `<span class="gc-status-pills">`;
+      pillsHTML += `<span class="gc-pill gc-pill-complete">${completeCount}</span>`;
+      if(!allDone){
+        if(onGoingCount > 0) pillsHTML += `<span class="gc-pill gc-pill-on_going">${onGoingCount}</span>`;
+        if(delayedCount > 0) pillsHTML += `<span class="gc-pill gc-pill-delayed">${delayedCount}</span>`;
+      }
+      pillsHTML += `</span>`;
       rowsHTML += `<div class="gc-row gc-row-group" data-group="${safeG}">
-        <div class="gc-label">${open?'▼':'►'} ${safeG}</div>
+        <div class="gc-label"><span class="gc-label-text">${open?'▼':'►'} ${safeG}</span>${pillsHTML}</div>
         <div class="gc-timeline">
           <div class="gc-bar gc-bar-group" style="left:${pct(gS)}%;width:${wid(gS,gE)}%"></div>
         </div>
