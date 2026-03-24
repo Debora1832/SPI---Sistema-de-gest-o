@@ -27,7 +27,7 @@
     }
     .sidebar-logo h2 { font-size:15px; font-weight:700; line-height:1.3; color:#fff; }
     .sidebar-logo span { font-size:11px; color:#a8c89e; }
-    .logo-initials { font-size:52px; font-weight:900; color:#0A2008; letter-spacing:-1px; text-transform:uppercase; }
+    .sidebar-logo .logo-initials { font-size:52px; font-weight:900; color:#0A2008; letter-spacing:-1px; text-transform:uppercase; }
     .sidebar-nav { margin-top:16px; list-style:none; display:flex; flex-direction:column; gap:4px; }
     .sidebar-nav li {
       padding:10px 12px; border-radius:8px; cursor:pointer;
@@ -59,6 +59,9 @@
     .kpi-card.complete { border-color:#2A6121; }
     .kpi-card.on_going { border-color:#FFDE00; }
     .kpi-card.delayed { border-color:#dc2626; }
+    .kpi-card.on_time { border-color:#059669; }
+    .kpi-card.late_complete { border-color:#dc2626; }
+    .kpi-card.adherence { border-color:#2563eb; }
     .kpi-card .kpi-label { font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:#6b7280; margin-bottom:6px; }
     .kpi-card .kpi-value { font-size:32px; font-weight:700; color:#1E4D17; line-height:1; }
     .kpi-card .kpi-sub { font-size:12px; color:#9ca3af; margin-top:6px; }
@@ -84,6 +87,9 @@
     .badge-delayed { background:#fee2e2; color:#b91c1c; }
     .badge-complete { background:#d1f0d4; color:#1E4D17; }
     .badge-on_going { background:#fffbe6; color:#7a5c00; border:1px solid #FFDE00; }
+    .badge-on_time { background:#d1fae5; color:#065f46; border:1px solid #6ee7b7; }
+    .badge-late_complete { background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; }
+    .badge-in_progress { background:#dbeafe; color:#1e40af; border:1px solid #93c5fd; }
 
     /* ===== PROJECTS FILTER ===== */
     .filter-row { display:flex; gap:12px; align-items:center; margin-bottom:16px; flex-wrap:wrap; }
@@ -510,6 +516,7 @@
             <th data-sort="team">Equipe</th>
             <th data-sort="lead">Responsável</th>
             <th data-sort="status">Status</th>
+            <th>Aderência ao Prazo</th>
             <th data-sort="start">Início</th>
             <th data-sort="end">Prazo</th>
             <th data-sort="reprazo">Prorrogação do Prazo</th>
@@ -869,7 +876,32 @@ document.addEventListener("DOMContentLoaded", function() {
   // If effective deadline has passed → "delayed".
   // If reprazo is set and deadline hasn't passed → "on_going".
   // Otherwise keep the stored status (on_going / delayed).
-  function resolveStatus(a){
+  // Returns deadline adherence classification for an action.
+  // complete + completionDate ≤ end → "on_time"
+  // complete + completionDate > end  → "late_complete"
+  // complete but no completionDate   → "no_date"
+  // non-complete, not delayed        → "in_progress"
+  // non-complete, delayed            → null (use main status)
+  function resolveDeadlineAdherence(a){
+    if(a.status === "complete"){
+      if(!a.completionDate) return "no_date";
+      const done = new Date(a.completionDate);
+      const due  = new Date(a.end); // original deadline
+      return done <= due ? "on_time" : "late_complete";
+    }
+    const today = new Date(); today.setHours(0,0,0,0);
+    const due   = new Date(a.reprazo || a.end);
+    return due >= today ? "in_progress" : null;
+  }
+
+  const ADHERENCE_LABEL = {
+    on_time:       "✓ No prazo",
+    late_complete: "✗ Fora do prazo",
+    in_progress:   "⏱ No prazo ainda",
+    no_date:       "—"
+  };
+
+
     if(a.status === "complete") return "complete";
     const today = new Date(); today.setHours(0,0,0,0);
     const due   = new Date(a.reprazo || a.end);
@@ -917,6 +949,10 @@ document.addEventListener("DOMContentLoaded", function() {
     const pct = Math.round((complete/total)*100);
 
     const kpiGrid = document.getElementById("kpiGrid");
+    const onTime     = allActions.filter(a=>resolveDeadlineAdherence(a)==="on_time").length;
+    const lateComplete = allActions.filter(a=>resolveDeadlineAdherence(a)==="late_complete").length;
+    const adherenceDenom = onTime + lateComplete;
+    const adherencePct = adherenceDenom > 0 ? Math.round((onTime/adherenceDenom)*100) : 0;
     kpiGrid.innerHTML = `
       <div class="kpi-card total">
         <div class="kpi-label">Total de Ações</div>
@@ -937,6 +973,21 @@ document.addEventListener("DOMContentLoaded", function() {
         <div class="kpi-label">Atrasadas</div>
         <div class="kpi-value">${delayed}</div>
         <div class="kpi-sub">${calcPercent(delayed,total)}% do total</div>
+      </div>
+      <div class="kpi-card on_time">
+        <div class="kpi-label">Concluídas no prazo</div>
+        <div class="kpi-value">${onTime}</div>
+        <div class="kpi-sub">${adherenceDenom>0?calcPercent(onTime,adherenceDenom):0}% das concluídas</div>
+      </div>
+      <div class="kpi-card late_complete">
+        <div class="kpi-label">Concluídas fora do prazo</div>
+        <div class="kpi-value">${lateComplete}</div>
+        <div class="kpi-sub">${adherenceDenom>0?calcPercent(lateComplete,adherenceDenom):0}% das concluídas</div>
+      </div>
+      <div class="kpi-card adherence">
+        <div class="kpi-label">Aderência ao Prazo</div>
+        <div class="kpi-value">${adherencePct}%</div>
+        <div class="kpi-sub">${onTime} de ${adherenceDenom} fechadas</div>
       </div>
     `;
 
@@ -1038,6 +1089,7 @@ document.addEventListener("DOMContentLoaded", function() {
         <td class="col-nowrap">${a.team}</td>
         <td class="col-nowrap">${a.lead}</td>
         <td><span class="badge badge-${resolveStatus(a)}">${STATUS_LABEL[resolveStatus(a)] || resolveStatus(a)}</span></td>
+        <td>${(()=>{ const adh=resolveDeadlineAdherence(a); return adh && adh!=="no_date" ? '<span class="badge badge-'+adh+'">'+ADHERENCE_LABEL[adh]+'</span>' : '-'; })()}</td>
         <td class="col-nowrap">${fmtDate(a.start)}</td>
         <td class="col-nowrap">${fmtDate(a.end)}</td>
         <td class="col-nowrap">${a.reprazo ? fmtDate(a.reprazo) : '-'}</td>
