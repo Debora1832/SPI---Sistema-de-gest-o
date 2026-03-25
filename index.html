@@ -883,10 +883,10 @@ document.addEventListener("DOMContentLoaded", function() {
   // non-complete, not delayed        → "in_progress"
   // non-complete, delayed            → null (use main status)
   function resolveDeadlineAdherence(a){
-    if(a.status === "complete"){
+    if(a.completionDate || a.status === "complete"){
       if(!a.completionDate) return "no_date";
       const done = new Date(a.completionDate);
-      const due  = new Date(a.end); // original deadline
+      const due  = new Date(a.reprazo || a.end);
       return done <= due ? "on_time" : "late_complete";
     }
     const today = new Date(); today.setHours(0,0,0,0);
@@ -903,7 +903,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
 
   function resolveStatus(a){
-    if(a.status === "complete") return "complete";
+    if(a.completionDate || a.status === "complete") return "complete";
     const today = new Date(); today.setHours(0,0,0,0);
     const due   = new Date(a.reprazo || a.end);
     if(due < today) return "delayed";
@@ -1588,3 +1588,4 @@ document.addEventListener("DOMContentLoaded", function() {
 
 </body>
 </html>
+
