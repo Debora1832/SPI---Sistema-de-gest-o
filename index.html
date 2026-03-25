@@ -77,7 +77,7 @@
     .card { background:white; padding:20px; border-radius:12px; box-shadow:0 1px 4px rgba(0,0,0,.06); }
     .card h3 { font-size:14px; font-weight:600; color:#374151; margin-bottom:14px; }
     table { width:100%; border-collapse:collapse; }
-    thead th { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#fff; background:#367C2B; padding:9px 10px; text-align:left; }
+    thead th { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#fff; background:#367C2B; padding:9px 10px; text-align:left; position:relative; }
     thead th:first-child { border-radius:6px 0 0 6px; }
     thead th:last-child  { border-radius:0 6px 6px 0; }
     tbody td { padding:10px 10px; border-bottom:1px solid #f3f6f0; font-size:13px; color:#374151; }
@@ -120,8 +120,8 @@
     .gc-wrap { overflow-x:auto; }
     .gc-header, .gc-row { display:flex; border-bottom:1px solid #eef3eb; }
     .gc-header { border-bottom:2px solid #c8ddc3; background:#f4f9f0; }
-    .gc-label { width:240px; min-width:240px; padding:8px 12px; font-size:13px; color:#374151; display:flex; align-items:center; border-right:1px solid #d4e8ce; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
-    .gc-label-head { font-weight:700; font-size:11px; text-transform:uppercase; color:#367C2B; height:32px; }
+    .gc-label { width:var(--gc-label-w,240px); min-width:var(--gc-label-w,240px); padding:8px 12px; font-size:13px; color:#374151; display:flex; align-items:center; border-right:1px solid #d4e8ce; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+    .gc-label-head { font-weight:700; font-size:11px; text-transform:uppercase; color:#367C2B; height:32px; position:relative; }
     .gc-label-task { padding-left:28px; font-size:12px; }
     .gc-timeline { flex:1; min-width:600px; position:relative; height:40px; }
     .gc-timeline-head { height:32px; }
@@ -142,6 +142,12 @@
     .gc-label-text { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; flex:1; min-width:0; }
     .gc-row-task { cursor:pointer; }
     .gc-row-task:hover { background:#f4f9f0; }
+
+    /* ===== RESIZE HANDLES ===== */
+    .gc-resize-handle { position:absolute; right:0; top:0; bottom:0; width:7px; cursor:col-resize; background:transparent; z-index:10; border-right:2px solid transparent; transition:border-color .15s; }
+    .gc-resize-handle:hover, .gc-resize-handle.resizing { border-right-color:#367C2B; background:rgba(54,124,43,.12); }
+    .th-resize-handle { position:absolute; right:0; top:0; bottom:0; width:5px; cursor:col-resize; background:transparent; z-index:10; border-right:2px solid transparent; transition:border-color .15s; }
+    .th-resize-handle:hover, .th-resize-handle.resizing { border-right-color:rgba(255,255,255,.7); background:rgba(255,255,255,.18); }
 
     /* ===== ACTION DETAIL MODAL ===== */
     .modal-backdrop {
@@ -1427,6 +1433,64 @@ document.addEventListener("DOMContentLoaded", function() {
 
   // ── Gantt ─────────────────────────────────────────────────────────────────
 
+  // Drag-to-resize the left label column in the Gantt chart.
+  // Uses a CSS variable on :root so the width survives re-renders.
+  function initGanttResize(wrap){
+    const handle = wrap && wrap.querySelector('.gc-resize-handle');
+    if(!handle) return;
+    let startX, startW;
+    handle.addEventListener('mousedown', function(e){
+      startX = e.clientX;
+      startW = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--gc-label-w')) || 240;
+      handle.classList.add('resizing');
+      e.preventDefault();
+      function onMove(e2){
+        const w = Math.max(120, Math.min(540, startW + (e2.clientX - startX)));
+        document.documentElement.style.setProperty('--gc-label-w', w + 'px');
+      }
+      function onUp(){
+        handle.classList.remove('resizing');
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      }
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+  }
+
+  // Drag-to-resize each column in the actions table.
+  // Attaches a handle inside every <th>; handles are added only once.
+  function initTableResize(table){
+    if(!table) return;
+    table.querySelectorAll('thead th').forEach(function(th){
+      // Avoid double-attaching on repeated calls
+      if(th.querySelector('.th-resize-handle')) return;
+      const h = document.createElement('div');
+      h.className = 'th-resize-handle';
+      h.title = 'Arraste para redimensionar a coluna';
+      th.appendChild(h);
+      let sx, sw;
+      h.addEventListener('mousedown', function(e){
+        sx = e.clientX;
+        sw = th.offsetWidth;
+        h.classList.add('resizing');
+        e.preventDefault();
+        e.stopPropagation();  // don't trigger sort click
+        function onMove(e2){
+          th.style.width = Math.max(30, sw + (e2.clientX - sx)) + 'px';
+          th.style.minWidth = th.style.width;
+        }
+        function onUp(){
+          h.classList.remove('resizing');
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+        }
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      });
+    });
+  }
+
   function renderGantt(){
     const container = document.getElementById("gantt");
     container.innerHTML = "";
@@ -1504,11 +1568,13 @@ document.addEventListener("DOMContentLoaded", function() {
 
     container.innerHTML = `<div class="gc-wrap">
       <div class="gc-header">
-        <div class="gc-label gc-label-head">Ação / Grupo</div>
+        <div class="gc-label gc-label-head">Ação / Grupo<div class="gc-resize-handle" title="Arraste para redimensionar a coluna"></div></div>
         <div class="gc-timeline gc-timeline-head">${monthHTML}</div>
       </div>
       <div class="gc-body">${rowsHTML}</div>
     </div>`;
+
+    initGanttResize(container.querySelector('.gc-wrap'));
 
     container.querySelectorAll('.gc-row-group').forEach(row=>{
       row.addEventListener('click',()=>{
@@ -1581,6 +1647,7 @@ document.addEventListener("DOMContentLoaded", function() {
   renderDashboard();
   populateFilters();
   renderTable();
+  initTableResize(document.querySelector('#projects table'));
 
 });
 
@@ -1588,4 +1655,3 @@ document.addEventListener("DOMContentLoaded", function() {
 
 </body>
 </html>
-
