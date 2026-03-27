@@ -39,7 +39,7 @@
       color:#c8e0c3; transition:background .15s, color .15s;
     }
     .sidebar-nav li .nav-icon { width:18px; text-align:center; flex-shrink:0; }
-    .sidebar-nav li.active { background:#367C2B; color:#FFDE00; font-weight:700; }
+    .sidebar-nav li.active { background:var(--tenant-nav-active-bg,#367C2B); color:var(--tenant-nav-active-text,#FFDE00); font-weight:700; }
     .sidebar-nav li:not(.active):hover { background:rgba(255,255,255,.1); color:white; }
     .sidebar-footer { margin-top:auto; padding-top:16px; border-top:1px solid rgba(255,255,255,.12); font-size:11px; color:#7aaa6f; text-align:center; }
 
@@ -1015,9 +1015,9 @@ document.addEventListener("DOMContentLoaded", function() {
 
   // ── Multi-tenant data registry ────────────────────────────────────────────
   const TENANTS = {
-    jd:      { label:'John Deere', initials:'JD',  bodyClass:'',               sidebarTitle:'SPI',     sidebarSubtitle:'Gestão do Projeto', accentBg:'#FFDE00', accentText:'#0A2008', actions:JD_ACTIONS, attachments:{} },
-    cat:     { label:'CAT',        initials:'CAT', bodyClass:'tenant-cat',     sidebarTitle:'CAT',     sidebarSubtitle:'Gestão do Projeto', accentBg:'#FFCD11', accentText:'#1A1A1A', actions:[],         attachments:{} },
-    pessoal: { label:'Pessoal',    initials:'P',   bodyClass:'tenant-pessoal', sidebarTitle:'Pessoal', sidebarSubtitle:'Gestão do Projeto', accentBg:'#dc2626', accentText:'#fff',    actions:[],         attachments:{} }
+    jd:      { label:'John Deere', initials:'JD',  bodyClass:'',               sidebarTitle:'SPI',     sidebarSubtitle:'Gestão do Projeto', accentBg:'#FFDE00', accentText:'#0A2008', sidebarBg:'#1E4D17', actions:JD_ACTIONS, attachments:{} },
+    cat:     { label:'CAT',        initials:'CAT', bodyClass:'tenant-cat',     sidebarTitle:'CAT',     sidebarSubtitle:'Gestão do Projeto', accentBg:'#FFCD11', accentText:'#1A1A1A', sidebarBg:'#1A1A1A', actions:[],         attachments:{} },
+    pessoal: { label:'Pessoal',    initials:'P',   bodyClass:'tenant-pessoal', sidebarTitle:'Pessoal', sidebarSubtitle:'Gestão do Projeto', accentBg:'#dc2626', accentText:'#fff',    sidebarBg:'#0D2461', actions:[],         attachments:{} }
   };
   let currentTenant = 'jd';
   let allActions    = TENANTS.jd.actions;
@@ -1810,11 +1810,17 @@ document.addEventListener("DOMContentLoaded", function() {
   function applyTenantTheme(key) {
     const t = TENANTS[key];
     document.body.className = t.bodyClass || '';
+    const sidebar      = document.querySelector('.sidebar');
     const logoIcon     = document.querySelector('.sidebar-logo .logo-icon');
     const logoInitials = document.getElementById('logoInitials');
+    if (t.sidebarBg) sidebar.style.background = t.sidebarBg;
+    else             sidebar.style.background = '';
     logoIcon.style.background   = t.accentBg   || '#FFDE00';
     logoInitials.style.color    = t.accentText  || '#0A2008';
     logoInitials.style.fontSize = initialsFontSize(t.initials);
+    // Propagate accent to CSS variables so nav active items also follow tenant color
+    document.documentElement.style.setProperty('--tenant-nav-active-bg',   t.accentBg   || '#367C2B');
+    document.documentElement.style.setProperty('--tenant-nav-active-text', t.accentText || '#FFDE00');
   }
 
   // ── Tenant list ────────────────────────────────────────────────────────────
@@ -1890,7 +1896,8 @@ document.addEventListener("DOMContentLoaded", function() {
         sidebarSubtitle:TENANTS[key].sidebarSubtitle,
         bodyClass:      TENANTS[key].bodyClass,
         accentBg:       TENANTS[key].accentBg  || '',
-        accentText:     TENANTS[key].accentText || ''
+        accentText:     TENANTS[key].accentText || '',
+        sidebarBg:      TENANTS[key].sidebarBg  || ''
       };
     });
     try { localStorage.setItem('spi_all_tenants', JSON.stringify(all)); }
@@ -1937,6 +1944,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 sidebarSubtitle:c.sidebarSubtitle || 'Gestão do Projeto',
                 accentBg:       c.accentBg || '#367C2B',
                 accentText:     c.accentText || '#fff',
+                sidebarBg:      c.sidebarBg || '#1E4D17',
                 actions:        [],
                 attachments:    {}
               };
@@ -1966,6 +1974,7 @@ document.addEventListener("DOMContentLoaded", function() {
         TENANTS[key].bodyClass      = typeof c.bodyClass === 'string' ? c.bodyClass : TENANTS[key].bodyClass;
         TENANTS[key].accentBg       = c.accentBg   || TENANTS[key].accentBg;
         TENANTS[key].accentText     = c.accentText  || TENANTS[key].accentText;
+        TENANTS[key].sidebarBg      = c.sidebarBg   || TENANTS[key].sidebarBg;
       } else {
         TENANTS[key] = {
           label:          c.label,
@@ -1975,6 +1984,7 @@ document.addEventListener("DOMContentLoaded", function() {
           sidebarSubtitle:c.sidebarSubtitle|| 'Gestão do Projeto',
           accentBg:       c.accentBg       || '#367C2B',
           accentText:     c.accentText     || '#fff',
+          sidebarBg:      c.sidebarBg      || '#1E4D17',
           actions:        [],
           attachments:    {}
         };
@@ -1982,7 +1992,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
     // Safety: if all tenants were deleted, restore JD
     if (Object.keys(TENANTS).length === 0) {
-      TENANTS.jd = { label:'John Deere', initials:'JD', bodyClass:'', sidebarTitle:'SPI', sidebarSubtitle:'Gestão do Projeto', accentBg:'#FFDE00', accentText:'#0A2008', actions:JD_ACTIONS, attachments:{} };
+      TENANTS.jd = { label:'John Deere', initials:'JD', bodyClass:'', sidebarTitle:'SPI', sidebarSubtitle:'Gestão do Projeto', accentBg:'#FFDE00', accentText:'#0A2008', sidebarBg:'#1E4D17', actions:JD_ACTIONS, attachments:{} };
     }
     // Ensure currentTenant still exists
     if (!TENANTS[currentTenant]) currentTenant = Object.keys(TENANTS)[0];
@@ -2040,6 +2050,7 @@ document.addEventListener("DOMContentLoaded", function() {
       sidebarSubtitle:t.sidebarSubtitle || 'Gestão do Projeto',
       accentBg:       t.accentBg  || '#367C2B',
       accentText:     t.accentText || '#fff',
+      sidebarBg:      t.sidebarBg  || '#1E4D17',
       actions:        copiedActions,
       attachments:    {}
     };
@@ -2068,19 +2079,23 @@ document.addEventListener("DOMContentLoaded", function() {
   ];
 
   function getModalColors() {
-    const bg   = document.getElementById('nt-color-bg');
-    const text = document.getElementById('nt-color-text');
+    const bg      = document.getElementById('nt-color-bg');
+    const text    = document.getElementById('nt-color-text');
+    const sidebar = document.getElementById('nt-color-sidebar');
     return {
-      bg:   (bg   && bg.value)   ? bg.value   : '#367C2B',
-      text: (text && text.value) ? text.value : '#ffffff'
+      bg:      (bg      && bg.value)      ? bg.value      : '#367C2B',
+      text:    (text    && text.value)    ? text.value    : '#ffffff',
+      sidebar: (sidebar && sidebar.value) ? sidebar.value : '#1E4D17'
     };
   }
 
-  function setModalColors(bg, text) {
-    const bgEl   = document.getElementById('nt-color-bg');
-    const textEl = document.getElementById('nt-color-text');
-    if (bgEl)   bgEl.value   = bg   || '#367C2B';
-    if (textEl) textEl.value = text || '#ffffff';
+  function setModalColors(bg, text, sidebar) {
+    const bgEl      = document.getElementById('nt-color-bg');
+    const textEl    = document.getElementById('nt-color-text');
+    const sidebarEl = document.getElementById('nt-color-sidebar');
+    if (bgEl)      bgEl.value      = bg      || '#367C2B';
+    if (textEl)    textEl.value    = text    || '#ffffff';
+    if (sidebarEl) sidebarEl.value = sidebar || '#1E4D17';
   }
 
   function renderSwatches() {
@@ -2098,7 +2113,7 @@ document.addEventListener("DOMContentLoaded", function() {
       s.title = c.name + ' (fundo: ' + c.bg + ' / texto: ' + c.text + ')';
       s.setAttribute('aria-label', c.name + ': fundo ' + c.bg + ', texto ' + c.text);
       s.addEventListener('click', function() {
-        setModalColors(c.bg, c.text);
+        setModalColors(c.bg, c.text, c.bg);
         renderSwatches();
         updateModalPreview();
       });
@@ -2135,12 +2150,12 @@ document.addEventListener("DOMContentLoaded", function() {
       document.getElementById('nt-label').value    = t.label;
       document.getElementById('nt-initials').value = t.initials;
       document.getElementById('nt-subtitle').value = t.sidebarSubtitle;
-      setModalColors(t.accentBg || '#367C2B', t.accentText || '#ffffff');
+      setModalColors(t.accentBg || '#367C2B', t.accentText || '#ffffff', t.sidebarBg || '#1E4D17');
     } else {
       document.getElementById('nt-label').value    = '';
       document.getElementById('nt-initials').value = '';
       document.getElementById('nt-subtitle').value = '';
-      setModalColors(COLOR_PRESETS[0].bg, COLOR_PRESETS[0].text);
+      setModalColors(COLOR_PRESETS[0].bg, COLOR_PRESETS[0].text, COLOR_PRESETS[0].bg);
     }
     renderSwatches();
     updateModalPreview();
@@ -2174,6 +2189,7 @@ document.addEventListener("DOMContentLoaded", function() {
       TENANTS[editKey].sidebarSubtitle= subtitle;
       TENANTS[editKey].accentBg       = c.bg;
       TENANTS[editKey].accentText     = c.text;
+      TENANTS[editKey].sidebarBg      = c.sidebar;
       saveAllTenants();
       closeTenantModal();
       // Refresh current view if we edited the active tenant
@@ -2200,6 +2216,7 @@ document.addEventListener("DOMContentLoaded", function() {
         sidebarSubtitle:subtitle,
         accentBg:       c.bg,
         accentText:     c.text,
+        sidebarBg:      c.sidebar,
         actions:        [],
         attachments:    {}
       };
@@ -2227,7 +2244,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   });
   // Color pickers trigger live preview + swatch highlight refresh
-  ['nt-color-bg','nt-color-text'].forEach(function(id) {
+  ['nt-color-bg','nt-color-text','nt-color-sidebar'].forEach(function(id) {
     document.getElementById(id).addEventListener('input', function() {
       renderSwatches();
       updateModalPreview();
@@ -2285,12 +2302,16 @@ document.addEventListener("DOMContentLoaded", function() {
       <label>Cores <span style="font-size:10px;color:#9ca3af;font-weight:400">(ou escolha uma combinação abaixo)</span></label>
       <div class="nt-color-pickers">
         <div class="nt-color-picker">
+          <input type="color" id="nt-color-sidebar" value="#1E4D17" title="Cor de fundo da barra lateral" />
+          <span class="nt-color-picker-label">Barra Lateral</span>
+        </div>
+        <div class="nt-color-picker">
           <input type="color" id="nt-color-bg" value="#367C2B" title="Cor de fundo do logo" />
-          <span class="nt-color-picker-label">Fundo</span>
+          <span class="nt-color-picker-label">Quadradinho</span>
         </div>
         <div class="nt-color-picker">
           <input type="color" id="nt-color-text" value="#ffffff" title="Cor do texto / sigla" />
-          <span class="nt-color-picker-label">Texto</span>
+          <span class="nt-color-picker-label">Letras</span>
         </div>
       </div>
       <div class="nt-swatches" id="ntSwatches" style="margin-top:8px"></div>
