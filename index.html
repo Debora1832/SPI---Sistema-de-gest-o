@@ -54,7 +54,12 @@
     .page.active { display:block; }
 
     /* ===== KPI CARDS ===== */
-    .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:16px; margin-bottom:24px; }
+    .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:16px; margin-bottom:12px; }
+    .kpi-section-title {
+      font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.07em;
+      color:#6b7280; margin:8px 0 10px; padding-left:2px;
+    }
+    .kpi-grid.performance { margin-bottom:24px; }
     .kpi-card {
       background:white; padding:20px; border-radius:12px;
       box-shadow:0 1px 4px rgba(0,0,0,.06); border-left:4px solid transparent;
@@ -544,7 +549,9 @@
       <p>Visão geral de todas as ações do plano SIP</p>
     </div>
 
-    <div class="kpi-grid" id="kpiGrid"></div>
+    <div class="kpi-grid" id="kpiGridVolume"></div>
+    <div class="kpi-section-title" id="kpiPerfTitle">KPIs de Performance</div>
+    <div class="kpi-grid performance" id="kpiGridPerformance"></div>
 
     <div class="progress-section">
       <h3>Progresso geral do plano</h3>
@@ -1100,12 +1107,13 @@ document.addEventListener("DOMContentLoaded", function() {
     const delayed  = allActions.filter(a=>resolveStatus(a)==="delayed").length;
     const pct = Math.round((complete/total)*100);
 
-    const kpiGrid = document.getElementById("kpiGrid");
-    const onTime     = allActions.filter(a=>resolveDeadlineAdherence(a)==="on_time").length;
+    const onTime       = allActions.filter(a=>resolveDeadlineAdherence(a)==="on_time").length;
     const lateComplete = allActions.filter(a=>resolveDeadlineAdherence(a)==="late_complete").length;
     const adherenceDenom = onTime + lateComplete;
-    const adherencePct = adherenceDenom > 0 ? Math.round((onTime/adherenceDenom)*100) : 0;
-    kpiGrid.innerHTML = `
+    const adherencePct   = adherenceDenom > 0 ? Math.round((onTime/adherenceDenom)*100) : 0;
+
+    // ── Volume KPIs (top row) ──────────────────────────────────────────────
+    document.getElementById("kpiGridVolume").innerHTML = `
       <div class="kpi-card total">
         <div class="kpi-label">Total de Ações</div>
         <div class="kpi-value">${total}</div>
@@ -1126,6 +1134,10 @@ document.addEventListener("DOMContentLoaded", function() {
         <div class="kpi-value">${delayed}</div>
         <div class="kpi-sub">${calcPercent(delayed,total)}% do total</div>
       </div>
+    `;
+
+    // ── Performance / Adherence KPIs (bottom row) ──────────────────────────
+    document.getElementById("kpiGridPerformance").innerHTML = `
       <div class="kpi-card on_time">
         <div class="kpi-label">Concluídas no prazo</div>
         <div class="kpi-value">${onTime}</div>
