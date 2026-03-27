@@ -210,11 +210,11 @@
     /* ===== BUTTONS ===== */
     .btn-primary {
       display:inline-flex; align-items:center; gap:6px;
-      background:#367C2B; color:#fff; border:none; border-radius:8px;
+      background:var(--tenant-sidebar-bg,#1E4D17); color:#fff; border:none; border-radius:8px;
       padding:8px 16px; font-size:13px; font-weight:600; cursor:pointer;
       transition:background .15s;
     }
-    .btn-primary:hover { background:#2A6121; }
+    .btn-primary:hover { background:var(--tenant-sidebar-hover,#163d10); }
     .btn-edit {
       background:#f3f6f0; color:#374151; border:1px solid #c8ddc3;
       border-radius:6px; padding:4px 10px; font-size:11px; font-weight:600;
@@ -281,9 +281,8 @@
       border-radius:8px; padding:8px 18px; font-size:13px; font-weight:600; cursor:pointer;
     }
     .btn-cancel:hover { background:#e5e7eb; }
-    .btn-save { background:#367C2B; color:#fff; border:none; border-radius:8px; padding:8px 22px; font-size:13px; font-weight:600; cursor:pointer; }
-    .btn-save:hover { background:#2A6121; }
-    .btn-export { background:#2A6121; }
+    .btn-save { background:var(--tenant-sidebar-bg,#1E4D17); color:#fff; border:none; border-radius:8px; padding:8px 22px; font-size:13px; font-weight:600; cursor:pointer; }
+    .btn-save:hover { background:var(--tenant-sidebar-hover,#163d10); }
 
     /* ===== TENANT SWITCHER (list) ===== */
     .tenant-switcher { padding-top:12px; border-top:1px solid rgba(255,255,255,.12); }
@@ -387,9 +386,9 @@
     }
     #newTenantBackdrop .nt-btn-save {
       padding:8px 18px; border:none; border-radius:7px;
-      background:#367C2B; color:#fff; font-size:13px; font-weight:600; cursor:pointer;
+      background:var(--tenant-sidebar-bg,#1E4D17); color:#fff; font-size:13px; font-weight:600; cursor:pointer;
     }
-    #newTenantBackdrop .nt-btn-save:hover { background:#2A6121; }
+    #newTenantBackdrop .nt-btn-save:hover { background:var(--tenant-sidebar-hover,#163d10); }
 
     /* ===== CAT THEME (yellow & black) ===== */
     body.tenant-cat .sidebar { background:#1A1A1A; }
@@ -425,11 +424,6 @@
     body.tenant-cat .form-field input:focus, body.tenant-cat .form-field select:focus, body.tenant-cat .form-field textarea:focus { border-color:#FFCD11; box-shadow:0 0 0 3px rgba(255,205,17,.18); }
     body.tenant-cat .filter-row select:focus { border-color:#FFCD11; box-shadow:0 0 0 3px rgba(255,205,17,.18); }
     body.tenant-cat .filter-row select { border-color:#ffe082; }
-    body.tenant-cat .btn-primary { background:#1A1A1A; }
-    body.tenant-cat .btn-primary:hover { background:#333; }
-    body.tenant-cat .btn-export { background:#333; }
-    body.tenant-cat .btn-save { background:#1A1A1A; }
-    body.tenant-cat .btn-save:hover { background:#333; }
     body.tenant-cat .attachment-drop-zone { border-color:#ffe082; }
     body.tenant-cat .attachment-drop-zone:hover, body.tenant-cat .attachment-drop-zone.dragover { border-color:#FFCD11; background:#fffde7; color:#1A1A1A; }
     body.tenant-cat .attachment-item { background:#fffde7; border-color:#ffe082; }
@@ -468,11 +462,6 @@
     body.tenant-pessoal .form-field input:focus, body.tenant-pessoal .form-field select:focus, body.tenant-pessoal .form-field textarea:focus { border-color:#1535A0; box-shadow:0 0 0 3px rgba(13,36,97,.18); }
     body.tenant-pessoal .filter-row select:focus { border-color:#1535A0; box-shadow:0 0 0 3px rgba(13,36,97,.18); }
     body.tenant-pessoal .filter-row select { border-color:#6B8FE8; }
-    body.tenant-pessoal .btn-primary { background:#0D2461; }
-    body.tenant-pessoal .btn-primary:hover { background:#091849; }
-    body.tenant-pessoal .btn-export { background:#091849; }
-    body.tenant-pessoal .btn-save { background:#0D2461; }
-    body.tenant-pessoal .btn-save:hover { background:#091849; }
     body.tenant-pessoal .attachment-drop-zone { border-color:#6B8FE8; }
     body.tenant-pessoal .attachment-drop-zone:hover, body.tenant-pessoal .attachment-drop-zone.dragover { border-color:#0D2461; background:#D4E0F9; color:#0D2461; }
     body.tenant-pessoal .attachment-item { background:#D4E0F9; border-color:#6B8FE8; }
