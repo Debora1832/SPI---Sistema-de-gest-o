@@ -298,13 +298,14 @@
     }
     .tenant-item.active .tenant-item-name { color:#fff; }
     .tenant-item-btns { display:flex; gap:2px; flex-shrink:0; }
-    .tenant-item-edit, .tenant-item-del {
+    .tenant-item-edit, .tenant-item-del, .tenant-item-dup {
       display:inline-flex; align-items:center; justify-content:center;
       width:18px; height:18px; border-radius:4px; border:none; padding:0;
       background:transparent; color:rgba(255,255,255,.3); font-size:12px;
       cursor:pointer; transition:background .12s, color .12s; line-height:1;
     }
     .tenant-item-edit:hover { background:rgba(255,255,255,.15); color:#fff; }
+    .tenant-item-dup:hover { background:rgba(56,189,248,.45); color:#fff; }
     .tenant-item-del:hover { background:rgba(220,38,38,.55); color:#fff; }
     .btn-new-tenant {
       width:100%; margin-top:6px; padding:5px 8px;
@@ -351,6 +352,15 @@
     }
     .nt-swatch:hover { transform:scale(1.18); }
     .nt-swatch.selected { outline-color:#374151; transform:scale(1.12); }
+    /* Free color pickers */
+    .nt-color-pickers { display:flex; gap:14px; margin-top:10px; }
+    .nt-color-picker { display:flex; align-items:center; gap:7px; }
+    .nt-color-picker input[type=color] {
+      width:38px; height:38px; border:2px solid #d1d5db; border-radius:8px;
+      padding:2px; cursor:pointer; background:transparent; flex-shrink:0;
+    }
+    .nt-color-picker input[type=color]:focus { border-color:#367C2B; outline:none; }
+    .nt-color-picker-label { font-size:11px; font-weight:600; color:#6b7280; }
     /* Live preview */
     .nt-preview {
       display:flex; align-items:center; gap:10px; padding:10px 12px;
@@ -1834,6 +1844,14 @@ document.addEventListener("DOMContentLoaded", function() {
       editBtn.addEventListener('click', function(e) { e.stopPropagation(); openTenantModal(key); });
       btns.appendChild(editBtn);
 
+      const dupBtn = document.createElement('button');
+      dupBtn.className = 'tenant-item-dup';
+      dupBtn.title = 'Duplicar cliente';
+      dupBtn.setAttribute('aria-label', 'Duplicar ' + t.label);
+      dupBtn.textContent = '⧉';
+      dupBtn.addEventListener('click', function(e) { e.stopPropagation(); duplicateTenant(key); });
+      btns.appendChild(dupBtn);
+
       const delBtn = document.createElement('button');
       delBtn.className = 'tenant-item-del';
       delBtn.title = 'Remover cliente';
@@ -1990,37 +2008,85 @@ document.addEventListener("DOMContentLoaded", function() {
     renderTenantList();
   }
 
+  // ── Duplicate tenant ──────────────────────────────────────────────────────
+
+  function duplicateTenant(key) {
+    const t = TENANTS[key];
+    // Generate a unique key
+    let newKey = key + '_copy';
+    let copyNum = 2;
+    while (TENANTS[newKey]) { newKey = key + '_copy' + copyNum++; }
+    // Deep-copy actions so the duplicate is independent
+    let copiedActions = [];
+    try { copiedActions = JSON.parse(JSON.stringify(t.actions || [])); }
+    catch(e) { copiedActions = []; }
+    TENANTS[newKey] = {
+      label:          t.label + ' (cópia)',
+      initials:       t.initials,
+      bodyClass:      t.bodyClass || '',
+      sidebarTitle:   t.sidebarTitle || t.initials,
+      sidebarSubtitle:t.sidebarSubtitle || 'Gestão do Projeto',
+      accentBg:       t.accentBg  || '#367C2B',
+      accentText:     t.accentText || '#fff',
+      actions:        copiedActions,
+      attachments:    {}
+    };
+    saveAllTenants();
+    saveTenantActions(newKey, copiedActions);
+    renderTenantList();
+  }
+
+
+
   // ── Color presets ──────────────────────────────────────────────────────────
 
   const COLOR_PRESETS = [
-    { bg:'#367C2B', text:'#fff'     }, // verde
-    { bg:'#FFDE00', text:'#0A2008'  }, // amarelo JD
-    { bg:'#FFCD11', text:'#1A1A1A'  }, // amarelo CAT
-    { bg:'#0D2461', text:'#fff'     }, // azul marinho
-    { bg:'#2563eb', text:'#fff'     }, // azul
-    { bg:'#0891b2', text:'#fff'     }, // ciano
-    { bg:'#dc2626', text:'#fff'     }, // vermelho
-    { bg:'#f97316', text:'#fff'     }, // laranja
-    { bg:'#7c3aed', text:'#fff'     }, // roxo
-    { bg:'#db2777', text:'#fff'     }, // rosa
-    { bg:'#1a1a1a', text:'#fff'     }, // preto
-    { bg:'#6b7280', text:'#fff'     }, // cinza
+    { bg:'#367C2B', text:'#ffffff', name:'Verde'        },
+    { bg:'#FFDE00', text:'#0A2008', name:'Amarelo JD'   },
+    { bg:'#FFCD11', text:'#1A1A1A', name:'Amarelo CAT'  },
+    { bg:'#0D2461', text:'#ffffff', name:'Azul marinho' },
+    { bg:'#2563eb', text:'#ffffff', name:'Azul'         },
+    { bg:'#0891b2', text:'#ffffff', name:'Ciano'        },
+    { bg:'#dc2626', text:'#ffffff', name:'Vermelho'     },
+    { bg:'#f97316', text:'#ffffff', name:'Laranja'      },
+    { bg:'#7c3aed', text:'#ffffff', name:'Roxo'         },
+    { bg:'#db2777', text:'#ffffff', name:'Rosa'         },
+    { bg:'#1a1a1a', text:'#ffffff', name:'Preto'        },
+    { bg:'#6b7280', text:'#ffffff', name:'Cinza'        },
   ];
-  let selectedColorIdx = 0;
+
+  function getModalColors() {
+    const bg   = document.getElementById('nt-color-bg');
+    const text = document.getElementById('nt-color-text');
+    return {
+      bg:   (bg   && bg.value)   ? bg.value   : '#367C2B',
+      text: (text && text.value) ? text.value : '#ffffff'
+    };
+  }
+
+  function setModalColors(bg, text) {
+    const bgEl   = document.getElementById('nt-color-bg');
+    const textEl = document.getElementById('nt-color-text');
+    if (bgEl)   bgEl.value   = bg   || '#367C2B';
+    if (textEl) textEl.value = text || '#ffffff';
+  }
 
   function renderSwatches() {
     const el = document.getElementById('ntSwatches');
     if (!el) return;
+    const cur = getModalColors();
     el.innerHTML = '';
-    COLOR_PRESETS.forEach(function(c, i) {
+    COLOR_PRESETS.forEach(function(c) {
       const s = document.createElement('button');
       s.type = 'button';
-      s.className = 'nt-swatch' + (i === selectedColorIdx ? ' selected' : '');
+      // Highlight if bg matches current
+      const active = c.bg === cur.bg;
+      s.className = 'nt-swatch' + (active ? ' selected' : '');
       s.style.background = c.bg;
-      s.title = c.bg;
-      s.setAttribute('aria-label', 'Cor ' + (i + 1));
+      s.title = c.name + ' (fundo: ' + c.bg + ' / texto: ' + c.text + ')';
+      s.setAttribute('aria-label', c.name + ': fundo ' + c.bg + ', texto ' + c.text);
       s.addEventListener('click', function() {
-        selectedColorIdx = i;
+        setModalColors(c.bg, c.text);
         renderSwatches();
         updateModalPreview();
       });
@@ -2032,7 +2098,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const initials = (document.getElementById('nt-initials').value.trim().toUpperCase()) || '??';
     const name     = document.getElementById('nt-label').value.trim()   || 'Nome do cliente';
     const subtitle = document.getElementById('nt-subtitle').value.trim() || 'Gestão do Projeto';
-    const c = COLOR_PRESETS[selectedColorIdx];
+    const c = getModalColors();
     const icon = document.getElementById('ntPreviewIcon');
     if (!icon) return;
     icon.textContent       = initials;
@@ -2057,14 +2123,12 @@ document.addEventListener("DOMContentLoaded", function() {
       document.getElementById('nt-label').value    = t.label;
       document.getElementById('nt-initials').value = t.initials;
       document.getElementById('nt-subtitle').value = t.sidebarSubtitle;
-      // Find closest color preset
-      const found = COLOR_PRESETS.findIndex(function(c) { return c.bg === (t.accentBg || ''); });
-      selectedColorIdx = found >= 0 ? found : 0;
+      setModalColors(t.accentBg || '#367C2B', t.accentText || '#ffffff');
     } else {
       document.getElementById('nt-label').value    = '';
       document.getElementById('nt-initials').value = '';
       document.getElementById('nt-subtitle').value = '';
-      selectedColorIdx = 0;
+      setModalColors(COLOR_PRESETS[0].bg, COLOR_PRESETS[0].text);
     }
     renderSwatches();
     updateModalPreview();
@@ -2082,7 +2146,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const subtitle = document.getElementById('nt-subtitle').value.trim() || 'Gestão do Projeto';
     const editKey  = document.getElementById('nt-editing-key').value;
     const errEl    = document.getElementById('newTenantError');
-    const c        = COLOR_PRESETS[selectedColorIdx];
+    const c        = getModalColors();
 
     if (!label || !initials) {
       errEl.textContent = 'Preencha o nome do cliente e a sigla.';
@@ -2150,6 +2214,13 @@ document.addEventListener("DOMContentLoaded", function() {
       if (e.key === 'Escape') closeTenantModal();
     });
   });
+  // Color pickers trigger live preview + swatch highlight refresh
+  ['nt-color-bg','nt-color-text'].forEach(function(id) {
+    document.getElementById(id).addEventListener('input', function() {
+      renderSwatches();
+      updateModalPreview();
+    });
+  });
 
   // ── Init (async — load persisted data before first render) ───────────────
   (async function init() {
@@ -2199,8 +2270,18 @@ document.addEventListener("DOMContentLoaded", function() {
       <input type="text" id="nt-subtitle" placeholder="Ex: Gestão SIP 2025" maxlength="50" autocomplete="off" />
     </div>
     <div class="nt-field">
-      <label>Cor / Tema</label>
-      <div class="nt-swatches" id="ntSwatches"></div>
+      <label>Cores <span style="font-size:10px;color:#9ca3af;font-weight:400">(ou escolha uma combinação abaixo)</span></label>
+      <div class="nt-color-pickers">
+        <div class="nt-color-picker">
+          <input type="color" id="nt-color-bg" value="#367C2B" title="Cor de fundo do logo" />
+          <span class="nt-color-picker-label">Fundo</span>
+        </div>
+        <div class="nt-color-picker">
+          <input type="color" id="nt-color-text" value="#ffffff" title="Cor do texto / sigla" />
+          <span class="nt-color-picker-label">Texto</span>
+        </div>
+      </div>
+      <div class="nt-swatches" id="ntSwatches" style="margin-top:8px"></div>
     </div>
     <div class="nt-preview" id="ntPreview">
       <div class="nt-preview-icon" id="ntPreviewIcon" style="background:#367C2B; color:#fff; font-size:22px;">??</div>
