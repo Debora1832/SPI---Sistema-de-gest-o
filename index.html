@@ -45,8 +45,8 @@
 
     /* ===== MAIN ===== */
     .main { flex:1; padding:28px 32px; overflow:auto; }
-    .page-header { margin-bottom:24px; border-left:4px solid var(--tenant-nav-active-bg,#367C2B); padding-left:14px; }
-    .page-header h1 { font-size:22px; font-weight:700; color:var(--tenant-nav-active-bg,#367C2B); }
+    .page-header { margin-bottom:24px; border-left:4px solid var(--tenant-sidebar-bg,#1E4D17); padding-left:14px; }
+    .page-header h1 { font-size:22px; font-weight:700; color:var(--tenant-sidebar-bg,#1E4D17); }
     .page-header p { font-size:13px; color:#6b7280; margin-top:4px; }
 
     /* ===== PAGES ===== */
@@ -359,7 +359,8 @@
     .nt-swatch.selected { outline-color:#374151; transform:scale(1.12); }
     /* Free color pickers */
     .nt-color-pickers { display:flex; gap:14px; margin-top:10px; }
-    .nt-color-picker { display:flex; flex-direction:column; align-items:center; gap:4px; }
+    .nt-color-picker { display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer; border-radius:8px; padding:6px 8px; border:2px solid transparent; transition:border-color .15s; }
+    .nt-color-picker.active { border-color:#367C2B; background:rgba(54,124,43,.07); }
     .nt-color-picker input[type=color] {
       width:38px; height:38px; border:2px solid #d1d5db; border-radius:8px;
       padding:2px; cursor:pointer; background:transparent; flex-shrink:0;
@@ -2102,22 +2103,44 @@ document.addEventListener("DOMContentLoaded", function() {
     if (sidebarEl) sidebarEl.value = sidebar || '#1E4D17';
   }
 
+  // ── Active color picker tracking ────────────────────────────────────────────
+  // Tracks which of the three pickers (sidebar/bg/text) receives swatch clicks.
+  var _activePicker = 'sidebar';
+
+  function setActivePicker(key) {
+    _activePicker = key;
+    document.querySelectorAll('#newTenantBackdrop .nt-color-picker').forEach(function(el) {
+      el.classList.toggle('active', el.getAttribute('data-picker') === key);
+    });
+    renderSwatches();
+  }
+
   function renderSwatches() {
     const el = document.getElementById('ntSwatches');
     if (!el) return;
     const cur = getModalColors();
+    // Determine which color to compare against for 'selected' highlight
+    const activeValue = _activePicker === 'bg'   ? cur.bg
+                      : _activePicker === 'text' ? cur.text
+                      :                            cur.sidebar;
     el.innerHTML = '';
     COLOR_PRESETS.forEach(function(c) {
       const s = document.createElement('button');
       s.type = 'button';
-      // Highlight if bg matches current
-      const active = c.bg === cur.bg;
-      s.className = 'nt-swatch' + (active ? ' selected' : '');
+      const isSelected = c.bg === activeValue;
+      s.className = 'nt-swatch' + (isSelected ? ' selected' : '');
       s.style.background = c.bg;
-      s.title = c.name + ' (fundo: ' + c.bg + ' / texto: ' + c.text + ')';
-      s.setAttribute('aria-label', c.name + ': fundo ' + c.bg + ', texto ' + c.text);
+      s.title = c.name + ' (' + c.bg + ')';
+      s.setAttribute('aria-label', c.name + ': ' + c.bg);
       s.addEventListener('click', function() {
-        setModalColors(c.bg, c.text, c.bg);
+        // Apply only to the active picker
+        if (_activePicker === 'bg') {
+          document.getElementById('nt-color-bg').value = c.bg;
+        } else if (_activePicker === 'text') {
+          document.getElementById('nt-color-text').value = c.bg;
+        } else {
+          document.getElementById('nt-color-sidebar').value = c.bg;
+        }
         renderSwatches();
         updateModalPreview();
       });
@@ -2163,6 +2186,7 @@ document.addEventListener("DOMContentLoaded", function() {
     }
     renderSwatches();
     updateModalPreview();
+    setActivePicker('sidebar');
     document.getElementById('newTenantBackdrop').classList.add('open');
     setTimeout(function() { document.getElementById('nt-label').focus(); }, 50);
   }
@@ -2247,8 +2271,15 @@ document.addEventListener("DOMContentLoaded", function() {
       if (e.key === 'Escape') closeTenantModal();
     });
   });
-  // Color pickers trigger live preview + swatch highlight refresh
+  // Color pickers: clicking the picker div or focusing the input sets the active picker
+  document.querySelectorAll('#newTenantBackdrop .nt-color-picker').forEach(function(div) {
+    div.addEventListener('click', function() {
+      setActivePicker(div.getAttribute('data-picker'));
+    });
+  });
   ['nt-color-bg','nt-color-text','nt-color-sidebar'].forEach(function(id) {
+    var key = id === 'nt-color-bg' ? 'bg' : id === 'nt-color-text' ? 'text' : 'sidebar';
+    document.getElementById(id).addEventListener('focus', function() { setActivePicker(key); });
     document.getElementById(id).addEventListener('input', function() {
       renderSwatches();
       updateModalPreview();
@@ -2305,15 +2336,15 @@ document.addEventListener("DOMContentLoaded", function() {
     <div class="nt-field">
       <label>Cores <span style="font-size:10px;color:#9ca3af;font-weight:400">(ou escolha uma combinação abaixo)</span></label>
       <div class="nt-color-pickers">
-        <div class="nt-color-picker">
+        <div class="nt-color-picker active" data-picker="sidebar">
           <span class="nt-color-picker-label">Barra Lateral</span>
           <input type="color" id="nt-color-sidebar" value="#1E4D17" title="Cor de fundo da barra lateral" />
         </div>
-        <div class="nt-color-picker">
+        <div class="nt-color-picker" data-picker="bg">
           <span class="nt-color-picker-label">Quadradinho</span>
           <input type="color" id="nt-color-bg" value="#367C2B" title="Cor de fundo do logo" />
         </div>
-        <div class="nt-color-picker">
+        <div class="nt-color-picker" data-picker="text">
           <span class="nt-color-picker-label">Letras</span>
           <input type="color" id="nt-color-text" value="#ffffff" title="Cor do texto / sigla" />
         </div>
