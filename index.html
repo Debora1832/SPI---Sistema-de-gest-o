@@ -7,6 +7,10 @@
 
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 
+  <!-- Firebase SDK (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
   <style>
     *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; font-family:'Inter', sans-serif; }
 
@@ -695,6 +699,59 @@
 
 document.addEventListener("DOMContentLoaded", function() {
 
+  // ── Firebase configuration ────────────────────────────────────────────────
+  // Substitua os valores abaixo pelas credenciais do seu projeto Firebase.
+  // (Firebase console → Configurações do projeto → Seus apps → SDK setup)
+  const FIREBASE_CONFIG = {
+    apiKey:            "YOUR_API_KEY",
+    authDomain:        "YOUR_PROJECT_ID.firebaseapp.com",
+    projectId:         "YOUR_PROJECT_ID",
+    storageBucket:     "YOUR_PROJECT_ID.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId:             "YOUR_APP_ID"
+  };
+
+  const FIREBASE_READY = FIREBASE_CONFIG.apiKey !== "YOUR_API_KEY";
+  let db = null;
+  if (FIREBASE_READY) {
+    try {
+      if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+      db = firebase.firestore();
+    } catch(e) { console.warn("Firebase init error:", e); }
+  }
+
+  // Salva ações de um tenant no Firestore E no localStorage (fallback).
+  function saveTenantActions(tenantId, actions) {
+    const plain = actions.map(function(a){
+      return { id:a.id, group:a.group||"", desc:a.desc||"", team:a.team||"",
+               lead:a.lead||"", status:a.status||"not_started",
+               start:a.start||"", end:a.end||"",
+               completionDate:a.completionDate||"", reprazo:a.reprazo||"",
+               comments:a.comments||"" };
+    });
+    try { localStorage.setItem("spi_actions_" + tenantId, JSON.stringify(plain)); }
+    catch(e) { console.warn("localStorage save error:", e); }
+    if (db) {
+      db.collection("tenants").doc(tenantId).set({ actions: plain }, { merge: true })
+        .catch(function(e){ console.error("Firebase save error:", e); });
+    }
+  }
+
+  // Carrega ações de um tenant do Firestore ou, se falhar, do localStorage.
+  // Retorna Promise<array | null> (null = nenhum dado salvo).
+  async function loadTenantActions(tenantId) {
+    if (db) {
+      try {
+        const snap = await db.collection("tenants").doc(tenantId).get();
+        if (snap.exists) return snap.data().actions || [];
+      } catch(e) { console.error("Firebase load error:", e); }
+    }
+    try {
+      const local = localStorage.getItem("spi_actions_" + tenantId);
+      return local ? JSON.parse(local) : null;
+    } catch(e) { console.warn("localStorage load error:", e); return null; }
+  }
+
   const JD_ACTIONS = [
     {id:1,  group:"PFMEA e Plano de Controle",      status:"complete",    start:"2025-06-11", end:"2025-07-04",  completionDate:"2025-07-25", reprazo:"2025-07-25",  team:"QUALIDADE",  lead:"EDVAN",
       comments:"29/07/2025: Realizado a reestruturação do departamento de engenharia - qualidade, produto e manufatura respondem agora para o mesmo gestor",
@@ -1198,6 +1255,7 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     closeEditModal();
+    saveTenantActions(currentTenant, allActions);
     renderDashboard();
     renderTable();
     if(expandedGroup !== null) renderGantt();
@@ -1280,6 +1338,7 @@ document.addEventListener("DOMContentLoaded", function() {
     if(pendingDeleteId === null) return;
     const idx = allActions.findIndex(x=>x.id===pendingDeleteId);
     if(idx > -1) allActions.splice(idx, 1);
+    saveTenantActions(currentTenant, allActions);
     closeConfirmModal();
     renderDashboard();
     renderTable();
@@ -1644,10 +1703,24 @@ document.addEventListener("DOMContentLoaded", function() {
     btn.addEventListener('click', () => switchTenant(btn.dataset.tenant));
   });
 
-  renderDashboard();
-  populateFilters();
-  renderTable();
-  initTableResize(document.querySelector('#projects table'));
+  // ── Init (async — load persisted data before first render) ───────────────
+  (async function init() {
+    const tenantIds = ['jd', 'cat', 'pessoal'];
+    for (const tid of tenantIds) {
+      const saved = await loadTenantActions(tid);
+      if (saved !== null) {
+        TENANTS[tid].actions = saved;
+      } else if (tid === 'jd') {
+        // Primeira execução: grava os dados iniciais JD no storage
+        saveTenantActions('jd', JD_ACTIONS);
+      }
+    }
+    allActions = TENANTS[currentTenant].actions;
+    renderDashboard();
+    populateFilters();
+    renderTable();
+    initTableResize(document.querySelector('#projects table'));
+  })();
 
 });
 
