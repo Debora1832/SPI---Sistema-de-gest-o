@@ -45,8 +45,8 @@
 
     /* ===== MAIN ===== */
     .main { flex:1; padding:28px 32px; overflow:auto; }
-    .page-header { margin-bottom:24px; border-left:4px solid #367C2B; padding-left:14px; }
-    .page-header h1 { font-size:22px; font-weight:700; color:#1E4D17; }
+    .page-header { margin-bottom:24px; border-left:4px solid var(--tenant-nav-active-bg,#367C2B); padding-left:14px; }
+    .page-header h1 { font-size:22px; font-weight:700; color:var(--tenant-nav-active-bg,#367C2B); }
     .page-header p { font-size:13px; color:#6b7280; margin-top:4px; }
 
     /* ===== PAGES ===== */
@@ -359,7 +359,7 @@
     .nt-swatch.selected { outline-color:#374151; transform:scale(1.12); }
     /* Free color pickers */
     .nt-color-pickers { display:flex; gap:14px; margin-top:10px; }
-    .nt-color-picker { display:flex; align-items:center; gap:7px; }
+    .nt-color-picker { display:flex; flex-direction:column; align-items:center; gap:4px; }
     .nt-color-picker input[type=color] {
       width:38px; height:38px; border:2px solid #d1d5db; border-radius:8px;
       padding:2px; cursor:pointer; background:transparent; flex-shrink:0;
@@ -398,8 +398,6 @@
     body.tenant-cat .sidebar-nav li.active { background:#FFCD11; color:#1A1A1A; }
     body.tenant-cat .sidebar-nav li:not(.active):hover { background:rgba(255,255,255,.1); color:#fff; }
     body.tenant-cat .sidebar-footer { color:#777; }
-    body.tenant-cat .page-header { border-left-color:#FFCD11; }
-    body.tenant-cat .page-header h1 { color:#1A1A1A; }
     body.tenant-cat .gc-label-head { color:#1A1A1A; }
     body.tenant-cat .gc-month { border-left-color:#ffe082; }
     body.tenant-cat .kpi-card.complete { border-color:#333; }
@@ -445,8 +443,6 @@
     body.tenant-pessoal .sidebar-nav li.active { background:#1535A0; color:#fff; }
     body.tenant-pessoal .sidebar-nav li:not(.active):hover { background:rgba(255,255,255,.12); color:#fff; }
     body.tenant-pessoal .sidebar-footer { color:#8AAEE8; border-top-color:rgba(255,255,255,.15); }
-    body.tenant-pessoal .page-header { border-left-color:#dc2626; }
-    body.tenant-pessoal .page-header h1 { color:#0D2461; }
     body.tenant-pessoal .kpi-card.total { border-color:#0D2461; }
     body.tenant-pessoal .kpi-card.complete { border-color:#1535A0; }
     body.tenant-pessoal .kpi-card.on_going { border-color:#1535A0; }
@@ -2310,16 +2306,16 @@ document.addEventListener("DOMContentLoaded", function() {
       <label>Cores <span style="font-size:10px;color:#9ca3af;font-weight:400">(ou escolha uma combinação abaixo)</span></label>
       <div class="nt-color-pickers">
         <div class="nt-color-picker">
-          <input type="color" id="nt-color-sidebar" value="#1E4D17" title="Cor de fundo da barra lateral" />
           <span class="nt-color-picker-label">Barra Lateral</span>
+          <input type="color" id="nt-color-sidebar" value="#1E4D17" title="Cor de fundo da barra lateral" />
         </div>
         <div class="nt-color-picker">
-          <input type="color" id="nt-color-bg" value="#367C2B" title="Cor de fundo do logo" />
           <span class="nt-color-picker-label">Quadradinho</span>
+          <input type="color" id="nt-color-bg" value="#367C2B" title="Cor de fundo do logo" />
         </div>
         <div class="nt-color-picker">
-          <input type="color" id="nt-color-text" value="#ffffff" title="Cor do texto / sigla" />
           <span class="nt-color-picker-label">Letras</span>
+          <input type="color" id="nt-color-text" value="#ffffff" title="Cor do texto / sigla" />
         </div>
       </div>
       <div class="nt-swatches" id="ntSwatches" style="margin-top:8px"></div>
