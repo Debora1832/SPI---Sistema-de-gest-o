@@ -7,6 +7,10 @@
 
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 
+  <!-- Firebase SDK (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
   <style>
     *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; font-family:'Inter', sans-serif; }
 
@@ -27,7 +31,7 @@
     }
     .sidebar-logo h2 { font-size:15px; font-weight:700; line-height:1.3; color:#fff; }
     .sidebar-logo span { font-size:11px; color:#a8c89e; }
-    .sidebar-logo .logo-initials { font-size:52px; font-weight:900; color:#0A2008; letter-spacing:-1px; text-transform:uppercase; }
+    .sidebar-logo .logo-initials { font-size:26px; font-weight:900; color:#0A2008; letter-spacing:-1px; text-transform:uppercase; transition:font-size .12s; }
     .sidebar-nav { margin-top:16px; list-style:none; display:flex; flex-direction:column; gap:4px; }
     .sidebar-nav li {
       padding:10px 12px; border-radius:8px; cursor:pointer;
@@ -35,14 +39,14 @@
       color:#c8e0c3; transition:background .15s, color .15s;
     }
     .sidebar-nav li .nav-icon { width:18px; text-align:center; flex-shrink:0; }
-    .sidebar-nav li.active { background:#367C2B; color:#FFDE00; font-weight:700; }
+    .sidebar-nav li.active { background:var(--tenant-nav-active-bg,#367C2B); color:var(--tenant-nav-active-text,#FFDE00); font-weight:700; }
     .sidebar-nav li:not(.active):hover { background:rgba(255,255,255,.1); color:white; }
     .sidebar-footer { margin-top:auto; padding-top:16px; border-top:1px solid rgba(255,255,255,.12); font-size:11px; color:#7aaa6f; text-align:center; }
 
     /* ===== MAIN ===== */
     .main { flex:1; padding:28px 32px; overflow:auto; }
-    .page-header { margin-bottom:24px; border-left:4px solid #367C2B; padding-left:14px; }
-    .page-header h1 { font-size:22px; font-weight:700; color:#1E4D17; }
+    .page-header { margin-bottom:24px; border-left:4px solid var(--tenant-sidebar-bg,#1E4D17); padding-left:14px; }
+    .page-header h1 { font-size:22px; font-weight:700; color:var(--tenant-sidebar-bg,#1E4D17); }
     .page-header p { font-size:13px; color:#6b7280; margin-top:4px; }
 
     /* ===== PAGES ===== */
@@ -50,7 +54,12 @@
     .page.active { display:block; }
 
     /* ===== KPI CARDS ===== */
-    .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:16px; margin-bottom:24px; }
+    .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:16px; margin-bottom:12px; }
+    .kpi-section-title {
+      font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.07em;
+      color:#6b7280; margin:8px 0 10px; padding-left:2px;
+    }
+    .kpi-grid.performance { margin-bottom:24px; }
     .kpi-card {
       background:white; padding:20px; border-radius:12px;
       box-shadow:0 1px 4px rgba(0,0,0,.06); border-left:4px solid transparent;
@@ -77,7 +86,7 @@
     .card { background:white; padding:20px; border-radius:12px; box-shadow:0 1px 4px rgba(0,0,0,.06); }
     .card h3 { font-size:14px; font-weight:600; color:#374151; margin-bottom:14px; }
     table { width:100%; border-collapse:collapse; }
-    thead th { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#fff; background:#367C2B; padding:9px 10px; text-align:left; position:relative; }
+    thead th { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#fff; background:var(--tenant-sidebar-bg,#367C2B); padding:9px 10px; text-align:left; position:relative; }
     thead th:first-child { border-radius:6px 0 0 6px; }
     thead th:last-child  { border-radius:0 6px 6px 0; }
     tbody td { padding:10px 10px; border-bottom:1px solid #f3f6f0; font-size:13px; color:#374151; }
@@ -108,7 +117,7 @@
 
     /* ===== SORTABLE HEADERS ===== */
     thead th[data-sort] { cursor:pointer; user-select:none; white-space:nowrap; }
-    thead th[data-sort]:hover { background:#2A6121; }
+    thead th[data-sort]:hover { background:var(--tenant-sidebar-hover,#2A6121); }
     thead th[data-sort]::after { content:" ⇅"; font-size:10px; opacity:.5; }
     thead th[data-sort].sort-asc::after  { content:" ▲"; opacity:1; }
     thead th[data-sort].sort-desc::after { content:" ▼"; opacity:1; }
@@ -121,11 +130,11 @@
     .gc-header, .gc-row { display:flex; border-bottom:1px solid #eef3eb; }
     .gc-header { border-bottom:2px solid #c8ddc3; background:#f4f9f0; }
     .gc-label { width:var(--gc-label-w,240px); min-width:var(--gc-label-w,240px); padding:8px 12px; font-size:13px; color:#374151; display:flex; align-items:center; border-right:1px solid #d4e8ce; overflow:hidden; }
-    .gc-label-head { font-weight:700; font-size:11px; text-transform:uppercase; color:#367C2B; height:32px; position:relative; }
+    .gc-label-head { font-weight:700; font-size:11px; text-transform:uppercase; color:var(--tenant-sidebar-bg,#367C2B); height:32px; position:relative; }
     .gc-label-task { padding-left:28px; font-size:12px; align-items:flex-start; word-break:break-word; }
     .gc-timeline { flex:1; min-width:600px; position:relative; min-height:40px; }
     .gc-timeline-head { min-height:32px; }
-    .gc-month { position:absolute; top:0; height:100%; display:flex; align-items:center; padding:0 6px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#367C2B; border-left:1px solid #d4e8ce; }
+    .gc-month { position:absolute; top:0; height:100%; display:flex; align-items:center; padding:0 6px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--tenant-sidebar-bg,#367C2B); border-left:1px solid #d4e8ce; }
     .gc-bar { position:absolute; top:50%; transform:translateY(-50%); height:18px; border-radius:4px; min-width:4px; }
     .gc-bar-group   { background:rgba(21,101,192,.28);  border-left:3px solid #1565C0; }  /* blue  – group summary */
     .gc-bar-delayed { background:rgba(220,38,38,.22);   border-left:3px solid #dc2626; }  /* red   – atrasado      */
@@ -201,11 +210,11 @@
     /* ===== BUTTONS ===== */
     .btn-primary {
       display:inline-flex; align-items:center; gap:6px;
-      background:#367C2B; color:#fff; border:none; border-radius:8px;
+      background:var(--tenant-sidebar-bg,#1E4D17); color:#fff; border:none; border-radius:8px;
       padding:8px 16px; font-size:13px; font-weight:600; cursor:pointer;
       transition:background .15s;
     }
-    .btn-primary:hover { background:#2A6121; }
+    .btn-primary:hover { background:var(--tenant-sidebar-hover,#163d10); }
     .btn-edit {
       background:#f3f6f0; color:#374151; border:1px solid #c8ddc3;
       border-radius:6px; padding:4px 10px; font-size:11px; font-weight:600;
@@ -272,37 +281,125 @@
       border-radius:8px; padding:8px 18px; font-size:13px; font-weight:600; cursor:pointer;
     }
     .btn-cancel:hover { background:#e5e7eb; }
-    .btn-save { background:#367C2B; color:#fff; border:none; border-radius:8px; padding:8px 22px; font-size:13px; font-weight:600; cursor:pointer; }
-    .btn-save:hover { background:#2A6121; }
-    .btn-export { background:#2A6121; }
+    .btn-save { background:var(--tenant-sidebar-bg,#1E4D17); color:#fff; border:none; border-radius:8px; padding:8px 22px; font-size:13px; font-weight:600; cursor:pointer; }
+    .btn-save:hover { background:var(--tenant-sidebar-hover,#163d10); }
 
-    /* ===== TENANT SWITCHER ===== */
+    /* ===== TENANT SWITCHER (list) ===== */
     .tenant-switcher { padding-top:12px; border-top:1px solid rgba(255,255,255,.12); }
     .tenant-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:rgba(255,255,255,.4); margin-bottom:6px; padding:0 4px; }
-    .tenant-btns { display:flex; gap:4px; }
-    .tenant-btn {
-      flex:1; padding:5px 4px; border:1px solid rgba(255,255,255,.22); border-radius:6px;
-      background:transparent; color:rgba(255,255,255,.65); font-size:10px; font-weight:700;
-      cursor:pointer; text-align:center; transition:all .15s; line-height:1.3;
+    .tenant-list { display:flex; flex-direction:column; gap:1px; }
+    .tenant-item {
+      display:flex; align-items:center; gap:7px; padding:6px 6px 6px 8px;
+      border-radius:6px; cursor:pointer; transition:background .12s;
+      border:1px solid transparent;
     }
-    .tenant-btn:hover { background:rgba(255,255,255,.12); color:#fff; }
-    .tenant-btn.active { background:rgba(255,255,255,.22); color:#fff; border-color:rgba(255,255,255,.55); }
+    .tenant-item:hover { background:rgba(255,255,255,.08); }
+    .tenant-item.active { background:rgba(255,255,255,.14); border-color:rgba(255,255,255,.22); }
+    .tenant-item-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; border:1px solid rgba(255,255,255,.25); }
+    .tenant-item-name {
+      flex:1; font-size:11px; font-weight:600; color:rgba(255,255,255,.7);
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .tenant-item.active .tenant-item-name { color:#fff; }
+    .tenant-item-btns { display:flex; gap:2px; flex-shrink:0; }
+    .tenant-item-edit, .tenant-item-del, .tenant-item-dup {
+      display:inline-flex; align-items:center; justify-content:center;
+      width:18px; height:18px; border-radius:4px; border:none; padding:0;
+      background:transparent; color:rgba(255,255,255,.3); font-size:12px;
+      cursor:pointer; transition:background .12s, color .12s; line-height:1;
+    }
+    .tenant-item-edit:hover { background:rgba(255,255,255,.15); color:#fff; }
+    .tenant-item-dup:hover { background:rgba(56,189,248,.45); color:#fff; }
+    .tenant-item-del:hover { background:rgba(220,38,38,.55); color:#fff; }
+    .btn-new-tenant {
+      width:100%; margin-top:6px; padding:5px 8px;
+      border:1px dashed rgba(255,255,255,.28); border-radius:6px;
+      background:transparent; color:rgba(255,255,255,.45); font-size:10px; font-weight:700;
+      cursor:pointer; transition:all .15s;
+      display:flex; align-items:center; justify-content:center; gap:4px;
+    }
+    .btn-new-tenant:hover { background:rgba(255,255,255,.1); color:#fff; border-color:rgba(255,255,255,.5); }
+    /* ===== CLIENT MODAL (create / edit) ===== */
+    #newTenantBackdrop {
+      position:fixed; inset:0; background:rgba(0,0,0,.5); display:flex;
+      align-items:center; justify-content:center; z-index:300;
+      opacity:0; pointer-events:none; transition:opacity .2s;
+    }
+    #newTenantBackdrop.open { opacity:1; pointer-events:auto; }
+    #newTenantBackdrop .nt-modal {
+      background:#fff; border-radius:14px; padding:26px 26px 22px;
+      width:100%; max-width:400px; position:relative;
+      box-shadow:0 8px 32px rgba(0,0,0,.22); border-top:4px solid #367C2B;
+      max-height:90vh; overflow-y:auto;
+    }
+    #newTenantBackdrop .nt-modal h2 { font-size:16px; font-weight:700; color:#1E4D17; margin-bottom:14px; }
+    #newTenantBackdrop .nt-close {
+      position:absolute; top:14px; right:14px; background:none; border:none;
+      font-size:18px; color:#9ca3af; cursor:pointer; line-height:1; padding:2px 6px;
+    }
+    #newTenantBackdrop .nt-close:hover { color:#374151; }
+    #newTenantError { display:none; background:#fef2f2; color:#dc2626; border:1px solid #fecaca;
+      border-radius:6px; padding:8px 12px; font-size:12px; margin-bottom:12px; }
+    #newTenantBackdrop .nt-field { margin-bottom:11px; }
+    #newTenantBackdrop .nt-field label { display:block; font-size:12px; font-weight:600; color:#374151; margin-bottom:4px; }
+    #newTenantBackdrop .nt-field input {
+      width:100%; padding:8px 10px; border:1px solid #d1d5db; border-radius:7px;
+      font-size:13px; outline:none; transition:border-color .15s, box-shadow .15s; box-sizing:border-box;
+    }
+    #newTenantBackdrop .nt-field input:focus { border-color:#367C2B; box-shadow:0 0 0 3px rgba(54,124,43,.15); }
+    /* Color swatches */
+    .nt-swatches { display:flex; flex-wrap:wrap; gap:7px; margin-top:4px; }
+    .nt-swatch {
+      width:26px; height:26px; border-radius:50%; cursor:pointer; flex-shrink:0;
+      border:3px solid transparent; outline:2px solid transparent;
+      transition:transform .12s, outline-color .12s;
+    }
+    .nt-swatch:hover { transform:scale(1.18); }
+    .nt-swatch.selected { outline-color:#374151; transform:scale(1.12); }
+    /* Free color pickers */
+    .nt-color-pickers { display:flex; gap:14px; margin-top:10px; }
+    .nt-color-picker { display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer; border-radius:8px; padding:6px 8px; border:2px solid transparent; transition:border-color .15s; }
+    .nt-color-picker.active { border-color:#367C2B; background:rgba(54,124,43,.07); }
+    .nt-color-picker input[type=color] {
+      width:38px; height:38px; border:2px solid #d1d5db; border-radius:8px;
+      padding:2px; cursor:pointer; background:transparent; flex-shrink:0;
+    }
+    .nt-color-picker input[type=color]:focus { border-color:#367C2B; outline:none; }
+    .nt-color-picker-label { font-size:11px; font-weight:600; color:#6b7280; }
+    /* Live preview */
+    .nt-preview {
+      display:flex; align-items:center; gap:10px; padding:10px 12px;
+      background:#f3f4f6; border-radius:8px; margin-bottom:4px;
+    }
+    .nt-preview-icon {
+      width:44px; height:44px; border-radius:9px; display:flex;
+      align-items:center; justify-content:center; flex-shrink:0;
+      font-weight:900; line-height:1; letter-spacing:-.5px;
+      transition:background .15s, color .15s, font-size .12s;
+    }
+    .nt-preview-text { font-size:12px; color:#6b7280; overflow:hidden; }
+    .nt-preview-text strong { display:block; font-size:13px; color:#111827; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    #newTenantBackdrop .nt-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:14px; }
+    #newTenantBackdrop .nt-btn-cancel {
+      padding:8px 18px; border:1px solid #d1d5db; border-radius:7px;
+      background:#fff; color:#374151; font-size:13px; font-weight:600; cursor:pointer;
+    }
+    #newTenantBackdrop .nt-btn-save {
+      padding:8px 18px; border:none; border-radius:7px;
+      background:var(--tenant-sidebar-bg,#1E4D17); color:#fff; font-size:13px; font-weight:600; cursor:pointer;
+    }
+    #newTenantBackdrop .nt-btn-save:hover { background:var(--tenant-sidebar-hover,#163d10); }
 
     /* ===== CAT THEME (yellow & black) ===== */
     body.tenant-cat .sidebar { background:#1A1A1A; }
-    body.tenant-cat .sidebar-logo .logo-icon { background:#FFCD11; }
-    body.tenant-cat .logo-initials { color:#1A1A1A; font-size:28px; }
     body.tenant-cat .sidebar-logo span { color:#aaaaaa; }
     body.tenant-cat .sidebar-logo { border-bottom-color:rgba(255,255,255,.15); }
     body.tenant-cat .sidebar-nav li { color:#cccccc; }
     body.tenant-cat .sidebar-nav li.active { background:#FFCD11; color:#1A1A1A; }
     body.tenant-cat .sidebar-nav li:not(.active):hover { background:rgba(255,255,255,.1); color:#fff; }
     body.tenant-cat .sidebar-footer { color:#777; }
-    body.tenant-cat .page-header { border-left-color:#FFCD11; }
-    body.tenant-cat .page-header h1 { color:#1A1A1A; }
-    body.tenant-cat thead th { background:#1A1A1A; }
-    body.tenant-cat thead th[data-sort]:hover { background:#333; }
-    body.tenant-cat .kpi-card.total { border-color:#1A1A1A; }
+    body.tenant-cat .gc-label-head { color:#1A1A1A; }
+    body.tenant-cat .gc-month { border-left-color:#ffe082; }
     body.tenant-cat .kpi-card.complete { border-color:#333; }
     body.tenant-cat .kpi-card.on_going { border-color:#FFCD11; }
     body.tenant-cat .kpi-card .kpi-value { color:#1A1A1A; }
@@ -315,8 +412,7 @@
     body.tenant-cat .gc-row-group .gc-label { background:#fffde7; }
     body.tenant-cat .gc-row-group:hover .gc-label { background:#fff9c4; }
     body.tenant-cat .gc-row-task:hover { background:#fffdf0; }
-    body.tenant-cat .gc-label-head { color:#1A1A1A; }
-    body.tenant-cat .gc-month { color:#1A1A1A; border-left-color:#ffe082; }
+    body.tenant-cat .kpi-card.total { border-color:#1A1A1A; }
     body.tenant-cat .modal { border-top-color:#FFCD11; }
     body.tenant-cat .modal h2 { color:#1A1A1A; }
     body.tenant-cat .modal-field label { color:#1A1A1A; }
@@ -328,32 +424,20 @@
     body.tenant-cat .form-field input:focus, body.tenant-cat .form-field select:focus, body.tenant-cat .form-field textarea:focus { border-color:#FFCD11; box-shadow:0 0 0 3px rgba(255,205,17,.18); }
     body.tenant-cat .filter-row select:focus { border-color:#FFCD11; box-shadow:0 0 0 3px rgba(255,205,17,.18); }
     body.tenant-cat .filter-row select { border-color:#ffe082; }
-    body.tenant-cat .btn-primary { background:#1A1A1A; }
-    body.tenant-cat .btn-primary:hover { background:#333; }
-    body.tenant-cat .btn-export { background:#333; }
-    body.tenant-cat .btn-save { background:#1A1A1A; }
-    body.tenant-cat .btn-save:hover { background:#333; }
     body.tenant-cat .attachment-drop-zone { border-color:#ffe082; }
     body.tenant-cat .attachment-drop-zone:hover, body.tenant-cat .attachment-drop-zone.dragover { border-color:#FFCD11; background:#fffde7; color:#1A1A1A; }
     body.tenant-cat .attachment-item { background:#fffde7; border-color:#ffe082; }
     body.tenant-cat .attachment-link { color:#1A1A1A; }
     body.tenant-cat .card { box-shadow:0 1px 4px rgba(0,0,0,.06); }
-    body.tenant-cat .tenant-btn.active { background:rgba(255,205,17,.25); color:#FFCD11; border-color:#FFCD11; }
 
     /* ===== PESSOAL THEME (blue & red) ===== */
     body.tenant-pessoal .sidebar { background:#0D2461; }
-    body.tenant-pessoal .sidebar-logo .logo-icon { background:#dc2626; }
-    body.tenant-pessoal .logo-initials { color:#fff; font-size:62px; letter-spacing:0; }
     body.tenant-pessoal .sidebar-logo span { color:#6B8FE8; }
     body.tenant-pessoal .sidebar-logo { border-bottom-color:rgba(255,255,255,.2); }
     body.tenant-pessoal .sidebar-nav li { color:#BCCEF5; }
     body.tenant-pessoal .sidebar-nav li.active { background:#1535A0; color:#fff; }
     body.tenant-pessoal .sidebar-nav li:not(.active):hover { background:rgba(255,255,255,.12); color:#fff; }
     body.tenant-pessoal .sidebar-footer { color:#8AAEE8; border-top-color:rgba(255,255,255,.15); }
-    body.tenant-pessoal .page-header { border-left-color:#dc2626; }
-    body.tenant-pessoal .page-header h1 { color:#0D2461; }
-    body.tenant-pessoal thead th { background:#0D2461; }
-    body.tenant-pessoal thead th[data-sort]:hover { background:#091849; }
     body.tenant-pessoal .kpi-card.total { border-color:#0D2461; }
     body.tenant-pessoal .kpi-card.complete { border-color:#1535A0; }
     body.tenant-pessoal .kpi-card.on_going { border-color:#1535A0; }
@@ -367,8 +451,6 @@
     body.tenant-pessoal .gc-row-group .gc-label { background:#E8F4FD; }
     body.tenant-pessoal .gc-row-group:hover .gc-label { background:#BCCEF5; }
     body.tenant-pessoal .gc-row-task:hover { background:#D4E0F9; }
-    body.tenant-pessoal .gc-label-head { color:#0D2461; }
-    body.tenant-pessoal .gc-month { color:#0D2461; border-left-color:#6B8FE8; }
     body.tenant-pessoal .modal { border-top-color:#dc2626; }
     body.tenant-pessoal .modal h2 { color:#0D2461; }
     body.tenant-pessoal .modal-field label { color:#0D2461; }
@@ -380,11 +462,6 @@
     body.tenant-pessoal .form-field input:focus, body.tenant-pessoal .form-field select:focus, body.tenant-pessoal .form-field textarea:focus { border-color:#1535A0; box-shadow:0 0 0 3px rgba(13,36,97,.18); }
     body.tenant-pessoal .filter-row select:focus { border-color:#1535A0; box-shadow:0 0 0 3px rgba(13,36,97,.18); }
     body.tenant-pessoal .filter-row select { border-color:#6B8FE8; }
-    body.tenant-pessoal .btn-primary { background:#0D2461; }
-    body.tenant-pessoal .btn-primary:hover { background:#091849; }
-    body.tenant-pessoal .btn-export { background:#091849; }
-    body.tenant-pessoal .btn-save { background:#0D2461; }
-    body.tenant-pessoal .btn-save:hover { background:#091849; }
     body.tenant-pessoal .attachment-drop-zone { border-color:#6B8FE8; }
     body.tenant-pessoal .attachment-drop-zone:hover, body.tenant-pessoal .attachment-drop-zone.dragover { border-color:#0D2461; background:#D4E0F9; color:#0D2461; }
     body.tenant-pessoal .attachment-item { background:#D4E0F9; border-color:#6B8FE8; }
@@ -434,11 +511,11 @@
   </ul>
   <div class="tenant-switcher">
     <div class="tenant-label">Empresa</div>
-    <div class="tenant-btns" role="radiogroup" aria-label="Selecionar empresa">
-      <button class="tenant-btn active" data-tenant="jd" role="radio" aria-checked="true" aria-label="John Deere">John Deere</button>
-      <button class="tenant-btn" data-tenant="cat" role="radio" aria-checked="false" aria-label="CAT">CAT</button>
-      <button class="tenant-btn" data-tenant="pessoal" role="radio" aria-checked="false" aria-label="Pessoal">Pessoal</button>
-    </div>
+    <div class="tenant-list" id="tenantBtns" role="listbox" aria-label="Selecionar empresa"></div>
+    <button class="btn-new-tenant" id="btnNewTenant" title="Criar nova página de cliente">
+      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 20 20" fill="currentColor"><path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/></svg>
+      Novo cliente
+    </button>
   </div>
   <div class="sidebar-footer">v1.0 · 2025</div>
 </div>
@@ -452,7 +529,9 @@
       <p>Visão geral de todas as ações do plano SIP</p>
     </div>
 
-    <div class="kpi-grid" id="kpiGrid"></div>
+    <div class="kpi-grid" id="kpiGridVolume"></div>
+    <div class="kpi-section-title" id="kpiPerfTitle">KPIs de Performance</div>
+    <div class="kpi-grid performance" id="kpiGridPerformance"></div>
 
     <div class="progress-section">
       <h3>Progresso geral do plano</h3>
@@ -695,6 +774,59 @@
 
 document.addEventListener("DOMContentLoaded", function() {
 
+  // ── Firebase configuration ────────────────────────────────────────────────
+  // Substitua os valores abaixo pelas credenciais do seu projeto Firebase.
+  // (Firebase console → Configurações do projeto → Seus apps → SDK setup)
+  const FIREBASE_CONFIG = {
+    apiKey:            "YOUR_API_KEY",
+    authDomain:        "YOUR_PROJECT_ID.firebaseapp.com",
+    projectId:         "YOUR_PROJECT_ID",
+    storageBucket:     "YOUR_PROJECT_ID.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId:             "YOUR_APP_ID"
+  };
+
+  const FIREBASE_READY = FIREBASE_CONFIG.apiKey !== "YOUR_API_KEY";
+  let db = null;
+  if (FIREBASE_READY) {
+    try {
+      if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+      db = firebase.firestore();
+    } catch(e) { console.warn("Firebase init error:", e); }
+  }
+
+  // Salva ações de um tenant no Firestore E no localStorage (fallback).
+  function saveTenantActions(tenantId, actions) {
+    const plain = actions.map(function(a){
+      return { id:a.id, group:a.group||"", desc:a.desc||"", team:a.team||"",
+               lead:a.lead||"", status:a.status||"not_started",
+               start:a.start||"", end:a.end||"",
+               completionDate:a.completionDate||"", reprazo:a.reprazo||"",
+               comments:a.comments||"" };
+    });
+    try { localStorage.setItem("spi_actions_" + tenantId, JSON.stringify(plain)); }
+    catch(e) { console.warn("localStorage save error:", e); }
+    if (db) {
+      db.collection("tenants").doc(tenantId).set({ actions: plain }, { merge: true })
+        .catch(function(e){ console.error("Firebase save error:", e); });
+    }
+  }
+
+  // Carrega ações de um tenant do Firestore ou, se falhar, do localStorage.
+  // Retorna Promise<array | null> (null = nenhum dado salvo).
+  async function loadTenantActions(tenantId) {
+    if (db) {
+      try {
+        const snap = await db.collection("tenants").doc(tenantId).get();
+        if (snap.exists) return snap.data().actions || [];
+      } catch(e) { console.error("Firebase load error:", e); }
+    }
+    try {
+      const local = localStorage.getItem("spi_actions_" + tenantId);
+      return local ? JSON.parse(local) : null;
+    } catch(e) { console.warn("localStorage load error:", e); return null; }
+  }
+
   const JD_ACTIONS = [
     {id:1,  group:"PFMEA e Plano de Controle",      status:"complete",    start:"2025-06-11", end:"2025-07-04",  completionDate:"2025-07-25", reprazo:"2025-07-25",  team:"QUALIDADE",  lead:"EDVAN",
       comments:"29/07/2025: Realizado a reestruturação do departamento de engenharia - qualidade, produto e manufatura respondem agora para o mesmo gestor",
@@ -863,9 +995,9 @@ document.addEventListener("DOMContentLoaded", function() {
 
   // ── Multi-tenant data registry ────────────────────────────────────────────
   const TENANTS = {
-    jd:      { label:'John Deere', initials:'JD',  bodyClass:'',               sidebarTitle:'SPI',     sidebarSubtitle:'Gestão do Projeto', actions:JD_ACTIONS, attachments:{} },
-    cat:     { label:'CAT',        initials:'CAT', bodyClass:'tenant-cat',     sidebarTitle:'CAT',     sidebarSubtitle:'Gestão do Projeto', actions:[],         attachments:{} },
-    pessoal: { label:'Pessoal',    initials:'P',   bodyClass:'tenant-pessoal', sidebarTitle:'Pessoal', sidebarSubtitle:'Gestão do Projeto', actions:[],         attachments:{} }
+    jd:      { label:'John Deere', initials:'JD',  bodyClass:'',               sidebarTitle:'SPI',     sidebarSubtitle:'Gestão do Projeto', accentBg:'#FFDE00', accentText:'#0A2008', sidebarBg:'#1E4D17', actions:JD_ACTIONS, attachments:{} },
+    cat:     { label:'CAT',        initials:'CAT', bodyClass:'tenant-cat',     sidebarTitle:'CAT',     sidebarSubtitle:'Gestão do Projeto', accentBg:'#FFCD11', accentText:'#1A1A1A', sidebarBg:'#1A1A1A', actions:[],         attachments:{} },
+    pessoal: { label:'Pessoal',    initials:'P',   bodyClass:'tenant-pessoal', sidebarTitle:'Pessoal', sidebarSubtitle:'Gestão do Projeto', accentBg:'#dc2626', accentText:'#fff',    sidebarBg:'#0D2461', actions:[],         attachments:{} }
   };
   let currentTenant = 'jd';
   let allActions    = TENANTS.jd.actions;
@@ -955,12 +1087,13 @@ document.addEventListener("DOMContentLoaded", function() {
     const delayed  = allActions.filter(a=>resolveStatus(a)==="delayed").length;
     const pct = Math.round((complete/total)*100);
 
-    const kpiGrid = document.getElementById("kpiGrid");
-    const onTime     = allActions.filter(a=>resolveDeadlineAdherence(a)==="on_time").length;
+    const onTime       = allActions.filter(a=>resolveDeadlineAdherence(a)==="on_time").length;
     const lateComplete = allActions.filter(a=>resolveDeadlineAdherence(a)==="late_complete").length;
     const adherenceDenom = onTime + lateComplete;
-    const adherencePct = adherenceDenom > 0 ? Math.round((onTime/adherenceDenom)*100) : 0;
-    kpiGrid.innerHTML = `
+    const adherencePct   = adherenceDenom > 0 ? Math.round((onTime/adherenceDenom)*100) : 0;
+
+    // ── Volume KPIs (top row) ──────────────────────────────────────────────
+    document.getElementById("kpiGridVolume").innerHTML = `
       <div class="kpi-card total">
         <div class="kpi-label">Total de Ações</div>
         <div class="kpi-value">${total}</div>
@@ -981,6 +1114,10 @@ document.addEventListener("DOMContentLoaded", function() {
         <div class="kpi-value">${delayed}</div>
         <div class="kpi-sub">${calcPercent(delayed,total)}% do total</div>
       </div>
+    `;
+
+    // ── Performance / Adherence KPIs (bottom row) ──────────────────────────
+    document.getElementById("kpiGridPerformance").innerHTML = `
       <div class="kpi-card on_time">
         <div class="kpi-label">Concluídas no prazo</div>
         <div class="kpi-value">${onTime}</div>
@@ -1198,6 +1335,7 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     closeEditModal();
+    saveTenantActions(currentTenant, allActions);
     renderDashboard();
     renderTable();
     if(expandedGroup !== null) renderGantt();
@@ -1280,6 +1418,7 @@ document.addEventListener("DOMContentLoaded", function() {
     if(pendingDeleteId === null) return;
     const idx = allActions.findIndex(x=>x.id===pendingDeleteId);
     if(idx > -1) allActions.splice(idx, 1);
+    saveTenantActions(currentTenant, allActions);
     closeConfirmModal();
     renderDashboard();
     renderTable();
@@ -1617,19 +1756,15 @@ document.addEventListener("DOMContentLoaded", function() {
     currentTenant = key;
     allActions    = TENANTS[key].actions;
     attachmentsMap = TENANTS[key].attachments;
-    // Apply theme via body class
-    document.body.className = TENANTS[key].bodyClass;
+    // Apply theme via body class + custom logo colors
+    applyTenantTheme(key);
     // Update logo initials, sidebar heading & page title
     document.getElementById('logoInitials').textContent  = TENANTS[key].initials;
     document.getElementById('sidebarTitle').textContent   = TENANTS[key].sidebarTitle;
     document.getElementById('sidebarSubtitle').textContent = TENANTS[key].sidebarSubtitle;
     document.title = 'SSQE - Gestão | ' + TENANTS[key].label;
-    // Update tenant button active state + aria-checked
-    document.querySelectorAll('.tenant-btn').forEach(b => {
-      const isActive = b.dataset.tenant === key;
-      b.classList.toggle('active', isActive);
-      b.setAttribute('aria-checked', isActive ? 'true' : 'false');
-    });
+    // Update tenant list active state
+    renderTenantList();
     // Reset sort and group filter
     sortCol = null; sortDir = 'asc';
     // Re-render all views
@@ -1640,18 +1775,585 @@ document.addEventListener("DOMContentLoaded", function() {
     expandedGroup = null;
   }
 
-  document.querySelectorAll('.tenant-btn').forEach(btn => {
-    btn.addEventListener('click', () => switchTenant(btn.dataset.tenant));
+  // ── Theme helpers ──────────────────────────────────────────────────────────
+
+  function initialsFontSize(initials) {
+    // Scale font to fill the 64×44px logo square regardless of initials length
+    const n = (initials || '').length;
+    if (n <= 1) return '30px';
+    if (n <= 2) return '22px';
+    if (n <= 3) return '15px';
+    if (n <= 4) return '11px';
+    return '9px'; // 5-6 chars
+  }
+
+  function darkenHex(hex, amount) {
+    // amount: 0–1, how much to darken (e.g. 0.15 = 15% darker)
+    const r = parseInt((hex || '#000').slice(1, 3), 16);
+    const g = parseInt((hex || '#000').slice(3, 5), 16);
+    const b = parseInt((hex || '#000').slice(5, 7), 16);
+    const f = 1 - amount;
+    return '#' + [r, g, b].map(function(c) {
+      return Math.max(0, Math.round(c * f)).toString(16).padStart(2, '0');
+    }).join('');
+  }
+
+  function applyTenantTheme(key) {
+    const t = TENANTS[key];
+    document.body.className = t.bodyClass || '';
+    const sidebar      = document.querySelector('.sidebar');
+    const logoIcon     = document.querySelector('.sidebar-logo .logo-icon');
+    const logoInitials = document.getElementById('logoInitials');
+    const sidebarBg    = t.sidebarBg || '#1E4D17';
+    if (t.sidebarBg) sidebar.style.background = t.sidebarBg;
+    else             sidebar.style.background = '';
+    logoIcon.style.background   = t.accentBg   || '#FFDE00';
+    logoInitials.style.color    = t.accentText  || '#0A2008';
+    logoInitials.style.fontSize = initialsFontSize(t.initials);
+    // Propagate colors to CSS variables so all themed elements update automatically
+    document.documentElement.style.setProperty('--tenant-sidebar-bg',    sidebarBg);
+    document.documentElement.style.setProperty('--tenant-sidebar-hover', darkenHex(sidebarBg, 0.15));
+    document.documentElement.style.setProperty('--tenant-nav-active-bg',   t.accentBg   || '#367C2B');
+    document.documentElement.style.setProperty('--tenant-nav-active-text', t.accentText || '#FFDE00');
+  }
+
+  // ── Tenant list ────────────────────────────────────────────────────────────
+
+  function renderTenantList() {
+    const container = document.getElementById('tenantBtns');
+    container.innerHTML = '';
+    Object.keys(TENANTS).forEach(function(key) {
+      const t = TENANTS[key];
+      const isActive = key === currentTenant;
+
+      const item = document.createElement('div');
+      item.className = 'tenant-item' + (isActive ? ' active' : '');
+      item.dataset.tenant = key;
+      item.setAttribute('role', 'option');
+      item.setAttribute('aria-selected', isActive ? 'true' : 'false');
+
+      // Colored dot
+      const dot = document.createElement('span');
+      dot.className = 'tenant-item-dot';
+      dot.style.background = t.accentBg || '#367C2B';
+      item.appendChild(dot);
+
+      // Name label
+      const nameEl = document.createElement('span');
+      nameEl.className = 'tenant-item-name';
+      nameEl.textContent = t.label;
+      item.appendChild(nameEl);
+
+      // Action buttons
+      const btns = document.createElement('div');
+      btns.className = 'tenant-item-btns';
+
+      const editBtn = document.createElement('button');
+      editBtn.className = 'tenant-item-edit';
+      editBtn.title = 'Editar cliente';
+      editBtn.setAttribute('aria-label', 'Editar ' + t.label);
+      editBtn.textContent = '✎';
+      editBtn.addEventListener('click', function(e) { e.stopPropagation(); openTenantModal(key); });
+      btns.appendChild(editBtn);
+
+      const dupBtn = document.createElement('button');
+      dupBtn.className = 'tenant-item-dup';
+      dupBtn.title = 'Duplicar cliente';
+      dupBtn.setAttribute('aria-label', 'Duplicar ' + t.label);
+      dupBtn.textContent = '⧉';
+      dupBtn.addEventListener('click', function(e) { e.stopPropagation(); duplicateTenant(key); });
+      btns.appendChild(dupBtn);
+
+      const delBtn = document.createElement('button');
+      delBtn.className = 'tenant-item-del';
+      delBtn.title = 'Remover cliente';
+      delBtn.setAttribute('aria-label', 'Remover ' + t.label);
+      delBtn.textContent = '×';
+      delBtn.addEventListener('click', function(e) { e.stopPropagation(); deleteTenant(key); });
+      btns.appendChild(delBtn);
+
+      item.appendChild(btns);
+      item.addEventListener('click', function() { switchTenant(key); });
+      container.appendChild(item);
+    });
+  }
+
+  // ── Persist ALL tenants ────────────────────────────────────────────────────
+
+  function saveAllTenants() {
+    const all = {};
+    Object.keys(TENANTS).forEach(function(key) {
+      all[key] = {
+        label:          TENANTS[key].label,
+        initials:       TENANTS[key].initials,
+        sidebarTitle:   TENANTS[key].sidebarTitle,
+        sidebarSubtitle:TENANTS[key].sidebarSubtitle,
+        bodyClass:      TENANTS[key].bodyClass,
+        accentBg:       TENANTS[key].accentBg  || '',
+        accentText:     TENANTS[key].accentText || '',
+        sidebarBg:      TENANTS[key].sidebarBg  || ''
+      };
+    });
+    try { localStorage.setItem('spi_all_tenants', JSON.stringify(all)); }
+    catch(e) { console.warn('localStorage error saving tenants:', e); }
+    if (db) {
+      db.collection('tenants').doc('__list__').set({ all: all }, { merge: true })
+        .catch(function(e) { console.error('Firebase save tenants error:', e); });
+    }
+  }
+
+  async function loadAllTenants() {
+    let all = null;
+    if (db) {
+      try {
+        const snap = await db.collection('tenants').doc('__list__').get();
+        if (snap.exists) {
+          const d = snap.data();
+          if (d.all) all = d.all;
+        }
+      } catch(e) { console.error('Firebase load tenants error:', e); }
+    }
+    if (!all) {
+      try {
+        const raw = localStorage.getItem('spi_all_tenants');
+        if (raw) all = JSON.parse(raw);
+      } catch(e) { console.warn('localStorage load tenants error:', e); }
+    }
+    // Legacy: try spi_custom_tenants (previous version)
+    if (!all) {
+      try {
+        const raw = localStorage.getItem('spi_custom_tenants');
+        if (raw) {
+          const custom = JSON.parse(raw);
+          if (custom && typeof custom === 'object') {
+            Object.keys(custom).forEach(function(key) {
+              if (TENANTS[key]) return; // skip defaults
+              const c = custom[key];
+              if (!c || typeof c.label !== 'string' || typeof c.initials !== 'string') return;
+              TENANTS[key] = {
+                label:          c.label,
+                initials:       c.initials,
+                bodyClass:      c.bodyClass || '',
+                sidebarTitle:   c.sidebarTitle || c.initials,
+                sidebarSubtitle:c.sidebarSubtitle || 'Gestão do Projeto',
+                accentBg:       c.accentBg || '#367C2B',
+                accentText:     c.accentText || '#fff',
+                sidebarBg:      c.sidebarBg || '#1E4D17',
+                actions:        [],
+                attachments:    {}
+              };
+            });
+          }
+        }
+      } catch(e) { console.warn('Legacy load error:', e); }
+      return;
+    }
+    if (typeof all !== 'object') return;
+    // Merge saved metadata into TENANTS; add/update any key from saved state
+    const savedKeys = Object.keys(all);
+    const hardcodedKeys = ['jd', 'cat', 'pessoal'];
+    // Remove hardcoded tenants that the user deleted (not present in saved state)
+    hardcodedKeys.forEach(function(key) {
+      if (!savedKeys.includes(key)) delete TENANTS[key];
+    });
+    savedKeys.forEach(function(key) {
+      const c = all[key];
+      if (!c || typeof c.label !== 'string' || typeof c.initials !== 'string') return;
+      if (TENANTS[key]) {
+        // Update editable metadata; keep actions/attachments
+        TENANTS[key].label          = c.label;
+        TENANTS[key].initials       = c.initials;
+        TENANTS[key].sidebarTitle   = c.sidebarTitle   || TENANTS[key].sidebarTitle;
+        TENANTS[key].sidebarSubtitle= c.sidebarSubtitle || TENANTS[key].sidebarSubtitle;
+        TENANTS[key].bodyClass      = typeof c.bodyClass === 'string' ? c.bodyClass : TENANTS[key].bodyClass;
+        TENANTS[key].accentBg       = c.accentBg   || TENANTS[key].accentBg;
+        TENANTS[key].accentText     = c.accentText  || TENANTS[key].accentText;
+        TENANTS[key].sidebarBg      = c.sidebarBg   || TENANTS[key].sidebarBg;
+      } else {
+        TENANTS[key] = {
+          label:          c.label,
+          initials:       c.initials,
+          bodyClass:      typeof c.bodyClass === 'string' ? c.bodyClass : '',
+          sidebarTitle:   c.sidebarTitle   || c.initials,
+          sidebarSubtitle:c.sidebarSubtitle|| 'Gestão do Projeto',
+          accentBg:       c.accentBg       || '#367C2B',
+          accentText:     c.accentText     || '#fff',
+          sidebarBg:      c.sidebarBg      || '#1E4D17',
+          actions:        [],
+          attachments:    {}
+        };
+      }
+    });
+    // Safety: if all tenants were deleted, restore JD
+    if (Object.keys(TENANTS).length === 0) {
+      TENANTS.jd = { label:'John Deere', initials:'JD', bodyClass:'', sidebarTitle:'SPI', sidebarSubtitle:'Gestão do Projeto', accentBg:'#FFDE00', accentText:'#0A2008', sidebarBg:'#1E4D17', actions:JD_ACTIONS, attachments:{} };
+    }
+    // Ensure currentTenant still exists
+    if (!TENANTS[currentTenant]) currentTenant = Object.keys(TENANTS)[0];
+  }
+
+  // ── Delete tenant ──────────────────────────────────────────────────────────
+
+  function deleteTenant(key) {
+    if (Object.keys(TENANTS).length <= 1) {
+      alert('Não é possível remover o único cliente cadastrado.');
+      return;
+    }
+    if (!confirm('Remover o cliente "' + TENANTS[key].label + '"? As ações serão apagadas.')) return;
+    const keys = Object.keys(TENANTS);
+    const nextKey = keys.find(function(k) { return k !== key; }) || keys[0];
+    delete TENANTS[key];
+    try { localStorage.removeItem('spi_actions_' + key); }
+    catch(e) { console.warn('localStorage error removing tenant actions:', e); }
+    saveAllTenants();
+    if (currentTenant === key) {
+      // Switch without the guard that checks key === currentTenant
+      TENANTS[nextKey].attachments = TENANTS[nextKey].attachments || {};
+      currentTenant  = nextKey;
+      allActions     = TENANTS[nextKey].actions;
+      attachmentsMap = TENANTS[nextKey].attachments;
+      applyTenantTheme(nextKey);
+      document.getElementById('logoInitials').textContent   = TENANTS[nextKey].initials;
+      document.getElementById('sidebarTitle').textContent    = TENANTS[nextKey].sidebarTitle;
+      document.getElementById('sidebarSubtitle').textContent = TENANTS[nextKey].sidebarSubtitle;
+      document.title = 'SSQE - Gestão | ' + TENANTS[nextKey].label;
+      sortCol = null; sortDir = 'asc';
+      renderDashboard(); populateFilters(); renderTable();
+      expandedGroup = null;
+    }
+    renderTenantList();
+  }
+
+  // ── Duplicate tenant ──────────────────────────────────────────────────────
+
+  function duplicateTenant(key) {
+    const t = TENANTS[key];
+    // Generate a unique key
+    let newKey = key + '_copy';
+    let copyNum = 2;
+    while (TENANTS[newKey]) { newKey = key + '_copy' + copyNum++; }
+    // Deep-copy actions so the duplicate is independent
+    let copiedActions = [];
+    try { copiedActions = JSON.parse(JSON.stringify(t.actions || [])); }
+    catch(e) { copiedActions = []; }
+    TENANTS[newKey] = {
+      label:          t.label + ' (cópia)',
+      initials:       t.initials,
+      bodyClass:      t.bodyClass || '',
+      sidebarTitle:   t.sidebarTitle || t.initials,
+      sidebarSubtitle:t.sidebarSubtitle || 'Gestão do Projeto',
+      accentBg:       t.accentBg  || '#367C2B',
+      accentText:     t.accentText || '#fff',
+      sidebarBg:      t.sidebarBg  || '#1E4D17',
+      actions:        copiedActions,
+      attachments:    {}
+    };
+    saveAllTenants();
+    saveTenantActions(newKey, copiedActions);
+    renderTenantList();
+  }
+
+
+
+  // ── Color presets ──────────────────────────────────────────────────────────
+
+  const COLOR_PRESETS = [
+    { bg:'#367C2B', text:'#ffffff', name:'Verde'        },
+    { bg:'#FFDE00', text:'#0A2008', name:'Amarelo JD'   },
+    { bg:'#FFCD11', text:'#1A1A1A', name:'Amarelo CAT'  },
+    { bg:'#0D2461', text:'#ffffff', name:'Azul marinho' },
+    { bg:'#2563eb', text:'#ffffff', name:'Azul'         },
+    { bg:'#0891b2', text:'#ffffff', name:'Ciano'        },
+    { bg:'#dc2626', text:'#ffffff', name:'Vermelho'     },
+    { bg:'#f97316', text:'#ffffff', name:'Laranja'      },
+    { bg:'#7c3aed', text:'#ffffff', name:'Roxo'         },
+    { bg:'#db2777', text:'#ffffff', name:'Rosa'         },
+    { bg:'#1a1a1a', text:'#ffffff', name:'Preto'        },
+    { bg:'#6b7280', text:'#ffffff', name:'Cinza'        },
+  ];
+
+  function getModalColors() {
+    const bg      = document.getElementById('nt-color-bg');
+    const text    = document.getElementById('nt-color-text');
+    const sidebar = document.getElementById('nt-color-sidebar');
+    return {
+      bg:      (bg      && bg.value)      ? bg.value      : '#367C2B',
+      text:    (text    && text.value)    ? text.value    : '#ffffff',
+      sidebar: (sidebar && sidebar.value) ? sidebar.value : '#1E4D17'
+    };
+  }
+
+  function setModalColors(bg, text, sidebar) {
+    const bgEl      = document.getElementById('nt-color-bg');
+    const textEl    = document.getElementById('nt-color-text');
+    const sidebarEl = document.getElementById('nt-color-sidebar');
+    if (bgEl)      bgEl.value      = bg      || '#367C2B';
+    if (textEl)    textEl.value    = text    || '#ffffff';
+    if (sidebarEl) sidebarEl.value = sidebar || '#1E4D17';
+  }
+
+  // ── Active color picker tracking ────────────────────────────────────────────
+  // Tracks which of the three pickers (sidebar/bg/text) receives swatch clicks.
+  var _activePicker = 'sidebar';
+
+  function setActivePicker(key) {
+    _activePicker = key;
+    document.querySelectorAll('#newTenantBackdrop .nt-color-picker').forEach(function(el) {
+      el.classList.toggle('active', el.getAttribute('data-picker') === key);
+    });
+    renderSwatches();
+  }
+
+  function renderSwatches() {
+    const el = document.getElementById('ntSwatches');
+    if (!el) return;
+    const cur = getModalColors();
+    // Determine which color to compare against for 'selected' highlight
+    const activeValue = _activePicker === 'bg'   ? cur.bg
+                      : _activePicker === 'text' ? cur.text
+                      :                            cur.sidebar;
+    el.innerHTML = '';
+    COLOR_PRESETS.forEach(function(c) {
+      const s = document.createElement('button');
+      s.type = 'button';
+      const isSelected = c.bg === activeValue;
+      s.className = 'nt-swatch' + (isSelected ? ' selected' : '');
+      s.style.background = c.bg;
+      s.title = c.name + ' (' + c.bg + ')';
+      s.setAttribute('aria-label', c.name + ': ' + c.bg);
+      s.addEventListener('click', function() {
+        // Apply only to the active picker
+        if (_activePicker === 'bg') {
+          document.getElementById('nt-color-bg').value = c.bg;
+        } else if (_activePicker === 'text') {
+          document.getElementById('nt-color-text').value = c.bg;
+        } else {
+          document.getElementById('nt-color-sidebar').value = c.bg;
+        }
+        renderSwatches();
+        updateModalPreview();
+      });
+      el.appendChild(s);
+    });
+  }
+
+  function updateModalPreview() {
+    const initials = (document.getElementById('nt-initials').value.trim().toUpperCase()) || '??';
+    const name     = document.getElementById('nt-label').value.trim()   || 'Nome do cliente';
+    const subtitle = document.getElementById('nt-subtitle').value.trim() || 'Gestão do Projeto';
+    const c = getModalColors();
+    const icon = document.getElementById('ntPreviewIcon');
+    if (!icon) return;
+    icon.textContent       = initials;
+    icon.style.background  = c.bg;
+    icon.style.color       = c.text;
+    icon.style.fontSize    = initialsFontSize(initials);
+    document.getElementById('ntPreviewName').textContent     = name;
+    document.getElementById('ntPreviewSubtitle').textContent = subtitle;
+  }
+
+  // ── Client modal (create + edit) ───────────────────────────────────────────
+
+  function openTenantModal(editKey) {
+    const isEdit = typeof editKey === 'string';
+    document.getElementById('nt-editing-key').value = isEdit ? editKey : '';
+    document.getElementById('ntModalTitle').textContent = isEdit ? 'Editar Cliente' : 'Novo Cliente';
+    document.getElementById('newTenantSave').textContent = isEdit ? 'Salvar alterações' : 'Criar cliente';
+    document.getElementById('newTenantError').style.display = 'none';
+
+    if (isEdit) {
+      const t = TENANTS[editKey];
+      document.getElementById('nt-label').value    = t.label;
+      document.getElementById('nt-initials').value = t.initials;
+      document.getElementById('nt-subtitle').value = t.sidebarSubtitle;
+      setModalColors(t.accentBg || '#367C2B', t.accentText || '#ffffff', t.sidebarBg || '#1E4D17');
+    } else {
+      document.getElementById('nt-label').value    = '';
+      document.getElementById('nt-initials').value = '';
+      document.getElementById('nt-subtitle').value = '';
+      setModalColors(COLOR_PRESETS[0].bg, COLOR_PRESETS[0].text, COLOR_PRESETS[0].bg);
+    }
+    renderSwatches();
+    updateModalPreview();
+    setActivePicker('sidebar');
+    document.getElementById('newTenantBackdrop').classList.add('open');
+    setTimeout(function() { document.getElementById('nt-label').focus(); }, 50);
+  }
+
+  function closeTenantModal() {
+    document.getElementById('newTenantBackdrop').classList.remove('open');
+  }
+
+  function saveTenantModal() {
+    const label    = document.getElementById('nt-label').value.trim();
+    const initials = document.getElementById('nt-initials').value.trim().toUpperCase();
+    const subtitle = document.getElementById('nt-subtitle').value.trim() || 'Gestão do Projeto';
+    const editKey  = document.getElementById('nt-editing-key').value;
+    const errEl    = document.getElementById('newTenantError');
+    const c        = getModalColors();
+
+    if (!label || !initials) {
+      errEl.textContent = 'Preencha o nome do cliente e a sigla.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    if (editKey) {
+      // Edit mode
+      TENANTS[editKey].label          = label;
+      TENANTS[editKey].initials       = initials;
+      TENANTS[editKey].sidebarTitle   = initials;
+      TENANTS[editKey].sidebarSubtitle= subtitle;
+      TENANTS[editKey].accentBg       = c.bg;
+      TENANTS[editKey].accentText     = c.text;
+      TENANTS[editKey].sidebarBg      = c.sidebar;
+      saveAllTenants();
+      closeTenantModal();
+      // Refresh current view if we edited the active tenant
+      if (editKey === currentTenant) {
+        applyTenantTheme(editKey);
+        document.getElementById('logoInitials').textContent   = initials;
+        document.getElementById('sidebarTitle').textContent    = initials;
+        document.getElementById('sidebarSubtitle').textContent = subtitle;
+        document.title = 'SSQE - Gestão | ' + label;
+      }
+      renderTenantList();
+    } else {
+      // Create mode
+      let key = initials.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (!key) key = 'tenant' + Date.now();
+      let base = key, counter = 2;
+      while (TENANTS[key]) { key = base + counter++; }
+
+      TENANTS[key] = {
+        label:          label,
+        initials:       initials,
+        bodyClass:      '',
+        sidebarTitle:   initials,
+        sidebarSubtitle:subtitle,
+        accentBg:       c.bg,
+        accentText:     c.text,
+        sidebarBg:      c.sidebar,
+        actions:        [],
+        attachments:    {}
+      };
+      saveAllTenants();
+      saveTenantActions(key, []);
+      closeTenantModal();
+      renderTenantList();
+      switchTenant(key);
+    }
+  }
+
+  // Wire up modal events
+  document.getElementById('btnNewTenant').addEventListener('click', function() { openTenantModal(); });
+  document.getElementById('newTenantClose').addEventListener('click', closeTenantModal);
+  document.getElementById('newTenantCancel').addEventListener('click', closeTenantModal);
+  document.getElementById('newTenantSave').addEventListener('click', saveTenantModal);
+  document.getElementById('newTenantBackdrop').addEventListener('click', function(e) {
+    if (e.target === this) closeTenantModal();
+  });
+  ['nt-label','nt-initials','nt-subtitle'].forEach(function(id) {
+    document.getElementById(id).addEventListener('input', updateModalPreview);
+    document.getElementById(id).addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') saveTenantModal();
+      if (e.key === 'Escape') closeTenantModal();
+    });
+  });
+  // Color pickers: clicking the picker div or focusing the input sets the active picker
+  document.querySelectorAll('#newTenantBackdrop .nt-color-picker').forEach(function(div) {
+    div.addEventListener('click', function() {
+      setActivePicker(div.getAttribute('data-picker'));
+    });
+  });
+  ['nt-color-bg','nt-color-text','nt-color-sidebar'].forEach(function(id) {
+    var key = id === 'nt-color-bg' ? 'bg' : id === 'nt-color-text' ? 'text' : 'sidebar';
+    document.getElementById(id).addEventListener('focus', function() { setActivePicker(key); });
+    document.getElementById(id).addEventListener('input', function() {
+      renderSwatches();
+      updateModalPreview();
+    });
   });
 
-  renderDashboard();
-  populateFilters();
-  renderTable();
-  initTableResize(document.querySelector('#projects table'));
+  // ── Init (async — load persisted data before first render) ───────────────
+  (async function init() {
+    await loadAllTenants();
+    const tenantIds = Object.keys(TENANTS);
+    for (const tid of tenantIds) {
+      const saved = await loadTenantActions(tid);
+      if (saved !== null) {
+        TENANTS[tid].actions = saved;
+      } else if (tid === 'jd') {
+        saveTenantActions('jd', JD_ACTIONS);
+      }
+    }
+    // Ensure currentTenant is valid
+    if (!TENANTS[currentTenant]) currentTenant = Object.keys(TENANTS)[0];
+    allActions = TENANTS[currentTenant].actions;
+    applyTenantTheme(currentTenant);
+    document.getElementById('logoInitials').textContent   = TENANTS[currentTenant].initials;
+    document.getElementById('sidebarTitle').textContent    = TENANTS[currentTenant].sidebarTitle;
+    document.getElementById('sidebarSubtitle').textContent = TENANTS[currentTenant].sidebarSubtitle;
+    renderTenantList();
+    renderDashboard();
+    populateFilters();
+    renderTable();
+    initTableResize(document.querySelector('#projects table'));
+  })();
 
 });
 
 </script>
+<!-- CLIENT MODAL (create / edit) -->
+<div id="newTenantBackdrop">
+  <div class="nt-modal" role="dialog" aria-modal="true" aria-labelledby="ntModalTitle">
+    <button class="nt-close" id="newTenantClose" aria-label="Fechar">✕</button>
+    <h2 id="ntModalTitle">Novo Cliente</h2>
+    <div id="newTenantError"></div>
+    <div class="nt-field">
+      <label for="nt-label">Nome do cliente <span style="color:#dc2626">*</span></label>
+      <input type="text" id="nt-label" placeholder="Ex: Volkswagen" maxlength="50" autocomplete="off" />
+    </div>
+    <div class="nt-field">
+      <label for="nt-initials">Sigla <span style="color:#dc2626">*</span></label>
+      <input type="text" id="nt-initials" placeholder="Ex: VW" maxlength="6" autocomplete="off" />
+    </div>
+    <div class="nt-field">
+      <label for="nt-subtitle">Legenda do título</label>
+      <input type="text" id="nt-subtitle" placeholder="Ex: Gestão SIP 2025" maxlength="50" autocomplete="off" />
+    </div>
+    <div class="nt-field">
+      <label>Cores <span style="font-size:10px;color:#9ca3af;font-weight:400">(ou escolha uma combinação abaixo)</span></label>
+      <div class="nt-color-pickers">
+        <div class="nt-color-picker active" data-picker="sidebar">
+          <span class="nt-color-picker-label">Barra Lateral</span>
+          <input type="color" id="nt-color-sidebar" value="#1E4D17" title="Cor de fundo da barra lateral" />
+        </div>
+        <div class="nt-color-picker" data-picker="bg">
+          <span class="nt-color-picker-label">Quadradinho</span>
+          <input type="color" id="nt-color-bg" value="#367C2B" title="Cor de fundo do logo" />
+        </div>
+        <div class="nt-color-picker" data-picker="text">
+          <span class="nt-color-picker-label">Letras</span>
+          <input type="color" id="nt-color-text" value="#ffffff" title="Cor do texto / sigla" />
+        </div>
+      </div>
+      <div class="nt-swatches" id="ntSwatches" style="margin-top:8px"></div>
+    </div>
+    <div class="nt-preview" id="ntPreview">
+      <div class="nt-preview-icon" id="ntPreviewIcon" style="background:#367C2B; color:#fff; font-size:22px;">??</div>
+      <div class="nt-preview-text">
+        <strong id="ntPreviewName">Nome do cliente</strong>
+        <span id="ntPreviewSubtitle">Gestão do Projeto</span>
+      </div>
+    </div>
+    <input type="hidden" id="nt-editing-key" />
+    <div class="nt-actions">
+      <button class="nt-btn-cancel" id="newTenantCancel">Cancelar</button>
+      <button class="nt-btn-save" id="newTenantSave">Criar cliente</button>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
