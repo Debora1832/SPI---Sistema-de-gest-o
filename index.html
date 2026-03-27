@@ -283,14 +283,68 @@
     /* ===== TENANT SWITCHER ===== */
     .tenant-switcher { padding-top:12px; border-top:1px solid rgba(255,255,255,.12); }
     .tenant-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:rgba(255,255,255,.4); margin-bottom:6px; padding:0 4px; }
-    .tenant-btns { display:flex; gap:4px; }
+    .tenant-btns { display:flex; flex-wrap:wrap; gap:4px; }
     .tenant-btn {
-      flex:1; padding:5px 4px; border:1px solid rgba(255,255,255,.22); border-radius:6px;
+      flex:1; min-width:52px; padding:5px 4px; border:1px solid rgba(255,255,255,.22); border-radius:6px;
       background:transparent; color:rgba(255,255,255,.65); font-size:10px; font-weight:700;
       cursor:pointer; text-align:center; transition:all .15s; line-height:1.3;
+      display:inline-flex; align-items:center; justify-content:center; gap:3px;
     }
     .tenant-btn:hover { background:rgba(255,255,255,.12); color:#fff; }
     .tenant-btn.active { background:rgba(255,255,255,.22); color:#fff; border-color:rgba(255,255,255,.55); }
+    .tenant-btn-del {
+      display:inline-flex; align-items:center; justify-content:center;
+      width:13px; height:13px; border-radius:50%; border:none; padding:0;
+      background:rgba(255,255,255,.18); color:rgba(255,255,255,.7);
+      font-size:9px; line-height:1; cursor:pointer; flex-shrink:0;
+      transition:background .12s;
+    }
+    .tenant-btn-del:hover { background:rgba(220,38,38,.6); color:#fff; }
+    .btn-new-tenant {
+      width:100%; margin-top:6px; padding:5px 8px;
+      border:1px dashed rgba(255,255,255,.28); border-radius:6px;
+      background:transparent; color:rgba(255,255,255,.45); font-size:10px; font-weight:700;
+      cursor:pointer; text-align:center; transition:all .15s;
+      display:flex; align-items:center; justify-content:center; gap:4px;
+    }
+    .btn-new-tenant:hover { background:rgba(255,255,255,.1); color:#fff; border-color:rgba(255,255,255,.5); }
+    /* ===== NEW CLIENT MODAL ===== */
+    #newTenantBackdrop {
+      position:fixed; inset:0; background:rgba(0,0,0,.5); display:flex;
+      align-items:center; justify-content:center; z-index:300;
+      opacity:0; pointer-events:none; transition:opacity .2s;
+    }
+    #newTenantBackdrop.open { opacity:1; pointer-events:auto; }
+    #newTenantBackdrop .nt-modal {
+      background:#fff; border-radius:14px; padding:28px 28px 24px;
+      width:100%; max-width:380px; position:relative;
+      box-shadow:0 8px 32px rgba(0,0,0,.22); border-top:4px solid #367C2B;
+    }
+    #newTenantBackdrop .nt-modal h2 { font-size:17px; font-weight:700; color:#1E4D17; margin-bottom:16px; }
+    #newTenantBackdrop .nt-close {
+      position:absolute; top:14px; right:14px; background:none; border:none;
+      font-size:18px; color:#9ca3af; cursor:pointer; line-height:1; padding:2px 6px;
+    }
+    #newTenantBackdrop .nt-close:hover { color:#374151; }
+    #newTenantError { display:none; background:#fef2f2; color:#dc2626; border:1px solid #fecaca;
+      border-radius:6px; padding:8px 12px; font-size:12px; margin-bottom:12px; }
+    #newTenantBackdrop .nt-field { margin-bottom:12px; }
+    #newTenantBackdrop .nt-field label { display:block; font-size:12px; font-weight:600; color:#374151; margin-bottom:4px; }
+    #newTenantBackdrop .nt-field input {
+      width:100%; padding:8px 10px; border:1px solid #d1d5db; border-radius:7px;
+      font-size:13px; outline:none; transition:border-color .15s, box-shadow .15s;
+    }
+    #newTenantBackdrop .nt-field input:focus { border-color:#367C2B; box-shadow:0 0 0 3px rgba(54,124,43,.15); }
+    #newTenantBackdrop .nt-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:16px; }
+    #newTenantBackdrop .nt-btn-cancel {
+      padding:8px 18px; border:1px solid #d1d5db; border-radius:7px;
+      background:#fff; color:#374151; font-size:13px; font-weight:600; cursor:pointer;
+    }
+    #newTenantBackdrop .nt-btn-save {
+      padding:8px 18px; border:none; border-radius:7px;
+      background:#367C2B; color:#fff; font-size:13px; font-weight:600; cursor:pointer;
+    }
+    #newTenantBackdrop .nt-btn-save:hover { background:#2A6121; }
 
     /* ===== CAT THEME (yellow & black) ===== */
     body.tenant-cat .sidebar { background:#1A1A1A; }
@@ -438,11 +492,11 @@
   </ul>
   <div class="tenant-switcher">
     <div class="tenant-label">Empresa</div>
-    <div class="tenant-btns" role="radiogroup" aria-label="Selecionar empresa">
-      <button class="tenant-btn active" data-tenant="jd" role="radio" aria-checked="true" aria-label="John Deere">John Deere</button>
-      <button class="tenant-btn" data-tenant="cat" role="radio" aria-checked="false" aria-label="CAT">CAT</button>
-      <button class="tenant-btn" data-tenant="pessoal" role="radio" aria-checked="false" aria-label="Pessoal">Pessoal</button>
-    </div>
+    <div class="tenant-btns" id="tenantBtns" role="radiogroup" aria-label="Selecionar empresa"></div>
+    <button class="btn-new-tenant" id="btnNewTenant" title="Criar nova página de cliente">
+      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 20 20" fill="currentColor"><path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/></svg>
+      Novo cliente
+    </button>
   </div>
   <div class="sidebar-footer">v1.0 · 2025</div>
 </div>
@@ -1684,11 +1738,7 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById('sidebarSubtitle').textContent = TENANTS[key].sidebarSubtitle;
     document.title = 'SSQE - Gestão | ' + TENANTS[key].label;
     // Update tenant button active state + aria-checked
-    document.querySelectorAll('.tenant-btn').forEach(b => {
-      const isActive = b.dataset.tenant === key;
-      b.classList.toggle('active', isActive);
-      b.setAttribute('aria-checked', isActive ? 'true' : 'false');
-    });
+    renderTenantButtons();
     // Reset sort and group filter
     sortCol = null; sortDir = 'asc';
     // Re-render all views
@@ -1699,13 +1749,181 @@ document.addEventListener("DOMContentLoaded", function() {
     expandedGroup = null;
   }
 
-  document.querySelectorAll('.tenant-btn').forEach(btn => {
-    btn.addEventListener('click', () => switchTenant(btn.dataset.tenant));
+  // ── Dynamic tenant buttons ────────────────────────────────────────────────
+
+  const DEFAULT_TENANTS = ['jd', 'cat', 'pessoal'];
+
+  function renderTenantButtons() {
+    const container = document.getElementById('tenantBtns');
+    container.innerHTML = '';
+    Object.keys(TENANTS).forEach(function(key) {
+      const t = TENANTS[key];
+      const isActive = key === currentTenant;
+      const btn = document.createElement('button');
+      btn.className = 'tenant-btn' + (isActive ? ' active' : '');
+      btn.dataset.tenant = key;
+      btn.setAttribute('role', 'radio');
+      btn.setAttribute('aria-checked', isActive ? 'true' : 'false');
+      btn.setAttribute('aria-label', t.label);
+      btn.appendChild(document.createTextNode(t.label));
+      btn.addEventListener('click', function() { switchTenant(key); });
+      // Delete button for custom (non-default) tenants
+      if (!DEFAULT_TENANTS.includes(key)) {
+        const del = document.createElement('button');
+        del.className = 'tenant-btn-del';
+        del.title = 'Remover cliente';
+        del.setAttribute('aria-label', 'Remover ' + t.label);
+        del.textContent = '×';
+        del.addEventListener('click', function(e) {
+          e.stopPropagation();
+          deleteTenant(key);
+        });
+        btn.appendChild(del);
+      }
+      container.appendChild(btn);
+    });
+  }
+
+  // ── Persist custom tenants list ───────────────────────────────────────────
+
+  function saveCustomTenants() {
+    const custom = {};
+    Object.keys(TENANTS).forEach(function(key) {
+      if (!DEFAULT_TENANTS.includes(key)) custom[key] = {
+        label:          TENANTS[key].label,
+        initials:       TENANTS[key].initials,
+        sidebarTitle:   TENANTS[key].sidebarTitle,
+        sidebarSubtitle:TENANTS[key].sidebarSubtitle,
+        bodyClass:      TENANTS[key].bodyClass
+      };
+    });
+    try { localStorage.setItem('spi_custom_tenants', JSON.stringify(custom)); }
+    catch(e) { console.warn('localStorage error saving tenants:', e); }
+    if (db) {
+      db.collection('tenants').doc('__list__').set({ custom: custom }, { merge: true })
+        .catch(function(e) { console.error('Firebase save tenants error:', e); });
+    }
+  }
+
+  async function loadCustomTenants() {
+    let custom = null;
+    if (db) {
+      try {
+        const snap = await db.collection('tenants').doc('__list__').get();
+        if (snap.exists && snap.data().custom) custom = snap.data().custom;
+      } catch(e) { console.error('Firebase load tenants error:', e); }
+    }
+    if (!custom) {
+      try {
+        const raw = localStorage.getItem('spi_custom_tenants');
+        if (raw) custom = JSON.parse(raw);
+      } catch(e) { console.warn('localStorage load tenants error:', e); }
+    }
+    if (custom && typeof custom === 'object') {
+      Object.keys(custom).forEach(function(key) {
+        if (!TENANTS[key]) {
+          const c = custom[key];
+          // Validate required fields before registering
+          if (!c || typeof c.label !== 'string' || typeof c.initials !== 'string') return;
+          TENANTS[key] = {
+            label:          c.label,
+            initials:       c.initials,
+            bodyClass:      (typeof c.bodyClass === 'string' ? c.bodyClass : ''),
+            sidebarTitle:   (typeof c.sidebarTitle === 'string' ? c.sidebarTitle : c.initials),
+            sidebarSubtitle:(typeof c.sidebarSubtitle === 'string' ? c.sidebarSubtitle : 'Gestão do Projeto'),
+            actions:        [],
+            attachments:    {}
+          };
+        }
+      });
+    }
+  }
+
+  // ── Delete tenant ─────────────────────────────────────────────────────────
+
+  function deleteTenant(key) {
+    if (DEFAULT_TENANTS.includes(key)) return;
+    if (!confirm('Remover o cliente "' + TENANTS[key].label + '"? As ações serão apagadas.')) return;
+    if (currentTenant === key) switchTenant('jd');
+    delete TENANTS[key];
+    try { localStorage.removeItem('spi_actions_' + key); }
+    catch(e) { console.warn('localStorage error removing tenant actions:', e); }
+    saveCustomTenants();
+    renderTenantButtons();
+  }
+
+  // ── New client modal ──────────────────────────────────────────────────────
+
+  function openNewTenantModal() {
+    document.getElementById('nt-label').value    = '';
+    document.getElementById('nt-initials').value = '';
+    document.getElementById('nt-subtitle').value = '';
+    document.getElementById('newTenantError').style.display = 'none';
+    document.getElementById('newTenantBackdrop').classList.add('open');
+    document.getElementById('nt-label').focus();
+  }
+
+  function closeNewTenantModal() {
+    document.getElementById('newTenantBackdrop').classList.remove('open');
+  }
+
+  function saveNewTenant() {
+    const label    = document.getElementById('nt-label').value.trim();
+    const initials = document.getElementById('nt-initials').value.trim().toUpperCase();
+    const subtitle = document.getElementById('nt-subtitle').value.trim() || 'Gestão do Projeto';
+    const errEl    = document.getElementById('newTenantError');
+
+    if (!label || !initials) {
+      errEl.textContent = 'Preencha o nome do cliente e a sigla.';
+      errEl.style.display = 'block';
+      return;
+    }
+    // Build a safe key from initials (lower-case, alphanumeric only)
+    let key = initials.toLowerCase().replace(/[^a-z0-9]/g, '');
+    // Fallback: if initials are entirely non-alphanumeric, use timestamp
+    if (!key) key = 'c' + Date.now();
+    // Ensure uniqueness
+    let base = key, counter = 2;
+    while (TENANTS[key]) { key = base + counter++; }
+
+    TENANTS[key] = {
+      label:          label,
+      initials:       initials,
+      bodyClass:      '',
+      sidebarTitle:   initials,
+      sidebarSubtitle:subtitle,
+      actions:        [],
+      attachments:    {}
+    };
+
+    saveCustomTenants();
+    saveTenantActions(key, []);
+    closeNewTenantModal();
+    renderTenantButtons();
+    switchTenant(key);
+  }
+
+  document.getElementById('btnNewTenant').addEventListener('click', openNewTenantModal);
+  document.getElementById('newTenantClose').addEventListener('click', closeNewTenantModal);
+  document.getElementById('newTenantCancel').addEventListener('click', closeNewTenantModal);
+  document.getElementById('newTenantSave').addEventListener('click', saveNewTenant);
+  document.getElementById('newTenantBackdrop').addEventListener('click', function(e) {
+    if (e.target === this) closeNewTenantModal();
+  });
+  document.getElementById('nt-label').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') saveNewTenant();
+  });
+  document.getElementById('nt-initials').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') saveNewTenant();
+  });
+  document.getElementById('nt-subtitle').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') saveNewTenant();
   });
 
   // ── Init (async — load persisted data before first render) ───────────────
   (async function init() {
-    const tenantIds = ['jd', 'cat', 'pessoal'];
+    await loadCustomTenants();
+    const tenantIds = Object.keys(TENANTS);
     for (const tid of tenantIds) {
       const saved = await loadTenantActions(tid);
       if (saved !== null) {
@@ -1716,6 +1934,7 @@ document.addEventListener("DOMContentLoaded", function() {
       }
     }
     allActions = TENANTS[currentTenant].actions;
+    renderTenantButtons();
     renderDashboard();
     populateFilters();
     renderTable();
@@ -1725,6 +1944,30 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 
 </script>
+<!-- NEW CLIENT MODAL -->
+<div id="newTenantBackdrop">
+  <div class="nt-modal" role="dialog" aria-modal="true" aria-labelledby="ntModalTitle">
+    <button class="nt-close" id="newTenantClose" aria-label="Fechar">✕</button>
+    <h2 id="ntModalTitle">Novo Cliente</h2>
+    <div id="newTenantError"></div>
+    <div class="nt-field">
+      <label for="nt-label">Nome do cliente <span style="color:#dc2626">*</span></label>
+      <input type="text" id="nt-label" placeholder="Ex: Volkswagen" maxlength="50" autocomplete="off" />
+    </div>
+    <div class="nt-field">
+      <label for="nt-initials">Sigla <span style="color:#dc2626">*</span></label>
+      <input type="text" id="nt-initials" placeholder="Ex: VW" maxlength="6" autocomplete="off" />
+    </div>
+    <div class="nt-field">
+      <label for="nt-subtitle">Legenda do título</label>
+      <input type="text" id="nt-subtitle" placeholder="Ex: Gestão SIP 2025" maxlength="50" autocomplete="off" />
+    </div>
+    <div class="nt-actions">
+      <button class="nt-btn-cancel" id="newTenantCancel">Cancelar</button>
+      <button class="nt-btn-save" id="newTenantSave">Criar cliente</button>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
