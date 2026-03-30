@@ -1098,8 +1098,8 @@ document.addEventListener("DOMContentLoaded", function() {
         appId:             cfg.appId || ""
       });
       db = firebase.firestore();
-      // Test connectivity: list up to 1 document (avoids creating a __ping__ document)
-      db.collection("tenants").limit(1).get().then(function() {
+      // Test connectivity: list up to 1 document from the known 'projects' collection
+      db.collection("projects").limit(1).get().then(function() {
         firebaseConnected = true;
         setFirebaseStatus("connected", "Firebase: conectado ✓");
         reloadFromFirebase();
@@ -2883,13 +2883,25 @@ document.addEventListener("DOMContentLoaded", function() {
 
   // ── Init (async — load persisted data before first render) ───────────────
   (async function init() {
-    // Auto-initialize Firebase from stored credentials BEFORE loading data
+    // Default Firebase credentials for the jd-controle-sip project.
+    // These are intentionally in the client-side code — Firebase web API keys
+    // are public by design; access is controlled by Firestore security rules.
+    const DEFAULT_FIREBASE_CFG = {
+      apiKey:            "AIzaSyAybRHmAo5Ii_LF25km3EaJWFyYNyLwpc4",
+      authDomain:        "jd-controle-sip.firebaseapp.com",
+      projectId:         "jd-controle-sip",
+      storageBucket:     "jd-controle-sip.firebasestorage.app",
+      messagingSenderId: "743972983999",
+      appId:             "1:743972983999:web:1c533cd6567c34f8b0620a"
+    };
+
+    // Use stored credentials if the user provided custom ones via the modal,
+    // otherwise fall back to the default project credentials above.
     const storedCfg = loadFirebaseCfgFromStorage();
-    if (storedCfg && storedCfg.apiKey && storedCfg.projectId) {
-      initFirebaseFromCfg(storedCfg);
-    } else {
-      setFirebaseStatus("", "Firebase: desconectado");
-    }
+    const cfgToUse = (storedCfg && storedCfg.apiKey && storedCfg.projectId)
+      ? storedCfg
+      : DEFAULT_FIREBASE_CFG;
+    initFirebaseFromCfg(cfgToUse);
 
     await loadAllTenants();
     const tenantIds = Object.keys(TENANTS);
