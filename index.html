@@ -557,9 +557,27 @@
     .nc-charts-row { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:24px; }
     @media (max-width:960px) { .nc-charts-row { grid-template-columns:1fr 1fr; } }
     @media (max-width:600px) { .nc-charts-row { grid-template-columns:1fr; } }
-    .nc-chart-card { background:#fff; border-radius:12px; padding:16px 18px; box-shadow:0 1px 4px rgba(0,0,0,.07); position:relative; }
-    .nc-chart-card h4 { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#6b7280; margin-bottom:12px; }
+    .nc-chart-card {
+      background:linear-gradient(145deg,#1a1e2e,#22273a);
+      border-radius:16px; padding:18px 20px 14px;
+      box-shadow:0 4px 20px rgba(0,0,0,.28), 0 1px 4px rgba(0,0,0,.18);
+      position:relative; border:1px solid rgba(255,255,255,.06);
+    }
+    .nc-chart-card h4 {
+      font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.1em;
+      color:rgba(255,255,255,.45); margin-bottom:14px; display:flex; align-items:center; gap:6px;
+    }
+    .nc-chart-card h4::before { content:''; display:inline-block; width:3px; height:12px; background:var(--tenant-sidebar-bg,#1E4D17); border-radius:2px; }
     .nc-chart-card canvas { max-height:220px; }
+    /* NC search bar */
+    .nc-search-bar { display:flex; align-items:center; gap:10px; background:#1c1c1e; border:1px solid #2f2f33; border-radius:12px; padding:10px 16px; margin-bottom:12px; }
+    .nc-search-bar svg { flex-shrink:0; color:#6b7280; }
+    .nc-search-bar input { flex:1; background:transparent; border:none; outline:none; color:#fff; font-size:13px; }
+    .nc-search-bar input::placeholder { color:#6b7280; }
+    .nc-search-clear { background:none; border:none; color:#6b7280; cursor:pointer; font-size:14px; padding:0 2px; line-height:1; }
+    .nc-search-clear:hover { color:#fff; }
+    .nc-search-count { font-size:11px; color:#6b7280; margin-bottom:10px; padding-left:2px; }
+    .nc-card.nc-hidden { display:none; }
     .nc-cards-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:16px; }
     .nc-card { background:#1c1c1e; border-radius:14px; overflow:hidden; border:1px solid #2f2f33; box-shadow:0 4px 14px rgba(0,0,0,.22); transition:transform .15s, box-shadow .15s; display:flex; flex-direction:column; }
     .nc-card:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,.3); }
@@ -616,10 +634,14 @@
 
     /* NC – card photo strip (multiple photos) */
     .nc-card-photo-strip { position:relative; height:150px; overflow:hidden; }
-    .nc-card-photo-strip img { width:100%; height:150px; object-fit:cover; display:none; }
+    .nc-card-photo-strip img { width:100%; height:150px; object-fit:cover; display:none; cursor:zoom-in; transition:opacity .15s; }
+    .nc-card-photo-strip img:hover { opacity:.88; }
     .nc-card-photo-strip img.nc-active-photo { display:block; }
     .nc-photo-nav { position:absolute; bottom:6px; right:6px; display:flex; gap:4px; }
     .nc-photo-nav button { background:rgba(0,0,0,.55); border:none; color:#fff; border-radius:4px; font-size:11px; padding:2px 7px; cursor:pointer; line-height:1.5; }
+    /* zoom icon on hover */
+    .nc-card-photo-strip::after { content:'🔍'; position:absolute; top:6px; right:6px; font-size:14px; background:rgba(0,0,0,.5); border-radius:6px; padding:2px 5px; pointer-events:none; opacity:0; transition:opacity .2s; }
+    .nc-card-photo-strip:hover::after { opacity:1; }
 
     /* ── PDF print area (hidden on screen, visible when printing) ── */
     #nc-print-area { display:none; }
@@ -1089,6 +1111,12 @@
 
     <!-- NC Cards List -->
     <div class="nc-section-title" style="margin-bottom:14px">NCs Cadastradas</div>
+    <div class="nc-search-bar">
+      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 20 20" stroke="currentColor" stroke-width="2"><circle cx="9" cy="9" r="6"/><path stroke-linecap="round" d="M15 15l-3.5-3.5"/></svg>
+      <input type="text" id="ncSearchInput" placeholder="Pesquisar por peça, NC, modo de falha, descrição…" autocomplete="off" />
+      <button class="nc-search-clear" id="ncSearchClear" title="Limpar pesquisa" style="display:none">✕</button>
+    </div>
+    <div id="ncSearchCount" class="nc-search-count" style="display:none"></div>
     <div class="nc-cards-grid" id="ncCardsGrid">
       <div class="nc-empty">Nenhuma NC cadastrada ainda.</div>
     </div>
@@ -3308,22 +3336,41 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 
     var accentColor = getComputedStyle(document.body).getPropertyValue('--tenant-sidebar-bg').trim() || '#1E4D17';
-    var palette = [accentColor,'#367C2B','#FFDE00','#f59e0b','#3b82f6','#8b5cf6','#ec4899','#ef4444','#06b6d4'];
+    // Elegant dark-chart palette
+    var palette = ['#6366f1','#22d3ee','#f59e0b','#10b981','#f43f5e','#a78bfa','#fb923c','#34d399','#e879f9','#60a5fa','#facc15','#4ade80'];
+
+    // Shared dark-theme values (applied per-chart, not via global defaults)
+    var darkText = 'rgba(255,255,255,0.55)';
+    var darkGrid = 'rgba(255,255,255,0.07)';
+    var darkFont = { family: "'Inter','Segoe UI',sans-serif" };
 
     // Chart 1 — by piece (horizontal bar)
     if (_ncChartPiece) { _ncChartPiece.destroy(); _ncChartPiece = null; }
     var ctxP = document.getElementById('ncChartPiece');
     if (ctxP) {
+      var pKeys = Object.keys(pieceCount);
+      var pVals = pKeys.map(function(k){ return pieceCount[k]; });
       _ncChartPiece = new Chart(ctxP, {
         type: 'bar',
         data: {
-          labels: Object.keys(pieceCount).length ? Object.keys(pieceCount) : ['—'],
-          datasets: [{ data: Object.values(pieceCount).length ? Object.values(pieceCount) : [0], backgroundColor: accentColor, borderRadius: 5 }]
+          labels: pKeys.length ? pKeys : ['—'],
+          datasets: [{
+            data: pVals.length ? pVals : [0],
+            backgroundColor: palette.slice(0, pKeys.length || 1),
+            borderRadius: 6,
+            borderSkipped: false
+          }]
         },
         options: {
           indexAxis: 'y',
-          plugins: { legend:{ display:false } },
-          scales: { x:{ ticks:{font:{size:10}}, grid:{color:'#f0f0f0'} }, y:{ ticks:{font:{size:10}} } },
+          plugins: {
+            legend:{ display:false },
+            tooltip:{ callbacks:{ label: function(ctx){ return ' ' + ctx.parsed.x + ' NCs'; } } }
+          },
+          scales: {
+            x:{ ticks:{ color:darkText, font:Object.assign({size:10},darkFont) }, grid:{ color:darkGrid }, border:{ display:false } },
+            y:{ ticks:{ color:darkText, font:Object.assign({size:10},darkFont), padding:4 }, grid:{ display:false }, border:{ display:false } }
+          },
           responsive: true, maintainAspectRatio: false
         }
       });
@@ -3335,13 +3382,12 @@ document.addEventListener("DOMContentLoaded", function() {
     if (ctxF) {
       var fKeys = Object.keys(failureCount);
       if (!fKeys.length) {
-        // No data — show placeholder text instead of a misleading chart segment
         ctxF.parentNode.querySelector('canvas').style.display = 'none';
         var noData = ctxF.parentNode.querySelector('.nc-chart-nodata');
         if (!noData) {
           noData = document.createElement('p');
           noData.className = 'nc-chart-nodata';
-          noData.style.cssText = 'color:#9ca3af;font-size:12px;text-align:center;margin:32px 0';
+          noData.style.cssText = 'color:rgba(255,255,255,.3);font-size:12px;text-align:center;margin:48px 0';
           noData.textContent = 'Sem dados';
           ctxF.parentNode.appendChild(noData);
         }
@@ -3353,10 +3399,24 @@ document.addEventListener("DOMContentLoaded", function() {
           type: 'doughnut',
           data: {
             labels: fKeys,
-            datasets: [{ data: Object.values(failureCount), backgroundColor: palette.slice(0, fKeys.length), borderWidth:2, borderColor:'#fff' }]
+            datasets: [{
+              data: Object.values(failureCount),
+              backgroundColor: palette.slice(0, fKeys.length),
+              borderWidth: 3,
+              borderColor: '#1a1e2e',
+              hoverBorderColor: '#fff',
+              hoverOffset: 6
+            }]
           },
           options: {
-            plugins: { legend:{ position:'right', labels:{ font:{size:10}, padding:8 } } },
+            cutout: '62%',
+            plugins: {
+              legend:{
+                position:'right',
+                labels:{ color:darkText, font:Object.assign({size:10},darkFont), padding:10, usePointStyle:true, pointStyleWidth:8 }
+              },
+              tooltip:{ callbacks:{ label: function(ctx){ return ' ' + ctx.label + ': ' + ctx.parsed + ' NCs'; } } }
+            },
             responsive: true, maintainAspectRatio: false
           }
         });
@@ -3372,15 +3432,33 @@ document.addEventListener("DOMContentLoaded", function() {
         var mn = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(parts[1],10)-1];
         return mn + '/' + parts[0].slice(2);
       });
+      var mVals = monthKeys.map(function(k){ return monthCount[k]; });
+      // Gradient fill using actual canvas height (falls back to 220px from CSS)
+      var gradCtx = ctxM.getContext('2d');
+      var gradHeight = ctxM.offsetHeight || ctxM.parentElement.clientHeight || 220;
+      var gradient = gradCtx.createLinearGradient(0, 0, 0, gradHeight);
+      gradient.addColorStop(0, 'rgba(99,102,241,0.85)');
+      gradient.addColorStop(1, 'rgba(99,102,241,0.15)');
       _ncChartMonth = new Chart(ctxM, {
         type: 'bar',
         data: {
           labels: mLabels,
-          datasets: [{ data: monthKeys.map(function(k){ return monthCount[k]; }), backgroundColor:'#FFDE00', borderRadius:4 }]
+          datasets: [{
+            data: mVals,
+            backgroundColor: gradient,
+            borderRadius: 6,
+            borderSkipped: false
+          }]
         },
         options: {
-          plugins: { legend:{ display:false } },
-          scales: { x:{ ticks:{font:{size:9}}, grid:{display:false} }, y:{ beginAtZero:true, ticks:{font:{size:10}, stepSize:1}, grid:{color:'#f0f0f0'} } },
+          plugins: {
+            legend:{ display:false },
+            tooltip:{ callbacks:{ label: function(ctx){ return ' ' + ctx.parsed.y + ' NCs'; } } }
+          },
+          scales: {
+            x:{ ticks:{ color:darkText, font:Object.assign({size:9},darkFont), maxRotation:0 }, grid:{ display:false }, border:{ display:false } },
+            y:{ beginAtZero:true, ticks:{ color:darkText, font:Object.assign({size:10},darkFont), stepSize:1 }, grid:{ color:darkGrid }, border:{ display:false } }
+          },
           responsive: true, maintainAspectRatio: false
         }
       });
@@ -3451,6 +3529,14 @@ document.addEventListener("DOMContentLoaded", function() {
         });
       });
 
+      // Click on photo strip image → open lightbox (not a new tab)
+      card.querySelectorAll('.nc-card-photo-strip img').forEach(function(img) {
+        img.addEventListener('click', function(e) {
+          e.stopPropagation();
+          openLightbox(img.src, img.alt || 'Foto NC');
+        });
+      });
+
       // Action buttons — stop propagation so card-body click doesn't also fire
       card.querySelectorAll('button[data-action]').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
@@ -3497,6 +3583,8 @@ document.addEventListener("DOMContentLoaded", function() {
         });
       }
     });
+    // Re-apply active search filter after every card render
+    if (window._applyNcSearch) window._applyNcSearch();
   }
 
   // ── RNC status popup ─────────────────────────────────────────────────────
@@ -3942,6 +4030,51 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // Render cards immediately
     renderNcCards();
+
+    // ── NC search bar ─────────────────────────────────────────────────────
+    var ncSearchInput = document.getElementById('ncSearchInput');
+    var ncSearchClear = document.getElementById('ncSearchClear');
+    var ncSearchCount = document.getElementById('ncSearchCount');
+
+    function applyNcSearch() {
+      var q = (ncSearchInput.value || '').trim().toLowerCase();
+      ncSearchClear.style.display = q ? '' : 'none';
+      var cards = document.querySelectorAll('#ncCardsGrid .nc-card');
+      var shown = 0;
+      cards.forEach(function(card) {
+        var id = card.dataset.ncId;
+        var nc = ncRecords.find(function(r){ return r.id === id; });
+        if (!nc) { card.classList.add('nc-hidden'); return; }
+        if (!q) { card.classList.remove('nc-hidden'); shown++; return; }
+        var haystack = [
+          nc.ncNumber, nc.piece, nc.failureMode,
+          nc.customer, nc.description, nc.date
+        ].join(' ').toLowerCase();
+        if (haystack.includes(q)) {
+          card.classList.remove('nc-hidden');
+          shown++;
+        } else {
+          card.classList.add('nc-hidden');
+        }
+      });
+      if (q) {
+        ncSearchCount.textContent = shown + (shown === 1 ? ' NC encontrada' : ' NCs encontradas') + ' para "' + q + '"';
+        ncSearchCount.style.display = '';
+      } else {
+        ncSearchCount.style.display = 'none';
+      }
+    }
+
+    if (ncSearchInput) {
+      ncSearchInput.addEventListener('input', applyNcSearch);
+      ncSearchClear.addEventListener('click', function() {
+        ncSearchInput.value = '';
+        applyNcSearch();
+        ncSearchInput.focus();
+      });
+      // Expose so renderNcCards can re-apply after each render
+      window._applyNcSearch = applyNcSearch;
+    }
 
     // Wire nav click to (re-)render charts when NC page becomes visible
     var ncNavItem = document.querySelector('.sidebar-nav li[data-page="ncPage"]');
