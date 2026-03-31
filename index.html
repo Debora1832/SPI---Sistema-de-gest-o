@@ -559,20 +559,22 @@
     .nc-card:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,.3); }
     .nc-card-photo { width:100%; height:150px; object-fit:cover; display:block; }
     .nc-card-photo-placeholder { width:100%; height:150px; background:#2a2a2e; display:flex; align-items:center; justify-content:center; }
-    .nc-card-body { padding:14px 16px 8px; flex:1; cursor:pointer; }
-    .nc-card-body:hover .nc-card-piece { color:#e0e0e0; }
+    .nc-card-body { padding:14px 16px 8px; flex:1; cursor:pointer; background:rgba(0,0,0,.45); }
+    .nc-card-body:hover { background:rgba(0,0,0,.55); }
     .nc-card-num { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:#FFDE00; margin-bottom:4px; }
-    .nc-card-piece { font-size:15px; font-weight:700; color:#f5f5f5; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .nc-card-failure { font-size:12px; color:#a1a1aa; margin-bottom:4px; }
-    .nc-card-customer { font-size:11px; color:#71717a; }
-    .nc-card-desc { font-size:11px; color:#6b6b78; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .nc-card-date { font-size:11px; color:#52525b; margin-top:8px; padding-top:8px; border-top:1px solid #2a2a2e; }
+    .nc-card-piece { font-size:16px; font-weight:800; color:#ffffff; margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-shadow:0 1px 4px rgba(0,0,0,.5); }
+    .nc-card-failure { font-size:12px; font-weight:600; color:#d1d5db; margin-bottom:4px; }
+    .nc-card-customer { font-size:11px; color:#9ca3af; }
+    .nc-card-desc { font-size:11px; color:#9ca3af; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .nc-card-date { font-size:11px; color:#6b7280; margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,.08); }
     .nc-card-actions { padding:10px 16px 14px; display:flex; gap:8px; align-items:center; }
     .nc-btn-status { flex:1; font-size:10px; font-weight:700; padding:6px 6px; border-radius:7px; border:2px solid transparent; cursor:pointer; text-transform:uppercase; letter-spacing:.04em; transition:all .15s; text-align:center; }
     .nc-btn-rnc { border-color:#ef4444; color:#ef4444; background:transparent; }
     .nc-btn-rnc.active { background:#16a34a; border-color:#16a34a; color:#fff; }
     .nc-btn-8d  { border-color:#FFDE00; color:#FFDE00; background:transparent; }
     .nc-btn-8d.active  { background:#16a34a; border-color:#16a34a; color:#fff; }
+    .nc-btn-edit { background:transparent; border:none; cursor:pointer; color:#71717a; font-size:16px; padding:4px 6px; border-radius:5px; line-height:1; transition:color .12s, background .12s; }
+    .nc-btn-edit:hover { color:#1565C0; background:rgba(21,101,192,.12); }
     .nc-btn-del { background:transparent; border:none; cursor:pointer; color:#3f3f46; font-size:16px; padding:4px 6px; border-radius:5px; line-height:1; transition:color .12s, background .12s; }
     .nc-btn-del:hover { color:#ef4444; background:rgba(239,68,68,.1); }
     .nc-empty { color:#9ca3af; font-size:13px; text-align:center; padding:60px 0; grid-column:1/-1; }
@@ -626,13 +628,7 @@
       #nc-print-area .prt-header-sub { font-size:12px; opacity:.8; }
       #nc-print-area .prt-header-right { text-align:right; font-size:11px; opacity:.85; }
 
-      /* NC number badge row */
-      #nc-print-area .prt-badge-row { background:#f0f4ff; border-left:4px solid #1565C0; padding:10px 20px; display:flex; align-items:center; gap:12px; }
-      #nc-print-area .prt-badge { display:inline-block; background:#C62828; color:#fff; font-weight:800; font-size:13px; padding:4px 16px; border-radius:20px; }
-      #nc-print-area .prt-badge-date { font-size:12px; color:#374151; }
-
       /* Info sections */
-      #nc-print-area .prt-section { border:1px solid #e5e7eb; border-radius:8px; overflow:hidden; margin:12px 0 0; }
       #nc-print-area .prt-section-title { background:#f0f4ff; padding:7px 16px; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; color:#1565C0; border-bottom:1px solid #e5e7eb; }
       #nc-print-area .prt-section-body { padding:14px 16px; background:#fff; }
       #nc-print-area .prt-row { display:flex; gap:24px; flex-wrap:wrap; }
@@ -647,7 +643,7 @@
       #nc-print-area .prt-status-none  { background:#f3f4f6; color:#6b7280; }
 
       /* RNC section */
-      #nc-print-area .prt-rnc-section { border:1px solid #bbf7d0; border-radius:8px; overflow:hidden; margin:12px 0 0; }
+      #nc-print-area .prt-rnc-section { border:1px solid #bbf7d0; border-radius:8px; overflow:hidden; margin:12px 0 0; break-inside:avoid; page-break-inside:avoid; }
       #nc-print-area .prt-rnc-title   { background:#f0fdf4; padding:7px 16px; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; color:#16a34a; border-bottom:1px solid #bbf7d0; }
       #nc-print-area .prt-rnc-body    { padding:14px 16px; background:#fff; }
 
@@ -657,6 +653,11 @@
 
       /* Description */
       #nc-print-area .prt-desc { font-size:12px; color:#374151; line-height:1.5; }
+
+      /* NC number badge row */
+      #nc-print-area .prt-badge-row { background:#f0f4ff; border-left:4px solid #1565C0; padding:10px 20px; display:flex; align-items:center; gap:12px; break-inside:avoid; page-break-inside:avoid; }
+      #nc-print-area .prt-badge { display:inline-block; background:#C62828; color:#fff; font-weight:800; font-size:13px; padding:4px 16px; border-radius:20px; }
+      #nc-print-area .prt-badge-date { font-size:12px; color:#374151; }
 
       /* Footer */
       #nc-print-area .prt-footer { margin-top:20px; font-size:9px; color:#9ca3af; text-align:right; border-top:1px solid #f0f0f0; padding-top:8px; display:flex; justify-content:space-between; }
@@ -3393,6 +3394,7 @@ document.addEventListener("DOMContentLoaded", function() {
           '<button class="nc-btn-status nc-btn-rnc ' + rncActive + '" data-action="rnc_aberta">RNC Aberta</button>' +
           '<button class="nc-btn-status nc-btn-8d '  + d8Active  + '" data-action="8d_finalizado">8D Finalizado</button>' +
           '<button class="nc-btn-pdf" data-action="export_pdf" title="Exportar PDF">PDF</button>' +
+          '<button class="nc-btn-edit" data-action="edit" title="Editar NC">✎</button>' +
           '<button class="nc-btn-del" data-action="delete" title="Excluir NC">✕</button>' +
         '</div>' +
       '</div>';
@@ -3426,6 +3428,8 @@ document.addEventListener("DOMContentLoaded", function() {
           if (action === 'export_pdf') {
             // PDF export: read-only — no state changes (save/render) needed
             exportNcPdf(ncRecords[idx]);
+          } else if (action === 'edit') {
+            if (window.openNcModalEdit) window.openNcModalEdit(ncRecords[idx]);
           } else if (action === 'delete') {
             if (!window.confirm('Excluir esta NC?')) return;
             ncRecords.splice(idx, 1);
@@ -3749,9 +3753,11 @@ document.addEventListener("DOMContentLoaded", function() {
     var drop     = document.getElementById('ncPhotoDrop');
     var input    = document.getElementById('ncPhotoInput');
     var thumbs   = document.getElementById('ncPhotoThumbs');
+    var _editingNcId = null; // null = create mode; string id = edit mode
 
     // ── Open / close modal ────────────────────────────────────────────────
     function openNcModal() {
+      _editingNcId = null;
       // Reset modal state
       _ncPhotos = [];
       thumbs.innerHTML = '';
@@ -3762,6 +3768,27 @@ document.addEventListener("DOMContentLoaded", function() {
       document.getElementById('ncDate').value        = new Date().toISOString().slice(0,10);
       document.getElementById('ncDescription').value = '';
       input.value = '';
+      document.getElementById('ncModalTitle').innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 20 20" fill="currentColor" style="vertical-align:-2px;margin-right:6px"><path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/></svg>Cadastrar Nova NC';
+      document.getElementById('ncBtnSubmit').innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/></svg> Cadastrar NC';
+      backdrop.classList.add('open');
+      setTimeout(function(){ document.getElementById('ncPiece').focus(); }, 80);
+    }
+
+    function openNcModalEdit(nc) {
+      _editingNcId = nc.id;
+      var photos = (nc.photos && nc.photos.length) ? nc.photos : (nc.photo ? [nc.photo] : []);
+      _ncPhotos = photos.slice();
+      thumbs.innerHTML = '';
+      _ncPhotos.forEach(function(src, i) { renderThumb(src, i); });
+      document.getElementById('ncNumber').value      = nc.ncNumber || '';
+      document.getElementById('ncCustomer').value    = nc.customer || '';
+      document.getElementById('ncPiece').value       = nc.piece || '';
+      document.getElementById('ncFailureMode').value = nc.failureMode || '';
+      document.getElementById('ncDate').value        = nc.date || new Date().toISOString().slice(0,10);
+      document.getElementById('ncDescription').value = nc.description || '';
+      input.value = '';
+      document.getElementById('ncModalTitle').innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 20 20" fill="currentColor" style="vertical-align:-2px;margin-right:6px"><path stroke="currentColor" d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zm-2.207 2.207L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/></svg>Editar NC';
+      document.getElementById('ncBtnSubmit').innerHTML = '✔ Salvar Alterações';
       backdrop.classList.add('open');
       setTimeout(function(){ document.getElementById('ncPiece').focus(); }, 80);
     }
@@ -3773,6 +3800,9 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById('ncModalCancel').addEventListener('click', closeNcModal);
     backdrop.addEventListener('click', function(e) { if (e.target === backdrop) closeNcModal(); });
     document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && backdrop.classList.contains('open')) closeNcModal(); });
+
+    // Expose edit opener globally (called from renderNcCards action handler)
+    window.openNcModalEdit = openNcModalEdit;
 
     // ── Multi-photo upload ────────────────────────────────────────────────
     drop.addEventListener('click', function() { input.click(); });
@@ -3836,25 +3866,45 @@ document.addEventListener("DOMContentLoaded", function() {
       if (!failureMode) { alert('Por favor, selecione o modo de falha.'); document.getElementById('ncFailureMode').focus(); return; }
       if (!date)        { alert('Por favor, informe a data da reclamação.'); document.getElementById('ncDate').focus(); return; }
 
-      var autoNum = 'NC-' + String(ncRecords.length + 1).padStart(4,'0');
-      var newNc = {
-        id:          'nc_' + Date.now() + '_' + Math.floor(Math.random()*10000),
-        ncNumber:    document.getElementById('ncNumber').value.trim() || autoNum,
-        customer:    document.getElementById('ncCustomer').value.trim(),
-        piece:       piece,
-        failureMode: failureMode,
-        date:        date,
-        description: document.getElementById('ncDescription').value.trim(),
-        rncAberta:    false,
-        d8Finalizado: false,
-        photos:      _ncPhotos.slice()
-      };
-
-      ncRecords.push(newNc);
-      saveNcRecords();
-      closeNcModal();
-      renderNcCards();
-      renderNcCharts();
+      if (_editingNcId) {
+        // ── Edit mode: update existing record ─────────────────────────────
+        var idx = ncRecords.findIndex(function(r){ return r.id === _editingNcId; });
+        if (idx !== -1) {
+          ncRecords[idx].ncNumber    = document.getElementById('ncNumber').value.trim() || ncRecords[idx].ncNumber;
+          ncRecords[idx].customer    = document.getElementById('ncCustomer').value.trim();
+          ncRecords[idx].piece       = piece;
+          ncRecords[idx].failureMode = failureMode;
+          ncRecords[idx].date        = date;
+          ncRecords[idx].description = document.getElementById('ncDescription').value.trim();
+          ncRecords[idx].photos      = _ncPhotos.slice();
+          saveNcRecords();
+          closeNcModal();
+          renderNcCards();
+          renderNcCharts();
+        } else {
+          alert('Não foi possível encontrar a NC para editar. Por favor, tente novamente.');
+        }
+      } else {
+        // ── Create mode: add new record ───────────────────────────────────
+        var autoNum = 'NC-' + String(ncRecords.length + 1).padStart(4,'0');
+        var newNc = {
+          id:          'nc_' + Date.now() + '_' + Math.floor(Math.random()*10000),
+          ncNumber:    document.getElementById('ncNumber').value.trim() || autoNum,
+          customer:    document.getElementById('ncCustomer').value.trim(),
+          piece:       piece,
+          failureMode: failureMode,
+          date:        date,
+          description: document.getElementById('ncDescription').value.trim(),
+          rncAberta:    false,
+          d8Finalizado: false,
+          photos:      _ncPhotos.slice()
+        };
+        ncRecords.push(newNc);
+        saveNcRecords();
+        closeNcModal();
+        renderNcCards();
+        renderNcCharts();
+      }
     });
 
     // Render cards immediately
