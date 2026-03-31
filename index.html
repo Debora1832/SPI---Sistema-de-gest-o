@@ -11,6 +11,9 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
+  <!-- Chart.js (used by the NC page) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
   <style>
     *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; font-family:'Inter', sans-serif; }
 
@@ -530,6 +533,218 @@
     body.tenant-pessoal .attachment-item { background:#D4E0F9; border-color:#6B8FE8; }
     body.tenant-pessoal .attachment-link { color:#0D2461; }
 
+    /* ===== NC PAGE ===== */
+    .nc-section-title { font-size:12px; font-weight:700; color:var(--tenant-sidebar-bg,#1E4D17); text-transform:uppercase; letter-spacing:.08em; margin-bottom:12px; padding-bottom:8px; border-bottom:2px solid var(--tenant-nav-active-text,#FFDE00); display:inline-block; }
+    .nc-form-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:14px; align-items:start; }
+    .nc-form-grid .nc-field-full { grid-column:1/-1; }
+    .nc-field { display:flex; flex-direction:column; gap:4px; }
+    .nc-field label { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:#6b7280; }
+    .nc-field input, .nc-field select, .nc-field textarea { border:1px solid #e5e7eb; border-radius:8px; padding:8px 10px; font-size:13px; background:#f9fafb; color:#1f2937; outline:none; transition:border-color .15s, box-shadow .15s; width:100%; }
+    .nc-field input:focus, .nc-field select:focus, .nc-field textarea:focus { border-color:var(--tenant-sidebar-bg,#1E4D17); box-shadow:0 0 0 3px rgba(30,77,23,.12); background:#fff; }
+    .nc-field textarea { resize:vertical; min-height:72px; }
+    .nc-photo-drop { border:2px dashed #d1d5db; border-radius:10px; padding:20px 14px; text-align:center; cursor:pointer; color:#9ca3af; font-size:12px; transition:border-color .2s, background .2s; display:flex; flex-direction:column; align-items:center; gap:6px; min-height:100px; justify-content:center; background:#f9fafb; }
+    .nc-photo-drop:hover, .nc-photo-drop.dragover { border-color:var(--tenant-sidebar-bg,#1E4D17); background:#f0fdf4; color:var(--tenant-sidebar-bg,#1E4D17); }
+    .nc-photo-preview { width:100%; height:100px; object-fit:cover; border-radius:8px; margin-top:6px; display:none; }
+    #ncPhotoInput { display:none; }
+    .nc-btn-submit { margin-top:18px; background:var(--tenant-sidebar-bg,#1E4D17); color:#fff; border:none; border-radius:8px; padding:10px 30px; font-size:13px; font-weight:700; cursor:pointer; letter-spacing:.04em; transition:background .15s; display:inline-flex; align-items:center; gap:6px; }
+    .nc-btn-submit:hover { background:var(--tenant-sidebar-hover,#163d10); }
+    .nc-charts-row { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:24px; }
+    @media (max-width:960px) { .nc-charts-row { grid-template-columns:1fr 1fr; } }
+    @media (max-width:600px) { .nc-charts-row { grid-template-columns:1fr; } }
+    .nc-chart-card { background:#fff; border-radius:12px; padding:16px 18px; box-shadow:0 1px 4px rgba(0,0,0,.07); position:relative; }
+    .nc-chart-card h4 { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#6b7280; margin-bottom:12px; }
+    .nc-chart-card canvas { max-height:220px; }
+    .nc-cards-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:16px; }
+    .nc-card { background:#1c1c1e; border-radius:14px; overflow:hidden; border:1px solid #2f2f33; box-shadow:0 4px 14px rgba(0,0,0,.22); transition:transform .15s, box-shadow .15s; display:flex; flex-direction:column; }
+    .nc-card:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,.3); }
+    .nc-card-photo { width:100%; height:150px; object-fit:cover; display:block; }
+    .nc-card-photo-placeholder { width:100%; height:150px; background:#2a2a2e; display:flex; align-items:center; justify-content:center; }
+    .nc-card-body { padding:14px 16px 8px; flex:1; cursor:pointer; background:rgba(0,0,0,.45); }
+    .nc-card-body:hover { background:rgba(0,0,0,.55); }
+    .nc-card-num { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:#FFDE00; margin-bottom:4px; }
+    .nc-card-piece { font-size:16px; font-weight:800; color:#ffffff; margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-shadow:0 1px 4px rgba(0,0,0,.5); }
+    .nc-card-failure { font-size:12px; font-weight:600; color:#d1d5db; margin-bottom:4px; }
+    .nc-card-customer { font-size:11px; color:#9ca3af; }
+    .nc-card-desc { font-size:11px; color:#9ca3af; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .nc-card-date { font-size:11px; color:#6b7280; margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,.08); }
+    .nc-card-actions { padding:10px 16px 14px; display:flex; gap:8px; align-items:center; }
+    .nc-btn-status { flex:1; font-size:10px; font-weight:700; padding:6px 6px; border-radius:7px; border:2px solid transparent; cursor:pointer; text-transform:uppercase; letter-spacing:.04em; transition:all .15s; text-align:center; }
+    .nc-btn-rnc { border-color:#ef4444; color:#ef4444; background:transparent; }
+    .nc-btn-rnc.active { background:#16a34a; border-color:#16a34a; color:#fff; }
+    .nc-btn-8d  { border-color:#FFDE00; color:#FFDE00; background:transparent; }
+    .nc-btn-8d.active  { background:#16a34a; border-color:#16a34a; color:#fff; }
+    .nc-btn-edit { background:transparent; border:none; cursor:pointer; color:#71717a; font-size:16px; padding:4px 6px; border-radius:5px; line-height:1; transition:color .12s, background .12s; }
+    .nc-btn-edit:hover { color:#1565C0; background:rgba(21,101,192,.12); }
+    .nc-btn-del { background:transparent; border:none; cursor:pointer; color:#3f3f46; font-size:16px; padding:4px 6px; border-radius:5px; line-height:1; transition:color .12s, background .12s; }
+    .nc-btn-del:hover { color:#ef4444; background:rgba(239,68,68,.1); }
+    .nc-empty { color:#9ca3af; font-size:13px; text-align:center; padding:60px 0; grid-column:1/-1; }
+
+    /* NC – "Nova NC" button */
+    .nc-new-btn { background:#1565C0; color:#fff; border:none; border-radius:10px; padding:11px 24px; font-size:13px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:7px; transition:background .15s; box-shadow:0 2px 8px rgba(21,101,192,.25); }
+    .nc-new-btn:hover { background:#0d47a1; }
+
+    /* NC – modal overlay */
+    .nc-modal-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:3000; align-items:flex-start; justify-content:center; overflow-y:auto; padding:40px 16px; }
+    .nc-modal-backdrop.open { display:flex; }
+    .nc-modal { background:#fff; border-radius:16px; width:100%; max-width:700px; margin:auto; box-shadow:0 20px 60px rgba(0,0,0,.3); overflow:hidden; }
+    .nc-modal-header { background:linear-gradient(135deg,#1565C0 0%,#1976D2 100%); padding:18px 24px; display:flex; align-items:center; justify-content:space-between; }
+    .nc-modal-header h3 { color:#fff; font-size:16px; font-weight:700; margin:0; letter-spacing:.02em; }
+    .nc-modal-close { background:rgba(255,255,255,.18); border:none; color:#fff; font-size:20px; cursor:pointer; border-radius:8px; width:32px; height:32px; display:flex; align-items:center; justify-content:center; transition:background .15s; line-height:1; flex-shrink:0; }
+    .nc-modal-close:hover { background:rgba(255,255,255,.35); }
+    .nc-modal-body { padding:22px 24px; }
+    .nc-modal-footer { padding:14px 24px; border-top:1px solid #f3f4f6; display:flex; gap:10px; justify-content:flex-end; background:#f9fafb; }
+    .nc-btn-save { background:#1565C0; color:#fff; border:none; border-radius:8px; padding:10px 28px; font-size:13px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:background .15s; }
+    .nc-btn-save:hover { background:#0d47a1; }
+    .nc-btn-cancel-modal { background:#f3f4f6; color:#374151; border:none; border-radius:8px; padding:10px 20px; font-size:13px; font-weight:600; cursor:pointer; transition:background .15s; }
+    .nc-btn-cancel-modal:hover { background:#e5e7eb; }
+
+    /* NC – multi-photo thumbs */
+    .nc-photo-thumbs { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+    .nc-thumb-item { position:relative; width:72px; height:72px; }
+    .nc-thumb-item img { width:72px; height:72px; object-fit:cover; border-radius:8px; border:2px solid #e5e7eb; display:block; }
+    .nc-thumb-remove { position:absolute; top:-6px; right:-6px; width:18px; height:18px; background:#ef4444; border:none; border-radius:50%; color:#fff; font-size:11px; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1; padding:0; }
+
+    /* NC – PDF export button on cards */
+    .nc-btn-pdf { flex:0 0 auto; font-size:10px; font-weight:700; padding:6px 8px; border-radius:7px; border:2px solid #C62828; color:#C62828; background:transparent; cursor:pointer; text-transform:uppercase; letter-spacing:.04em; transition:all .15s; white-space:nowrap; }
+    .nc-btn-pdf:hover { background:#C62828; color:#fff; }
+
+    /* NC – card photo strip (multiple photos) */
+    .nc-card-photo-strip { position:relative; height:150px; overflow:hidden; }
+    .nc-card-photo-strip img { width:100%; height:150px; object-fit:cover; display:none; }
+    .nc-card-photo-strip img.nc-active-photo { display:block; }
+    .nc-photo-nav { position:absolute; bottom:6px; right:6px; display:flex; gap:4px; }
+    .nc-photo-nav button { background:rgba(0,0,0,.55); border:none; color:#fff; border-radius:4px; font-size:11px; padding:2px 7px; cursor:pointer; line-height:1.5; }
+
+    /* ── PDF print area (hidden on screen, visible when printing) ── */
+    #nc-print-area { display:none; }
+    @media print {
+      body > *     { display:none !important; }
+      #nc-print-area { display:block !important; font-family:Arial,sans-serif; padding:28px; color:#1a1a1a; max-width:800px; margin:0 auto; }
+
+      /* Header strip */
+      #nc-print-area .prt-header { background:#1565C0; color:#fff; padding:20px 28px; border-radius:10px 10px 0 0; display:flex; align-items:center; justify-content:space-between; }
+      #nc-print-area .prt-header-left { display:flex; flex-direction:column; gap:4px; }
+      #nc-print-area .prt-header h1  { margin:0; font-size:20px; font-weight:800; }
+      #nc-print-area .prt-header-sub { font-size:12px; opacity:.8; }
+      #nc-print-area .prt-header-right { text-align:right; font-size:11px; opacity:.85; }
+
+      /* Info sections */
+      #nc-print-area .prt-section-title { background:#f0f4ff; padding:7px 16px; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; color:#1565C0; border-bottom:1px solid #e5e7eb; }
+      #nc-print-area .prt-section-body { padding:14px 16px; background:#fff; }
+      #nc-print-area .prt-row { display:flex; gap:24px; flex-wrap:wrap; }
+      #nc-print-area .prt-field { flex:1; min-width:150px; padding:4px 0; }
+      #nc-print-area .prt-field label { font-size:9px; font-weight:700; text-transform:uppercase; color:#6b7280; letter-spacing:.06em; display:block; margin-bottom:3px; }
+      #nc-print-area .prt-field span  { font-size:12px; color:#111; font-weight:500; }
+
+      /* Status badges */
+      #nc-print-area .prt-status-badge { display:inline-block; padding:3px 12px; border-radius:20px; font-weight:700; font-size:11px; }
+      #nc-print-area .prt-status-rnc   { background:#fee2e2; color:#C62828; border:1px solid #fca5a5; }
+      #nc-print-area .prt-status-8d    { background:#dbeafe; color:#1565C0; border:1px solid #93c5fd; }
+      #nc-print-area .prt-status-none  { background:#f3f4f6; color:#6b7280; }
+
+      /* RNC section */
+      #nc-print-area .prt-rnc-section { border:1px solid #bbf7d0; border-radius:8px; overflow:hidden; margin:12px 0 0; break-inside:avoid; page-break-inside:avoid; }
+      #nc-print-area .prt-rnc-title   { background:#f0fdf4; padding:7px 16px; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; color:#16a34a; border-bottom:1px solid #bbf7d0; }
+      #nc-print-area .prt-rnc-body    { padding:14px 16px; background:#fff; }
+
+      /* Photos */
+      #nc-print-area .prt-photos-row { display:flex; flex-wrap:wrap; gap:10px; }
+      #nc-print-area .prt-photos-row img { width:160px; height:120px; object-fit:cover; border-radius:6px; border:1px solid #e5e7eb; }
+
+      /* Description */
+      #nc-print-area .prt-desc { font-size:12px; color:#374151; line-height:1.5; }
+
+      /* NC number badge row */
+      #nc-print-area .prt-badge-row { background:#f0f4ff; border-left:4px solid #1565C0; padding:10px 20px; display:flex; align-items:center; gap:12px; break-inside:avoid; page-break-inside:avoid; }
+      #nc-print-area .prt-badge { display:inline-block; background:#C62828; color:#fff; font-weight:800; font-size:13px; padding:4px 16px; border-radius:20px; }
+      #nc-print-area .prt-badge-date { font-size:12px; color:#374151; }
+
+      /* Footer */
+      #nc-print-area .prt-footer { margin-top:20px; font-size:9px; color:#9ca3af; text-align:right; border-top:1px solid #f0f0f0; padding-top:8px; display:flex; justify-content:space-between; }
+    }
+
+    /* ── RNC/8D Status popup ── */
+    .nc-status-modal-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:4000; align-items:center; justify-content:center; }
+    .nc-status-modal-backdrop.open { display:flex; }
+    .nc-status-modal { background:#fff; border-radius:14px; width:100%; max-width:480px; margin:16px; box-shadow:0 16px 48px rgba(0,0,0,.28); overflow:hidden; }
+    .nc-status-modal-header { background:linear-gradient(135deg,#16a34a 0%,#15803d 100%); padding:16px 20px; display:flex; align-items:center; justify-content:space-between; }
+    .nc-status-modal-header h3 { color:#fff; font-size:15px; font-weight:700; margin:0; }
+    .nc-status-modal-close { background:rgba(255,255,255,.18); border:none; color:#fff; font-size:18px; cursor:pointer; border-radius:7px; width:30px; height:30px; display:flex; align-items:center; justify-content:center; transition:background .15s; }
+    .nc-status-modal-close:hover { background:rgba(255,255,255,.35); }
+    .nc-status-modal-body { padding:20px; }
+    .nc-status-modal-footer { padding:12px 20px; border-top:1px solid #f3f4f6; display:flex; gap:8px; justify-content:flex-end; background:#f9fafb; }
+    .nc-btn-status-save { background:#16a34a; color:#fff; border:none; border-radius:8px; padding:9px 24px; font-size:13px; font-weight:700; cursor:pointer; transition:background .15s; }
+    .nc-btn-status-save:hover { background:#15803d; }
+
+    /* Alert file drop zone */
+    .nc-alert-drop { border:2px dashed #d1d5db; border-radius:10px; padding:14px; text-align:center; cursor:pointer; color:#9ca3af; font-size:12px; transition:border-color .2s, background .2s; background:#f9fafb; }
+    .nc-alert-drop:hover, .nc-alert-drop.dragover { border-color:#16a34a; background:#f0fdf4; color:#16a34a; }
+    .nc-alert-file-name { font-size:12px; color:#374151; margin-top:6px; font-weight:600; }
+    #ncAlertFileInput { display:none; }
+
+    /* ── NC Detail popup — redesigned ── */
+    .nc-detail-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:3500; align-items:flex-start; justify-content:center; overflow-y:auto; padding:32px 16px; }
+    .nc-detail-backdrop.open { display:flex; }
+    .nc-detail-modal { background:#fff; border-radius:16px; width:100%; max-width:720px; margin:auto; box-shadow:0 24px 64px rgba(0,0,0,.36); overflow:hidden; }
+
+    /* Header: Magius blue gradient */
+    .nc-detail-header { background:linear-gradient(135deg,#1565C0 0%,#0d47a1 100%); padding:18px 24px; display:flex; align-items:center; justify-content:space-between; }
+    .nc-detail-header-left { display:flex; align-items:center; gap:12px; }
+    .nc-detail-header-badge { background:#C62828; color:#fff; font-size:11px; font-weight:800; padding:3px 12px; border-radius:20px; letter-spacing:.04em; }
+    .nc-detail-header h3 { color:#fff; font-size:16px; font-weight:700; margin:0; }
+    .nc-detail-close { background:rgba(255,255,255,.18); border:none; color:#fff; font-size:20px; cursor:pointer; border-radius:8px; width:32px; height:32px; display:flex; align-items:center; justify-content:center; transition:background .15s; flex-shrink:0; }
+    .nc-detail-close:hover { background:rgba(255,255,255,.35); }
+
+    .nc-detail-body { padding:0; }
+
+    /* Photo strip */
+    .nc-detail-photo-strip { display:flex; gap:8px; padding:16px 24px 0; flex-wrap:wrap; }
+    .nc-detail-photo-strip img { width:130px; height:96px; object-fit:cover; border-radius:8px; border:2px solid #e5e7eb; cursor:pointer; transition:transform .15s, border-color .15s; }
+    .nc-detail-photo-strip img:hover { transform:scale(1.05); border-color:#1565C0; }
+
+    /* Info sections */
+    .nc-detail-section { margin:16px 24px 0; border:1px solid #e5e7eb; border-radius:10px; overflow:hidden; }
+    .nc-detail-section-title { background:#f0f4ff; padding:8px 14px; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; color:#1565C0; border-bottom:1px solid #e5e7eb; }
+    .nc-detail-section-body { padding:14px; display:grid; grid-template-columns:1fr 1fr; gap:10px 24px; background:#fff; }
+    .nc-detail-section-body.single { grid-template-columns:1fr; }
+    .nc-detail-field label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#6b7280; display:block; margin-bottom:3px; }
+    .nc-detail-field span { font-size:13px; color:#111; font-weight:500; }
+    .nc-detail-field.full { grid-column:1/-1; }
+
+    /* Status badges */
+    .nc-detail-status-row { display:flex; gap:8px; flex-wrap:wrap; }
+    .nc-detail-status-badge { display:inline-flex; align-items:center; gap:5px; padding:4px 12px; border-radius:20px; font-size:11px; font-weight:700; }
+    .nc-detail-status-open  { background:#dcfce7; color:#16a34a; border:1px solid #bbf7d0; }
+    .nc-detail-status-8d    { background:#dbeafe; color:#1565C0; border:1px solid #bfdbfe; }
+    .nc-detail-status-none  { background:#f3f4f6; color:#6b7280; border:1px solid #e5e7eb; }
+
+    /* RNC info section */
+    .nc-detail-rnc-section { margin:12px 24px 0; padding:14px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; }
+    .nc-detail-rnc-section-title { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; color:#16a34a; margin-bottom:10px; display:flex; align-items:center; gap:6px; }
+    .nc-detail-rnc-section-body { display:grid; grid-template-columns:1fr 1fr; gap:8px 20px; }
+    .nc-detail-rnc-field label { font-size:10px; font-weight:700; text-transform:uppercase; color:#16a34a; opacity:.7; display:block; margin-bottom:2px; }
+    .nc-detail-rnc-field span { font-size:13px; color:#166534; font-weight:600; }
+    .nc-detail-alert-btn { display:inline-flex; align-items:center; gap:6px; margin-top:8px; background:#16a34a; color:#fff; border:none; border-radius:7px; padding:7px 14px; font-size:12px; font-weight:700; cursor:pointer; transition:background .15s; }
+    .nc-detail-alert-btn:hover { background:#15803d; }
+
+    .nc-detail-footer { padding:14px 24px 16px; border-top:1px solid #f3f4f6; display:flex; gap:10px; justify-content:flex-end; background:#f9fafb; }
+    .nc-detail-btn-pdf { background:#C62828; color:#fff; border:none; border-radius:8px; padding:9px 20px; font-size:12px; font-weight:700; cursor:pointer; transition:background .15s; display:inline-flex; align-items:center; gap:6px; }
+    .nc-detail-btn-pdf:hover { background:#b71c1c; }
+    .nc-detail-btn-close { background:#f3f4f6; color:#374151; border:none; border-radius:8px; padding:9px 20px; font-size:13px; font-weight:600; cursor:pointer; transition:background .15s; }
+    .nc-detail-btn-close:hover { background:#e5e7eb; }
+
+    /* ── Alert / file viewer popup ── */
+    .nc-alert-viewer-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,.75); z-index:5000; align-items:center; justify-content:center; padding:20px; }
+    .nc-alert-viewer-backdrop.open { display:flex; }
+    .nc-alert-viewer-modal { background:#fff; border-radius:12px; width:100%; max-width:860px; max-height:90vh; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 24px 64px rgba(0,0,0,.4); }
+    .nc-alert-viewer-header { background:linear-gradient(135deg,#1565C0 0%,#0d47a1 100%); padding:14px 20px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+    .nc-alert-viewer-header h4 { color:#fff; font-size:14px; font-weight:700; margin:0; display:flex; align-items:center; gap:8px; }
+    .nc-alert-viewer-close { background:rgba(255,255,255,.18); border:none; color:#fff; font-size:18px; cursor:pointer; border-radius:7px; width:30px; height:30px; display:flex; align-items:center; justify-content:center; transition:background .15s; }
+    .nc-alert-viewer-close:hover { background:rgba(255,255,255,.35); }
+    .nc-alert-viewer-content { flex:1; overflow:auto; display:flex; align-items:flex-start; justify-content:center; background:#374151; padding:16px; }
+    .nc-alert-viewer-content img  { max-width:100%; max-height:70vh; border-radius:6px; object-fit:contain; }
+    .nc-alert-viewer-content iframe { width:100%; height:70vh; border:none; border-radius:6px; background:#fff; }
+
     /* ===== RESPONSIVE ===== */
     @media (max-width:680px) {
       body { flex-direction:column; }
@@ -699,6 +914,12 @@
       </span>
       Cronograma
     </li>
+    <li data-page="ncPage">
+      <span class="nav-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+      </span>
+      NC
+    </li>
   </ul>
   <div class="tenant-switcher">
     <div class="tenant-label">Empresa</div>
@@ -837,6 +1058,46 @@
       <p>Clique em um grupo para expandir as ações individuais. Clique em uma ação para ver os detalhes.</p>
     </div>
     <div id="gantt"></div>
+  </div>
+
+  <!-- NC – Non-Conformance -->
+  <div id="ncPage" class="page">
+    <div class="page-header">
+      <h1>NC – Não Conformidades</h1>
+      <p>Cadastro e acompanhamento de reclamações de clientes</p>
+    </div>
+
+    <!-- Top action bar -->
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; flex-wrap:wrap; gap:12px;">
+      <button class="nc-new-btn" id="ncBtnNew">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/></svg>
+        Nova NC
+      </button>
+    </div>
+
+    <!-- Dashboard -->
+    <div class="nc-section-title" style="margin-bottom:14px">Dashboard de NCs</div>
+    <div class="nc-charts-row">
+      <div class="nc-chart-card">
+        <h4>NCs por Peça</h4>
+        <canvas id="ncChartPiece"></canvas>
+      </div>
+      <div class="nc-chart-card">
+        <h4>NCs por Modo de Falha</h4>
+        <canvas id="ncChartFailure"></canvas>
+      </div>
+      <div class="nc-chart-card">
+        <h4>Volume por Mês</h4>
+        <canvas id="ncChartMonth"></canvas>
+      </div>
+    </div>
+
+    <!-- NC Cards List -->
+    <div class="nc-section-title" style="margin-bottom:14px">NCs Cadastradas</div>
+    <div class="nc-cards-grid" id="ncCardsGrid">
+      <div class="nc-empty">Nenhuma NC cadastrada ainda.</div>
+    </div>
+
   </div>
 
 </div>
@@ -2379,6 +2640,10 @@ document.addEventListener("DOMContentLoaded", function() {
     renderBell();
     // Close any open modal/gantt
     expandedGroup = null;
+    // Reload NC records for the newly selected company
+    ncRecords = loadNcRecordsLocal();
+    renderNcCards();
+    renderNcCharts();
   }
 
   // ── Theme helpers ──────────────────────────────────────────────────────────
@@ -2926,11 +3191,891 @@ document.addEventListener("DOMContentLoaded", function() {
     renderTable();
     renderBell();
     initTableResize(document.querySelector('#projects table'));
+    initNcPage();
   })();
+
+  // ── NC (Non-Conformance) Page ────────────────────────────────────────────
+
+  var ncRecords = [];
+  var _ncChartPiece = null, _ncChartFailure = null, _ncChartMonth = null;
+  var _ncPhotos = []; // array of data-URL strings for the modal in progress
+  var _ncStatusPending = null; // { id, action } while status popup is open
+  var _ncDetailCurrent = null; // nc record shown in detail popup
+
+  // ── Per-tenant NC storage key ──────────────────────────────────────────────
+  function ncStorageKey() {
+    return 'spi_nc_records_' + currentTenant;
+  }
+
+  // ── Shared date formatter (ISO → DD/MM/YYYY) ───────────────────────────────
+  function ncFmtDate(isoStr) {
+    if (!isoStr) return '—';
+    var p = isoStr.split('-');
+    return p[2] + '/' + p[1] + '/' + p[0];
+  }
+  function loadNcRecordsLocal() {
+    try {
+      var raw = localStorage.getItem(ncStorageKey());
+      // One-time migration from the old shared key `spi_nc_records` (used before per-company
+      // storage was introduced). Only the 'jd' (John Deere) tenant ever had data in that key
+      // because it was the only company supported at the time. All other tenants are new and
+      // have no legacy data to migrate.
+      if (!raw && currentTenant === 'jd') {
+        var legacy = localStorage.getItem('spi_nc_records');
+        if (legacy) raw = legacy;
+      }
+      var records = raw ? JSON.parse(raw) : [];
+      // Migrate old single-string `status` field to independent booleans.
+      // Only runs if any record still lacks the new fields; saves immediately after migration.
+      var needsSave = false;
+      records.forEach(function(r) {
+        if (typeof r.rncAberta === 'undefined') {
+          r.rncAberta    = r.status === 'rnc_aberta';
+          r.d8Finalizado = r.status === '8d_finalizado';
+          needsSave = true;
+        }
+      });
+      if (needsSave) {
+        try { localStorage.setItem(ncStorageKey(), JSON.stringify(records)); } catch(e) {}
+      }
+      return records;
+    } catch(e) { return []; }
+  }
+
+  function saveNcRecords() {
+    try { localStorage.setItem(ncStorageKey(), JSON.stringify(ncRecords)); } catch(e) {}
+    if (db) {
+      db.collection('nc_records_' + currentTenant).doc('all').set({ records: ncRecords })
+        .catch(function(e) { console.error('NC Firebase save error:', e); });
+    }
+  }
+
+  function renderNcCharts() {
+    if (typeof Chart === 'undefined') return;
+
+    var pieceCount = {}, failureCount = {}, monthCount = {};
+    var now = new Date();
+    var monthKeys = [];
+    for (var i = 11; i >= 0; i--) {
+      var d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      var k = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+      monthCount[k] = 0;
+      monthKeys.push(k);
+    }
+
+    ncRecords.forEach(function(nc) {
+      var p = nc.piece || '(sem nome)';
+      pieceCount[p] = (pieceCount[p] || 0) + 1;
+      var fm = nc.failureMode || 'Outro';
+      failureCount[fm] = (failureCount[fm] || 0) + 1;
+      if (nc.date) {
+        var mk = nc.date.slice(0,7);
+        if (mk in monthCount) monthCount[mk]++;
+      }
+    });
+
+    var accentColor = getComputedStyle(document.body).getPropertyValue('--tenant-sidebar-bg').trim() || '#1E4D17';
+    var palette = [accentColor,'#367C2B','#FFDE00','#f59e0b','#3b82f6','#8b5cf6','#ec4899','#ef4444','#06b6d4'];
+
+    // Chart 1 — by piece (horizontal bar)
+    if (_ncChartPiece) { _ncChartPiece.destroy(); _ncChartPiece = null; }
+    var ctxP = document.getElementById('ncChartPiece');
+    if (ctxP) {
+      _ncChartPiece = new Chart(ctxP, {
+        type: 'bar',
+        data: {
+          labels: Object.keys(pieceCount).length ? Object.keys(pieceCount) : ['—'],
+          datasets: [{ data: Object.values(pieceCount).length ? Object.values(pieceCount) : [0], backgroundColor: accentColor, borderRadius: 5 }]
+        },
+        options: {
+          indexAxis: 'y',
+          plugins: { legend:{ display:false } },
+          scales: { x:{ ticks:{font:{size:10}}, grid:{color:'#f0f0f0'} }, y:{ ticks:{font:{size:10}} } },
+          responsive: true, maintainAspectRatio: false
+        }
+      });
+    }
+
+    // Chart 2 — by failure mode (doughnut)
+    if (_ncChartFailure) { _ncChartFailure.destroy(); _ncChartFailure = null; }
+    var ctxF = document.getElementById('ncChartFailure');
+    if (ctxF) {
+      var fKeys = Object.keys(failureCount);
+      if (!fKeys.length) {
+        // No data — show placeholder text instead of a misleading chart segment
+        ctxF.parentNode.querySelector('canvas').style.display = 'none';
+        var noData = ctxF.parentNode.querySelector('.nc-chart-nodata');
+        if (!noData) {
+          noData = document.createElement('p');
+          noData.className = 'nc-chart-nodata';
+          noData.style.cssText = 'color:#9ca3af;font-size:12px;text-align:center;margin:32px 0';
+          noData.textContent = 'Sem dados';
+          ctxF.parentNode.appendChild(noData);
+        }
+      } else {
+        ctxF.style.display = '';
+        var nd = ctxF.parentNode.querySelector('.nc-chart-nodata');
+        if (nd) nd.remove();
+        _ncChartFailure = new Chart(ctxF, {
+          type: 'doughnut',
+          data: {
+            labels: fKeys,
+            datasets: [{ data: Object.values(failureCount), backgroundColor: palette.slice(0, fKeys.length), borderWidth:2, borderColor:'#fff' }]
+          },
+          options: {
+            plugins: { legend:{ position:'right', labels:{ font:{size:10}, padding:8 } } },
+            responsive: true, maintainAspectRatio: false
+          }
+        });
+      }
+    }
+
+    // Chart 3 — monthly volume (bar)
+    if (_ncChartMonth) { _ncChartMonth.destroy(); _ncChartMonth = null; }
+    var ctxM = document.getElementById('ncChartMonth');
+    if (ctxM) {
+      var mLabels = monthKeys.map(function(k) {
+        var parts = k.split('-');
+        var mn = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(parts[1],10)-1];
+        return mn + '/' + parts[0].slice(2);
+      });
+      _ncChartMonth = new Chart(ctxM, {
+        type: 'bar',
+        data: {
+          labels: mLabels,
+          datasets: [{ data: monthKeys.map(function(k){ return monthCount[k]; }), backgroundColor:'#FFDE00', borderRadius:4 }]
+        },
+        options: {
+          plugins: { legend:{ display:false } },
+          scales: { x:{ ticks:{font:{size:9}}, grid:{display:false} }, y:{ beginAtZero:true, ticks:{font:{size:10}, stepSize:1}, grid:{color:'#f0f0f0'} } },
+          responsive: true, maintainAspectRatio: false
+        }
+      });
+    }
+
+  }
+
+  function renderNcCards() {
+    var grid = document.getElementById('ncCardsGrid');
+    if (!grid) return;
+    if (!ncRecords.length) {
+      grid.innerHTML = '<div class="nc-empty">Nenhuma NC cadastrada ainda.</div>';
+      return;
+    }
+    grid.innerHTML = ncRecords.slice().reverse().map(function(nc) {
+      // Support both old `photo` (string) and new `photos` (array)
+      var photos = (nc.photos && nc.photos.length) ? nc.photos : (nc.photo ? [nc.photo] : []);
+      var photoHtml;
+      if (photos.length) {
+        var imgs = photos.map(function(src, i) {
+          return '<img src="' + src + '" alt="Foto ' + (i+1) + '"' + (i===0 ? ' class="nc-active-photo"' : '') + '>';
+        }).join('');
+        var nav = photos.length > 1
+          ? '<div class="nc-photo-nav"><button data-photonav="-1">&#8249;</button><button data-photonav="1">&#8250;</button></div>'
+          : '';
+        photoHtml = '<div class="nc-card-photo-strip">' + imgs + nav + '</div>';
+      } else {
+        photoHtml = '<div class="nc-card-photo-placeholder"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" stroke="#555" stroke-width="1" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path stroke-linecap="round" d="M21 15l-5-5L5 21"/></svg></div>';
+      }
+      var rncActive = nc.rncAberta ? 'active' : '';
+      var d8Active  = nc.d8Finalizado ? 'active' : '';
+      var dateStr = ncFmtDate(nc.date);
+      return '<div class="nc-card" data-nc-id="' + nc.id + '">' +
+        photoHtml +
+        '<div class="nc-card-body">' +
+          '<div class="nc-card-num">' + escHtml(nc.ncNumber || 'NC') + '</div>' +
+          '<div class="nc-card-piece">' + escHtml(nc.piece || '—') + '</div>' +
+          '<div class="nc-card-failure">' + escHtml(nc.failureMode || '—') + '</div>' +
+          (nc.customer ? '<div class="nc-card-customer">Cliente: ' + escHtml(nc.customer) + '</div>' : '') +
+          (nc.description ? '<div class="nc-card-desc" title="' + escHtml(nc.description) + '">' + escHtml(nc.description) + '</div>' : '') +
+          '<div class="nc-card-date">📅 ' + dateStr + '</div>' +
+        '</div>' +
+        '<div class="nc-card-actions">' +
+          '<button class="nc-btn-status nc-btn-rnc ' + rncActive + '" data-action="rnc_aberta">RNC Aberta</button>' +
+          '<button class="nc-btn-status nc-btn-8d '  + d8Active  + '" data-action="8d_finalizado">8D Finalizado</button>' +
+          '<button class="nc-btn-pdf" data-action="export_pdf" title="Exportar PDF">PDF</button>' +
+          '<button class="nc-btn-edit" data-action="edit" title="Editar NC">✎</button>' +
+          '<button class="nc-btn-del" data-action="delete" title="Excluir NC">✕</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    grid.querySelectorAll('.nc-card').forEach(function(card) {
+      var id = card.dataset.ncId;
+
+      // Photo navigation (previous/next)
+      card.querySelectorAll('[data-photonav]').forEach(function(navBtn) {
+        navBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var imgs = card.querySelectorAll('.nc-card-photo-strip img');
+          if (!imgs.length) return;
+          var activeIdx = 0;
+          imgs.forEach(function(img, i){ if (img.classList.contains('nc-active-photo')) activeIdx = i; });
+          imgs[activeIdx].classList.remove('nc-active-photo');
+          var dir = parseInt(navBtn.dataset.photonav, 10);
+          var next = (activeIdx + dir + imgs.length) % imgs.length;
+          imgs[next].classList.add('nc-active-photo');
+        });
+      });
+
+      // Action buttons — stop propagation so card-body click doesn't also fire
+      card.querySelectorAll('button[data-action]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var action = btn.dataset.action;
+          var idx = ncRecords.findIndex(function(r){ return r.id === id; });
+          if (idx === -1) return;
+          if (action === 'export_pdf') {
+            // PDF export: read-only — no state changes (save/render) needed
+            exportNcPdf(ncRecords[idx]);
+          } else if (action === 'edit') {
+            if (window.openNcModalEdit) window.openNcModalEdit(ncRecords[idx]);
+          } else if (action === 'delete') {
+            if (!window.confirm('Excluir esta NC?')) return;
+            ncRecords.splice(idx, 1);
+            saveNcRecords();
+            renderNcCards();
+            renderNcCharts();
+          } else if (action === 'rnc_aberta') {
+            // Toggle off if already active, otherwise open status popup
+            if (ncRecords[idx].rncAberta) {
+              ncRecords[idx].rncAberta = false;
+              saveNcRecords();
+              renderNcCards();
+            } else {
+              openNcStatusModal(id, 'rnc_aberta');
+            }
+          } else if (action === '8d_finalizado') {
+            // Toggle directly (no extra info needed for 8D)
+            ncRecords[idx].d8Finalizado = !ncRecords[idx].d8Finalizado;
+            saveNcRecords();
+            renderNcCards();
+            renderNcCharts();
+          }
+        });
+      });
+
+      // Click on card body → open detail popup
+      var cardBody = card.querySelector('.nc-card-body');
+      if (cardBody) {
+        cardBody.addEventListener('click', function() {
+          var idx = ncRecords.findIndex(function(r){ return r.id === id; });
+          if (idx !== -1) openNcDetailModal(ncRecords[idx]);
+        });
+      }
+    });
+  }
+
+  // ── RNC status popup ─────────────────────────────────────────────────────
+  (function initNcStatusModal() {
+    var backdrop  = document.getElementById('ncStatusModalBackdrop');
+    var alertDrop = document.getElementById('ncAlertDrop');
+    var alertInput= document.getElementById('ncAlertFileInput');
+    var alertName = document.getElementById('ncAlertFileName');
+    var _alertDataUrl = null;
+    var _alertFileName = '';
+
+    function closeStatusModal() {
+      backdrop.classList.remove('open');
+      _ncStatusPending = null;
+      _alertDataUrl = null;
+      _alertFileName = '';
+      alertName.textContent = '';
+      document.getElementById('ncRncNumber').value = '';
+    }
+
+    alertDrop.addEventListener('click', function() { alertInput.click(); });
+    alertDrop.addEventListener('dragover', function(e) { e.preventDefault(); alertDrop.classList.add('dragover'); });
+    alertDrop.addEventListener('dragleave', function(e) { if (!alertDrop.contains(e.relatedTarget)) alertDrop.classList.remove('dragover'); });
+    alertDrop.addEventListener('drop', function(e) {
+      e.preventDefault(); alertDrop.classList.remove('dragover');
+      if (e.dataTransfer.files[0]) readAlertFile(e.dataTransfer.files[0]);
+    });
+    alertInput.addEventListener('change', function() { if (alertInput.files[0]) readAlertFile(alertInput.files[0]); });
+
+    function readAlertFile(file) {
+      _alertFileName = file.name;
+      var reader = new FileReader();
+      reader.onload = function(ev) {
+        _alertDataUrl = ev.target.result;
+        alertName.textContent = '📎 ' + file.name;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    document.getElementById('ncStatusModalClose').addEventListener('click', closeStatusModal);
+    document.getElementById('ncStatusModalCancel').addEventListener('click', closeStatusModal);
+    backdrop.addEventListener('click', function(e) { if (e.target === backdrop) closeStatusModal(); });
+
+    document.getElementById('ncStatusModalSave').addEventListener('click', function() {
+      var rncNum = document.getElementById('ncRncNumber').value.trim();
+      if (!rncNum) { alert('Por favor, informe o número da RNC.'); document.getElementById('ncRncNumber').focus(); return; }
+      if (!_ncStatusPending) { closeStatusModal(); return; }
+      var idx = ncRecords.findIndex(function(r){ return r.id === _ncStatusPending.id; });
+      if (idx !== -1) {
+        ncRecords[idx].rncAberta  = true;
+        ncRecords[idx].rncNumber = rncNum;
+        if (_alertDataUrl) {
+          ncRecords[idx].alertFile     = _alertDataUrl;
+          ncRecords[idx].alertFileName = _alertFileName || '';
+        }
+        saveNcRecords();
+        renderNcCards();
+        renderNcCharts();
+      }
+      closeStatusModal();
+    });
+
+    // Expose opener globally within this closure scope via module-level var
+    window._openNcStatusModalFn = function(id, action) {
+      _ncStatusPending = { id: id, action: action };
+      _alertDataUrl = null;
+      _alertFileName = '';
+      alertName.textContent = '';
+      alertInput.value = '';
+      document.getElementById('ncRncNumber').value = '';
+      // Pre-fill if already has rncNumber
+      var rec = ncRecords.find(function(r){ return r.id === id; });
+      if (rec && rec.rncNumber) document.getElementById('ncRncNumber').value = rec.rncNumber;
+      document.getElementById('ncStatusModalTitle').textContent = action === 'rnc_aberta' ? 'RNC Aberta' : '8D Finalizado';
+      backdrop.classList.add('open');
+      setTimeout(function(){ document.getElementById('ncRncNumber').focus(); }, 80);
+    };
+  })();
+
+  function openNcStatusModal(id, action) {
+    if (window._openNcStatusModalFn) window._openNcStatusModalFn(id, action);
+  }
+
+  // ── Alert file viewer popup ───────────────────────────────────────────────
+  (function initNcAlertViewer() {
+    var vBackdrop = document.getElementById('ncAlertViewerBackdrop');
+    var vContent  = document.getElementById('ncAlertViewerContent');
+    var vTitle    = document.getElementById('ncAlertViewerTitle');
+    document.getElementById('ncAlertViewerClose').addEventListener('click', function() {
+      vBackdrop.classList.remove('open');
+      vContent.innerHTML = '';
+    });
+    vBackdrop.addEventListener('click', function(e) {
+      if (e.target === vBackdrop) { vBackdrop.classList.remove('open'); vContent.innerHTML = ''; }
+    });
+    window._openAlertViewer = function(dataUrl, fileName) {
+      vTitle.textContent = fileName || 'Alerta';
+      vContent.innerHTML = '';
+      if (dataUrl.startsWith('data:image/')) {
+        var img = document.createElement('img');
+        img.src = dataUrl;
+        img.alt = fileName || 'Alerta';
+        vContent.appendChild(img);
+      } else {
+        var iframe = document.createElement('iframe');
+        iframe.src = dataUrl;
+        vContent.appendChild(iframe);
+      }
+      vBackdrop.classList.add('open');
+    };
+  })();
+
+  // ── NC detail popup ───────────────────────────────────────────────────────
+  (function initNcDetailModal() {
+    var backdrop = document.getElementById('ncDetailBackdrop');
+
+    function closeDetail() {
+      backdrop.classList.remove('open');
+      _ncDetailCurrent = null;
+    }
+
+    document.getElementById('ncDetailClose').addEventListener('click', closeDetail);
+    document.getElementById('ncDetailBtnClose').addEventListener('click', closeDetail);
+    backdrop.addEventListener('click', function(e) { if (e.target === backdrop) closeDetail(); });
+
+    document.getElementById('ncDetailBtnPdf').addEventListener('click', function() {
+      if (_ncDetailCurrent) exportNcPdf(_ncDetailCurrent);
+    });
+
+    window._openNcDetailModalFn = function(nc) {
+      _ncDetailCurrent = nc;
+      var photos = (nc.photos && nc.photos.length) ? nc.photos : (nc.photo ? [nc.photo] : []);
+      var dateStr = ncFmtDate(nc.date);
+
+      // Photo strip
+      var photoStripHtml = photos.length
+        ? '<div class="nc-detail-photo-strip">' +
+            photos.map(function(src, i) {
+              return '<img src="' + src + '" alt="Foto ' + (i+1) + '" onclick="window.open(this.src,\'_blank\')" title="Clique para ampliar">';
+            }).join('') +
+          '</div>'
+        : '';
+
+      // Status badges (now independent)
+      var statusBadges = '';
+      if (nc.rncAberta)    statusBadges += '<span class="nc-detail-status-badge nc-detail-status-open">✔ RNC Aberta</span> ';
+      if (nc.d8Finalizado) statusBadges += '<span class="nc-detail-status-badge nc-detail-status-8d">✔ 8D Finalizado</span>';
+      if (!nc.rncAberta && !nc.d8Finalizado) statusBadges = '<span class="nc-detail-status-badge nc-detail-status-none">○ Em aberto</span>';
+
+      // Main info section
+      var infoHtml =
+        '<div class="nc-detail-section">' +
+          '<div class="nc-detail-section-title">Informações da NC</div>' +
+          '<div class="nc-detail-section-body">' +
+            '<div class="nc-detail-field"><label>Nº da NC</label><span>' + escHtml(nc.ncNumber || '—') + '</span></div>' +
+            '<div class="nc-detail-field"><label>Data</label><span>' + dateStr + '</span></div>' +
+            '<div class="nc-detail-field"><label>Peça</label><span>' + escHtml(nc.piece || '—') + '</span></div>' +
+            '<div class="nc-detail-field"><label>Modo de Falha</label><span>' + escHtml(nc.failureMode || '—') + '</span></div>' +
+            '<div class="nc-detail-field"><label>Cliente</label><span>' + escHtml(nc.customer || '—') + '</span></div>' +
+            '<div class="nc-detail-field"><label>Status</label><span><div class="nc-detail-status-row">' + statusBadges + '</div></span></div>' +
+            (nc.description ? '<div class="nc-detail-field full"><label>Descrição</label><span>' + escHtml(nc.description) + '</span></div>' : '') +
+          '</div>' +
+        '</div>';
+
+      // RNC section (only if rncAberta and has data)
+      var rncHtml = '';
+      if (nc.rncAberta && nc.rncNumber) {
+        var alertBtnHtml = '';
+        if (nc.alertFile) {
+          // Store the nc id on a data attribute and look it up in the click handler
+          // to avoid embedding raw data-URL or filenames in inline onclick strings.
+          var fname = escHtml(nc.alertFileName || 'alerta');
+          alertBtnHtml = '<div style="grid-column:1/-1;margin-top:4px;">' +
+            '<button class="nc-detail-alert-btn" data-open-alert="' + escHtml(nc.id) + '">📎 ' + fname + '</button>' +
+          '</div>';
+        }
+        rncHtml =
+          '<div class="nc-detail-rnc-section">' +
+            '<div class="nc-detail-rnc-section-title">✔ RNC Aberta</div>' +
+            '<div class="nc-detail-rnc-section-body">' +
+              '<div class="nc-detail-rnc-field"><label>Nº da RNC</label><span>' + escHtml(nc.rncNumber) + '</span></div>' +
+              alertBtnHtml +
+            '</div>' +
+          '</div>';
+      }
+
+      document.getElementById('ncDetailTitle').textContent = nc.ncNumber || 'Detalhes da NC';
+      var bodyEl = document.getElementById('ncDetailBody');
+      bodyEl.innerHTML = photoStripHtml + infoHtml + rncHtml + '<div style="height:16px"></div>';
+
+      // Wire alert-open buttons after innerHTML is set
+      bodyEl.querySelectorAll('[data-open-alert]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var rec = ncRecords.find(function(r){ return r.id === btn.dataset.openAlert; });
+          if (rec && rec.alertFile && window._openAlertViewer) {
+            window._openAlertViewer(rec.alertFile, rec.alertFileName || 'alerta');
+          }
+        });
+      });
+
+      backdrop.classList.add('open');
+    };
+  })();
+
+  function openNcDetailModal(nc) {
+    if (window._openNcDetailModalFn) window._openNcDetailModalFn(nc);
+  }
+
+  // ── PDF export via window.print() ────────────────────────────────────────
+  function exportNcPdf(nc) {
+    var photos = (nc.photos && nc.photos.length) ? nc.photos : (nc.photo ? [nc.photo] : []);
+    var dateStr = ncFmtDate(nc.date);
+    var now = new Date();
+    var printedAt = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+
+    // Status badges
+    var statusBadgesHtml = '';
+    if (nc.rncAberta)    statusBadgesHtml += '<span class="prt-status-badge prt-status-rnc">✔ RNC Aberta</span> ';
+    if (nc.d8Finalizado) statusBadgesHtml += '<span class="prt-status-badge prt-status-8d">✔ 8D Finalizado</span>';
+    if (!nc.rncAberta && !nc.d8Finalizado) statusBadgesHtml = '<span class="prt-status-badge prt-status-none">Em aberto</span>';
+
+    // Photos section
+    var photosHtml = photos.length
+      ? '<div class="prt-section">' +
+          '<div class="prt-section-title">Fotos da Peça</div>' +
+          '<div class="prt-section-body"><div class="prt-photos-row">' +
+            photos.map(function(src){ return '<img src="' + src + '" alt="Foto da peça">'; }).join('') +
+          '</div></div>' +
+        '</div>'
+      : '';
+
+    // RNC section
+    var rncHtml = '';
+    if (nc.rncAberta && nc.rncNumber) {
+      rncHtml =
+        '<div class="prt-rnc-section">' +
+          '<div class="prt-rnc-title">✔ RNC Aberta</div>' +
+          '<div class="prt-rnc-body">' +
+            '<div class="prt-field"><label>Nº da RNC</label><span>' + escHtml(nc.rncNumber) + '</span></div>' +
+            (nc.alertFileName ? '<div class="prt-field" style="margin-top:8px;"><label>Alerta Anexado</label><span>📎 ' + escHtml(nc.alertFileName) + '</span></div>' : '') +
+          '</div>' +
+        '</div>';
+    }
+
+    var html =
+      '<div class="prt-header">' +
+        '<div class="prt-header-left">' +
+          '<h1>NC – Não Conformidade</h1>' +
+          '<span class="prt-header-sub">Relatório de Não Conformidade | SSQE – Gestão SPI</span>' +
+        '</div>' +
+        '<div class="prt-header-right">Emitido em<br>' + printedAt + '</div>' +
+      '</div>' +
+      '<div class="prt-badge-row">' +
+        '<span class="prt-badge">' + escHtml(nc.ncNumber || 'NC') + '</span>' +
+        '<span class="prt-badge-date">Data: ' + dateStr + '</span>' +
+      '</div>' +
+      '<div class="prt-section">' +
+        '<div class="prt-section-title">Informações da Peça</div>' +
+        '<div class="prt-section-body">' +
+          '<div class="prt-row">' +
+            '<div class="prt-field"><label>Peça</label><span>' + escHtml(nc.piece || '—') + '</span></div>' +
+            '<div class="prt-field"><label>Modo de Falha</label><span>' + escHtml(nc.failureMode || '—') + '</span></div>' +
+            '<div class="prt-field"><label>Cliente</label><span>' + escHtml(nc.customer || '—') + '</span></div>' +
+          '</div>' +
+          '<div class="prt-row" style="margin-top:10px;">' +
+            '<div class="prt-field"><label>Status</label><span>' + statusBadgesHtml + '</span></div>' +
+          '</div>' +
+          (nc.description ? '<div class="prt-row" style="margin-top:10px;"><div class="prt-field" style="flex:1"><label>Descrição</label><span class="prt-desc">' + escHtml(nc.description) + '</span></div></div>' : '') +
+        '</div>' +
+      '</div>' +
+      rncHtml +
+      photosHtml +
+      '<div class="prt-footer">' +
+        '<span>SSQE – Gestão SPI · Relatório de NC</span>' +
+        '<span>' + printedAt + '</span>' +
+      '</div>';
+
+    var area = document.getElementById('nc-print-area');
+    area.innerHTML = html;
+    window.print();
+  }
+
+  function initNcPage() {
+    ncRecords = loadNcRecordsLocal();
+
+    var backdrop = document.getElementById('ncModalBackdrop');
+    var drop     = document.getElementById('ncPhotoDrop');
+    var input    = document.getElementById('ncPhotoInput');
+    var thumbs   = document.getElementById('ncPhotoThumbs');
+    var _editingNcId = null; // null = create mode; string id = edit mode
+
+    // ── Open / close modal ────────────────────────────────────────────────
+    function openNcModal() {
+      _editingNcId = null;
+      // Reset modal state
+      _ncPhotos = [];
+      thumbs.innerHTML = '';
+      document.getElementById('ncNumber').value      = '';
+      document.getElementById('ncCustomer').value    = '';
+      document.getElementById('ncPiece').value       = '';
+      document.getElementById('ncFailureMode').value = '';
+      document.getElementById('ncDate').value        = new Date().toISOString().slice(0,10);
+      document.getElementById('ncDescription').value = '';
+      input.value = '';
+      document.getElementById('ncModalTitle').innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 20 20" fill="currentColor" style="vertical-align:-2px;margin-right:6px"><path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/></svg>Cadastrar Nova NC';
+      document.getElementById('ncBtnSubmit').innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/></svg> Cadastrar NC';
+      backdrop.classList.add('open');
+      setTimeout(function(){ document.getElementById('ncPiece').focus(); }, 80);
+    }
+
+    function openNcModalEdit(nc) {
+      _editingNcId = nc.id;
+      var photos = (nc.photos && nc.photos.length) ? nc.photos : (nc.photo ? [nc.photo] : []);
+      _ncPhotos = photos.slice();
+      thumbs.innerHTML = '';
+      _ncPhotos.forEach(function(src, i) { renderThumb(src, i); });
+      document.getElementById('ncNumber').value      = nc.ncNumber || '';
+      document.getElementById('ncCustomer').value    = nc.customer || '';
+      document.getElementById('ncPiece').value       = nc.piece || '';
+      document.getElementById('ncFailureMode').value = nc.failureMode || '';
+      document.getElementById('ncDate').value        = nc.date || new Date().toISOString().slice(0,10);
+      document.getElementById('ncDescription').value = nc.description || '';
+      input.value = '';
+      document.getElementById('ncModalTitle').innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 20 20" fill="currentColor" style="vertical-align:-2px;margin-right:6px"><path stroke="currentColor" d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zm-2.207 2.207L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/></svg>Editar NC';
+      document.getElementById('ncBtnSubmit').innerHTML = '✔ Salvar Alterações';
+      backdrop.classList.add('open');
+      setTimeout(function(){ document.getElementById('ncPiece').focus(); }, 80);
+    }
+    function closeNcModal() {
+      backdrop.classList.remove('open');
+    }
+    document.getElementById('ncBtnNew').addEventListener('click', openNcModal);
+    document.getElementById('ncModalClose').addEventListener('click', closeNcModal);
+    document.getElementById('ncModalCancel').addEventListener('click', closeNcModal);
+    backdrop.addEventListener('click', function(e) { if (e.target === backdrop) closeNcModal(); });
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && backdrop.classList.contains('open')) closeNcModal(); });
+
+    // Expose edit opener globally (called from renderNcCards action handler)
+    window.openNcModalEdit = openNcModalEdit;
+
+    // ── Multi-photo upload ────────────────────────────────────────────────
+    drop.addEventListener('click', function() { input.click(); });
+    drop.addEventListener('dragover', function(e) { e.preventDefault(); drop.classList.add('dragover'); });
+    drop.addEventListener('dragleave', function(e) {
+      if (!drop.contains(e.relatedTarget)) drop.classList.remove('dragover');
+    });
+    drop.addEventListener('drop', function(e) {
+      e.preventDefault(); drop.classList.remove('dragover');
+      addPhotos(e.dataTransfer.files);
+    });
+    input.addEventListener('change', function() { addPhotos(input.files); });
+
+    function addPhotos(fileList) {
+      Array.prototype.forEach.call(fileList, function(file) {
+        if (!file.type.startsWith('image/')) return;
+        var reader = new FileReader();
+        reader.onload = function(ev) {
+          _ncPhotos.push(ev.target.result);
+          rebuildThumbs(); // always rebuild so each thumb button reads its index from the DOM
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function renderThumb(dataUrl, idx) {
+      var item = document.createElement('div');
+      item.className = 'nc-thumb-item';
+      var img = document.createElement('img');
+      img.src = dataUrl;
+      img.alt = 'Foto ' + (idx + 1);
+      var btn = document.createElement('button');
+      btn.className = 'nc-thumb-remove';
+      btn.title = 'Remover foto';
+      btn.textContent = '✕';
+      btn.addEventListener('click', function() {
+        // Read current position from DOM (avoids stale-closure bug)
+        var items = thumbs.querySelectorAll('.nc-thumb-item');
+        var pos = Array.prototype.indexOf.call(items, item);
+        if (pos !== -1) {
+          _ncPhotos.splice(pos, 1);
+          rebuildThumbs();
+        }
+      });
+      item.appendChild(img);
+      item.appendChild(btn);
+      thumbs.appendChild(item);
+    }
+
+    function rebuildThumbs() {
+      thumbs.innerHTML = '';
+      _ncPhotos.forEach(function(src, i) { renderThumb(src, i); });
+    }
+
+    // ── Form submit ───────────────────────────────────────────────────────
+    document.getElementById('ncBtnSubmit').addEventListener('click', function() {
+      var piece       = document.getElementById('ncPiece').value.trim();
+      var failureMode = document.getElementById('ncFailureMode').value;
+      var date        = document.getElementById('ncDate').value;
+      if (!piece)       { alert('Por favor, preencha o nome da peça.'); document.getElementById('ncPiece').focus(); return; }
+      if (!failureMode) { alert('Por favor, selecione o modo de falha.'); document.getElementById('ncFailureMode').focus(); return; }
+      if (!date)        { alert('Por favor, informe a data da reclamação.'); document.getElementById('ncDate').focus(); return; }
+
+      if (_editingNcId) {
+        // ── Edit mode: update existing record ─────────────────────────────
+        var idx = ncRecords.findIndex(function(r){ return r.id === _editingNcId; });
+        if (idx !== -1) {
+          ncRecords[idx].ncNumber    = document.getElementById('ncNumber').value.trim() || ncRecords[idx].ncNumber;
+          ncRecords[idx].customer    = document.getElementById('ncCustomer').value.trim();
+          ncRecords[idx].piece       = piece;
+          ncRecords[idx].failureMode = failureMode;
+          ncRecords[idx].date        = date;
+          ncRecords[idx].description = document.getElementById('ncDescription').value.trim();
+          ncRecords[idx].photos      = _ncPhotos.slice();
+          saveNcRecords();
+          closeNcModal();
+          renderNcCards();
+          renderNcCharts();
+        } else {
+          alert('Não foi possível encontrar a NC para editar. Por favor, tente novamente.');
+        }
+      } else {
+        // ── Create mode: add new record ───────────────────────────────────
+        var autoNum = 'NC-' + String(ncRecords.length + 1).padStart(4,'0');
+        var newNc = {
+          id:          'nc_' + Date.now() + '_' + Math.floor(Math.random()*10000),
+          ncNumber:    document.getElementById('ncNumber').value.trim() || autoNum,
+          customer:    document.getElementById('ncCustomer').value.trim(),
+          piece:       piece,
+          failureMode: failureMode,
+          date:        date,
+          description: document.getElementById('ncDescription').value.trim(),
+          rncAberta:    false,
+          d8Finalizado: false,
+          photos:      _ncPhotos.slice()
+        };
+        ncRecords.push(newNc);
+        saveNcRecords();
+        closeNcModal();
+        renderNcCards();
+        renderNcCharts();
+      }
+    });
+
+    // Render cards immediately
+    renderNcCards();
+
+    // Wire nav click to (re-)render charts when NC page becomes visible
+    var ncNavItem = document.querySelector('.sidebar-nav li[data-page="ncPage"]');
+    if (ncNavItem) {
+      ncNavItem.addEventListener('click', function() {
+        setTimeout(renderNcCharts, 80);
+      });
+    }
+  }
 
 });
 
 </script>
+<!-- NC REGISTRATION MODAL -->
+<div class="nc-modal-backdrop" id="ncModalBackdrop" role="dialog" aria-modal="true" aria-labelledby="ncModalTitle">
+  <div class="nc-modal">
+    <div class="nc-modal-header">
+      <h3 id="ncModalTitle">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 20 20" fill="currentColor" style="vertical-align:-2px;margin-right:6px"><path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/></svg>
+        Cadastrar Nova NC
+      </h3>
+      <button class="nc-modal-close" id="ncModalClose" aria-label="Fechar">✕</button>
+    </div>
+    <div class="nc-modal-body">
+      <div class="nc-form-grid">
+
+        <!-- Multiple photo upload (full width) -->
+        <div class="nc-field nc-field-full">
+          <label>Fotos da Peça</label>
+          <div class="nc-photo-drop" id="ncPhotoDrop" title="Clique ou arraste imagens">
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
+            <span>Clique ou arraste múltiplas fotos da peça</span>
+          </div>
+          <input type="file" id="ncPhotoInput" accept="image/*" multiple />
+          <div class="nc-photo-thumbs" id="ncPhotoThumbs"></div>
+        </div>
+
+        <!-- NC Number -->
+        <div class="nc-field">
+          <label>Nº da NC</label>
+          <input type="text" id="ncNumber" placeholder="Ex: NC-0001" maxlength="30" autocomplete="off" />
+        </div>
+
+        <!-- Customer -->
+        <div class="nc-field">
+          <label>Cliente</label>
+          <input type="text" id="ncCustomer" placeholder="Nome do cliente" maxlength="60" autocomplete="off" />
+        </div>
+
+        <!-- Piece -->
+        <div class="nc-field">
+          <label>Peça <span style="color:#dc2626">*</span></label>
+          <input type="text" id="ncPiece" placeholder="Nome ou código da peça" maxlength="80" autocomplete="off" />
+        </div>
+
+        <!-- Failure mode -->
+        <div class="nc-field">
+          <label>Modo de Falha <span style="color:#dc2626">*</span></label>
+          <select id="ncFailureMode">
+            <option value="">Selecione…</option>
+            <option value="Dimensional">Dimensional</option>
+            <option value="Superfície">Superfície</option>
+            <option value="Material">Material</option>
+            <option value="Montagem">Montagem</option>
+            <option value="Funcional">Funcional</option>
+            <option value="Cosmético">Cosmético</option>
+            <option value="Embalagem">Embalagem</option>
+            <option value="Documentação">Documentação</option>
+            <option value="Outro">Outro</option>
+          </select>
+        </div>
+
+        <!-- Date -->
+        <div class="nc-field">
+          <label>Data da Reclamação <span style="color:#dc2626">*</span></label>
+          <input type="date" id="ncDate" />
+        </div>
+
+        <!-- Description (full width) -->
+        <div class="nc-field nc-field-full">
+          <label>Descrição da Reclamação</label>
+          <textarea id="ncDescription" placeholder="Descreva brevemente o problema encontrado…" maxlength="400"></textarea>
+        </div>
+
+      </div>
+    </div>
+    <div class="nc-modal-footer">
+      <button class="nc-btn-cancel-modal" id="ncModalCancel">Cancelar</button>
+      <button class="nc-btn-save" id="ncBtnSubmit">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/></svg>
+        Cadastrar NC
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- NC PDF PRINT AREA (hidden on screen; shown only during window.print()) -->
+<div id="nc-print-area"></div>
+
+<!-- ALERT FILE VIEWER POPUP -->
+<div class="nc-alert-viewer-backdrop" id="ncAlertViewerBackdrop" role="dialog" aria-modal="true">
+  <div class="nc-alert-viewer-modal">
+    <div class="nc-alert-viewer-header">
+      <h4>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/></svg>
+        <span id="ncAlertViewerTitle">Alerta</span>
+      </h4>
+      <button class="nc-alert-viewer-close" id="ncAlertViewerClose" aria-label="Fechar">✕</button>
+    </div>
+    <div class="nc-alert-viewer-content" id="ncAlertViewerContent">
+      <!-- populated dynamically -->
+    </div>
+  </div>
+</div>
+
+<!-- RNC/8D STATUS POPUP -->
+<div class="nc-status-modal-backdrop" id="ncStatusModalBackdrop" role="dialog" aria-modal="true" aria-labelledby="ncStatusModalTitle">
+  <div class="nc-status-modal">
+    <div class="nc-status-modal-header">
+      <h3 id="ncStatusModalTitle">RNC Aberta</h3>
+      <button class="nc-status-modal-close" id="ncStatusModalClose" aria-label="Fechar">✕</button>
+    </div>
+    <div class="nc-status-modal-body">
+      <div class="nc-field" style="margin-bottom:14px;">
+        <label>Número da RNC <span style="color:#dc2626">*</span></label>
+        <input type="text" id="ncRncNumber" placeholder="Ex: RNC-0001" maxlength="40" autocomplete="off" />
+      </div>
+      <div class="nc-field">
+        <label>Alerta / Documento (opcional)</label>
+        <div class="nc-alert-drop" id="ncAlertDrop" title="Clique ou arraste o alerta">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin-bottom:4px"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M12 3v13.5m-4.5-4.5L12 16.5l4.5-4.5"/></svg>
+          <span>Clique ou arraste o arquivo do alerta</span>
+        </div>
+        <input type="file" id="ncAlertFileInput" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" />
+        <div class="nc-alert-file-name" id="ncAlertFileName"></div>
+      </div>
+    </div>
+    <div class="nc-status-modal-footer">
+      <button class="nc-btn-cancel-modal" id="ncStatusModalCancel">Cancelar</button>
+      <button class="nc-btn-status-save" id="ncStatusModalSave">✔ Confirmar RNC</button>
+    </div>
+  </div>
+</div>
+
+<!-- NC DETAIL POPUP -->
+<div class="nc-detail-backdrop" id="ncDetailBackdrop" role="dialog" aria-modal="true" aria-labelledby="ncDetailTitle">
+  <div class="nc-detail-modal">
+    <div class="nc-detail-header">
+      <div class="nc-detail-header-left">
+        <span class="nc-detail-header-badge">NC</span>
+        <h3 id="ncDetailTitle">Detalhes da NC</h3>
+      </div>
+      <button class="nc-detail-close" id="ncDetailClose" aria-label="Fechar">✕</button>
+    </div>
+    <div class="nc-detail-body" id="ncDetailBody">
+      <!-- populated dynamically -->
+    </div>
+    <div class="nc-detail-footer">
+      <button class="nc-detail-btn-pdf" id="ncDetailBtnPdf">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+        Exportar PDF
+      </button>
+      <button class="nc-detail-btn-close" id="ncDetailBtnClose">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <!-- CLIENT MODAL (create / edit) -->
 <div id="newTenantBackdrop">
   <div class="nt-modal" role="dialog" aria-modal="true" aria-labelledby="ntModalTitle">
