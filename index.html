@@ -554,28 +554,45 @@
     #ncPhotoInput { display:none; }
     .nc-btn-submit { margin-top:18px; background:var(--tenant-sidebar-bg,#1E4D17); color:#fff; border:none; border-radius:8px; padding:10px 30px; font-size:13px; font-weight:700; cursor:pointer; letter-spacing:.04em; transition:background .15s; display:inline-flex; align-items:center; gap:6px; }
     .nc-btn-submit:hover { background:var(--tenant-sidebar-hover,#163d10); }
-    .nc-charts-row { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:24px; }
-    @media (max-width:960px) { .nc-charts-row { grid-template-columns:1fr 1fr; } }
+    /* NC Dashboard layout — total box + charts */
+    .nc-dashboard-top { display:flex; gap:16px; margin-bottom:16px; align-items:stretch; flex-wrap:wrap; }
+    .nc-total-box {
+      flex:0 0 auto; width:160px; min-width:140px;
+      background:#fff; border:2px solid #1b4d8e; border-radius:12px;
+      padding:14px 16px; box-shadow:0 2px 8px rgba(0,0,0,.08);
+      display:flex; flex-direction:column; align-items:center; gap:6px;
+    }
+    .nc-total-box-title {
+      background:#1b4d8e; color:#fff; font-size:11px; font-weight:700;
+      text-transform:uppercase; letter-spacing:.06em;
+      width:calc(100% + 32px); margin:-14px -16px 0; padding:8px 12px;
+      border-radius:10px 10px 0 0; text-align:center;
+    }
+    .nc-total-box-value { font-size:48px; font-weight:800; color:#1a1a2e; line-height:1; padding:14px 0 6px; }
+    .nc-total-box-label { font-size:10px; color:#6b7280; font-weight:600; text-transform:uppercase; letter-spacing:.05em; }
+    .nc-chart-month-card { flex:1; min-width:0; }
+    @media (max-width:700px) { .nc-dashboard-top { flex-direction:column; } .nc-total-box { width:100%; flex-direction:row; justify-content:flex-start; align-items:center; gap:20px; } .nc-total-box-title { display:none; } }
+    .nc-charts-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:0; }
     @media (max-width:600px) { .nc-charts-row { grid-template-columns:1fr; } }
     .nc-chart-card {
-      background:linear-gradient(145deg,#1a1e2e,#22273a);
-      border-radius:16px; padding:18px 20px 14px;
-      box-shadow:0 4px 20px rgba(0,0,0,.28), 0 1px 4px rgba(0,0,0,.18);
-      position:relative; border:1px solid rgba(255,255,255,.06);
+      background:#fff;
+      border-radius:12px; padding:18px 20px 14px;
+      box-shadow:0 2px 10px rgba(0,0,0,.07), 0 1px 3px rgba(0,0,0,.06);
+      position:relative; border:1px solid #e5e7eb;
     }
     .nc-chart-card h4 {
       font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.1em;
-      color:rgba(255,255,255,.45); margin-bottom:14px; display:flex; align-items:center; gap:6px;
+      color:#374151; margin-bottom:14px; display:flex; align-items:center; gap:6px;
     }
-    .nc-chart-card h4::before { content:''; display:inline-block; width:3px; height:12px; background:var(--tenant-sidebar-bg,#1E4D17); border-radius:2px; }
+    .nc-chart-card h4::before { content:''; display:inline-block; width:3px; height:12px; background:#1b4d8e; border-radius:2px; }
     .nc-chart-card canvas { max-height:220px; }
     /* NC search bar */
-    .nc-search-bar { display:flex; align-items:center; gap:10px; background:#1c1c1e; border:1px solid #2f2f33; border-radius:12px; padding:10px 16px; margin-bottom:12px; }
+    .nc-search-bar { display:flex; align-items:center; gap:10px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:12px; padding:10px 16px; margin-bottom:12px; }
     .nc-search-bar svg { flex-shrink:0; color:#6b7280; }
-    .nc-search-bar input { flex:1; background:transparent; border:none; outline:none; color:#fff; font-size:13px; }
-    .nc-search-bar input::placeholder { color:#6b7280; }
-    .nc-search-clear { background:none; border:none; color:#6b7280; cursor:pointer; font-size:14px; padding:0 2px; line-height:1; }
-    .nc-search-clear:hover { color:#fff; }
+    .nc-search-bar input { flex:1; background:transparent; border:none; outline:none; color:#111827; font-size:13px; }
+    .nc-search-bar input::placeholder { color:#9ca3af; }
+    .nc-search-clear { background:none; border:none; color:#9ca3af; cursor:pointer; font-size:14px; padding:0 2px; line-height:1; }
+    .nc-search-clear:hover { color:#374151; }
     .nc-search-count { font-size:11px; color:#6b7280; margin-bottom:10px; padding-left:2px; }
     .nc-card.nc-hidden { display:none; }
     .nc-sync-badge { font-size:11px; font-weight:600; padding:4px 10px; border-radius:20px; display:inline-flex; align-items:center; gap:6px; }
@@ -1099,7 +1116,20 @@
 
     <!-- Dashboard -->
     <div class="nc-section-title" style="margin-bottom:14px">Dashboard de NCs</div>
-    <div class="nc-charts-row">
+    <!-- Top row: total count box + main monthly bar chart -->
+    <div class="nc-dashboard-top">
+      <div class="nc-total-box">
+        <div class="nc-total-box-title">Volume AQE</div>
+        <div class="nc-total-box-value" id="ncTotalCount">0</div>
+        <div class="nc-total-box-label">NCS REGISTRADAS</div>
+      </div>
+      <div class="nc-chart-card nc-chart-month-card">
+        <h4>Volume de Reclamações do Cliente (por mês)</h4>
+        <canvas id="ncChartMonth"></canvas>
+      </div>
+    </div>
+    <!-- Bottom row: piece + failure mode charts -->
+    <div class="nc-charts-row" style="margin-bottom:24px;">
       <div class="nc-chart-card">
         <h4>NCs por Peça</h4>
         <canvas id="ncChartPiece"></canvas>
@@ -1107,10 +1137,6 @@
       <div class="nc-chart-card">
         <h4>NCs por Modo de Falha</h4>
         <canvas id="ncChartFailure"></canvas>
-      </div>
-      <div class="nc-chart-card">
-        <h4>Volume por Mês</h4>
-        <canvas id="ncChartMonth"></canvas>
       </div>
     </div>
 
@@ -3475,16 +3501,54 @@ document.addEventListener("DOMContentLoaded", function() {
       }
     });
 
-    var accentColor = getComputedStyle(document.body).getPropertyValue('--tenant-sidebar-bg').trim() || '#1E4D17';
-    // Elegant dark-chart palette
-    var palette = ['#6366f1','#22d3ee','#f59e0b','#10b981','#f43f5e','#a78bfa','#fb923c','#34d399','#e879f9','#60a5fa','#facc15','#4ade80'];
+    // Update total count box
+    var totalEl = document.getElementById('ncTotalCount');
+    if (totalEl) totalEl.textContent = ncRecords.length;
 
-    // Shared dark-theme values (applied per-chart, not via global defaults)
-    var darkText = 'rgba(255,255,255,0.55)';
-    var darkGrid = 'rgba(255,255,255,0.07)';
-    var darkFont = { family: "'Inter','Segoe UI',sans-serif" };
+    // Standard palette — navy blue as primary bar color, warm palette for doughnut
+    var navyBlue  = '#1b4d8e';
+    var lightGrid = 'rgba(0,0,0,0.06)';
+    var darkText  = '#374151';
+    var lightFont = { family: "'Inter','Segoe UI',sans-serif" };
+    var doughnutPalette = ['#1b4d8e','#2563eb','#3b82f6','#60a5fa','#93c5fd','#bfdbfe','#1e3a5f','#374151','#6b7280','#9ca3af','#d1d5db','#e5e7eb'];
 
-    // Chart 1 — by piece (horizontal bar)
+    // Inline plugin: draw value labels on top of bars
+    var dataLabelsPlugin = {
+      id: 'spiBarLabels',
+      afterDatasetsDraw: function(chart) {
+        var ds = chart.data.datasets;
+        if (!ds.length) return;
+        var meta = chart.getDatasetMeta(0);
+        if (!meta.visible) return;
+        var ctx = chart.ctx;
+        ctx.save();
+        ctx.font = 'bold 11px ' + (lightFont.family);
+        ctx.fillStyle = darkText;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        meta.data.forEach(function(bar, i) {
+          var val = ds[0].data[i];
+          if (!val) return;
+          // For horizontal bar charts, draw label at end of bar
+          if (chart.config.options.indexAxis === 'y') {
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(val, bar.x + 4, bar.y);
+          } else {
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(val, bar.x, bar.y - 4);
+          }
+        });
+        ctx.restore();
+      }
+    };
+
+    // Portuguese full month names (uppercase, reference image style)
+    var PT_MONTHS = ['JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO',
+                     'JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
+
+    // ── Chart 1 — by piece (horizontal bar) ─────────────────────────────────
     if (_ncChartPiece) { _ncChartPiece.destroy(); _ncChartPiece = null; }
     var ctxP = document.getElementById('ncChartPiece');
     if (ctxP) {
@@ -3492,12 +3556,13 @@ document.addEventListener("DOMContentLoaded", function() {
       var pVals = pKeys.map(function(k){ return pieceCount[k]; });
       _ncChartPiece = new Chart(ctxP, {
         type: 'bar',
+        plugins: [dataLabelsPlugin],
         data: {
           labels: pKeys.length ? pKeys : ['—'],
           datasets: [{
             data: pVals.length ? pVals : [0],
-            backgroundColor: palette.slice(0, pKeys.length || 1),
-            borderRadius: 6,
+            backgroundColor: navyBlue,
+            borderRadius: 4,
             borderSkipped: false
           }]
         },
@@ -3508,26 +3573,26 @@ document.addEventListener("DOMContentLoaded", function() {
             tooltip:{ callbacks:{ label: function(ctx){ return ' ' + ctx.parsed.x + ' NCs'; } } }
           },
           scales: {
-            x:{ ticks:{ color:darkText, font:Object.assign({size:10},darkFont) }, grid:{ color:darkGrid }, border:{ display:false } },
-            y:{ ticks:{ color:darkText, font:Object.assign({size:10},darkFont), padding:4 }, grid:{ display:false }, border:{ display:false } }
+            x:{ ticks:{ color:darkText, font:Object.assign({size:10},lightFont) }, grid:{ color:lightGrid }, border:{ display:false } },
+            y:{ ticks:{ color:darkText, font:Object.assign({size:10},lightFont), padding:4 }, grid:{ display:false }, border:{ display:false } }
           },
           responsive: true, maintainAspectRatio: false
         }
       });
     }
 
-    // Chart 2 — by failure mode (doughnut)
+    // ── Chart 2 — by failure mode (doughnut) ─────────────────────────────────
     if (_ncChartFailure) { _ncChartFailure.destroy(); _ncChartFailure = null; }
     var ctxF = document.getElementById('ncChartFailure');
     if (ctxF) {
       var fKeys = Object.keys(failureCount);
       if (!fKeys.length) {
-        ctxF.parentNode.querySelector('canvas').style.display = 'none';
+        ctxF.style.display = 'none';
         var noData = ctxF.parentNode.querySelector('.nc-chart-nodata');
         if (!noData) {
           noData = document.createElement('p');
           noData.className = 'nc-chart-nodata';
-          noData.style.cssText = 'color:rgba(255,255,255,.3);font-size:12px;text-align:center;margin:48px 0';
+          noData.style.cssText = 'color:#9ca3af;font-size:12px;text-align:center;margin:48px 0';
           noData.textContent = 'Sem dados';
           ctxF.parentNode.appendChild(noData);
         }
@@ -3541,10 +3606,10 @@ document.addEventListener("DOMContentLoaded", function() {
             labels: fKeys,
             datasets: [{
               data: Object.values(failureCount),
-              backgroundColor: palette.slice(0, fKeys.length),
+              backgroundColor: doughnutPalette.slice(0, fKeys.length),
               borderWidth: 3,
-              borderColor: '#1a1e2e',
-              hoverBorderColor: '#fff',
+              borderColor: '#fff',
+              hoverBorderColor: '#e5e7eb',
               hoverOffset: 6
             }]
           },
@@ -3553,7 +3618,7 @@ document.addEventListener("DOMContentLoaded", function() {
             plugins: {
               legend:{
                 position:'right',
-                labels:{ color:darkText, font:Object.assign({size:10},darkFont), padding:10, usePointStyle:true, pointStyleWidth:8 }
+                labels:{ color:darkText, font:Object.assign({size:10},lightFont), padding:10, usePointStyle:true, pointStyleWidth:8 }
               },
               tooltip:{ callbacks:{ label: function(ctx){ return ' ' + ctx.label + ': ' + ctx.parsed + ' NCs'; } } }
             },
@@ -3563,41 +3628,76 @@ document.addEventListener("DOMContentLoaded", function() {
       }
     }
 
-    // Chart 3 — monthly volume (bar)
+    // ── Chart 3 — monthly volume (bar + reference line) ──────────────────────
     if (_ncChartMonth) { _ncChartMonth.destroy(); _ncChartMonth = null; }
     var ctxM = document.getElementById('ncChartMonth');
     if (ctxM) {
-      var mLabels = monthKeys.map(function(k) {
-        var parts = k.split('-');
-        var mn = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(parts[1],10)-1];
-        return mn + '/' + parts[0].slice(2);
+      // Filter to months that actually have data (or the last 6 if none)
+      var activeKeys = monthKeys.filter(function(k){ return monthCount[k] > 0; });
+      var displayKeys = activeKeys.length ? activeKeys : monthKeys.slice(-3);
+      var mLabels = displayKeys.map(function(k) {
+        return PT_MONTHS[parseInt(k.split('-')[1], 10) - 1];
       });
-      var mVals = monthKeys.map(function(k){ return monthCount[k]; });
-      // Gradient fill using actual canvas height (falls back to 220px from CSS)
-      var gradCtx = ctxM.getContext('2d');
-      var gradHeight = ctxM.offsetHeight || ctxM.parentElement.clientHeight || 220;
-      var gradient = gradCtx.createLinearGradient(0, 0, 0, gradHeight);
-      gradient.addColorStop(0, 'rgba(99,102,241,0.85)');
-      gradient.addColorStop(1, 'rgba(99,102,241,0.15)');
+      var mVals = displayKeys.map(function(k){ return monthCount[k]; });
+      // Reference line — only shown when there is real data
+      var totalNc = mVals.reduce(function(a,b){ return a+b; }, 0);
+      var hasData = totalNc > 0;
+      var metaVal = hasData ? Math.max(1, Math.round(totalNc / activeKeys.length)) : 0;
+
+      var datasets = [
+        {
+          type: 'bar',
+          data: mVals,
+          backgroundColor: navyBlue,
+          borderRadius: 4,
+          borderSkipped: false,
+          order: 2
+        }
+      ];
+      if (hasData) {
+        datasets.push({
+          // Reference "Meta mensal" dashed line
+          type: 'line',
+          label: 'Meta mensal: ' + metaVal,
+          data: mLabels.map(function(){ return metaVal; }),
+          borderColor: '#f97316',
+          borderWidth: 2,
+          borderDash: [6, 4],
+          pointRadius: 0,
+          fill: false,
+          tension: 0,
+          order: 1
+        });
+      }
+
       _ncChartMonth = new Chart(ctxM, {
         type: 'bar',
-        data: {
-          labels: mLabels,
-          datasets: [{
-            data: mVals,
-            backgroundColor: gradient,
-            borderRadius: 6,
-            borderSkipped: false
-          }]
-        },
+        plugins: [dataLabelsPlugin],
+        data: { labels: mLabels, datasets: datasets },
         options: {
           plugins: {
-            legend:{ display:false },
-            tooltip:{ callbacks:{ label: function(ctx){ return ' ' + ctx.parsed.y + ' NCs'; } } }
+            legend:{
+              display: hasData,
+              position: 'top',
+              align: 'start',
+              labels:{
+                color:darkText, font:Object.assign({size:10},lightFont),
+                usePointStyle:true, pointStyleWidth:8, padding:16,
+                filter: function(item) { return item.datasetIndex === 1; }
+              }
+            },
+            tooltip:{ callbacks:{ label: function(ctx){ return ctx.datasetIndex === 0 ? ' ' + ctx.parsed.y + ' NCs' : ' Meta: ' + ctx.parsed.y; } } }
           },
           scales: {
-            x:{ ticks:{ color:darkText, font:Object.assign({size:9},darkFont), maxRotation:0 }, grid:{ display:false }, border:{ display:false } },
-            y:{ beginAtZero:true, ticks:{ color:darkText, font:Object.assign({size:10},darkFont), stepSize:1 }, grid:{ color:darkGrid }, border:{ display:false } }
+            x:{
+              ticks:{ color:darkText, font:Object.assign({size:9},lightFont), maxRotation:0 },
+              grid:{ display:false }, border:{ display:false }
+            },
+            y:{
+              beginAtZero:true,
+              ticks:{ color:darkText, font:Object.assign({size:10},lightFont), stepSize:1 },
+              grid:{ color:lightGrid }, border:{ display:false }
+            }
           },
           responsive: true, maintainAspectRatio: false
         }
