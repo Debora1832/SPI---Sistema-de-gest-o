@@ -557,21 +557,21 @@
     /* NC Dashboard layout — total box + charts */
     .nc-dashboard-top { display:flex; gap:16px; margin-bottom:16px; align-items:stretch; flex-wrap:wrap; }
     .nc-total-box {
-      flex:0 0 auto; width:160px; min-width:140px;
-      background:#fff; border:2px solid #1b4d8e; border-radius:12px;
-      padding:14px 16px; box-shadow:0 2px 8px rgba(0,0,0,.08);
-      display:flex; flex-direction:column; align-items:center; gap:6px;
+      flex:0 0 auto; width:120px; min-width:100px;
+      background:#fff; border:2px solid #1b4d8e; border-radius:10px;
+      padding:10px 12px; box-shadow:0 2px 8px rgba(0,0,0,.08);
+      display:flex; flex-direction:column; align-items:center; gap:4px;
     }
     .nc-total-box-title {
-      background:#1b4d8e; color:#fff; font-size:11px; font-weight:700;
+      background:#1b4d8e; color:#fff; font-size:10px; font-weight:700;
       text-transform:uppercase; letter-spacing:.06em;
-      width:calc(100% + 32px); margin:-14px -16px 0; padding:8px 12px;
-      border-radius:10px 10px 0 0; text-align:center;
+      width:calc(100% + 24px); margin:-10px -12px 0; padding:6px 10px;
+      border-radius:8px 8px 0 0; text-align:center;
     }
-    .nc-total-box-value { font-size:48px; font-weight:800; color:#1a1a2e; line-height:1; padding:14px 0 6px; }
-    .nc-total-box-label { font-size:10px; color:#6b7280; font-weight:600; text-transform:uppercase; letter-spacing:.05em; }
+    .nc-total-box-value { font-size:38px; font-weight:800; color:#1a1a2e; line-height:1; padding:10px 0 4px; }
+    .nc-total-box-label { font-size:9px; color:#6b7280; font-weight:600; text-transform:uppercase; letter-spacing:.05em; text-align:center; }
     .nc-chart-month-card { flex:1; min-width:0; }
-    @media (max-width:700px) { .nc-dashboard-top { flex-direction:column; } .nc-total-box { width:100%; flex-direction:row; justify-content:flex-start; align-items:center; gap:20px; } .nc-total-box-title { display:none; } }
+    @media (max-width:700px) { .nc-dashboard-top { flex-direction:column; } .nc-total-box { width:100%; flex-direction:row; justify-content:flex-start; align-items:center; gap:16px; } .nc-total-box-title { display:none; } }
     .nc-charts-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:0; }
     @media (max-width:600px) { .nc-charts-row { grid-template-columns:1fr; } }
     .nc-chart-card {
@@ -586,6 +586,39 @@
     }
     .nc-chart-card h4::before { content:''; display:inline-block; width:3px; height:12px; background:#1b4d8e; border-radius:2px; }
     .nc-chart-card canvas { max-height:220px; }
+    /* Chart edit button */
+    .nc-chart-edit-btn {
+      margin-left:auto; background:none; border:1px solid #e5e7eb; border-radius:6px;
+      color:#6b7280; font-size:11px; font-weight:600; cursor:pointer;
+      padding:2px 8px; line-height:1.6; transition:background .12s, color .12s;
+      display:inline-flex; align-items:center; gap:4px; flex-shrink:0;
+    }
+    .nc-chart-edit-btn:hover { background:#f3f4f6; color:#374151; border-color:#d1d5db; }
+    /* Chart edit popover */
+    .nc-chart-edit-popover {
+      display:none; position:absolute; top:44px; right:16px; z-index:800;
+      background:#fff; border:1px solid #e5e7eb; border-radius:10px;
+      box-shadow:0 8px 24px rgba(0,0,0,.12); padding:14px 16px; min-width:220px;
+    }
+    .nc-chart-edit-popover.open { display:block; }
+    .nc-chart-edit-popover h5 { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#374151; margin:0 0 10px; }
+    .nc-cep-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+    .nc-cep-row label { font-size:11px; color:#6b7280; flex:1; }
+    .nc-cep-row input[type=color] { width:32px; height:24px; padding:0; border:1px solid #e5e7eb; border-radius:4px; cursor:pointer; }
+    .nc-cep-row input[type=number],
+    .nc-cep-row input[type=text] { width:80px; border:1px solid #e5e7eb; border-radius:5px; padding:3px 7px; font-size:12px; color:#111; }
+    .nc-cep-row input[type=text].nc-cep-title { width:auto; flex:1; min-width:0; }
+    .nc-cep-apply { width:100%; background:#1b4d8e; color:#fff; border:none; border-radius:7px; padding:7px; font-size:12px; font-weight:700; cursor:pointer; margin-top:4px; transition:background .12s; }
+    .nc-cep-apply:hover { background:#163d77; }
+    /* Month filter chip */
+    .nc-month-filter-chip {
+      display:none; align-items:center; gap:8px; background:#dbeafe; border:1px solid #93c5fd;
+      border-radius:20px; padding:4px 12px; font-size:11px; font-weight:700; color:#1d4ed8;
+      margin-bottom:10px; cursor:pointer;
+    }
+    .nc-month-filter-chip.active { display:inline-flex; }
+    .nc-month-filter-chip-x { font-size:13px; line-height:1; opacity:.6; }
+    .nc-month-filter-chip:hover .nc-month-filter-chip-x { opacity:1; }
     /* NC search bar */
     .nc-search-bar { display:flex; align-items:center; gap:10px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:12px; padding:10px 16px; margin-bottom:12px; }
     .nc-search-bar svg { flex-shrink:0; color:#6b7280; }
@@ -1123,8 +1156,29 @@
         <div class="nc-total-box-value" id="ncTotalCount">0</div>
         <div class="nc-total-box-label">NCS REGISTRADAS</div>
       </div>
-      <div class="nc-chart-card nc-chart-month-card">
-        <h4>Volume de Reclamações do Cliente (por mês)</h4>
+      <div class="nc-chart-card nc-chart-month-card" style="position:relative;">
+        <h4 id="ncChartMonthTitle">Volume de Reclamações do Cliente (por mês)<button class="nc-chart-edit-btn" id="ncChartEditBtn" title="Editar gráfico">⚙ Editar</button></h4>
+        <!-- Chart edit popover -->
+        <div class="nc-chart-edit-popover" id="ncChartEditPopover">
+          <h5>Editar Gráfico</h5>
+          <div class="nc-cep-row">
+            <label>Título</label>
+            <input type="text" class="nc-cep-title" id="ncCepTitle" value="Volume de Reclamações do Cliente (por mês)" />
+          </div>
+          <div class="nc-cep-row">
+            <label>Cor das barras</label>
+            <input type="color" id="ncCepBarColor" value="#1b4d8e" />
+          </div>
+          <div class="nc-cep-row">
+            <label>Cor da linha meta</label>
+            <input type="color" id="ncCepMetaColor" value="#f97316" />
+          </div>
+          <div class="nc-cep-row">
+            <label>Valor da meta</label>
+            <input type="number" id="ncCepMetaValue" value="0" min="0" step="1" />
+          </div>
+          <button class="nc-cep-apply" id="ncCepApply">Aplicar</button>
+        </div>
         <canvas id="ncChartMonth"></canvas>
       </div>
     </div>
@@ -1146,6 +1200,11 @@
       <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 20 20" stroke="currentColor" stroke-width="2"><circle cx="9" cy="9" r="6"/><path stroke-linecap="round" d="M15 15l-3.5-3.5"/></svg>
       <input type="text" id="ncSearchInput" placeholder="Pesquisar por peça, NC, modo de falha, descrição…" autocomplete="off" />
       <button class="nc-search-clear" id="ncSearchClear" title="Limpar pesquisa" style="display:none">✕</button>
+    </div>
+    <!-- Active month filter chip -->
+    <div class="nc-month-filter-chip" id="ncMonthFilterChip">
+      <span id="ncMonthFilterLabel">Filtro: —</span>
+      <span class="nc-month-filter-chip-x" title="Limpar filtro">✕</span>
     </div>
     <div id="ncSearchCount" class="nc-search-count" style="display:none"></div>
     <div class="nc-cards-grid" id="ncCardsGrid">
@@ -3367,6 +3426,21 @@ document.addEventListener("DOMContentLoaded", function() {
 
   var ncRecords = [];
   var _ncChartPiece = null, _ncChartFailure = null, _ncChartMonth = null;
+  var _ncMonthFilter = null; // active YYYY-MM filter key, or null
+  // Chart settings (bar color, meta color, meta value, title) — persisted to localStorage
+  var _ncChartSettings = (function() {
+    try { return JSON.parse(localStorage.getItem('spi_nc_chart_month_settings') || 'null') || {}; } catch(e) { return {}; }
+  })();
+  function saveNcChartSettings() {
+    try { localStorage.setItem('spi_nc_chart_month_settings', JSON.stringify(_ncChartSettings)); } catch(e) {}
+  }
+  // Module-level constants shared across NC functions
+  var PT_MONTHS = ['JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO',
+                   'JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
+  var PT_MONTHS_SHORT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                          'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  var NC_CHART_DEFAULT_TITLE = 'Volume de Reclamações do Cliente (por mês)';
+  var BAR_DIM_SUFFIX = '66'; // 40 % opacity hex appended to bar color when dimmed
   var _ncPhotos = []; // array of data-URL strings for the modal in progress
   var _ncStatusPending = null; // { id, action } while status popup is open
   var _ncDetailCurrent = null; // nc record shown in detail popup
@@ -3506,7 +3580,7 @@ document.addEventListener("DOMContentLoaded", function() {
     if (totalEl) totalEl.textContent = ncRecords.length;
 
     // Standard palette — navy blue as primary bar color, warm palette for doughnut
-    var navyBlue  = '#1b4d8e';
+    var navyBlue  = _ncChartSettings.barColor || '#1b4d8e';
     var lightGrid = 'rgba(0,0,0,0.06)';
     var darkText  = '#374151';
     var lightFont = { family: "'Inter','Segoe UI',sans-serif" };
@@ -3543,10 +3617,6 @@ document.addEventListener("DOMContentLoaded", function() {
         ctx.restore();
       }
     };
-
-    // Portuguese full month names (uppercase, reference image style)
-    var PT_MONTHS = ['JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO',
-                     'JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
 
     // ── Chart 1 — by piece (horizontal bar) ─────────────────────────────────
     if (_ncChartPiece) { _ncChartPiece.destroy(); _ncChartPiece = null; }
@@ -3632,35 +3702,44 @@ document.addEventListener("DOMContentLoaded", function() {
     if (_ncChartMonth) { _ncChartMonth.destroy(); _ncChartMonth = null; }
     var ctxM = document.getElementById('ncChartMonth');
     if (ctxM) {
-      // Filter to months that actually have data (or the last 6 if none)
+      // Filter to months that actually have data (or the last 3 if none)
       var activeKeys = monthKeys.filter(function(k){ return monthCount[k] > 0; });
       var displayKeys = activeKeys.length ? activeKeys : monthKeys.slice(-3);
       var mLabels = displayKeys.map(function(k) {
         return PT_MONTHS[parseInt(k.split('-')[1], 10) - 1];
       });
       var mVals = displayKeys.map(function(k){ return monthCount[k]; });
-      // Reference line — only shown when there is real data
+      // Reference line — use saved setting or auto-average
       var totalNc = mVals.reduce(function(a,b){ return a+b; }, 0);
       var hasData = totalNc > 0;
-      var metaVal = hasData ? Math.max(1, Math.round(totalNc / activeKeys.length)) : 0;
+      var metaVal = _ncChartSettings.metaValue != null
+        ? Number(_ncChartSettings.metaValue)
+        : (hasData ? Math.max(1, Math.round(totalNc / activeKeys.length)) : 0);
+      var metaColor = _ncChartSettings.metaColor || '#f97316';
+
+      // Highlight the active-filter bar with lighter color (dim inactive bars)
+      var barColors = displayKeys.map(function(k) {
+        if (_ncMonthFilter && k === _ncMonthFilter) return navyBlue;
+        if (_ncMonthFilter) return navyBlue + BAR_DIM_SUFFIX;
+        return navyBlue;
+      });
 
       var datasets = [
         {
           type: 'bar',
           data: mVals,
-          backgroundColor: navyBlue,
+          backgroundColor: barColors,
           borderRadius: 4,
           borderSkipped: false,
           order: 2
         }
       ];
-      if (hasData) {
+      if (hasData && metaVal > 0) {
         datasets.push({
-          // Reference "Meta mensal" dashed line
           type: 'line',
           label: 'Meta mensal: ' + metaVal,
           data: mLabels.map(function(){ return metaVal; }),
-          borderColor: '#f97316',
+          borderColor: metaColor,
           borderWidth: 2,
           borderDash: [6, 4],
           pointRadius: 0,
@@ -3675,9 +3754,26 @@ document.addEventListener("DOMContentLoaded", function() {
         plugins: [dataLabelsPlugin],
         data: { labels: mLabels, datasets: datasets },
         options: {
+          onClick: function(evt, elements) {
+            if (!elements.length) return;
+            var idx = elements[0].index;
+            var clickedKey = displayKeys[idx];
+            if (_ncMonthFilter === clickedKey) {
+              // Same bar → clear filter
+              _ncMonthFilter = null;
+            } else {
+              _ncMonthFilter = clickedKey;
+            }
+            // Re-draw chart to reflect highlight
+            renderNcCharts();
+            // Apply filter to card list
+            if (window._applyNcSearch) window._applyNcSearch();
+            // Update filter chip
+            _updateMonthFilterChip();
+          },
           plugins: {
             legend:{
-              display: hasData,
+              display: hasData && metaVal > 0,
               position: 'top',
               align: 'start',
               labels:{
@@ -3702,8 +3798,40 @@ document.addEventListener("DOMContentLoaded", function() {
           responsive: true, maintainAspectRatio: false
         }
       });
+
+      // Keep popover fields in sync with current settings
+      var titleInput = document.getElementById('ncCepTitle');
+      var barInput   = document.getElementById('ncCepBarColor');
+      var metaColorInput = document.getElementById('ncCepMetaColor');
+      var metaValInput   = document.getElementById('ncCepMetaValue');
+      if (titleInput)     titleInput.value = _ncChartSettings.title || NC_CHART_DEFAULT_TITLE;
+      if (barInput)       barInput.value   = _ncChartSettings.barColor  || '#1b4d8e';
+      if (metaColorInput) metaColorInput.value = metaColor;
+      if (metaValInput)   metaValInput.value   = metaVal;
+
+      // Update chart title in DOM
+      var titleEl = document.getElementById('ncChartMonthTitle');
+      if (titleEl) {
+        var btn = titleEl.querySelector('.nc-chart-edit-btn');
+        titleEl.textContent = _ncChartSettings.title || NC_CHART_DEFAULT_TITLE;
+        if (btn) titleEl.appendChild(btn);
+      }
     }
 
+  }
+
+  function _updateMonthFilterChip() {
+    var chip  = document.getElementById('ncMonthFilterChip');
+    var label = document.getElementById('ncMonthFilterLabel');
+    if (!chip) return;
+    if (_ncMonthFilter) {
+      var parts = _ncMonthFilter.split('-');
+      var mn = PT_MONTHS_SHORT[parseInt(parts[1],10)-1] || parts[1];
+      label.textContent = 'Filtro: ' + mn + '/' + parts[0];
+      chip.classList.add('active');
+    } else {
+      chip.classList.remove('active');
+    }
   }
 
   function renderNcCards() {
@@ -3814,14 +3942,13 @@ document.addEventListener("DOMContentLoaded", function() {
         });
       });
 
-      // Click on card body → open detail popup
-      var cardBody = card.querySelector('.nc-card-body');
-      if (cardBody) {
-        cardBody.addEventListener('click', function() {
-          var idx = ncRecords.findIndex(function(r){ return r.id === id; });
-          if (idx !== -1) openNcDetailModal(ncRecords[idx]);
-        });
-      }
+      // Click anywhere on the card (except action buttons and lightbox triggers) → open detail popup
+      card.addEventListener('click', function(e) {
+        // Ignore if a button or interactive element was clicked
+        if (e.target.closest('button, a, [data-photonav], .nc-card-actions')) return;
+        var idx = ncRecords.findIndex(function(r){ return r.id === id; });
+        if (idx !== -1) openNcDetailModal(ncRecords[idx]);
+      });
     });
     // Re-apply active search filter after every card render
     if (window._applyNcSearch) window._applyNcSearch();
@@ -4291,6 +4418,11 @@ document.addEventListener("DOMContentLoaded", function() {
         var id = card.dataset.ncId;
         var nc = ncRecords.find(function(r){ return r.id === id; });
         if (!nc) { card.classList.add('nc-hidden'); return; }
+        // Apply month filter
+        if (_ncMonthFilter) {
+          var ncMk = nc.date ? nc.date.slice(0,7) : '';
+          if (ncMk !== _ncMonthFilter) { card.classList.add('nc-hidden'); return; }
+        }
         if (!q) { card.classList.remove('nc-hidden'); shown++; return; }
         var haystack = [
           nc.ncNumber, nc.piece, nc.failureMode,
@@ -4303,8 +4435,15 @@ document.addEventListener("DOMContentLoaded", function() {
           card.classList.add('nc-hidden');
         }
       });
-      if (q) {
-        ncSearchCount.textContent = shown + (shown === 1 ? ' NC encontrada' : ' NCs encontradas') + ' para "' + q + '"';
+      var activeFilters = q || _ncMonthFilter;
+      if (activeFilters) {
+        var filterDesc = [];
+        if (_ncMonthFilter) {
+          var mp = _ncMonthFilter.split('-');
+          filterDesc.push((PT_MONTHS_SHORT[parseInt(mp[1],10)-1] || mp[1]) + '/' + mp[0]);
+        }
+        if (q) filterDesc.push('"'+q+'"');
+        ncSearchCount.textContent = shown + (shown === 1 ? ' NC encontrada' : ' NCs encontradas') + ' para ' + filterDesc.join(' + ');
         ncSearchCount.style.display = '';
       } else {
         ncSearchCount.style.display = 'none';
@@ -4320,6 +4459,56 @@ document.addEventListener("DOMContentLoaded", function() {
       });
       // Expose so renderNcCards can re-apply after each render
       window._applyNcSearch = applyNcSearch;
+    }
+
+    // ── Month filter chip ─────────────────────────────────────────────────
+    var monthChip = document.getElementById('ncMonthFilterChip');
+    if (monthChip) {
+      monthChip.addEventListener('click', function() {
+        _ncMonthFilter = null;
+        _updateMonthFilterChip();
+        renderNcCharts();
+        if (window._applyNcSearch) window._applyNcSearch();
+      });
+    }
+
+    // ── Chart settings edit popover ───────────────────────────────────────
+    var editBtn     = document.getElementById('ncChartEditBtn');
+    var editPopover = document.getElementById('ncChartEditPopover');
+    var cepApply    = document.getElementById('ncCepApply');
+
+    if (editBtn && editPopover) {
+      editBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        editPopover.classList.toggle('open');
+      });
+      // Close popover when clicking outside
+      document.addEventListener('click', function(e) {
+        if (editPopover.classList.contains('open') &&
+            !editPopover.contains(e.target) && e.target !== editBtn) {
+          editPopover.classList.remove('open');
+        }
+      });
+    }
+    if (cepApply) {
+      cepApply.addEventListener('click', function() {
+        var titleEl     = document.getElementById('ncCepTitle');
+        var barEl       = document.getElementById('ncCepBarColor');
+        var metaColorEl = document.getElementById('ncCepMetaColor');
+        var metaValEl   = document.getElementById('ncCepMetaValue');
+        if (!titleEl || !barEl || !metaColorEl || !metaValEl) return;
+        var titleVal    = (titleEl.value || '').trim();
+        var barColorVal = barEl.value;
+        var metaColorVal= metaColorEl.value;
+        var metaValNum  = parseInt(metaValEl.value, 10);
+        _ncChartSettings.title      = titleVal || NC_CHART_DEFAULT_TITLE;
+        _ncChartSettings.barColor   = barColorVal;
+        _ncChartSettings.metaColor  = metaColorVal;
+        _ncChartSettings.metaValue  = isNaN(metaValNum) ? 0 : metaValNum;
+        saveNcChartSettings();
+        editPopover.classList.remove('open');
+        renderNcCharts();
+      });
     }
 
     // Wire nav click to (re-)render charts when NC page becomes visible
