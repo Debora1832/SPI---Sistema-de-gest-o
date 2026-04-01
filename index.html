@@ -106,6 +106,33 @@
     .fb-status-msg.ok  { background:#dcfce7; color:#166534; display:block; }
     .fb-status-msg.err { background:#fee2e2; color:#991b1b; display:block; }
     .fb-guide-link { font-size:12px; color:#367C2B; text-decoration:underline; cursor:pointer; }
+    .fb-diag-panel {
+      background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;
+      padding:10px 14px; margin-bottom:14px; font-size:12px; line-height:1.6;
+      display:none;
+    }
+    .fb-diag-panel.show { display:block; }
+    .fb-diag-row { display:flex; align-items:center; gap:8px; margin:2px 0; }
+    .fb-diag-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+    .fb-diag-dot.ok  { background:#22c55e; }
+    .fb-diag-dot.err { background:#ef4444; }
+    .fb-diag-dot.warn{ background:#f59e0b; }
+    .fb-rules-guide {
+      background:#fefce8; border:1px solid #fde047; border-radius:8px;
+      padding:10px 14px; margin-top:10px; font-size:12px;
+    }
+    .fb-rules-pre {
+      background:#1e293b; color:#e2e8f0; border-radius:6px;
+      padding:10px 12px; font-size:11px; line-height:1.5;
+      overflow-x:auto; margin:6px 0 0; white-space:pre;
+    }
+    .fb-btn-test {
+      background:transparent; border:1px solid #367C2B; color:#367C2B;
+      border-radius:8px; padding:9px 16px; font-size:13px; cursor:pointer;
+      transition:background .15s, color .15s;
+    }
+    .fb-btn-test:hover { background:#367C2B; color:#fff; }
+    .fb-btn-test:disabled { opacity:.5; cursor:default; }
 
 
 
@@ -1384,6 +1411,8 @@
       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="#F57C00"><path d="M3.89 15.67L6.62 3.56c.12-.51.83-.57 1.06-.09l3.05 6.37 1.06-1.98c.22-.43.86-.43 1.08 0l1.48 2.76 4.34-8.12c.24-.44.9-.35 1.01.14l2.83 13.73A8 8 0 0112 20a8 8 0 01-8.11-4.33z"/></svg>
       Configuração do Firebase
     </h3>
+    <!-- Diagnostic panel: shows current state before the user changes anything -->
+    <div id="fbDiagPanel" class="fb-diag-panel"></div>
     <p>
       Cole aqui as credenciais do seu projeto Firebase para sincronizar dados entre dispositivos.
       Encontre em: <a class="fb-guide-link" href="https://console.firebase.google.com" target="_blank" rel="noopener">console.firebase.google.com</a>
@@ -1419,9 +1448,24 @@
         <input type="text" id="fbAppId" placeholder="1:123:web:abc..." autocomplete="off" spellcheck="false"/>
       </div>
     </div>
+    <!-- Firestore security rules guidance (shown when a write-permission error is detected) -->
+    <div id="fbRulesGuide" class="fb-rules-guide" style="display:none">
+      <strong>⚠ Permissão negada — ajuste as regras do Firestore:</strong>
+      <p style="margin:6px 0 4px">No <a href="https://console.firebase.google.com" target="_blank" rel="noopener" class="fb-guide-link">Firebase Console</a> → Firestore → Regras, cole:</p>
+      <pre class="fb-rules-pre">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}</pre>
+      <p style="margin:4px 0 0;font-size:11px;color:#92400e">⚠ <strong>Atenção:</strong> estas regras permitem acesso público sem autenticação — use apenas em desenvolvimento ou enquanto não há dados sensíveis. Quando implementar autenticação, substitua <code>if true</code> por regras baseadas no usuário. <a href="https://firebase.google.com/docs/firestore/security/get-started" target="_blank" rel="noopener" class="fb-guide-link">Saiba mais sobre regras de segurança.</a></p>
+    </div>
     <div class="fb-status-msg" id="fbStatusMsg"></div>
     <div class="fb-actions">
       <button class="fb-btn-clear" id="fbBtnClear">Limpar configuração</button>
+      <button class="fb-btn-test" id="fbBtnTest" style="display:none">Testar conexão</button>
       <button class="fb-btn-cancel" id="fbBtnCancel">Cancelar</button>
       <button class="fb-btn-save" id="fbBtnSave">Conectar</button>
     </div>
@@ -1476,11 +1520,10 @@ document.addEventListener("DOMContentLoaded", function() {
         return false;
       }
       if (firebase.apps.length) {
-        // If already initialized with a different config, we cannot reinitialize.
-        // This is a limitation of the Firebase compat SDK in a single page.
+        // Already initialised — just grab the existing Firestore instance and
+        // run a quick write-test to confirm we have write access.
         db = firebase.firestore();
-        firebaseConnected = true;
-        setFirebaseStatus("connected", "Firebase: conectado ✓");
+        _testFirestoreWrite(cfg.projectId);
         return true;
       }
       firebase.initializeApp({
@@ -1492,32 +1535,70 @@ document.addEventListener("DOMContentLoaded", function() {
         appId:             cfg.appId || ""
       });
       db = firebase.firestore();
-      // Test connectivity: list up to 1 document from the known 'projects' collection
-      db.collection("projects").limit(1).get().then(function() {
+      _testFirestoreWrite(cfg.projectId);
+      return true;
+    } catch(e) {
+      console.error("Firebase init error:", e);
+      setFirebaseStatus("error", "Firebase: erro de inicialização — " + e.message);
+      return false;
+    }
+  }
+
+  // Returns the NC collection name for the current tenant — used by the
+  // write-test in both _testFirestoreWrite() and the "Testar conexão" button.
+  function _fbTestCollection() {
+    return 'nc_records_' + (typeof currentTenant !== 'undefined' ? currentTenant : 'jd');
+  }
+
+  // Test Firestore connectivity with BOTH a read and a write so we catch
+  // "permission-denied" write failures that a read-only test would miss.
+  function _testFirestoreWrite(projectId) {
+    var testCol = _fbTestCollection();
+    var testDoc = '__connection_test__';
+    // First try a small write to the NC collection
+    db.collection(testCol).doc(testDoc).set({ _test: true, _ts: Date.now() })
+      .then(function() {
+        // Write succeeded — delete the test document
+        db.collection(testCol).doc(testDoc).delete().catch(function() {});
         firebaseConnected = true;
         setFirebaseStatus("connected", "Firebase: conectado ✓");
         reloadFromFirebase();
         if (typeof onFirebaseConnected === "function") onFirebaseConnected(true);
-      }).catch(function(e) {
-        console.error("Firebase ping error:", e);
+      })
+      .catch(function(e) {
+        console.error("Firebase write test error:", e);
         if (e.code === "permission-denied") {
-          // Connected but security rules block listing — still operational
-          firebaseConnected = true;
-          setFirebaseStatus("connected", "Firebase: conectado ✓");
-          reloadFromFirebase();
-          if (typeof onFirebaseConnected === "function") onFirebaseConnected(true);
-        } else {
           firebaseConnected = false;
-          setFirebaseStatus("error", "Firebase: erro de conexão");
-          if (typeof onFirebaseConnected === "function") onFirebaseConnected(false, e);
+          setFirebaseStatus("error", "Firebase: sem permissão de escrita");
+          var msg = "As regras do Firestore bloqueiam escritas. Abra o Firebase Console → Firestore → Regras e configure: allow read, write: if true;";
+          if (typeof onFirebaseConnected === "function") onFirebaseConnected(false, { message: msg, code: e.code });
+          // Show rules guide in the modal if it's open
+          var guide = document.getElementById("fbRulesGuide");
+          if (guide) guide.style.display = "";
+        } else {
+          // Network or other error — fall back to read-only ping
+          db.collection("projects").limit(1).get()
+            .then(function() {
+              firebaseConnected = true;
+              setFirebaseStatus("connected", "Firebase: conectado ✓ (escrita não testada)");
+              reloadFromFirebase();
+              if (typeof onFirebaseConnected === "function") onFirebaseConnected(true);
+            })
+            .catch(function(e2) {
+              if (e2.code === "permission-denied") {
+                // Firestore is reachable even though reads are locked
+                firebaseConnected = true;
+                setFirebaseStatus("connected", "Firebase: conectado ✓");
+                reloadFromFirebase();
+                if (typeof onFirebaseConnected === "function") onFirebaseConnected(true);
+              } else {
+                firebaseConnected = false;
+                setFirebaseStatus("error", "Firebase: erro de conexão — " + (e2.message || e2.code || "verifique a rede"));
+                if (typeof onFirebaseConnected === "function") onFirebaseConnected(false, e2);
+              }
+            });
         }
       });
-      return true;
-    } catch(e) {
-      console.error("Firebase init error:", e);
-      setFirebaseStatus("error", "Firebase: erro de inicialização");
-      return false;
-    }
   }
 
   // Real-time listener unsubscribers (keyed by tenant)
@@ -2273,17 +2354,41 @@ document.addEventListener("DOMContentLoaded", function() {
   // ── Firebase Config Modal ─────────────────────────────────────────────────
 
   function openFbModal() {
-    const cfg = loadFirebaseCfgFromStorage();
-    if (cfg) {
-      document.getElementById("fbApiKey").value        = cfg.apiKey        || "";
-      document.getElementById("fbProjectId").value     = cfg.projectId     || "";
-      document.getElementById("fbAuthDomain").value    = cfg.authDomain    || "";
-      document.getElementById("fbStorageBucket").value = cfg.storageBucket || "";
-      document.getElementById("fbSenderId").value      = cfg.messagingSenderId || "";
-      document.getElementById("fbAppId").value         = cfg.appId         || "";
+    // Pre-fill with stored custom config OR with the DEFAULT credentials so the
+    // user can always see what project is active.
+    const storedCfg = loadFirebaseCfgFromStorage();
+    const activeCfg = (storedCfg && storedCfg.apiKey) ? storedCfg : DEFAULT_FIREBASE_CFG;
+    if (activeCfg) {
+      document.getElementById("fbApiKey").value        = activeCfg.apiKey            || "";
+      document.getElementById("fbProjectId").value     = activeCfg.projectId         || "";
+      document.getElementById("fbAuthDomain").value    = activeCfg.authDomain        || "";
+      document.getElementById("fbStorageBucket").value = activeCfg.storageBucket     || "";
+      document.getElementById("fbSenderId").value      = activeCfg.messagingSenderId || "";
+      document.getElementById("fbAppId").value         = activeCfg.appId             || "";
     }
+
+    // Build the diagnostic panel
+    var diag = document.getElementById("fbDiagPanel");
+    var testBtn = document.getElementById("fbBtnTest");
+    var usingDefault = !(storedCfg && storedCfg.apiKey);
+    var projectId = activeCfg ? activeCfg.projectId : "—";
+    var connIcon  = firebaseConnected ? "✓" : "✗";
+    var connColor = firebaseConnected ? "#16a34a" : "#dc2626";
+    diag.innerHTML =
+      '<div class="fb-diag-row"><span class="fb-diag-dot ' + (firebaseConnected ? "ok" : "err") + '"></span>' +
+      '<b>Status:</b>&nbsp;<span style="color:' + connColor + '">' + (firebaseConnected ? "Conectado" : "Desconectado") + '</span></div>' +
+      '<div class="fb-diag-row"><span style="width:8px;flex-shrink:0"></span><b>Projeto:</b>&nbsp;' + projectId + (usingDefault ? ' <em style="color:#6b7280">(padrão)</em>' : ' <em style="color:#6b7280">(customizado)</em>') + '</div>';
+    if (!firebaseConnected) {
+      diag.innerHTML += '<div class="fb-diag-row" style="color:#dc2626"><span style="width:8px;flex-shrink:0"></span>⚠ Os dados estão sendo salvos apenas neste navegador.</div>';
+    }
+    diag.classList.add("show");
+
+    // Show "Testar conexão" button when already connected so user can verify writes
+    testBtn.style.display = firebaseConnected ? "" : "none";
+
     document.getElementById("fbStatusMsg").className = "fb-status-msg";
     document.getElementById("fbStatusMsg").textContent = "";
+    document.getElementById("fbRulesGuide").style.display = "none";
     document.getElementById("fbModalBackdrop").classList.add("open");
   }
 
@@ -2348,10 +2453,14 @@ document.addEventListener("DOMContentLoaded", function() {
       if (success) {
         msg.className = "fb-status-msg ok";
         msg.textContent = "Conectado com sucesso! Os dados estão sendo sincronizados.";
+        document.getElementById("fbBtnTest").style.display = "";
         setTimeout(closeFbModal, 1500);
       } else {
         msg.className = "fb-status-msg err";
         msg.textContent = "Erro de conexão: " + (err && err.message ? err.message : "verifique as credenciais e as regras do Firestore.");
+        if (err && err.code === "permission-denied") {
+          document.getElementById("fbRulesGuide").style.display = "";
+        }
       }
     };
 
@@ -2361,6 +2470,53 @@ document.addEventListener("DOMContentLoaded", function() {
       msg.className = "fb-status-msg err";
       msg.textContent = "Não foi possível inicializar o Firebase. Verifique as credenciais.";
     }
+  });
+
+  // "Testar conexão" — runs a write+delete test on the current Firestore instance
+  document.getElementById("fbBtnTest").addEventListener("click", function() {
+    var msg = document.getElementById("fbStatusMsg");
+    var btn = this;
+    if (!db || !firebaseConnected) {
+      msg.className = "fb-status-msg err";
+      msg.textContent = "Firebase não está conectado. Clique em Conectar primeiro.";
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = "Testando…";
+    msg.className = "fb-status-msg ok";
+    msg.textContent = "Testando leitura e escrita no Firestore…";
+    document.getElementById("fbRulesGuide").style.display = "none";
+
+    var testCol = _fbTestCollection();
+    var testDoc = '__connection_test__';
+
+    // Step 1: write test
+    db.collection(testCol).doc(testDoc).set({ _test: true, _ts: Date.now() })
+      .then(function() {
+        // Step 2: read it back
+        return db.collection(testCol).doc(testDoc).get();
+      })
+      .then(function(snap) {
+        // Step 3: clean up
+        db.collection(testCol).doc(testDoc).delete().catch(function() {});
+        msg.className = "fb-status-msg ok";
+        msg.textContent = "✓ Leitura e escrita funcionando corretamente! Os dados serão sincronizados.";
+        btn.disabled = false;
+        btn.textContent = "Testar conexão";
+      })
+      .catch(function(e) {
+        btn.disabled = false;
+        btn.textContent = "Testar conexão";
+        if (e.code === "permission-denied") {
+          msg.className = "fb-status-msg err";
+          msg.textContent = "✗ Permissão negada — as regras do Firestore bloqueiam escritas. Veja as instruções abaixo.";
+          document.getElementById("fbRulesGuide").style.display = "";
+        } else {
+          msg.className = "fb-status-msg err";
+          msg.textContent = "✗ Erro: " + (e.message || e.code || "verifique a conexão com a internet.");
+        }
+        console.error("Firebase write test error:", e);
+      });
   });
 
   // ── Lightbox ─────────────────────────────────────────────────────────────────
@@ -3400,19 +3556,19 @@ document.addEventListener("DOMContentLoaded", function() {
   });
 
   // ── Init (async — load persisted data before first render) ───────────────
-  (async function init() {
-    // Default Firebase credentials for the jd-controle-sip project.
-    // These are intentionally in the client-side code — Firebase web API keys
-    // are public by design; access is controlled by Firestore security rules.
-    const DEFAULT_FIREBASE_CFG = {
-      apiKey:            "AIzaSyAybRHmAo5Ii_LF25km3EaJWFyYNyLwpc4",
-      authDomain:        "jd-controle-sip.firebaseapp.com",
-      projectId:         "jd-controle-sip",
-      storageBucket:     "jd-controle-sip.firebasestorage.app",
-      messagingSenderId: "743972983999",
-      appId:             "1:743972983999:web:1c533cd6567c34f8b0620a"
-    };
 
+  // Default Firebase credentials — exposed at DOMContentLoaded scope so other
+  // helpers (e.g. openFbModal) can pre-fill form fields with the active project.
+  var DEFAULT_FIREBASE_CFG = {
+    apiKey:            "AIzaSyAybRHmAo5Ii_LF25km3EaJWFyYNyLwpc4",
+    authDomain:        "jd-controle-sip.firebaseapp.com",
+    projectId:         "jd-controle-sip",
+    storageBucket:     "jd-controle-sip.firebasestorage.app",
+    messagingSenderId: "743972983999",
+    appId:             "1:743972983999:web:1c533cd6567c34f8b0620a"
+  };
+
+  (async function init() {
     // Use stored credentials if the user provided custom ones via the modal,
     // otherwise fall back to the default project credentials above.
     const storedCfg = loadFirebaseCfgFromStorage();
