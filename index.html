@@ -601,6 +601,19 @@
     .nc-total-box-label { font-size:9px; color:#6b7280; font-weight:600; text-transform:uppercase; letter-spacing:.05em; text-align:center; }
     .nc-chart-month-card { flex:1; min-width:0; }
     @media (max-width:700px) { .nc-dashboard-top { flex-direction:column; } .nc-total-box { width:100%; flex-direction:row; justify-content:flex-start; align-items:center; gap:16px; } .nc-total-box-title { display:none; } }
+    /* ── NC stat balloon badges ── */
+    .nc-stat-balloons { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+    .nc-stat-balloon {
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      min-width:90px; padding:10px 14px; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,.10);
+      gap:2px; cursor:default;
+    }
+    .nc-stat-balloon-value { font-size:28px; font-weight:800; line-height:1; }
+    .nc-stat-balloon-label { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; text-align:center; opacity:.85; }
+    .nc-stat-balloon.closed   { background:#dcfce7; border:2px solid #16a34a; color:#15803d; }
+    .nc-stat-balloon.alerted  { background:#fee2e2; border:2px solid #dc2626; color:#b91c1c; }
+    .nc-stat-balloon.eightd   { background:#dbeafe; border:2px solid #2563eb; color:#1565C0; }
+    .nc-stat-balloon.rnc      { background:#fff7ed; border:2px solid #f97316; color:#c2410c; }
     .nc-charts-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:0; }
     @media (max-width:600px) { .nc-charts-row { grid-template-columns:1fr; } }
     .nc-chart-card {
@@ -1213,6 +1226,21 @@
           <button class="nc-cep-apply" id="ncCepApply">Aplicar</button>
         </div>
         <canvas id="ncChartMonth"></canvas>
+      </div>
+    </div>
+    <!-- Stat balloons: RNC aberta, alert emitted, 8D finalizado -->
+    <div class="nc-stat-balloons" id="ncStatBalloons">
+      <div class="nc-stat-balloon alerted">
+        <div class="nc-stat-balloon-value" id="ncStatAlerted">0</div>
+        <div class="nc-stat-balloon-label">Alerta Emitido</div>
+      </div>
+      <div class="nc-stat-balloon rnc">
+        <div class="nc-stat-balloon-value" id="ncStatClosed">0</div>
+        <div class="nc-stat-balloon-label">RNC Aberta</div>
+      </div>
+      <div class="nc-stat-balloon eightd">
+        <div class="nc-stat-balloon-value" id="ncStatEightD">0</div>
+        <div class="nc-stat-balloon-label">8D Finalizado</div>
       </div>
     </div>
     <!-- Bottom row: piece + failure mode charts -->
@@ -3932,6 +3960,17 @@ document.addEventListener("DOMContentLoaded", function() {
     var totalEl = document.getElementById('ncTotalCount');
     if (totalEl) totalEl.textContent = filteredRecords.length;
 
+    // Update stat balloons — always across all records (unfiltered)
+    var statAlerted = ncRecords.filter(function(nc){ return nc.alertFile; }).length;
+    var statClosed  = ncRecords.filter(function(nc){ return nc.rncAberta; }).length;
+    var statEightD  = ncRecords.filter(function(nc){ return nc.d8Finalizado; }).length;
+    var elClosed  = document.getElementById('ncStatClosed');
+    var elAlerted = document.getElementById('ncStatAlerted');
+    var elEightD  = document.getElementById('ncStatEightD');
+    if (elClosed)  elClosed.textContent  = statClosed;
+    if (elAlerted) elAlerted.textContent = statAlerted;
+    if (elEightD)  elEightD.textContent  = statEightD;
+
     // Standard palette — navy blue as primary bar color, warm palette for doughnut
     var navyBlue     = _ncChartSettings.barColor     || '#1b4d8e';
     var pieceBarBlue = _ncChartSettings.pieceBarColor || '#1b4d8e';
@@ -3950,7 +3989,7 @@ document.addEventListener("DOMContentLoaded", function() {
         if (!meta.visible) return;
         var ctx = chart.ctx;
         ctx.save();
-        ctx.font = 'bold 11px ' + (lightFont.family);
+        ctx.font = 'bold 14px ' + (lightFont.family);
         ctx.fillStyle = darkText;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
@@ -3961,11 +4000,11 @@ document.addEventListener("DOMContentLoaded", function() {
           if (chart.config.options.indexAxis === 'y') {
             ctx.textAlign = 'left';
             ctx.textBaseline = 'middle';
-            ctx.fillText(val, bar.x + 4, bar.y);
+            ctx.fillText(val, bar.x + 5, bar.y);
           } else {
             ctx.textAlign = 'center';
             ctx.textBaseline = 'bottom';
-            ctx.fillText(val, bar.x, bar.y - 4);
+            ctx.fillText(val, bar.x, bar.y - 5);
           }
         });
         ctx.restore();
@@ -3997,8 +4036,8 @@ document.addEventListener("DOMContentLoaded", function() {
             tooltip:{ callbacks:{ label: function(ctx){ return ' ' + ctx.parsed.x + ' NCs'; } } }
           },
           scales: {
-            x:{ ticks:{ color:darkText, font:Object.assign({size:10},lightFont) }, grid:{ color:lightGrid }, border:{ display:false } },
-            y:{ ticks:{ color:darkText, font:Object.assign({size:10},lightFont), padding:4 }, grid:{ display:false }, border:{ display:false } }
+            x:{ ticks:{ color:darkText, font:Object.assign({size:12},lightFont) }, grid:{ color:lightGrid }, border:{ display:false } },
+            y:{ ticks:{ color:darkText, font:Object.assign({size:12},lightFont), padding:4 }, grid:{ display:false }, border:{ display:false } }
           },
           responsive: true, maintainAspectRatio: false
         }
@@ -4042,7 +4081,7 @@ document.addEventListener("DOMContentLoaded", function() {
             plugins: {
               legend:{
                 position:'right',
-                labels:{ color:darkText, font:Object.assign({size:10},lightFont), padding:10, usePointStyle:true, pointStyleWidth:8 }
+                labels:{ color:darkText, font:Object.assign({size:12},lightFont), padding:10, usePointStyle:true, pointStyleWidth:8 }
               },
               tooltip:{ callbacks:{ label: function(ctx){ return ' ' + ctx.label + ': ' + ctx.parsed + ' NCs'; } } }
             },
@@ -4131,7 +4170,7 @@ document.addEventListener("DOMContentLoaded", function() {
               position: 'top',
               align: 'start',
               labels:{
-                color:darkText, font:Object.assign({size:10},lightFont),
+                color:darkText, font:Object.assign({size:12},lightFont),
                 usePointStyle:true, pointStyleWidth:8, padding:16,
                 filter: function(item) { return item.datasetIndex === 1; }
               }
@@ -4140,12 +4179,12 @@ document.addEventListener("DOMContentLoaded", function() {
           },
           scales: {
             x:{
-              ticks:{ color:darkText, font:Object.assign({size:9},lightFont), maxRotation:0 },
+              ticks:{ color:darkText, font:Object.assign({size:11},lightFont), maxRotation:0 },
               grid:{ display:false }, border:{ display:false }
             },
             y:{
               beginAtZero:true,
-              ticks:{ color:darkText, font:Object.assign({size:10},lightFont), stepSize:1 },
+              ticks:{ color:darkText, font:Object.assign({size:12},lightFont), stepSize:1 },
               grid:{ color:lightGrid }, border:{ display:false }
             }
           },
@@ -4300,8 +4339,12 @@ document.addEventListener("DOMContentLoaded", function() {
             renderNcCards();
             renderNcCharts();
           } else if (action === 'rnc_aberta') {
-            // Toggle off if already active, otherwise open status popup
+            // Toggle off only if no document was attached yet; once locked, the button is read-only
             if (ncRecords[idx].rncAberta) {
+              if (ncRecords[idx].alertFile) {
+                alert('RNC Aberta não pode ser desativada após o anexo do alerta/documento.');
+                return;
+              }
               ncRecords[idx].rncAberta = false;
               saveNcRecords();
               renderNcCards();
@@ -4309,11 +4352,19 @@ document.addEventListener("DOMContentLoaded", function() {
               openNcStatusModal(id, 'rnc_aberta');
             }
           } else if (action === '8d_finalizado') {
-            // Toggle directly (no extra info needed for 8D)
-            ncRecords[idx].d8Finalizado = !ncRecords[idx].d8Finalizado;
-            saveNcRecords();
-            renderNcCards();
-            renderNcCharts();
+            // Route through modal so a PDF can be attached; lock once confirmed
+            if (ncRecords[idx].d8Finalizado) {
+              if (ncRecords[idx].d8File) {
+                alert('8D Finalizado não pode ser desativado após o anexo do arquivo 8D.');
+                return;
+              }
+              ncRecords[idx].d8Finalizado = false;
+              saveNcRecords();
+              renderNcCards();
+              renderNcCharts();
+            } else {
+              openNcStatusModal(id, '8d_finalizado');
+            }
           }
         });
       });
@@ -4372,16 +4423,25 @@ document.addEventListener("DOMContentLoaded", function() {
     backdrop.addEventListener('click', function(e) { if (e.target === backdrop) closeStatusModal(); });
 
     document.getElementById('ncStatusModalSave').addEventListener('click', function() {
-      var rncNum = document.getElementById('ncRncNumber').value.trim();
-      if (!rncNum) { alert('Por favor, informe o número da RNC.'); document.getElementById('ncRncNumber').focus(); return; }
       if (!_ncStatusPending) { closeStatusModal(); return; }
       var idx = ncRecords.findIndex(function(r){ return r.id === _ncStatusPending.id; });
       if (idx !== -1) {
-        ncRecords[idx].rncAberta  = true;
-        ncRecords[idx].rncNumber = rncNum;
-        if (_alertDataUrl) {
-          ncRecords[idx].alertFile     = _alertDataUrl;
-          ncRecords[idx].alertFileName = _alertFileName || '';
+        if (_ncStatusPending.action === 'rnc_aberta') {
+          var rncNum = document.getElementById('ncRncNumber').value.trim();
+          if (!rncNum) { alert('Por favor, informe o número da RNC.'); document.getElementById('ncRncNumber').focus(); return; }
+          ncRecords[idx].rncAberta  = true;
+          ncRecords[idx].rncNumber  = rncNum;
+          if (_alertDataUrl) {
+            ncRecords[idx].alertFile     = _alertDataUrl;
+            ncRecords[idx].alertFileName = _alertFileName || '';
+          }
+        } else {
+          // 8d_finalizado — no RNC number required
+          ncRecords[idx].d8Finalizado = true;
+          if (_alertDataUrl) {
+            ncRecords[idx].d8File     = _alertDataUrl;
+            ncRecords[idx].d8FileName = _alertFileName || '';
+          }
         }
         saveNcRecords();
         renderNcCards();
@@ -4398,12 +4458,22 @@ document.addEventListener("DOMContentLoaded", function() {
       alertName.textContent = '';
       alertInput.value = '';
       document.getElementById('ncRncNumber').value = '';
-      // Pre-fill if already has rncNumber
+      // Pre-fill if already has rncNumber (RNC action only)
       var rec = ncRecords.find(function(r){ return r.id === id; });
-      if (rec && rec.rncNumber) document.getElementById('ncRncNumber').value = rec.rncNumber;
-      document.getElementById('ncStatusModalTitle').textContent = action === 'rnc_aberta' ? 'RNC Aberta' : '8D Finalizado';
+      if (action === 'rnc_aberta') {
+        if (rec && rec.rncNumber) document.getElementById('ncRncNumber').value = rec.rncNumber;
+        document.getElementById('ncStatusModalTitle').textContent = 'RNC Aberta';
+        document.getElementById('ncRncNumberRow').style.display = '';
+        document.getElementById('ncAlertDropLabel').textContent = 'Alerta / Documento (opcional)';
+        document.getElementById('ncStatusModalSave').textContent = '✔ Confirmar RNC';
+      } else {
+        document.getElementById('ncStatusModalTitle').textContent = '8D Finalizado';
+        document.getElementById('ncRncNumberRow').style.display = 'none';
+        document.getElementById('ncAlertDropLabel').textContent = 'Arquivo 8D (PDF, opcional)';
+        document.getElementById('ncStatusModalSave').textContent = '✔ Confirmar 8D';
+      }
       backdrop.classList.add('open');
-      setTimeout(function(){ document.getElementById('ncRncNumber').focus(); }, 80);
+      if (action === 'rnc_aberta') setTimeout(function(){ document.getElementById('ncRncNumber').focus(); }, 80);
     };
   })();
 
@@ -4514,9 +4584,28 @@ document.addEventListener("DOMContentLoaded", function() {
           '</div>';
       }
 
+      // 8D section (only if d8Finalizado)
+      var d8Html = '';
+      if (nc.d8Finalizado) {
+        var d8BtnHtml = '';
+        if (nc.d8File) {
+          var d8fname = escHtml(nc.d8FileName || 'arquivo-8d');
+          d8BtnHtml = '<div style="grid-column:1/-1;margin-top:4px;">' +
+            '<button class="nc-detail-alert-btn" data-open-d8="' + escHtml(nc.id) + '">📎 ' + d8fname + '</button>' +
+          '</div>';
+        }
+        d8Html =
+          '<div class="nc-detail-rnc-section" style="background:#eff6ff;border-color:#bfdbfe;">' +
+            '<div class="nc-detail-rnc-section-title" style="color:#1565C0;">✔ 8D Finalizado</div>' +
+            '<div class="nc-detail-rnc-section-body">' +
+              (nc.d8File ? d8BtnHtml : '<p style="font-size:12px;color:#6b7280;grid-column:1/-1">Sem arquivo 8D anexado.</p>') +
+            '</div>' +
+          '</div>';
+      }
+
       document.getElementById('ncDetailTitle').textContent = nc.ncNumber || 'Detalhes da NC';
       var bodyEl = document.getElementById('ncDetailBody');
-      bodyEl.innerHTML = photoStripHtml + infoHtml + rncHtml + '<div style="height:16px"></div>';
+      bodyEl.innerHTML = photoStripHtml + infoHtml + rncHtml + d8Html + '<div style="height:16px"></div>';
 
       // Wire alert-open buttons after innerHTML is set
       bodyEl.querySelectorAll('[data-open-alert]').forEach(function(btn) {
@@ -4524,6 +4613,16 @@ document.addEventListener("DOMContentLoaded", function() {
           var rec = ncRecords.find(function(r){ return r.id === btn.dataset.openAlert; });
           if (rec && rec.alertFile && window._openAlertViewer) {
             window._openAlertViewer(rec.alertFile, rec.alertFileName || 'alerta');
+          }
+        });
+      });
+
+      // Wire 8D file buttons
+      bodyEl.querySelectorAll('[data-open-d8]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var rec = ncRecords.find(function(r){ return r.id === btn.dataset.openD8; });
+          if (rec && rec.d8File && window._openAlertViewer) {
+            window._openAlertViewer(rec.d8File, rec.d8FileName || 'arquivo-8d');
           }
         });
       });
@@ -5121,15 +5220,15 @@ document.addEventListener("DOMContentLoaded", function() {
       <button class="nc-status-modal-close" id="ncStatusModalClose" aria-label="Fechar">✕</button>
     </div>
     <div class="nc-status-modal-body">
-      <div class="nc-field" style="margin-bottom:14px;">
+      <div class="nc-field" id="ncRncNumberRow" style="margin-bottom:14px;">
         <label>Número da RNC <span style="color:#dc2626">*</span></label>
         <input type="text" id="ncRncNumber" placeholder="Ex: RNC-0001" maxlength="40" autocomplete="off" />
       </div>
       <div class="nc-field">
-        <label>Alerta / Documento (opcional)</label>
+        <label id="ncAlertDropLabel">Alerta / Documento (opcional)</label>
         <div class="nc-alert-drop" id="ncAlertDrop" title="Clique ou arraste o alerta">
           <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin-bottom:4px"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M12 3v13.5m-4.5-4.5L12 16.5l4.5-4.5"/></svg>
-          <span>Clique ou arraste o arquivo do alerta</span>
+          <span>Clique ou arraste o arquivo</span>
         </div>
         <input type="file" id="ncAlertFileInput" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" />
         <div class="nc-alert-file-name" id="ncAlertFileName"></div>
