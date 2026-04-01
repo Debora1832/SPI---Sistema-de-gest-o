@@ -10,6 +10,7 @@
   <!-- Firebase SDK (compat) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 
   <!-- Chart.js (used by the NC page) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
@@ -17,7 +18,8 @@
   <style>
     *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; font-family:'Inter', sans-serif; }
 
-    body { display:flex; background:#f4f6f0; min-height:100vh; }
+    html { overflow-x:hidden; }
+    body { display:flex; background:#f4f6f0; min-height:100vh; overflow-x:hidden; }
 
     /* ===== SIDEBAR ===== */
     .sidebar {
@@ -137,7 +139,7 @@
 
 
     /* ===== MAIN ===== */
-    .main { flex:1; padding:28px 32px; overflow:auto; }
+    .main { flex:1; min-width:0; padding:28px 32px; overflow:auto; }
     .page-header { margin-bottom:24px; border-left:4px solid var(--tenant-sidebar-bg,#1E4D17); padding-left:14px; }
     .page-header h1 { font-size:22px; font-weight:700; color:var(--tenant-sidebar-bg,#1E4D17); }
     .page-header p { font-size:13px; color:#6b7280; margin-top:4px; }
@@ -584,7 +586,7 @@
     /* NC Dashboard layout — total box + charts */
     .nc-dashboard-top { display:flex; gap:16px; margin-bottom:16px; align-items:stretch; flex-wrap:wrap; }
     .nc-total-box {
-      flex:0 0 auto; width:120px; min-width:100px;
+      width:100%;
       background:#fff; border:2px solid #1b4d8e; border-radius:10px;
       padding:10px 12px; box-shadow:0 2px 8px rgba(0,0,0,.08);
       display:flex; flex-direction:column; align-items:center; gap:4px;
@@ -598,7 +600,21 @@
     .nc-total-box-value { font-size:38px; font-weight:800; color:#1a1a2e; line-height:1; padding:10px 0 4px; }
     .nc-total-box-label { font-size:9px; color:#6b7280; font-weight:600; text-transform:uppercase; letter-spacing:.05em; text-align:center; }
     .nc-chart-month-card { flex:1; min-width:0; }
-    @media (max-width:700px) { .nc-dashboard-top { flex-direction:column; } .nc-total-box { width:100%; flex-direction:row; justify-content:flex-start; align-items:center; gap:16px; } .nc-total-box-title { display:none; } }
+    /* Left column: Volume AQE box + stat balloons stacked vertically */
+    .nc-left-col { flex:0 0 auto; width:130px; min-width:110px; display:flex; flex-direction:column; gap:10px; }
+    @media (max-width:700px) { .nc-dashboard-top { flex-direction:column; } .nc-left-col { width:100%; flex-direction:row; flex-wrap:wrap; align-items:flex-start; } .nc-total-box { flex:1 1 auto; flex-direction:row; justify-content:flex-start; align-items:center; gap:16px; } .nc-total-box-title { display:none; } }
+    /* ── NC stat balloon badges ── */
+    .nc-stat-balloons { display:flex; flex-direction:column; gap:8px; }
+    .nc-stat-balloon {
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      width:100%; padding:10px 8px; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,.10);
+      gap:2px; cursor:default;
+    }
+    .nc-stat-balloon-value { font-size:28px; font-weight:800; line-height:1; }
+    .nc-stat-balloon-label { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; text-align:center; opacity:.85; }
+    .nc-stat-balloon.closed   { background:#dcfce7; border:2px solid #16a34a; color:#15803d; }
+    .nc-stat-balloon.eightd   { background:#dbeafe; border:2px solid #2563eb; color:#1565C0; }
+    .nc-stat-balloon.rnc      { background:#fff7ed; border:2px solid #f97316; color:#c2410c; }
     .nc-charts-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:0; }
     @media (max-width:600px) { .nc-charts-row { grid-template-columns:1fr; } }
     .nc-chart-card {
@@ -855,12 +871,16 @@
     .nc-alert-viewer-content iframe { width:100%; height:70vh; border:none; border-radius:6px; background:#fff; }
 
     /* ===== RESPONSIVE ===== */
+    @media (max-width:900px) {
+      .sidebar { width:200px; min-width:200px; padding:16px 12px; }
+      .main { padding:20px 18px; }
+    }
     @media (max-width:680px) {
       body { flex-direction:column; }
       .sidebar { width:100%; min-width:unset; flex-direction:row; flex-wrap:wrap; padding:12px 16px; }
       .sidebar-logo { padding-bottom:0; border-bottom:none; padding-right:16px; }
       .sidebar-nav { flex-direction:row; margin-top:0; gap:4px; }
-      .main { padding:16px; }
+      .main { padding:14px 12px; }
     }
 
     /* ===== SIDEBAR BELL ===== */
@@ -1176,12 +1196,25 @@
 
     <!-- Dashboard -->
     <div class="nc-section-title" style="margin-bottom:14px">Dashboard de NCs</div>
-    <!-- Top row: total count box + main monthly bar chart -->
+    <!-- Top row: total count box (+ balloons) + main monthly bar chart -->
     <div class="nc-dashboard-top">
-      <div class="nc-total-box">
-        <div class="nc-total-box-title">Volume AQE</div>
-        <div class="nc-total-box-value" id="ncTotalCount">0</div>
-        <div class="nc-total-box-label">NCS REGISTRADAS</div>
+      <div class="nc-left-col">
+        <div class="nc-total-box">
+          <div class="nc-total-box-title">Volume AQE</div>
+          <div class="nc-total-box-value" id="ncTotalCount">0</div>
+          <div class="nc-total-box-label">NCS REGISTRADAS</div>
+        </div>
+        <!-- Stat balloons below Volume AQE -->
+        <div class="nc-stat-balloons" id="ncStatBalloons">
+          <div class="nc-stat-balloon rnc">
+            <div class="nc-stat-balloon-value" id="ncStatClosed">0</div>
+            <div class="nc-stat-balloon-label">RNC Aberta /<br>Alerta Emitido</div>
+          </div>
+          <div class="nc-stat-balloon eightd">
+            <div class="nc-stat-balloon-value" id="ncStatEightD">0</div>
+            <div class="nc-stat-balloon-label">8D Finalizado</div>
+          </div>
+        </div>
       </div>
       <div class="nc-chart-card nc-chart-month-card" style="position:relative;">
         <h4 id="ncChartMonthTitle">Volume de Reclamações do Cliente (por mês)<button class="nc-chart-edit-btn" id="ncChartEditBtn" title="Editar gráfico">⚙ Editar</button></h4>
@@ -1450,12 +1483,21 @@
     </div>
     <!-- Firestore security rules guidance (shown when a write-permission error is detected) -->
     <div id="fbRulesGuide" class="fb-rules-guide" style="display:none">
-      <strong>⚠ Permissão negada — ajuste as regras do Firestore:</strong>
-      <p style="margin:6px 0 4px">No <a href="https://console.firebase.google.com" target="_blank" rel="noopener" class="fb-guide-link">Firebase Console</a> → Firestore → Regras, cole:</p>
+      <strong>⚠ Permissão negada — ajuste as regras do Firebase:</strong>
+      <p style="margin:6px 0 4px">No <a href="https://console.firebase.google.com" target="_blank" rel="noopener" class="fb-guide-link">Firebase Console</a> → <strong>Firestore Database → Regras</strong>, cole:</p>
       <pre class="fb-rules-pre">rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}</pre>
+      <p style="margin:8px 0 4px">E em <strong>Storage → Regras</strong>, cole:</p>
+      <pre class="fb-rules-pre">rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
       allow read, write: if true;
     }
   }
@@ -1494,6 +1536,7 @@ document.addEventListener("DOMContentLoaded", function() {
   // once via the UI and they are persisted in localStorage.
 
   let db = null;
+  let storage = null;
   let firebaseConnected = false;
 
   function loadFirebaseCfgFromStorage() {
@@ -1520,9 +1563,12 @@ document.addEventListener("DOMContentLoaded", function() {
         return false;
       }
       if (firebase.apps.length) {
-        // Already initialised — just grab the existing Firestore instance and
+        // Already initialised — just grab the existing Firestore/Storage instances and
         // run a quick write-test to confirm we have write access.
         db = firebase.firestore();
+        if (typeof firebase.storage === 'function') {
+          try { storage = firebase.storage(); } catch(e) { console.warn('Storage init error:', e); }
+        }
         _testFirestoreWrite(cfg.projectId);
         return true;
       }
@@ -1535,6 +1581,9 @@ document.addEventListener("DOMContentLoaded", function() {
         appId:             cfg.appId || ""
       });
       db = firebase.firestore();
+      if (typeof firebase.storage === 'function') {
+        try { storage = firebase.storage(); } catch(e) { console.warn('Storage init error:', e); }
+      }
       _testFirestoreWrite(cfg.projectId);
       return true;
     } catch(e) {
@@ -1554,7 +1603,7 @@ document.addEventListener("DOMContentLoaded", function() {
   // "permission-denied" write failures that a read-only test would miss.
   function _testFirestoreWrite(projectId) {
     var testCol = _fbTestCollection();
-    var testDoc = '__connection_test__';
+    var testDoc = 'spi-conntest';
     // First try a small write to the NC collection
     db.collection(testCol).doc(testDoc).set({ _test: true, _ts: Date.now() })
       .then(function() {
@@ -1569,10 +1618,11 @@ document.addEventListener("DOMContentLoaded", function() {
         console.error("Firebase write test error:", e);
         if (e.code === "permission-denied") {
           firebaseConnected = false;
-          setFirebaseStatus("error", "Firebase: sem permissão de escrita");
+          setFirebaseStatus("error", "Firebase: sem permissão de escrita — abra as Configurações do Firebase para corrigir");
+          window._fbPermErrorPending = true;
           var msg = "As regras do Firestore bloqueiam escritas. Abra o Firebase Console → Firestore → Regras e configure: allow read, write: if true;";
           if (typeof onFirebaseConnected === "function") onFirebaseConnected(false, { message: msg, code: e.code });
-          // Show rules guide in the modal if it's open
+          // Show rules guide in the modal if it's already open
           var guide = document.getElementById("fbRulesGuide");
           if (guide) guide.style.display = "";
         } else {
@@ -2388,7 +2438,14 @@ document.addEventListener("DOMContentLoaded", function() {
 
     document.getElementById("fbStatusMsg").className = "fb-status-msg";
     document.getElementById("fbStatusMsg").textContent = "";
-    document.getElementById("fbRulesGuide").style.display = "none";
+    // Show rules guide immediately if a permission error was previously detected
+    var showRules = !!window._fbPermErrorPending;
+    document.getElementById("fbRulesGuide").style.display = showRules ? "" : "none";
+    if (showRules) {
+      var msg = document.getElementById("fbStatusMsg");
+      msg.className = "fb-status-msg err";
+      msg.textContent = "⚠ As regras do Firestore estão bloqueando gravações. Siga as instruções abaixo e depois clique em Conectar.";
+    }
     document.getElementById("fbModalBackdrop").classList.add("open");
   }
 
@@ -2454,6 +2511,7 @@ document.addEventListener("DOMContentLoaded", function() {
         msg.className = "fb-status-msg ok";
         msg.textContent = "Conectado com sucesso! Os dados estão sendo sincronizados.";
         document.getElementById("fbBtnTest").style.display = "";
+        window._fbPermErrorPending = false;
         setTimeout(closeFbModal, 1500);
       } else {
         msg.className = "fb-status-msg err";
@@ -2488,7 +2546,7 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById("fbRulesGuide").style.display = "none";
 
     var testCol = _fbTestCollection();
-    var testDoc = '__connection_test__';
+    var testDoc = 'spi-conntest';
 
     // Step 1: write test
     db.collection(testCol).doc(testDoc).set({ _test: true, _ts: Date.now() })
@@ -3153,7 +3211,7 @@ document.addEventListener("DOMContentLoaded", function() {
     try { localStorage.setItem('spi_all_tenants', JSON.stringify(all)); }
     catch(e) { console.warn('localStorage error saving tenants:', e); }
     if (db) {
-      db.collection('tenants').doc('__list__').set({ all: all }, { merge: true })
+      db.collection('tenants').doc('spi-tenants').set({ all: all }, { merge: true })
         .catch(function(e) { console.error('Firebase save tenants error:', e); });
     }
   }
@@ -3162,7 +3220,7 @@ document.addEventListener("DOMContentLoaded", function() {
     let all = null;
     if (db) {
       try {
-        const snap = await db.collection('tenants').doc('__list__').get();
+        const snap = await db.collection('tenants').doc('spi-tenants').get();
         if (snap.exists) {
           const d = snap.data();
           if (d.all) all = d.all;
@@ -3683,37 +3741,123 @@ document.addEventListener("DOMContentLoaded", function() {
     return r;
   }
 
-  // After loading a set of records from Firestore (which has no photos),
-  // restore the photo arrays from the matching localStorage records.
+  // Upload a single photo to Firebase Storage and return its download URL.
+  // If the photo is already an HTTPS URL (already uploaded), returns it unchanged.
+  // Returns null on failure so the caller can fall back to localStorage storage.
+  async function uploadPhotoToStorage(tenantId, ncId, dataUrl, index) {
+    if (!storage) return null;
+    if (typeof dataUrl === 'string' && dataUrl.startsWith('https://')) return dataUrl;
+    try {
+      var res = await fetch(dataUrl);
+      var blob = await res.blob();
+      var ext = blob.type === 'image/png' ? 'png' : 'jpg';
+      var path = 'nc_photos/' + tenantId + '/' + ncId + '/photo_' + index + '.' + ext;
+      var ref = storage.ref(path);
+      await ref.put(blob, { contentType: blob.type });
+      return await ref.getDownloadURL();
+    } catch(e) {
+      console.warn('Storage upload failed for ' + ncId + '[' + index + ']:', e);
+      return null;
+    }
+  }
+
+  // Prepare an NC record for Firestore: upload base64 photos to Storage and
+  // replace them with HTTPS download URLs. Preserves index correspondence —
+  // failed uploads are stored as null so that the merge step can fill in the
+  // localStorage base64 for those specific slots.
+  async function prepareRecordForFirestore(rec, tenantId) {
+    var r = Object.assign({}, rec);
+    var photos = Array.isArray(r.photos) ? r.photos.slice() : (r.photo ? [r.photo] : []);
+    delete r.photo;
+    if (!photos.length) { delete r.photos; return r; }
+    if (!storage) { delete r.photos; return r; }
+
+    // Upload all photos in parallel; each returns URL or null (keeps index alignment)
+    var urls = await Promise.all(photos.map(function(p, i) {
+      return uploadPhotoToStorage(tenantId, r.id, p, i);
+    }));
+    var hasAnyUrl = urls.some(function(u) { return u && u.startsWith('https://'); });
+    if (hasAnyUrl) {
+      r.photos = urls; // null entries = failed uploads (index-aligned with originals)
+    } else {
+      delete r.photos; // no successful uploads — strip to avoid storing base64 in Firestore
+    }
+    return r;
+  }
+
+  // After loading a set of records from Firestore, restore photo arrays.
+  // Storage HTTPS URLs are preferred; nulls and missing slots are filled from localStorage.
   function mergePhotosFromLocal(fbRecords, localRecords) {
     return fbRecords.map(function(fbRec) {
       var localRec = localRecords.find(function(lr) { return lr.id === fbRec.id; });
-      if (localRec) {
-        if (Array.isArray(localRec.photos) && localRec.photos.length) {
-          fbRec = Object.assign({}, fbRec, { photos: localRec.photos });
-        } else if (localRec.photo) {
-          fbRec = Object.assign({}, fbRec, { photo: localRec.photo });
+      var localPhotos = localRec
+        ? (Array.isArray(localRec.photos) ? localRec.photos : (localRec.photo ? [localRec.photo] : []))
+        : [];
+
+      if (Array.isArray(fbRec.photos) && fbRec.photos.length) {
+        // Firestore has a photos array (may contain Storage URLs or nulls).
+        // Keep Storage URLs; fill null slots with the localStorage version.
+        var merged = fbRec.photos.map(function(p, i) {
+          return (p && typeof p === 'string' && p.startsWith('https://')) ? p : (localPhotos[i] || null);
+        }).filter(Boolean); // remove still-null slots (upload truly failed and no local backup)
+        if (merged.length) {
+          return Object.assign({}, fbRec, { photos: merged });
         }
+      }
+
+      // No Storage photos in Firestore — fall back entirely to localStorage
+      if (localPhotos.length) {
+        return Object.assign({}, fbRec, { photos: localPhotos });
+      }
+      if (localRec && localRec.photo) {
+        return Object.assign({}, fbRec, { photo: localRec.photo });
       }
       return fbRec;
     });
   }
 
-  function saveNcRecords() {
+  async function saveNcRecords() {
     // Always save the full record (with photos) to localStorage so they survive a refresh.
     try { localStorage.setItem(ncStorageKey(), JSON.stringify(ncRecords)); } catch(e) {}
     if (db && firebaseConnected) {
-      setNcSyncBadge('syncing', '↻ Salvando no Firebase…');
-      // Strip base64 photos before writing to Firestore to stay well under the
-      // 1 MB document-size limit.  Photos are preserved in localStorage above.
-      var slim = ncRecords.map(stripPhotos);
-      db.collection('nc_records_' + currentTenant).doc('all')
-        .set({ records: slim })
-        .then(function() { setNcSyncBadge('synced', '✓ Salvo no Firebase'); })
-        .catch(function(e) {
-          console.error('NC Firebase save error:', e);
+      setNcSyncBadge('syncing', storage ? '↻ Enviando fotos…' : '↻ Salvando no Firebase…');
+      try {
+        var slim;
+        if (storage) {
+          slim = await Promise.all(ncRecords.map(function(r) {
+            return prepareRecordForFirestore(r, currentTenant);
+          }));
+          // Update in-memory records with Storage URLs so subsequent saves skip re-upload
+          slim.forEach(function(prepRec) {
+            if (!Array.isArray(prepRec.photos) || !prepRec.photos.length) return;
+            var idx = ncRecords.findIndex(function(r) { return r.id === prepRec.id; });
+            if (idx === -1) return;
+            var origPhotos = Array.isArray(ncRecords[idx].photos) ? ncRecords[idx].photos : [];
+            // Replace only slots where Storage URL is available (index-aligned)
+            ncRecords[idx].photos = origPhotos.map(function(p, i) {
+              var storageUrl = prepRec.photos[i];
+              return (storageUrl && typeof storageUrl === 'string' && storageUrl.startsWith('https://'))
+                ? storageUrl : p;
+            });
+          });
+          // Re-save localStorage with the updated Storage URLs
+          try { localStorage.setItem(ncStorageKey(), JSON.stringify(ncRecords)); } catch(e) {}
+        } else {
+          slim = ncRecords.map(stripPhotos);
+        }
+        await db.collection('nc_records_' + currentTenant).doc('all').set({ records: slim });
+        setNcSyncBadge('synced', '✓ Salvo no Firebase');
+      } catch(e) {
+        console.error('NC Firebase save error:', e);
+        if (e.code === 'permission-denied') {
+          firebaseConnected = false;
+          setFirebaseStatus('error', 'Firebase: sem permissão de escrita');
+          setNcSyncBadge('offline', '⚠ Regras do Firebase bloqueiam escrita — abra Configurações do Firebase para corrigir');
+          window._fbPermErrorPending = true;
+        } else {
           setNcSyncBadge('offline', '⚠ Erro ao salvar no Firebase – dados preservados localmente');
-        });
+        }
+      }
     } else {
       setNcSyncBadge('offline', '⚠ Salvo localmente (Firebase desconectado)');
     }
@@ -3815,6 +3959,15 @@ document.addEventListener("DOMContentLoaded", function() {
     var totalEl = document.getElementById('ncTotalCount');
     if (totalEl) totalEl.textContent = filteredRecords.length;
 
+    // Update stat balloons — always across all records (unfiltered)
+    // RNC Aberta and Alerta Emitido are the same concept (rncAberta flag)
+    var statClosed  = ncRecords.filter(function(nc){ return nc.rncAberta; }).length;
+    var statEightD  = ncRecords.filter(function(nc){ return nc.d8Finalizado; }).length;
+    var elClosed  = document.getElementById('ncStatClosed');
+    var elEightD  = document.getElementById('ncStatEightD');
+    if (elClosed)  elClosed.textContent  = statClosed;
+    if (elEightD)  elEightD.textContent  = statEightD;
+
     // Standard palette — navy blue as primary bar color, warm palette for doughnut
     var navyBlue     = _ncChartSettings.barColor     || '#1b4d8e';
     var pieceBarBlue = _ncChartSettings.pieceBarColor || '#1b4d8e';
@@ -3833,7 +3986,7 @@ document.addEventListener("DOMContentLoaded", function() {
         if (!meta.visible) return;
         var ctx = chart.ctx;
         ctx.save();
-        ctx.font = 'bold 11px ' + (lightFont.family);
+        ctx.font = 'bold 14px ' + (lightFont.family);
         ctx.fillStyle = darkText;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
@@ -3844,11 +3997,11 @@ document.addEventListener("DOMContentLoaded", function() {
           if (chart.config.options.indexAxis === 'y') {
             ctx.textAlign = 'left';
             ctx.textBaseline = 'middle';
-            ctx.fillText(val, bar.x + 4, bar.y);
+            ctx.fillText(val, bar.x + 5, bar.y);
           } else {
             ctx.textAlign = 'center';
             ctx.textBaseline = 'bottom';
-            ctx.fillText(val, bar.x, bar.y - 4);
+            ctx.fillText(val, bar.x, bar.y - 5);
           }
         });
         ctx.restore();
@@ -3880,8 +4033,8 @@ document.addEventListener("DOMContentLoaded", function() {
             tooltip:{ callbacks:{ label: function(ctx){ return ' ' + ctx.parsed.x + ' NCs'; } } }
           },
           scales: {
-            x:{ ticks:{ color:darkText, font:Object.assign({size:10},lightFont) }, grid:{ color:lightGrid }, border:{ display:false } },
-            y:{ ticks:{ color:darkText, font:Object.assign({size:10},lightFont), padding:4 }, grid:{ display:false }, border:{ display:false } }
+            x:{ ticks:{ color:darkText, font:Object.assign({size:12},lightFont) }, grid:{ color:lightGrid }, border:{ display:false } },
+            y:{ ticks:{ color:darkText, font:Object.assign({size:12},lightFont), padding:4 }, grid:{ display:false }, border:{ display:false } }
           },
           responsive: true, maintainAspectRatio: false
         }
@@ -3925,7 +4078,7 @@ document.addEventListener("DOMContentLoaded", function() {
             plugins: {
               legend:{
                 position:'right',
-                labels:{ color:darkText, font:Object.assign({size:10},lightFont), padding:10, usePointStyle:true, pointStyleWidth:8 }
+                labels:{ color:darkText, font:Object.assign({size:12},lightFont), padding:10, usePointStyle:true, pointStyleWidth:8 }
               },
               tooltip:{ callbacks:{ label: function(ctx){ return ' ' + ctx.label + ': ' + ctx.parsed + ' NCs'; } } }
             },
@@ -4014,7 +4167,7 @@ document.addEventListener("DOMContentLoaded", function() {
               position: 'top',
               align: 'start',
               labels:{
-                color:darkText, font:Object.assign({size:10},lightFont),
+                color:darkText, font:Object.assign({size:12},lightFont),
                 usePointStyle:true, pointStyleWidth:8, padding:16,
                 filter: function(item) { return item.datasetIndex === 1; }
               }
@@ -4023,12 +4176,12 @@ document.addEventListener("DOMContentLoaded", function() {
           },
           scales: {
             x:{
-              ticks:{ color:darkText, font:Object.assign({size:9},lightFont), maxRotation:0 },
+              ticks:{ color:darkText, font:Object.assign({size:11},lightFont), maxRotation:0 },
               grid:{ display:false }, border:{ display:false }
             },
             y:{
               beginAtZero:true,
-              ticks:{ color:darkText, font:Object.assign({size:10},lightFont), stepSize:1 },
+              ticks:{ color:darkText, font:Object.assign({size:12},lightFont), stepSize:1 },
               grid:{ color:lightGrid }, border:{ display:false }
             }
           },
@@ -4183,8 +4336,12 @@ document.addEventListener("DOMContentLoaded", function() {
             renderNcCards();
             renderNcCharts();
           } else if (action === 'rnc_aberta') {
-            // Toggle off if already active, otherwise open status popup
+            // Toggle off only if no document was attached yet; once locked, the button is read-only
             if (ncRecords[idx].rncAberta) {
+              if (ncRecords[idx].alertFile) {
+                alert('RNC Aberta não pode ser desativada após o anexo do alerta/documento.');
+                return;
+              }
               ncRecords[idx].rncAberta = false;
               saveNcRecords();
               renderNcCards();
@@ -4192,11 +4349,19 @@ document.addEventListener("DOMContentLoaded", function() {
               openNcStatusModal(id, 'rnc_aberta');
             }
           } else if (action === '8d_finalizado') {
-            // Toggle directly (no extra info needed for 8D)
-            ncRecords[idx].d8Finalizado = !ncRecords[idx].d8Finalizado;
-            saveNcRecords();
-            renderNcCards();
-            renderNcCharts();
+            // Route through modal so a PDF can be attached; lock once confirmed
+            if (ncRecords[idx].d8Finalizado) {
+              if (ncRecords[idx].d8File) {
+                alert('8D Finalizado não pode ser desativado após o anexo do arquivo 8D.');
+                return;
+              }
+              ncRecords[idx].d8Finalizado = false;
+              saveNcRecords();
+              renderNcCards();
+              renderNcCharts();
+            } else {
+              openNcStatusModal(id, '8d_finalizado');
+            }
           }
         });
       });
@@ -4255,16 +4420,25 @@ document.addEventListener("DOMContentLoaded", function() {
     backdrop.addEventListener('click', function(e) { if (e.target === backdrop) closeStatusModal(); });
 
     document.getElementById('ncStatusModalSave').addEventListener('click', function() {
-      var rncNum = document.getElementById('ncRncNumber').value.trim();
-      if (!rncNum) { alert('Por favor, informe o número da RNC.'); document.getElementById('ncRncNumber').focus(); return; }
       if (!_ncStatusPending) { closeStatusModal(); return; }
       var idx = ncRecords.findIndex(function(r){ return r.id === _ncStatusPending.id; });
       if (idx !== -1) {
-        ncRecords[idx].rncAberta  = true;
-        ncRecords[idx].rncNumber = rncNum;
-        if (_alertDataUrl) {
-          ncRecords[idx].alertFile     = _alertDataUrl;
-          ncRecords[idx].alertFileName = _alertFileName || '';
+        if (_ncStatusPending.action === 'rnc_aberta') {
+          var rncNum = document.getElementById('ncRncNumber').value.trim();
+          if (!rncNum) { alert('Por favor, informe o número da RNC.'); document.getElementById('ncRncNumber').focus(); return; }
+          ncRecords[idx].rncAberta  = true;
+          ncRecords[idx].rncNumber  = rncNum;
+          if (_alertDataUrl) {
+            ncRecords[idx].alertFile     = _alertDataUrl;
+            ncRecords[idx].alertFileName = _alertFileName || '';
+          }
+        } else {
+          // 8d_finalizado — no RNC number required
+          ncRecords[idx].d8Finalizado = true;
+          if (_alertDataUrl) {
+            ncRecords[idx].d8File     = _alertDataUrl;
+            ncRecords[idx].d8FileName = _alertFileName || '';
+          }
         }
         saveNcRecords();
         renderNcCards();
@@ -4281,12 +4455,22 @@ document.addEventListener("DOMContentLoaded", function() {
       alertName.textContent = '';
       alertInput.value = '';
       document.getElementById('ncRncNumber').value = '';
-      // Pre-fill if already has rncNumber
+      // Pre-fill if already has rncNumber (RNC action only)
       var rec = ncRecords.find(function(r){ return r.id === id; });
-      if (rec && rec.rncNumber) document.getElementById('ncRncNumber').value = rec.rncNumber;
-      document.getElementById('ncStatusModalTitle').textContent = action === 'rnc_aberta' ? 'RNC Aberta' : '8D Finalizado';
+      if (action === 'rnc_aberta') {
+        if (rec && rec.rncNumber) document.getElementById('ncRncNumber').value = rec.rncNumber;
+        document.getElementById('ncStatusModalTitle').textContent = 'RNC Aberta';
+        document.getElementById('ncRncNumberRow').style.display = '';
+        document.getElementById('ncAlertDropLabel').textContent = 'Alerta / Documento (opcional)';
+        document.getElementById('ncStatusModalSave').textContent = '✔ Confirmar RNC';
+      } else {
+        document.getElementById('ncStatusModalTitle').textContent = '8D Finalizado';
+        document.getElementById('ncRncNumberRow').style.display = 'none';
+        document.getElementById('ncAlertDropLabel').textContent = 'Arquivo 8D (PDF, opcional)';
+        document.getElementById('ncStatusModalSave').textContent = '✔ Confirmar 8D';
+      }
       backdrop.classList.add('open');
-      setTimeout(function(){ document.getElementById('ncRncNumber').focus(); }, 80);
+      if (action === 'rnc_aberta') setTimeout(function(){ document.getElementById('ncRncNumber').focus(); }, 80);
     };
   })();
 
@@ -4397,9 +4581,28 @@ document.addEventListener("DOMContentLoaded", function() {
           '</div>';
       }
 
+      // 8D section (only if d8Finalizado)
+      var d8Html = '';
+      if (nc.d8Finalizado) {
+        var d8BtnHtml = '';
+        if (nc.d8File) {
+          var d8fname = escHtml(nc.d8FileName || 'arquivo-8d');
+          d8BtnHtml = '<div style="grid-column:1/-1;margin-top:4px;">' +
+            '<button class="nc-detail-alert-btn" data-open-d8="' + escHtml(nc.id) + '">📎 ' + d8fname + '</button>' +
+          '</div>';
+        }
+        d8Html =
+          '<div class="nc-detail-rnc-section" style="background:#eff6ff;border-color:#bfdbfe;">' +
+            '<div class="nc-detail-rnc-section-title" style="color:#1565C0;">✔ 8D Finalizado</div>' +
+            '<div class="nc-detail-rnc-section-body">' +
+              (nc.d8File ? d8BtnHtml : '<p style="font-size:12px;color:#6b7280;grid-column:1/-1">Sem arquivo 8D anexado.</p>') +
+            '</div>' +
+          '</div>';
+      }
+
       document.getElementById('ncDetailTitle').textContent = nc.ncNumber || 'Detalhes da NC';
       var bodyEl = document.getElementById('ncDetailBody');
-      bodyEl.innerHTML = photoStripHtml + infoHtml + rncHtml + '<div style="height:16px"></div>';
+      bodyEl.innerHTML = photoStripHtml + infoHtml + rncHtml + d8Html + '<div style="height:16px"></div>';
 
       // Wire alert-open buttons after innerHTML is set
       bodyEl.querySelectorAll('[data-open-alert]').forEach(function(btn) {
@@ -4407,6 +4610,16 @@ document.addEventListener("DOMContentLoaded", function() {
           var rec = ncRecords.find(function(r){ return r.id === btn.dataset.openAlert; });
           if (rec && rec.alertFile && window._openAlertViewer) {
             window._openAlertViewer(rec.alertFile, rec.alertFileName || 'alerta');
+          }
+        });
+      });
+
+      // Wire 8D file buttons
+      bodyEl.querySelectorAll('[data-open-d8]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var rec = ncRecords.find(function(r){ return r.id === btn.dataset.openD8; });
+          if (rec && rec.d8File && window._openAlertViewer) {
+            window._openAlertViewer(rec.d8File, rec.d8FileName || 'arquivo-8d');
           }
         });
       });
@@ -5004,15 +5217,15 @@ document.addEventListener("DOMContentLoaded", function() {
       <button class="nc-status-modal-close" id="ncStatusModalClose" aria-label="Fechar">✕</button>
     </div>
     <div class="nc-status-modal-body">
-      <div class="nc-field" style="margin-bottom:14px;">
+      <div class="nc-field" id="ncRncNumberRow" style="margin-bottom:14px;">
         <label>Número da RNC <span style="color:#dc2626">*</span></label>
         <input type="text" id="ncRncNumber" placeholder="Ex: RNC-0001" maxlength="40" autocomplete="off" />
       </div>
       <div class="nc-field">
-        <label>Alerta / Documento (opcional)</label>
+        <label id="ncAlertDropLabel">Alerta / Documento (opcional)</label>
         <div class="nc-alert-drop" id="ncAlertDrop" title="Clique ou arraste o alerta">
           <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin-bottom:4px"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M12 3v13.5m-4.5-4.5L12 16.5l4.5-4.5"/></svg>
-          <span>Clique ou arraste o arquivo do alerta</span>
+          <span>Clique ou arraste o arquivo</span>
         </div>
         <input type="file" id="ncAlertFileInput" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" />
         <div class="nc-alert-file-name" id="ncAlertFileName"></div>
