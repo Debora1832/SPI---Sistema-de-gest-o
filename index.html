@@ -1552,6 +1552,10 @@ document.addEventListener("DOMContentLoaded", function() {
               if (snap.exists) {
                 var records = snap.data().records;
                 if (Array.isArray(records)) {
+                  // Restore photos from in-memory / localStorage (not stored in Firestore)
+                  records = (typeof mergePhotosFromLocal === 'function')
+                    ? mergePhotosFromLocal(records, ncRecords)
+                    : records;
                   ncRecords = records;
                   try { localStorage.setItem('spi_nc_records_' + currentTenant, JSON.stringify(ncRecords)); } catch(e) {}
                   renderNcCards();
@@ -1581,10 +1585,16 @@ document.addEventListener("DOMContentLoaded", function() {
           if (!snap.exists) return;
           var records = snap.data().records;
           if (!Array.isArray(records)) return;
-          // Only update if data actually changed (avoid render loop with our own writes)
-          var localJson = JSON.stringify(ncRecords);
-          var fbJson    = JSON.stringify(records);
-          if (localJson === fbJson) return;
+          // Firestore records don't carry photos (we strip them on write).
+          // Compare metadata only so a local photo addition doesn't look like a
+          // change coming from the server and trigger an unneeded re-render.
+          var localMeta = JSON.stringify(ncRecords.map(stripPhotos));
+          var fbMeta    = JSON.stringify(records);
+          if (localMeta === fbMeta) return;
+          // Restore photos from the current in-memory records before overwriting
+          records = (typeof mergePhotosFromLocal === 'function')
+            ? mergePhotosFromLocal(records, ncRecords)
+            : records;
           ncRecords = records;
           try { localStorage.setItem('spi_nc_records_' + tenantId, JSON.stringify(ncRecords)); } catch(e) {}
           if (typeof setNcSyncBadge === 'function') setNcSyncBadge('synced', '✓ Atualizado em tempo real');
@@ -3505,11 +3515,51 @@ document.addEventListener("DOMContentLoaded", function() {
     } catch(e) { return []; }
   }
 
+  // Return a copy of an NC record without base64 photo data.
+  // Photos are large (can be hundreds of KB each) and would quickly push the
+  // Firestore document past its 1 MB limit, causing silent write failures.
+  // Full photos are always preserved in localStorage; we restore them after
+  // loading from Firebase (see mergePhotosFromLocal).
+  function stripPhotos(nc) {
+    var r = Object.assign({}, nc);
+    delete r.photos;
+    delete r.photo;
+    return r;
+  }
+
+  // After loading a set of records from Firestore (which has no photos),
+  // restore the photo arrays from the matching localStorage records.
+  function mergePhotosFromLocal(fbRecords, localRecords) {
+    return fbRecords.map(function(fbRec) {
+      var localRec = localRecords.find(function(lr) { return lr.id === fbRec.id; });
+      if (localRec) {
+        if (Array.isArray(localRec.photos) && localRec.photos.length) {
+          fbRec = Object.assign({}, fbRec, { photos: localRec.photos });
+        } else if (localRec.photo) {
+          fbRec = Object.assign({}, fbRec, { photo: localRec.photo });
+        }
+      }
+      return fbRec;
+    });
+  }
+
   function saveNcRecords() {
+    // Always save the full record (with photos) to localStorage so they survive a refresh.
     try { localStorage.setItem(ncStorageKey(), JSON.stringify(ncRecords)); } catch(e) {}
-    if (db) {
-      db.collection('nc_records_' + currentTenant).doc('all').set({ records: ncRecords })
-        .catch(function(e) { console.error('NC Firebase save error:', e); });
+    if (db && firebaseConnected) {
+      setNcSyncBadge('syncing', '↻ Salvando no Firebase…');
+      // Strip base64 photos before writing to Firestore to stay well under the
+      // 1 MB document-size limit.  Photos are preserved in localStorage above.
+      var slim = ncRecords.map(stripPhotos);
+      db.collection('nc_records_' + currentTenant).doc('all')
+        .set({ records: slim })
+        .then(function() { setNcSyncBadge('synced', '✓ Salvo no Firebase'); })
+        .catch(function(e) {
+          console.error('NC Firebase save error:', e);
+          setNcSyncBadge('offline', '⚠ Erro ao salvar no Firebase – dados preservados localmente');
+        });
+    } else {
+      setNcSyncBadge('offline', '⚠ Salvo localmente (Firebase desconectado)');
     }
   }
 
@@ -3532,14 +3582,15 @@ document.addEventListener("DOMContentLoaded", function() {
               needsSave = true;
             }
           });
-          // Write back to both stores if migration happened
+          // Restore photos from localStorage (Firestore records don't carry photos)
+          var localRecords = loadNcRecordsLocal();
+          records = mergePhotosFromLocal(records, localRecords);
+          // Keep localStorage in sync (with photos merged in)
+          try { localStorage.setItem(key, JSON.stringify(records)); } catch(e) {}
           if (needsSave) {
-            try { localStorage.setItem(key, JSON.stringify(records)); } catch(e) {}
-            db.collection('nc_records_' + tenantId).doc('all').set({ records: records })
-              .catch(function(e){ console.error('NC migrate save error:', e); });
-          } else {
-            // Keep localStorage in sync with Firebase data
-            try { localStorage.setItem(key, JSON.stringify(records)); } catch(e) {}
+            db.collection('nc_records_' + tenantId).doc('all')
+              .set({ records: records.map(stripPhotos) })
+              .catch(function(e){ console.error('NC migrate save error:', e); setNcSyncBadge('offline', '⚠ Erro ao migrar dados no Firebase'); });
           }
           setNcSyncBadge('synced', '✓ Sincronizado');
           return records;
