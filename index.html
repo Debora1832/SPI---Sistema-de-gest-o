@@ -1184,12 +1184,32 @@
     </div>
     <!-- Bottom row: piece + failure mode charts -->
     <div class="nc-charts-row" style="margin-bottom:24px;">
-      <div class="nc-chart-card">
-        <h4>NCs por Peça</h4>
+      <div class="nc-chart-card" style="position:relative;">
+        <h4 id="ncChartPieceTitle">NCs por Peça<button class="nc-chart-edit-btn" id="ncChartPieceEditBtn" title="Editar gráfico">⚙ Editar</button></h4>
+        <div class="nc-chart-edit-popover" id="ncChartPieceEditPopover">
+          <h5>Editar Gráfico</h5>
+          <div class="nc-cep-row">
+            <label>Título</label>
+            <input type="text" class="nc-cep-title" id="ncCepPieceTitle" value="NCs por Peça" />
+          </div>
+          <div class="nc-cep-row">
+            <label>Cor das barras</label>
+            <input type="color" id="ncCepPieceBarColor" value="#1b4d8e" />
+          </div>
+          <button class="nc-cep-apply" id="ncCepPieceApply">Aplicar</button>
+        </div>
         <canvas id="ncChartPiece"></canvas>
       </div>
-      <div class="nc-chart-card">
-        <h4>NCs por Modo de Falha</h4>
+      <div class="nc-chart-card" style="position:relative;">
+        <h4 id="ncChartFailureTitle">NCs por Modo de Falha<button class="nc-chart-edit-btn" id="ncChartFailureEditBtn" title="Editar gráfico">⚙ Editar</button></h4>
+        <div class="nc-chart-edit-popover" id="ncChartFailureEditPopover">
+          <h5>Editar Gráfico</h5>
+          <div class="nc-cep-row">
+            <label>Título</label>
+            <input type="text" class="nc-cep-title" id="ncCepFailureTitle" value="NCs por Modo de Falha" />
+          </div>
+          <button class="nc-cep-apply" id="ncCepFailureApply">Aplicar</button>
+        </div>
         <canvas id="ncChartFailure"></canvas>
       </div>
     </div>
@@ -3589,7 +3609,8 @@ document.addEventListener("DOMContentLoaded", function() {
     if (totalEl) totalEl.textContent = filteredRecords.length;
 
     // Standard palette — navy blue as primary bar color, warm palette for doughnut
-    var navyBlue  = _ncChartSettings.barColor || '#1b4d8e';
+    var navyBlue     = _ncChartSettings.barColor     || '#1b4d8e';
+    var pieceBarBlue = _ncChartSettings.pieceBarColor || '#1b4d8e';
     var lightGrid = 'rgba(0,0,0,0.06)';
     var darkText  = '#374151';
     var lightFont = { family: "'Inter','Segoe UI',sans-serif" };
@@ -3640,7 +3661,7 @@ document.addEventListener("DOMContentLoaded", function() {
           labels: pKeys.length ? pKeys : ['—'],
           datasets: [{
             data: pVals.length ? pVals : [0],
-            backgroundColor: navyBlue,
+            backgroundColor: pieceBarBlue,
             borderRadius: 4,
             borderSkipped: false
           }]
@@ -3826,6 +3847,28 @@ document.addEventListener("DOMContentLoaded", function() {
         if (btn) titleEl.appendChild(btn);
       }
     }
+
+    // ── Sync piece chart title + popover fields ───────────────────────────────
+    var pieceTitleEl = document.getElementById('ncChartPieceTitle');
+    if (pieceTitleEl) {
+      var pieceBtn = pieceTitleEl.querySelector('.nc-chart-edit-btn');
+      pieceTitleEl.textContent = _ncChartSettings.pieceTitle || 'NCs por Peça';
+      if (pieceBtn) pieceTitleEl.appendChild(pieceBtn);
+    }
+    var pieceTitleInput   = document.getElementById('ncCepPieceTitle');
+    var pieceBarInput     = document.getElementById('ncCepPieceBarColor');
+    if (pieceTitleInput) pieceTitleInput.value = _ncChartSettings.pieceTitle    || 'NCs por Peça';
+    if (pieceBarInput)   pieceBarInput.value   = _ncChartSettings.pieceBarColor || '#1b4d8e';
+
+    // ── Sync failure chart title + popover fields ─────────────────────────────
+    var failureTitleEl = document.getElementById('ncChartFailureTitle');
+    if (failureTitleEl) {
+      var failureBtn = failureTitleEl.querySelector('.nc-chart-edit-btn');
+      failureTitleEl.textContent = _ncChartSettings.failureTitle || 'NCs por Modo de Falha';
+      if (failureBtn) failureTitleEl.appendChild(failureBtn);
+    }
+    var failureTitleInput = document.getElementById('ncCepFailureTitle');
+    if (failureTitleInput) failureTitleInput.value = _ncChartSettings.failureTitle || 'NCs por Modo de Falha';
 
   }
 
@@ -4523,6 +4566,64 @@ document.addEventListener("DOMContentLoaded", function() {
         _ncChartSettings.metaValue  = isNaN(metaValNum) ? 0 : metaValNum;
         saveNcChartSettings();
         editPopover.classList.remove('open');
+        renderNcCharts();
+      });
+    }
+
+    // ── "NCs por Peça" chart settings ────────────────────────────────────────
+    var pieceEditBtn     = document.getElementById('ncChartPieceEditBtn');
+    var pieceEditPopover = document.getElementById('ncChartPieceEditPopover');
+    var cepPieceApply    = document.getElementById('ncCepPieceApply');
+
+    if (pieceEditBtn && pieceEditPopover) {
+      pieceEditBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        pieceEditPopover.classList.toggle('open');
+      });
+      document.addEventListener('click', function(e) {
+        if (pieceEditPopover.classList.contains('open') &&
+            !pieceEditPopover.contains(e.target) && e.target !== pieceEditBtn) {
+          pieceEditPopover.classList.remove('open');
+        }
+      });
+    }
+    if (cepPieceApply) {
+      cepPieceApply.addEventListener('click', function() {
+        var titleEl = document.getElementById('ncCepPieceTitle');
+        var barEl   = document.getElementById('ncCepPieceBarColor');
+        if (!titleEl || !barEl) return;
+        _ncChartSettings.pieceTitle    = (titleEl.value || '').trim() || 'NCs por Peça';
+        _ncChartSettings.pieceBarColor = barEl.value;
+        saveNcChartSettings();
+        pieceEditPopover.classList.remove('open');
+        renderNcCharts();
+      });
+    }
+
+    // ── "NCs por Modo de Falha" chart settings ────────────────────────────────
+    var failureEditBtn     = document.getElementById('ncChartFailureEditBtn');
+    var failureEditPopover = document.getElementById('ncChartFailureEditPopover');
+    var cepFailureApply    = document.getElementById('ncCepFailureApply');
+
+    if (failureEditBtn && failureEditPopover) {
+      failureEditBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        failureEditPopover.classList.toggle('open');
+      });
+      document.addEventListener('click', function(e) {
+        if (failureEditPopover.classList.contains('open') &&
+            !failureEditPopover.contains(e.target) && e.target !== failureEditBtn) {
+          failureEditPopover.classList.remove('open');
+        }
+      });
+    }
+    if (cepFailureApply) {
+      cepFailureApply.addEventListener('click', function() {
+        var titleEl = document.getElementById('ncCepFailureTitle');
+        if (!titleEl) return;
+        _ncChartSettings.failureTitle = (titleEl.value || '').trim() || 'NCs por Modo de Falha';
+        saveNcChartSettings();
+        failureEditPopover.classList.remove('open');
         renderNcCharts();
       });
     }
