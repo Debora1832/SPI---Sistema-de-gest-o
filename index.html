@@ -657,11 +657,22 @@
     .nc-month-filter-chip {
       display:none; align-items:center; gap:8px; background:#dbeafe; border:1px solid #93c5fd;
       border-radius:20px; padding:4px 12px; font-size:11px; font-weight:700; color:#1d4ed8;
-      margin-bottom:10px; cursor:pointer;
+      cursor:pointer;
     }
     .nc-month-filter-chip.active { display:inline-flex; }
     .nc-month-filter-chip-x { font-size:13px; line-height:1; opacity:.6; }
     .nc-month-filter-chip:hover .nc-month-filter-chip-x { opacity:1; }
+    .nc-filter-chips-row { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; min-height:0; }
+    .nc-filter-chips-row:empty { display:none; }
+    /* Cards sort toolbar */
+    .nc-cards-toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
+    .nc-cards-toolbar label { font-size:11px; font-weight:600; color:#6b7280; }
+    .nc-cards-toolbar select { padding:5px 8px; border:1px solid #e5e7eb; border-radius:8px; font-size:12px; color:#374151; background:#fff; cursor:pointer; }
+    .nc-alert-filter-btn { padding:5px 12px; border:1px solid #e5e7eb; border-radius:20px; font-size:11px; font-weight:700; color:#6b7280; background:#fff; cursor:pointer; transition:all .15s; }
+    .nc-alert-filter-btn.active { background:#fff7ed; color:#f97316; border-color:#fed7aa; }
+    .nc-alert-filter-btn:hover { background:#f9fafb; }
+    /* checkbox in popover */
+    .nc-cep-row input[type=checkbox] { width:16px; height:16px; flex-shrink:0; cursor:pointer; }
     /* NC search bar */
     .nc-search-bar { display:flex; align-items:center; gap:10px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:12px; padding:10px 16px; margin-bottom:12px; }
     .nc-search-bar svg { flex-shrink:0; color:#6b7280; }
@@ -1250,6 +1261,10 @@
             <label>Valor da meta</label>
             <input type="number" id="ncCepMetaValue" value="0" min="0" step="1" />
           </div>
+          <div class="nc-cep-row">
+            <label>Mostrar rótulos</label>
+            <input type="checkbox" id="ncCepShowLabels" checked />
+          </div>
           <button class="nc-cep-apply" id="ncCepApply">Aplicar</button>
         </div>
         <canvas id="ncChartMonth"></canvas>
@@ -1278,6 +1293,10 @@
               <option value="za">Z → A</option>
             </select>
           </div>
+          <div class="nc-cep-row">
+            <label>Mostrar rótulos</label>
+            <input type="checkbox" id="ncCepPieceShowLabels" checked />
+          </div>
           <button class="nc-cep-apply" id="ncCepPieceApply">Aplicar</button>
         </div>
         <canvas id="ncChartPiece"></canvas>
@@ -1289,6 +1308,23 @@
           <div class="nc-cep-row">
             <label>Título</label>
             <input type="text" class="nc-cep-title" id="ncCepFailureTitle" value="NCs por Modo de Falha" />
+          </div>
+          <div class="nc-cep-row">
+            <label>Cor das barras</label>
+            <input type="color" id="ncCepFailureBarColor" value="#2563eb" />
+          </div>
+          <div class="nc-cep-row">
+            <label>Ordenar por</label>
+            <select id="ncCepFailureSort" style="flex:1;padding:4px 6px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">
+              <option value="desc">Maior → Menor</option>
+              <option value="asc">Menor → Maior</option>
+              <option value="az">A → Z</option>
+              <option value="za">Z → A</option>
+            </select>
+          </div>
+          <div class="nc-cep-row">
+            <label>Mostrar rótulos</label>
+            <input type="checkbox" id="ncCepFailureShowLabels" checked />
           </div>
           <button class="nc-cep-apply" id="ncCepFailureApply">Aplicar</button>
         </div>
@@ -1303,10 +1339,33 @@
       <input type="text" id="ncSearchInput" placeholder="Pesquisar por peça, NC, modo de falha, descrição…" autocomplete="off" />
       <button class="nc-search-clear" id="ncSearchClear" title="Limpar pesquisa" style="display:none">✕</button>
     </div>
-    <!-- Active month filter chip -->
-    <div class="nc-month-filter-chip" id="ncMonthFilterChip">
-      <span id="ncMonthFilterLabel">Filtro: —</span>
-      <span class="nc-month-filter-chip-x" title="Limpar filtro">✕</span>
+    <!-- Sort + alert-filter toolbar -->
+    <div class="nc-cards-toolbar">
+      <label>Ordenar:</label>
+      <select id="ncCardsSortSelect">
+        <option value="recent">Mais recente</option>
+        <option value="oldest">Mais antigo</option>
+        <option value="ncAsc">Nº NC (A → Z)</option>
+        <option value="ncDesc">Nº NC (Z → A)</option>
+        <option value="dateAsc">Data (↑)</option>
+        <option value="dateDesc">Data (↓)</option>
+      </select>
+      <button class="nc-alert-filter-btn" id="ncAlertFilterBtn">⚠ Com alertas</button>
+    </div>
+    <!-- Active filter chips -->
+    <div class="nc-filter-chips-row" id="ncFilterChipsRow">
+      <div class="nc-month-filter-chip" id="ncMonthFilterChip">
+        <span id="ncMonthFilterLabel">Filtro: —</span>
+        <span class="nc-month-filter-chip-x" title="Limpar filtro">✕</span>
+      </div>
+      <div class="nc-month-filter-chip" id="ncPieceFilterChip" style="background:#dcfce7;border-color:#86efac;color:#166534;">
+        <span id="ncPieceFilterLabel">Peça: —</span>
+        <span class="nc-month-filter-chip-x" title="Limpar filtro">✕</span>
+      </div>
+      <div class="nc-month-filter-chip" id="ncFailureFilterChip" style="background:#fef9c3;border-color:#fde047;color:#713f12;">
+        <span id="ncFailureFilterLabel">Falha: —</span>
+        <span class="nc-month-filter-chip-x" title="Limpar filtro">✕</span>
+      </div>
     </div>
     <div id="ncSearchCount" class="nc-search-count" style="display:none"></div>
     <div class="nc-cards-grid" id="ncCardsGrid">
@@ -3692,7 +3751,11 @@ document.addEventListener("DOMContentLoaded", function() {
 
   var ncRecords = [];
   var _ncChartPiece = null, _ncChartFailure = null, _ncChartMonth = null;
-  var _ncMonthFilter = null; // active YYYY-MM filter key, or null
+  var _ncMonthFilter   = null; // active YYYY-MM filter key, or null
+  var _ncPieceFilter   = null; // active piece name filter, or null
+  var _ncFailureFilter = null; // active failure mode filter, or null
+  var _ncCardsSort     = 'recent'; // 'recent'|'oldest'|'ncAsc'|'ncDesc'|'dateAsc'|'dateDesc'
+  var _ncAlertFilter   = false;   // show only cards with atencao flag
   // Chart settings (bar color, meta color, meta value, title) — persisted to localStorage
   var _ncChartSettings = (function() {
     try { return JSON.parse(localStorage.getItem('spi_nc_chart_month_settings') || 'null') || {}; } catch(e) { return {}; }
@@ -3982,10 +4045,13 @@ document.addEventListener("DOMContentLoaded", function() {
       monthKeys.push(k);
     }
 
-    // pieceCount and failureCount only include filtered records when a month filter is active
-    var filteredRecords = _ncMonthFilter
-      ? ncRecords.filter(function(nc) { return nc.date && nc.date.slice(0,7) === _ncMonthFilter; })
-      : ncRecords;
+    // pieceCount and failureCount only include filtered records when a filter is active
+    var filteredRecords = ncRecords.filter(function(nc) {
+      if (_ncMonthFilter && (!nc.date || nc.date.slice(0,7) !== _ncMonthFilter)) return false;
+      if (_ncPieceFilter && (nc.piece || '(sem nome)') !== _ncPieceFilter) return false;
+      if (_ncFailureFilter && (nc.failureMode || 'Outro') !== _ncFailureFilter) return false;
+      return true;
+    });
 
     ncRecords.forEach(function(nc) {
       // Monthly chart always shows all data (the bar highlight shows the selected month)
@@ -4021,39 +4087,39 @@ document.addEventListener("DOMContentLoaded", function() {
     var lightGrid = 'rgba(0,0,0,0.06)';
     var darkText  = '#374151';
     var lightFont = { family: "'Inter','Segoe UI',sans-serif" };
-    var doughnutPalette = ['#1b4d8e','#2563eb','#3b82f6','#60a5fa','#93c5fd','#bfdbfe','#1e3a5f','#374151','#6b7280','#9ca3af','#d1d5db','#e5e7eb'];
+    // Standard palette — navy blue as primary bar color
 
-    // Inline plugin: draw value labels on top of bars
-    var dataLabelsPlugin = {
-      id: 'spiBarLabels',
-      afterDatasetsDraw: function(chart) {
-        var ds = chart.data.datasets;
-        if (!ds.length) return;
-        var meta = chart.getDatasetMeta(0);
-        if (!meta.visible) return;
-        var ctx = chart.ctx;
-        ctx.save();
-        ctx.font = 'bold 14px ' + (lightFont.family);
-        ctx.fillStyle = darkText;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'bottom';
-        meta.data.forEach(function(bar, i) {
-          var val = ds[0].data[i];
-          if (!val) return;
-          // For horizontal bar charts, draw label at end of bar
-          if (chart.config.options.indexAxis === 'y') {
-            ctx.textAlign = 'left';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(val, bar.x + 5, bar.y);
-          } else {
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'bottom';
-            ctx.fillText(val, bar.x, bar.y - 5);
-          }
-        });
-        ctx.restore();
-      }
-    };
+    // Helper: build a data-labels plugin that only draws if showLabels is true
+    function makeDataLabelsPlugin(showLabels) {
+      return {
+        id: 'spiBarLabels',
+        afterDatasetsDraw: function(chart) {
+          if (!showLabels) return;
+          var ds = chart.data.datasets;
+          if (!ds.length) return;
+          var meta = chart.getDatasetMeta(0);
+          if (!meta.visible) return;
+          var ctx = chart.ctx;
+          ctx.save();
+          ctx.font = 'bold 13px ' + (lightFont.family);
+          ctx.fillStyle = darkText;
+          meta.data.forEach(function(bar, i) {
+            var val = ds[0].data[i];
+            if (!val) return;
+            if (chart.config.options.indexAxis === 'y') {
+              ctx.textAlign = 'left';
+              ctx.textBaseline = 'middle';
+              ctx.fillText(val, bar.x + 5, bar.y);
+            } else {
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'bottom';
+              ctx.fillText(val, bar.x, bar.y - 5);
+            }
+          });
+          ctx.restore();
+        }
+      };
+    }
 
     // ── Chart 1 — by piece (horizontal bar) ─────────────────────────────────
     if (_ncChartPiece) { _ncChartPiece.destroy(); _ncChartPiece = null; }
@@ -4069,20 +4135,39 @@ document.addEventListener("DOMContentLoaded", function() {
         return 0;
       });
       var pVals = pKeys.map(function(k){ return pieceCount[k]; });
+      // Highlight selected piece bar
+      var pColors = pKeys.map(function(k) {
+        if (_ncPieceFilter && k === _ncPieceFilter) return pieceBarBlue;
+        if (_ncPieceFilter) return pieceBarBlue + BAR_DIM_SUFFIX;
+        return pieceBarBlue;
+      });
+      var pieceLabels = _ncChartSettings.pieceShowLabels !== false;
       _ncChartPiece = new Chart(ctxP, {
         type: 'bar',
-        plugins: [dataLabelsPlugin],
+        plugins: [makeDataLabelsPlugin(pieceLabels)],
         data: {
           labels: pKeys.length ? pKeys : ['—'],
           datasets: [{
             data: pVals.length ? pVals : [0],
-            backgroundColor: pieceBarBlue,
+            backgroundColor: pColors,
             borderRadius: 4,
             borderSkipped: false
           }]
         },
         options: {
           indexAxis: 'y',
+          onClick: function(evt, elements) {
+            if (!elements.length) return;
+            var key = pKeys[elements[0].index];
+            if (_ncPieceFilter === key) {
+              _ncPieceFilter = null;
+            } else {
+              _ncPieceFilter = key;
+            }
+            renderNcCharts();
+            _updatePieceFilterChip();
+            if (window._applyNcSearch) window._applyNcSearch();
+          },
           plugins: {
             legend:{ display:false },
             tooltip:{ callbacks:{ label: function(ctx){ return ' ' + ctx.parsed.x + ' NCs'; } } }
@@ -4096,7 +4181,7 @@ document.addEventListener("DOMContentLoaded", function() {
       });
     }
 
-    // ── Chart 2 — by failure mode (doughnut) ─────────────────────────────────
+    // ── Chart 2 — by failure mode (horizontal bar) ───────────────────────────
     if (_ncChartFailure) { _ncChartFailure.destroy(); _ncChartFailure = null; }
     var ctxF = document.getElementById('ncChartFailure');
     if (ctxF) {
@@ -4115,27 +4200,55 @@ document.addEventListener("DOMContentLoaded", function() {
         ctxF.style.display = '';
         var nd = ctxF.parentNode.querySelector('.nc-chart-nodata');
         if (nd) nd.remove();
+        var failureSort = _ncChartSettings.failureSort || 'desc';
+        fKeys.sort(function(a, b) {
+          if (failureSort === 'desc') return failureCount[b] - failureCount[a];
+          if (failureSort === 'asc')  return failureCount[a] - failureCount[b];
+          if (failureSort === 'az')   return a.localeCompare(b);
+          if (failureSort === 'za')   return b.localeCompare(a);
+          return 0;
+        });
+        var fVals = fKeys.map(function(k){ return failureCount[k]; });
+        var failureBarColor = _ncChartSettings.failureBarColor || '#2563eb';
+        var fColors = fKeys.map(function(k) {
+          if (_ncFailureFilter && k === _ncFailureFilter) return failureBarColor;
+          if (_ncFailureFilter) return failureBarColor + BAR_DIM_SUFFIX;
+          return failureBarColor;
+        });
+        var failureLabels = _ncChartSettings.failureShowLabels !== false;
         _ncChartFailure = new Chart(ctxF, {
-          type: 'doughnut',
+          type: 'bar',
+          plugins: [makeDataLabelsPlugin(failureLabels)],
           data: {
             labels: fKeys,
             datasets: [{
-              data: Object.values(failureCount),
-              backgroundColor: doughnutPalette.slice(0, fKeys.length),
-              borderWidth: 3,
-              borderColor: '#fff',
-              hoverBorderColor: '#e5e7eb',
-              hoverOffset: 6
+              data: fVals,
+              backgroundColor: fColors,
+              borderRadius: 4,
+              borderSkipped: false
             }]
           },
           options: {
-            cutout: '62%',
+            indexAxis: 'y',
+            onClick: function(evt, elements) {
+              if (!elements.length) return;
+              var key = fKeys[elements[0].index];
+              if (_ncFailureFilter === key) {
+                _ncFailureFilter = null;
+              } else {
+                _ncFailureFilter = key;
+              }
+              renderNcCharts();
+              _updateFailureFilterChip();
+              if (window._applyNcSearch) window._applyNcSearch();
+            },
             plugins: {
-              legend:{
-                position:'right',
-                labels:{ color:darkText, font:Object.assign({size:12},lightFont), padding:10, usePointStyle:true, pointStyleWidth:8 }
-              },
-              tooltip:{ callbacks:{ label: function(ctx){ return ' ' + ctx.label + ': ' + ctx.parsed + ' NCs'; } } }
+              legend:{ display:false },
+              tooltip:{ callbacks:{ label: function(ctx){ return ' ' + ctx.parsed.x + ' NCs'; } } }
+            },
+            scales: {
+              x:{ ticks:{ color:darkText, font:Object.assign({size:12},lightFont) }, grid:{ color:lightGrid }, border:{ display:false } },
+              y:{ ticks:{ color:darkText, font:Object.assign({size:12},lightFont), padding:4 }, grid:{ display:false }, border:{ display:false } }
             },
             responsive: true, maintainAspectRatio: false
           }
@@ -4196,7 +4309,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
       _ncChartMonth = new Chart(ctxM, {
         type: 'bar',
-        plugins: [dataLabelsPlugin],
+        plugins: [makeDataLabelsPlugin(_ncChartSettings.showLabels !== false)],
         data: { labels: mLabels, datasets: datasets },
         options: {
           onClick: function(evt, elements) {
@@ -4249,10 +4362,12 @@ document.addEventListener("DOMContentLoaded", function() {
       var barInput   = document.getElementById('ncCepBarColor');
       var metaColorInput = document.getElementById('ncCepMetaColor');
       var metaValInput   = document.getElementById('ncCepMetaValue');
+      var showLabelsInput = document.getElementById('ncCepShowLabels');
       if (titleInput)     titleInput.value = _ncChartSettings.title || NC_CHART_DEFAULT_TITLE;
       if (barInput)       barInput.value   = _ncChartSettings.barColor  || '#1b4d8e';
       if (metaColorInput) metaColorInput.value = metaColor;
       if (metaValInput)   metaValInput.value   = metaVal;
+      if (showLabelsInput) showLabelsInput.checked = _ncChartSettings.showLabels !== false;
 
       // Update chart title in DOM
       var titleEl = document.getElementById('ncChartMonthTitle');
@@ -4270,12 +4385,14 @@ document.addEventListener("DOMContentLoaded", function() {
       pieceTitleEl.textContent = _ncChartSettings.pieceTitle || 'NCs por Peça';
       if (pieceBtn) pieceTitleEl.appendChild(pieceBtn);
     }
-    var pieceTitleInput   = document.getElementById('ncCepPieceTitle');
-    var pieceBarInput     = document.getElementById('ncCepPieceBarColor');
-    var pieceSortInput    = document.getElementById('ncCepPieceSort');
-    if (pieceTitleInput) pieceTitleInput.value = _ncChartSettings.pieceTitle    || 'NCs por Peça';
-    if (pieceBarInput)   pieceBarInput.value   = _ncChartSettings.pieceBarColor || '#1b4d8e';
-    if (pieceSortInput)  pieceSortInput.value  = _ncChartSettings.pieceSort     || 'desc';
+    var pieceTitleInput      = document.getElementById('ncCepPieceTitle');
+    var pieceBarInput        = document.getElementById('ncCepPieceBarColor');
+    var pieceSortInput       = document.getElementById('ncCepPieceSort');
+    var pieceShowLabelsInput = document.getElementById('ncCepPieceShowLabels');
+    if (pieceTitleInput)      pieceTitleInput.value       = _ncChartSettings.pieceTitle    || 'NCs por Peça';
+    if (pieceBarInput)        pieceBarInput.value         = _ncChartSettings.pieceBarColor || '#1b4d8e';
+    if (pieceSortInput)       pieceSortInput.value        = _ncChartSettings.pieceSort     || 'desc';
+    if (pieceShowLabelsInput) pieceShowLabelsInput.checked = _ncChartSettings.pieceShowLabels !== false;
 
     // ── Sync failure chart title + popover fields ─────────────────────────────
     var failureTitleEl = document.getElementById('ncChartFailureTitle');
@@ -4284,8 +4401,14 @@ document.addEventListener("DOMContentLoaded", function() {
       failureTitleEl.textContent = _ncChartSettings.failureTitle || 'NCs por Modo de Falha';
       if (failureBtn) failureTitleEl.appendChild(failureBtn);
     }
-    var failureTitleInput = document.getElementById('ncCepFailureTitle');
-    if (failureTitleInput) failureTitleInput.value = _ncChartSettings.failureTitle || 'NCs por Modo de Falha';
+    var failureTitleInput      = document.getElementById('ncCepFailureTitle');
+    var failureBarInput        = document.getElementById('ncCepFailureBarColor');
+    var failureSortInput       = document.getElementById('ncCepFailureSort');
+    var failureShowLabelsInput = document.getElementById('ncCepFailureShowLabels');
+    if (failureTitleInput)      failureTitleInput.value       = _ncChartSettings.failureTitle    || 'NCs por Modo de Falha';
+    if (failureBarInput)        failureBarInput.value         = _ncChartSettings.failureBarColor || '#2563eb';
+    if (failureSortInput)       failureSortInput.value        = _ncChartSettings.failureSort     || 'desc';
+    if (failureShowLabelsInput) failureShowLabelsInput.checked = _ncChartSettings.failureShowLabels !== false;
 
   }
 
@@ -4303,6 +4426,30 @@ document.addEventListener("DOMContentLoaded", function() {
     }
   }
 
+  function _updatePieceFilterChip() {
+    var chip  = document.getElementById('ncPieceFilterChip');
+    var label = document.getElementById('ncPieceFilterLabel');
+    if (!chip) return;
+    if (_ncPieceFilter) {
+      label.textContent = 'Peça: ' + _ncPieceFilter;
+      chip.classList.add('active');
+    } else {
+      chip.classList.remove('active');
+    }
+  }
+
+  function _updateFailureFilterChip() {
+    var chip  = document.getElementById('ncFailureFilterChip');
+    var label = document.getElementById('ncFailureFilterLabel');
+    if (!chip) return;
+    if (_ncFailureFilter) {
+      label.textContent = 'Falha: ' + _ncFailureFilter;
+      chip.classList.add('active');
+    } else {
+      chip.classList.remove('active');
+    }
+  }
+
   function renderNcCards() {
     var grid = document.getElementById('ncCardsGrid');
     if (!grid) return;
@@ -4310,7 +4457,14 @@ document.addEventListener("DOMContentLoaded", function() {
       grid.innerHTML = '<div class="nc-empty">Nenhuma NC cadastrada ainda.</div>';
       return;
     }
-    grid.innerHTML = ncRecords.slice().reverse().map(function(nc) {
+    var sorted = ncRecords.slice();
+    if (_ncCardsSort === 'recent')   { sorted.reverse(); }
+    else if (_ncCardsSort === 'oldest') { /* already chronological */ }
+    else if (_ncCardsSort === 'ncAsc')  { sorted.sort(function(a,b){ return (a.ncNumber||'').localeCompare(b.ncNumber||'', undefined, {numeric:true}); }); }
+    else if (_ncCardsSort === 'ncDesc') { sorted.sort(function(a,b){ return (b.ncNumber||'').localeCompare(a.ncNumber||'', undefined, {numeric:true}); }); }
+    else if (_ncCardsSort === 'dateAsc')  { sorted.sort(function(a,b){ return (a.date||'').localeCompare(b.date||''); }); }
+    else if (_ncCardsSort === 'dateDesc') { sorted.sort(function(a,b){ return (b.date||'').localeCompare(a.date||''); }); }
+    grid.innerHTML = sorted.map(function(nc) {
       // Support both old `photo` (string) and new `photos` (array)
       var photos = (nc.photos && nc.photos.length) ? nc.photos : (nc.photo ? [nc.photo] : []);
       var photoHtml;
@@ -5008,6 +5162,12 @@ document.addEventListener("DOMContentLoaded", function() {
           var ncMk = nc.date ? nc.date.slice(0,7) : '';
           if (ncMk !== _ncMonthFilter) { card.classList.add('nc-hidden'); return; }
         }
+        // Apply piece filter
+        if (_ncPieceFilter && (nc.piece || '(sem nome)') !== _ncPieceFilter) { card.classList.add('nc-hidden'); return; }
+        // Apply failure mode filter
+        if (_ncFailureFilter && (nc.failureMode || 'Outro') !== _ncFailureFilter) { card.classList.add('nc-hidden'); return; }
+        // Apply alert filter
+        if (_ncAlertFilter && !nc.atencao) { card.classList.add('nc-hidden'); return; }
         if (!q) { card.classList.remove('nc-hidden'); shown++; return; }
         var haystack = [
           nc.ncNumber, nc.piece, nc.failureMode,
@@ -5020,13 +5180,16 @@ document.addEventListener("DOMContentLoaded", function() {
           card.classList.add('nc-hidden');
         }
       });
-      var activeFilters = q || _ncMonthFilter;
+      var activeFilters = q || _ncMonthFilter || _ncPieceFilter || _ncFailureFilter || _ncAlertFilter;
       if (activeFilters) {
         var filterDesc = [];
         if (_ncMonthFilter) {
           var mp = _ncMonthFilter.split('-');
           filterDesc.push((PT_MONTHS_SHORT[parseInt(mp[1],10)-1] || mp[1]) + '/' + mp[0]);
         }
+        if (_ncPieceFilter)   filterDesc.push('Peça: ' + _ncPieceFilter);
+        if (_ncFailureFilter) filterDesc.push('Falha: ' + _ncFailureFilter);
+        if (_ncAlertFilter)   filterDesc.push('Com alertas');
         if (q) filterDesc.push('"'+q+'"');
         ncSearchCount.textContent = shown + (shown === 1 ? ' NC encontrada' : ' NCs encontradas') + ' para ' + filterDesc.join(' + ');
         ncSearchCount.style.display = '';
@@ -5057,6 +5220,48 @@ document.addEventListener("DOMContentLoaded", function() {
       });
     }
 
+    // ── Piece filter chip ─────────────────────────────────────────────────
+    var pieceChip = document.getElementById('ncPieceFilterChip');
+    if (pieceChip) {
+      pieceChip.addEventListener('click', function() {
+        _ncPieceFilter = null;
+        _updatePieceFilterChip();
+        renderNcCharts();
+        if (window._applyNcSearch) window._applyNcSearch();
+      });
+    }
+
+    // ── Failure filter chip ───────────────────────────────────────────────
+    var failureChip = document.getElementById('ncFailureFilterChip');
+    if (failureChip) {
+      failureChip.addEventListener('click', function() {
+        _ncFailureFilter = null;
+        _updateFailureFilterChip();
+        renderNcCharts();
+        if (window._applyNcSearch) window._applyNcSearch();
+      });
+    }
+
+    // ── Cards sort select ─────────────────────────────────────────────────
+    var cardsSortSelect = document.getElementById('ncCardsSortSelect');
+    if (cardsSortSelect) {
+      cardsSortSelect.addEventListener('change', function() {
+        _ncCardsSort = cardsSortSelect.value;
+        renderNcCards();
+        if (window._applyNcSearch) window._applyNcSearch();
+      });
+    }
+
+    // ── Alert filter button ───────────────────────────────────────────────
+    var alertFilterBtn = document.getElementById('ncAlertFilterBtn');
+    if (alertFilterBtn) {
+      alertFilterBtn.addEventListener('click', function() {
+        _ncAlertFilter = !_ncAlertFilter;
+        alertFilterBtn.classList.toggle('active', _ncAlertFilter);
+        if (window._applyNcSearch) window._applyNcSearch();
+      });
+    }
+
     // ── Chart settings edit popover ───────────────────────────────────────
     var editBtn     = document.getElementById('ncChartEditBtn');
     var editPopover = document.getElementById('ncChartEditPopover');
@@ -5077,10 +5282,11 @@ document.addEventListener("DOMContentLoaded", function() {
     }
     if (cepApply) {
       cepApply.addEventListener('click', function() {
-        var titleEl     = document.getElementById('ncCepTitle');
-        var barEl       = document.getElementById('ncCepBarColor');
-        var metaColorEl = document.getElementById('ncCepMetaColor');
-        var metaValEl   = document.getElementById('ncCepMetaValue');
+        var titleEl       = document.getElementById('ncCepTitle');
+        var barEl         = document.getElementById('ncCepBarColor');
+        var metaColorEl   = document.getElementById('ncCepMetaColor');
+        var metaValEl     = document.getElementById('ncCepMetaValue');
+        var showLabelsEl  = document.getElementById('ncCepShowLabels');
         if (!titleEl || !barEl || !metaColorEl || !metaValEl) return;
         var titleVal    = (titleEl.value || '').trim();
         var barColorVal = barEl.value;
@@ -5090,6 +5296,7 @@ document.addEventListener("DOMContentLoaded", function() {
         _ncChartSettings.barColor   = barColorVal;
         _ncChartSettings.metaColor  = metaColorVal;
         _ncChartSettings.metaValue  = isNaN(metaValNum) ? 0 : metaValNum;
+        _ncChartSettings.showLabels = showLabelsEl ? showLabelsEl.checked : true;
         saveNcChartSettings();
         editPopover.classList.remove('open');
         renderNcCharts();
@@ -5109,13 +5316,15 @@ document.addEventListener("DOMContentLoaded", function() {
     }
     if (cepPieceApply) {
       cepPieceApply.addEventListener('click', function() {
-        var titleEl = document.getElementById('ncCepPieceTitle');
-        var barEl   = document.getElementById('ncCepPieceBarColor');
-        var sortEl  = document.getElementById('ncCepPieceSort');
+        var titleEl      = document.getElementById('ncCepPieceTitle');
+        var barEl        = document.getElementById('ncCepPieceBarColor');
+        var sortEl       = document.getElementById('ncCepPieceSort');
+        var showLabelsEl = document.getElementById('ncCepPieceShowLabels');
         if (!titleEl || !barEl) return;
-        _ncChartSettings.pieceTitle    = (titleEl.value || '').trim() || 'NCs por Peça';
-        _ncChartSettings.pieceBarColor = barEl.value;
-        _ncChartSettings.pieceSort     = sortEl ? sortEl.value : 'desc';
+        _ncChartSettings.pieceTitle      = (titleEl.value || '').trim() || 'NCs por Peça';
+        _ncChartSettings.pieceBarColor   = barEl.value;
+        _ncChartSettings.pieceSort       = sortEl ? sortEl.value : 'desc';
+        _ncChartSettings.pieceShowLabels = showLabelsEl ? showLabelsEl.checked : true;
         saveNcChartSettings();
         pieceEditPopover.classList.remove('open');
         renderNcCharts();
@@ -5132,18 +5341,18 @@ document.addEventListener("DOMContentLoaded", function() {
         e.stopPropagation();
         failureEditPopover.classList.toggle('open');
       });
-      document.addEventListener('click', function(e) {
-        if (failureEditPopover.classList.contains('open') &&
-            !failureEditPopover.contains(e.target) && e.target !== failureEditBtn) {
-          failureEditPopover.classList.remove('open');
-        }
-      });
     }
     if (cepFailureApply) {
       cepFailureApply.addEventListener('click', function() {
-        var titleEl = document.getElementById('ncCepFailureTitle');
+        var titleEl      = document.getElementById('ncCepFailureTitle');
+        var barEl        = document.getElementById('ncCepFailureBarColor');
+        var sortEl       = document.getElementById('ncCepFailureSort');
+        var showLabelsEl = document.getElementById('ncCepFailureShowLabels');
         if (!titleEl) return;
-        _ncChartSettings.failureTitle = (titleEl.value || '').trim() || 'NCs por Modo de Falha';
+        _ncChartSettings.failureTitle      = (titleEl.value || '').trim() || 'NCs por Modo de Falha';
+        _ncChartSettings.failureBarColor   = barEl ? barEl.value : '#2563eb';
+        _ncChartSettings.failureSort       = sortEl ? sortEl.value : 'desc';
+        _ncChartSettings.failureShowLabels = showLabelsEl ? showLabelsEl.checked : true;
         saveNcChartSettings();
         failureEditPopover.classList.remove('open');
         renderNcCharts();
