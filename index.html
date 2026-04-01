@@ -3564,18 +3564,27 @@ document.addEventListener("DOMContentLoaded", function() {
       monthKeys.push(k);
     }
 
+    // pieceCount and failureCount only include filtered records when a month filter is active
+    var filteredRecords = _ncMonthFilter
+      ? ncRecords.filter(function(nc) { return nc.date && nc.date.slice(0,7) === _ncMonthFilter; })
+      : ncRecords;
+
     ncRecords.forEach(function(nc) {
-      var p = nc.piece || '(sem nome)';
-      pieceCount[p] = (pieceCount[p] || 0) + 1;
-      var fm = nc.failureMode || 'Outro';
-      failureCount[fm] = (failureCount[fm] || 0) + 1;
+      // Monthly chart always shows all data (the bar highlight shows the selected month)
       if (nc.date) {
         var mk = nc.date.slice(0,7);
         if (mk in monthCount) monthCount[mk]++;
       }
     });
 
-    // Update total count box
+    filteredRecords.forEach(function(nc) {
+      var p = nc.piece || '(sem nome)';
+      pieceCount[p] = (pieceCount[p] || 0) + 1;
+      var fm = nc.failureMode || 'Outro';
+      failureCount[fm] = (failureCount[fm] || 0) + 1;
+    });
+
+    // Update total count box (always shows full total)
     var totalEl = document.getElementById('ncTotalCount');
     if (totalEl) totalEl.textContent = ncRecords.length;
 
@@ -4086,11 +4095,11 @@ document.addEventListener("DOMContentLoaded", function() {
       var photos = (nc.photos && nc.photos.length) ? nc.photos : (nc.photo ? [nc.photo] : []);
       var dateStr = ncFmtDate(nc.date);
 
-      // Photo strip
+      // Photo strip — click opens the existing in-page lightbox
       var photoStripHtml = photos.length
         ? '<div class="nc-detail-photo-strip">' +
             photos.map(function(src, i) {
-              return '<img src="' + src + '" alt="Foto ' + (i+1) + '" onclick="window.open(this.src,\'_blank\')" title="Clique para ampliar">';
+              return '<img src="' + src + '" alt="Foto ' + (i+1) + '" data-lightbox-src="' + src + '" data-lightbox-alt="Foto ' + (i+1) + '" title="Clique para ampliar">';
             }).join('') +
           '</div>'
         : '';
@@ -4149,6 +4158,13 @@ document.addEventListener("DOMContentLoaded", function() {
           if (rec && rec.alertFile && window._openAlertViewer) {
             window._openAlertViewer(rec.alertFile, rec.alertFileName || 'alerta');
           }
+        });
+      });
+
+      // Wire photo strip images to open in-page lightbox
+      bodyEl.querySelectorAll('[data-lightbox-src]').forEach(function(img) {
+        img.addEventListener('click', function() {
+          openLightbox(img.dataset.lightboxSrc, img.dataset.lightboxAlt || 'Foto');
         });
       });
 
