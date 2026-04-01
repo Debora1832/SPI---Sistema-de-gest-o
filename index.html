@@ -1269,6 +1269,15 @@
             <label>Cor das barras</label>
             <input type="color" id="ncCepPieceBarColor" value="#1b4d8e" />
           </div>
+          <div class="nc-cep-row">
+            <label>Ordenar por</label>
+            <select id="ncCepPieceSort" style="flex:1;padding:4px 6px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">
+              <option value="desc">Maior → Menor</option>
+              <option value="asc">Menor → Maior</option>
+              <option value="az">A → Z</option>
+              <option value="za">Z → A</option>
+            </select>
+          </div>
           <button class="nc-cep-apply" id="ncCepPieceApply">Aplicar</button>
         </div>
         <canvas id="ncChartPiece"></canvas>
@@ -4051,6 +4060,14 @@ document.addEventListener("DOMContentLoaded", function() {
     var ctxP = document.getElementById('ncChartPiece');
     if (ctxP) {
       var pKeys = Object.keys(pieceCount);
+      var pieceSort = _ncChartSettings.pieceSort || 'desc';
+      pKeys.sort(function(a, b) {
+        if (pieceSort === 'desc') return pieceCount[b] - pieceCount[a];
+        if (pieceSort === 'asc')  return pieceCount[a] - pieceCount[b];
+        if (pieceSort === 'az')   return a.localeCompare(b);
+        if (pieceSort === 'za')   return b.localeCompare(a);
+        return 0;
+      });
       var pVals = pKeys.map(function(k){ return pieceCount[k]; });
       _ncChartPiece = new Chart(ctxP, {
         type: 'bar',
@@ -4255,8 +4272,10 @@ document.addEventListener("DOMContentLoaded", function() {
     }
     var pieceTitleInput   = document.getElementById('ncCepPieceTitle');
     var pieceBarInput     = document.getElementById('ncCepPieceBarColor');
+    var pieceSortInput    = document.getElementById('ncCepPieceSort');
     if (pieceTitleInput) pieceTitleInput.value = _ncChartSettings.pieceTitle    || 'NCs por Peça';
     if (pieceBarInput)   pieceBarInput.value   = _ncChartSettings.pieceBarColor || '#1b4d8e';
+    if (pieceSortInput)  pieceSortInput.value  = _ncChartSettings.pieceSort     || 'desc';
 
     // ── Sync failure chart title + popover fields ─────────────────────────────
     var failureTitleEl = document.getElementById('ncChartFailureTitle');
@@ -5087,20 +5106,16 @@ document.addEventListener("DOMContentLoaded", function() {
         e.stopPropagation();
         pieceEditPopover.classList.toggle('open');
       });
-      document.addEventListener('click', function(e) {
-        if (pieceEditPopover.classList.contains('open') &&
-            !pieceEditPopover.contains(e.target) && e.target !== pieceEditBtn) {
-          pieceEditPopover.classList.remove('open');
-        }
-      });
     }
     if (cepPieceApply) {
       cepPieceApply.addEventListener('click', function() {
         var titleEl = document.getElementById('ncCepPieceTitle');
         var barEl   = document.getElementById('ncCepPieceBarColor');
+        var sortEl  = document.getElementById('ncCepPieceSort');
         if (!titleEl || !barEl) return;
         _ncChartSettings.pieceTitle    = (titleEl.value || '').trim() || 'NCs por Peça';
         _ncChartSettings.pieceBarColor = barEl.value;
+        _ncChartSettings.pieceSort     = sortEl ? sortEl.value : 'desc';
         saveNcChartSettings();
         pieceEditPopover.classList.remove('open');
         renderNcCharts();
