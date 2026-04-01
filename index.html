@@ -1554,7 +1554,7 @@ document.addEventListener("DOMContentLoaded", function() {
   // "permission-denied" write failures that a read-only test would miss.
   function _testFirestoreWrite(projectId) {
     var testCol = _fbTestCollection();
-    var testDoc = '__connection_test__';
+    var testDoc = 'spi-conntest';
     // First try a small write to the NC collection
     db.collection(testCol).doc(testDoc).set({ _test: true, _ts: Date.now() })
       .then(function() {
@@ -1569,10 +1569,11 @@ document.addEventListener("DOMContentLoaded", function() {
         console.error("Firebase write test error:", e);
         if (e.code === "permission-denied") {
           firebaseConnected = false;
-          setFirebaseStatus("error", "Firebase: sem permissão de escrita");
+          setFirebaseStatus("error", "Firebase: sem permissão de escrita — abra as Configurações do Firebase para corrigir");
+          window._fbPermErrorPending = true;
           var msg = "As regras do Firestore bloqueiam escritas. Abra o Firebase Console → Firestore → Regras e configure: allow read, write: if true;";
           if (typeof onFirebaseConnected === "function") onFirebaseConnected(false, { message: msg, code: e.code });
-          // Show rules guide in the modal if it's open
+          // Show rules guide in the modal if it's already open
           var guide = document.getElementById("fbRulesGuide");
           if (guide) guide.style.display = "";
         } else {
@@ -2388,7 +2389,14 @@ document.addEventListener("DOMContentLoaded", function() {
 
     document.getElementById("fbStatusMsg").className = "fb-status-msg";
     document.getElementById("fbStatusMsg").textContent = "";
-    document.getElementById("fbRulesGuide").style.display = "none";
+    // Show rules guide immediately if a permission error was previously detected
+    var showRules = !!window._fbPermErrorPending;
+    document.getElementById("fbRulesGuide").style.display = showRules ? "" : "none";
+    if (showRules) {
+      var msg = document.getElementById("fbStatusMsg");
+      msg.className = "fb-status-msg err";
+      msg.textContent = "⚠ As regras do Firestore estão bloqueando gravações. Siga as instruções abaixo e depois clique em Conectar.";
+    }
     document.getElementById("fbModalBackdrop").classList.add("open");
   }
 
@@ -2454,6 +2462,7 @@ document.addEventListener("DOMContentLoaded", function() {
         msg.className = "fb-status-msg ok";
         msg.textContent = "Conectado com sucesso! Os dados estão sendo sincronizados.";
         document.getElementById("fbBtnTest").style.display = "";
+        window._fbPermErrorPending = false;
         setTimeout(closeFbModal, 1500);
       } else {
         msg.className = "fb-status-msg err";
@@ -2488,7 +2497,7 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById("fbRulesGuide").style.display = "none";
 
     var testCol = _fbTestCollection();
-    var testDoc = '__connection_test__';
+    var testDoc = 'spi-conntest';
 
     // Step 1: write test
     db.collection(testCol).doc(testDoc).set({ _test: true, _ts: Date.now() })
@@ -3153,7 +3162,7 @@ document.addEventListener("DOMContentLoaded", function() {
     try { localStorage.setItem('spi_all_tenants', JSON.stringify(all)); }
     catch(e) { console.warn('localStorage error saving tenants:', e); }
     if (db) {
-      db.collection('tenants').doc('__list__').set({ all: all }, { merge: true })
+      db.collection('tenants').doc('spi-tenants').set({ all: all }, { merge: true })
         .catch(function(e) { console.error('Firebase save tenants error:', e); });
     }
   }
@@ -3162,7 +3171,7 @@ document.addEventListener("DOMContentLoaded", function() {
     let all = null;
     if (db) {
       try {
-        const snap = await db.collection('tenants').doc('__list__').get();
+        const snap = await db.collection('tenants').doc('spi-tenants').get();
         if (snap.exists) {
           const d = snap.data();
           if (d.all) all = d.all;
@@ -3712,7 +3721,15 @@ document.addEventListener("DOMContentLoaded", function() {
         .then(function() { setNcSyncBadge('synced', '✓ Salvo no Firebase'); })
         .catch(function(e) {
           console.error('NC Firebase save error:', e);
-          setNcSyncBadge('offline', '⚠ Erro ao salvar no Firebase – dados preservados localmente');
+          if (e.code === 'permission-denied') {
+            firebaseConnected = false;
+            setFirebaseStatus('error', 'Firebase: sem permissão de escrita');
+            setNcSyncBadge('offline', '⚠ Regras do Firestore bloqueiam escrita — abra Configurações do Firebase para corrigir');
+            // Show the rules guide in the modal when it opens next time
+            window._fbPermErrorPending = true;
+          } else {
+            setNcSyncBadge('offline', '⚠ Erro ao salvar no Firebase – dados preservados localmente');
+          }
         });
     } else {
       setNcSyncBadge('offline', '⚠ Salvo localmente (Firebase desconectado)');
