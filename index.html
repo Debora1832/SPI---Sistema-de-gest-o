@@ -578,6 +578,10 @@
     .nc-search-clear:hover { color:#fff; }
     .nc-search-count { font-size:11px; color:#6b7280; margin-bottom:10px; padding-left:2px; }
     .nc-card.nc-hidden { display:none; }
+    .nc-sync-badge { font-size:11px; font-weight:600; padding:4px 10px; border-radius:20px; display:inline-flex; align-items:center; gap:6px; }
+    .nc-sync-badge.synced   { background:rgba(34,197,94,.15); color:#16a34a; border:1px solid rgba(34,197,94,.3); }
+    .nc-sync-badge.syncing  { background:rgba(99,102,241,.15); color:#6366f1; border:1px solid rgba(99,102,241,.3); animation:fbpulse 1s infinite; }
+    .nc-sync-badge.offline  { background:rgba(107,114,128,.12); color:#6b7280; border:1px solid rgba(107,114,128,.2); }
     .nc-cards-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:16px; }
     .nc-card { background:#1c1c1e; border-radius:14px; overflow:hidden; border:1px solid #2f2f33; box-shadow:0 4px 14px rgba(0,0,0,.22); transition:transform .15s, box-shadow .15s; display:flex; flex-direction:column; }
     .nc-card:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,.3); }
@@ -1090,6 +1094,7 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/></svg>
         Nova NC
       </button>
+      <span id="ncSyncBadge" class="nc-sync-badge" role="status" aria-live="polite" style="display:none"></span>
     </div>
 
     <!-- Dashboard -->
@@ -1410,6 +1415,10 @@ document.addEventListener("DOMContentLoaded", function() {
     }
   }
 
+  // Real-time listener unsubscribers (keyed by tenant)
+  var _ncListener     = null; // unsubscribe fn for NC records listener
+  var _actionsListener= null; // unsubscribe fn for actions listener
+
   // Called after Firebase connects to pull fresh data from Firestore
   function reloadFromFirebase() {
     if (!db || !firebaseConnected) return;
@@ -1431,8 +1440,73 @@ document.addEventListener("DOMContentLoaded", function() {
         renderTable();
         renderBell();
         if (typeof expandedGroup !== "undefined" && expandedGroup !== null) renderGantt();
+        // Also reload NC records for the current tenant
+        if (typeof ncRecords !== 'undefined' && typeof renderNcCards === 'function') {
+          db.collection('nc_records_' + currentTenant).doc('all').get()
+            .then(function(snap) {
+              if (snap.exists) {
+                var records = snap.data().records;
+                if (Array.isArray(records)) {
+                  ncRecords = records;
+                  try { localStorage.setItem('spi_nc_records_' + currentTenant, JSON.stringify(ncRecords)); } catch(e) {}
+                  renderNcCards();
+                  if (typeof renderNcCharts === 'function') renderNcCharts();
+                }
+              }
+            }).catch(function(e) { console.warn('NC Firebase reload error:', e); });
+        }
+        // Set up real-time listeners for current tenant
+        setupFirebaseListeners(currentTenant);
       });
     });
+  }
+
+  // Set up onSnapshot real-time listeners for a given tenant.
+  // Unsubscribes any previous listeners before setting new ones.
+  function setupFirebaseListeners(tenantId) {
+    if (!db || !firebaseConnected) return;
+    // Tear down previous listeners
+    if (_ncListener)      { try { _ncListener();      } catch(e) { console.warn('NC listener cleanup error:', e); } _ncListener = null; }
+    if (_actionsListener) { try { _actionsListener(); } catch(e) { console.warn('Actions listener cleanup error:', e); } _actionsListener = null; }
+
+    // Real-time: NC records
+    try {
+      _ncListener = db.collection('nc_records_' + tenantId).doc('all')
+        .onSnapshot(function(snap) {
+          if (!snap.exists) return;
+          var records = snap.data().records;
+          if (!Array.isArray(records)) return;
+          // Only update if data actually changed (avoid render loop with our own writes)
+          var localJson = JSON.stringify(ncRecords);
+          var fbJson    = JSON.stringify(records);
+          if (localJson === fbJson) return;
+          ncRecords = records;
+          try { localStorage.setItem('spi_nc_records_' + tenantId, JSON.stringify(ncRecords)); } catch(e) {}
+          if (typeof setNcSyncBadge === 'function') setNcSyncBadge('synced', '✓ Atualizado em tempo real');
+          if (typeof renderNcCards === 'function')  renderNcCards();
+          if (typeof renderNcCharts === 'function') renderNcCharts();
+        }, function(e) { console.warn('NC onSnapshot error:', e); });
+    } catch(e) { console.warn('NC onSnapshot setup error:', e); }
+
+    // Real-time: tenant actions
+    try {
+      _actionsListener = db.collection('tenants').doc(tenantId)
+        .onSnapshot(function(snap) {
+          if (!snap.exists) return;
+          var saved = snap.data().actions;
+          if (!Array.isArray(saved) || !saved.length) return;
+          var localJson = JSON.stringify(TENANTS[tenantId] ? TENANTS[tenantId].actions : []);
+          var fbJson    = JSON.stringify(saved);
+          if (localJson === fbJson) return;
+          if (TENANTS[tenantId]) TENANTS[tenantId].actions = saved;
+          if (tenantId === currentTenant) {
+            allActions = saved;
+            if (typeof renderDashboard === 'function') renderDashboard();
+            if (typeof renderTable    === 'function') renderTable();
+            if (typeof renderBell     === 'function') renderBell();
+          }
+        }, function(e) { console.warn('Actions onSnapshot error:', e); });
+    } catch(e) { console.warn('Actions onSnapshot setup error:', e); }
   }
 
   // Salva ações de um tenant no Firestore E no localStorage (fallback).
@@ -2659,11 +2733,15 @@ document.addEventListener("DOMContentLoaded", function() {
     renderBell();
     // Close any open modal/gantt
     expandedGroup = null;
-    // Reload NC records for the newly selected company
-    ncRecords = loadNcRecordsLocal();
-    renderNcCards();
-    renderNcCharts();
+    // Reload NC records for the newly selected company (Firebase-aware)
+    loadNcRecordsAsync(key).then(function(records) {
+      ncRecords = records;
+      renderNcCards();
+      renderNcCharts();
+    });
     updateNcVisibility();
+    // Switch real-time listeners to the new tenant
+    if (typeof setupFirebaseListeners === 'function') setupFirebaseListeners(key);
   }
 
   // ── Theme helpers ──────────────────────────────────────────────────────────
@@ -3253,6 +3331,10 @@ document.addEventListener("DOMContentLoaded", function() {
     initTableResize(document.querySelector('#projects table'));
     initNcPage();
     updateNcVisibility();
+    // Set up real-time Firebase listeners if already connected (may have loaded from localStorage)
+    if (typeof setupFirebaseListeners === 'function' && firebaseConnected) {
+      setupFirebaseListeners(currentTenant);
+    }
   })();
 
   // ── NC (Non-Conformance) Page ────────────────────────────────────────────
@@ -3308,6 +3390,64 @@ document.addEventListener("DOMContentLoaded", function() {
     if (db) {
       db.collection('nc_records_' + currentTenant).doc('all').set({ records: ncRecords })
         .catch(function(e) { console.error('NC Firebase save error:', e); });
+    }
+  }
+
+  // Async loader: Firebase first, localStorage fallback
+  async function loadNcRecordsAsync(tenantId) {
+    var key = 'spi_nc_records_' + tenantId;
+    setNcSyncBadge('syncing', '↻ Sincronizando…');
+    if (db && firebaseConnected) {
+      try {
+        var snap = await db.collection('nc_records_' + tenantId).doc('all').get();
+        if (snap.exists) {
+          var data = snap.data();
+          var records = Array.isArray(data.records) ? data.records : [];
+          // Migrate status field if needed
+          var needsSave = false;
+          records.forEach(function(r) {
+            if (typeof r.rncAberta === 'undefined') {
+              r.rncAberta    = r.status === 'rnc_aberta';
+              r.d8Finalizado = r.status === '8d_finalizado';
+              needsSave = true;
+            }
+          });
+          // Write back to both stores if migration happened
+          if (needsSave) {
+            try { localStorage.setItem(key, JSON.stringify(records)); } catch(e) {}
+            db.collection('nc_records_' + tenantId).doc('all').set({ records: records })
+              .catch(function(e){ console.error('NC migrate save error:', e); });
+          } else {
+            // Keep localStorage in sync with Firebase data
+            try { localStorage.setItem(key, JSON.stringify(records)); } catch(e) {}
+          }
+          setNcSyncBadge('synced', '✓ Sincronizado');
+          return records;
+        }
+        setNcSyncBadge('synced', '✓ Firebase conectado');
+      } catch(e) {
+        console.warn('NC Firebase load error:', e);
+        setNcSyncBadge('offline', '⚠ Modo offline');
+      }
+    } else {
+      setNcSyncBadge('offline', '⚠ Sem Firebase');
+    }
+    // Fallback: localStorage
+    return loadNcRecordsLocal();
+  }
+
+  var _ncSyncHideTimer = null;
+
+  function setNcSyncBadge(cls, label) {
+    var badge = document.getElementById('ncSyncBadge');
+    if (!badge) return;
+    badge.className = 'nc-sync-badge ' + cls;
+    badge.textContent = label;
+    badge.style.display = '';
+    // Auto-hide "synced" badge after 4 seconds
+    if (cls === 'synced') {
+      clearTimeout(_ncSyncHideTimer);
+      _ncSyncHideTimer = setTimeout(function() { badge.style.display = 'none'; }, 4000);
     }
   }
 
@@ -3868,7 +4008,12 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   function initNcPage() {
-    ncRecords = loadNcRecordsLocal();
+    // Load NC records: try Firebase first, fall back to localStorage
+    loadNcRecordsAsync(currentTenant).then(function(records) {
+      ncRecords = records;
+      renderNcCards();
+      renderNcCharts();
+    });
 
     var backdrop = document.getElementById('ncModalBackdrop');
     var drop     = document.getElementById('ncPhotoDrop');
@@ -4028,7 +4173,8 @@ document.addEventListener("DOMContentLoaded", function() {
       }
     });
 
-    // Render cards immediately
+    // Render cards immediately (using whatever is in ncRecords at this point;
+    // the async loadNcRecordsAsync above will re-render once Firebase data arrives)
     renderNcCards();
 
     // ── NC search bar ─────────────────────────────────────────────────────
