@@ -586,7 +586,7 @@
     /* NC Dashboard layout — total box + charts */
     .nc-dashboard-top { display:flex; gap:16px; margin-bottom:16px; align-items:stretch; flex-wrap:wrap; }
     .nc-total-box {
-      flex:0 0 auto; width:120px; min-width:100px;
+      width:100%;
       background:#fff; border:2px solid #1b4d8e; border-radius:10px;
       padding:10px 12px; box-shadow:0 2px 8px rgba(0,0,0,.08);
       display:flex; flex-direction:column; align-items:center; gap:4px;
@@ -600,18 +600,19 @@
     .nc-total-box-value { font-size:38px; font-weight:800; color:#1a1a2e; line-height:1; padding:10px 0 4px; }
     .nc-total-box-label { font-size:9px; color:#6b7280; font-weight:600; text-transform:uppercase; letter-spacing:.05em; text-align:center; }
     .nc-chart-month-card { flex:1; min-width:0; }
-    @media (max-width:700px) { .nc-dashboard-top { flex-direction:column; } .nc-total-box { width:100%; flex-direction:row; justify-content:flex-start; align-items:center; gap:16px; } .nc-total-box-title { display:none; } }
+    /* Left column: Volume AQE box + stat balloons stacked vertically */
+    .nc-left-col { flex:0 0 auto; width:130px; min-width:110px; display:flex; flex-direction:column; gap:10px; }
+    @media (max-width:700px) { .nc-dashboard-top { flex-direction:column; } .nc-left-col { width:100%; flex-direction:row; flex-wrap:wrap; align-items:flex-start; } .nc-total-box { flex:1 1 auto; flex-direction:row; justify-content:flex-start; align-items:center; gap:16px; } .nc-total-box-title { display:none; } }
     /* ── NC stat balloon badges ── */
-    .nc-stat-balloons { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+    .nc-stat-balloons { display:flex; flex-direction:column; gap:8px; }
     .nc-stat-balloon {
       display:flex; flex-direction:column; align-items:center; justify-content:center;
-      min-width:90px; padding:10px 14px; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,.10);
+      width:100%; padding:10px 8px; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,.10);
       gap:2px; cursor:default;
     }
     .nc-stat-balloon-value { font-size:28px; font-weight:800; line-height:1; }
     .nc-stat-balloon-label { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; text-align:center; opacity:.85; }
     .nc-stat-balloon.closed   { background:#dcfce7; border:2px solid #16a34a; color:#15803d; }
-    .nc-stat-balloon.alerted  { background:#fee2e2; border:2px solid #dc2626; color:#b91c1c; }
     .nc-stat-balloon.eightd   { background:#dbeafe; border:2px solid #2563eb; color:#1565C0; }
     .nc-stat-balloon.rnc      { background:#fff7ed; border:2px solid #f97316; color:#c2410c; }
     .nc-charts-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:0; }
@@ -1195,12 +1196,25 @@
 
     <!-- Dashboard -->
     <div class="nc-section-title" style="margin-bottom:14px">Dashboard de NCs</div>
-    <!-- Top row: total count box + main monthly bar chart -->
+    <!-- Top row: total count box (+ balloons) + main monthly bar chart -->
     <div class="nc-dashboard-top">
-      <div class="nc-total-box">
-        <div class="nc-total-box-title">Volume AQE</div>
-        <div class="nc-total-box-value" id="ncTotalCount">0</div>
-        <div class="nc-total-box-label">NCS REGISTRADAS</div>
+      <div class="nc-left-col">
+        <div class="nc-total-box">
+          <div class="nc-total-box-title">Volume AQE</div>
+          <div class="nc-total-box-value" id="ncTotalCount">0</div>
+          <div class="nc-total-box-label">NCS REGISTRADAS</div>
+        </div>
+        <!-- Stat balloons below Volume AQE -->
+        <div class="nc-stat-balloons" id="ncStatBalloons">
+          <div class="nc-stat-balloon rnc">
+            <div class="nc-stat-balloon-value" id="ncStatClosed">0</div>
+            <div class="nc-stat-balloon-label">RNC Aberta /<br>Alerta Emitido</div>
+          </div>
+          <div class="nc-stat-balloon eightd">
+            <div class="nc-stat-balloon-value" id="ncStatEightD">0</div>
+            <div class="nc-stat-balloon-label">8D Finalizado</div>
+          </div>
+        </div>
       </div>
       <div class="nc-chart-card nc-chart-month-card" style="position:relative;">
         <h4 id="ncChartMonthTitle">Volume de Reclamações do Cliente (por mês)<button class="nc-chart-edit-btn" id="ncChartEditBtn" title="Editar gráfico">⚙ Editar</button></h4>
@@ -1226,21 +1240,6 @@
           <button class="nc-cep-apply" id="ncCepApply">Aplicar</button>
         </div>
         <canvas id="ncChartMonth"></canvas>
-      </div>
-    </div>
-    <!-- Stat balloons: RNC aberta, alert emitted, 8D finalizado -->
-    <div class="nc-stat-balloons" id="ncStatBalloons">
-      <div class="nc-stat-balloon alerted">
-        <div class="nc-stat-balloon-value" id="ncStatAlerted">0</div>
-        <div class="nc-stat-balloon-label">Alerta Emitido</div>
-      </div>
-      <div class="nc-stat-balloon rnc">
-        <div class="nc-stat-balloon-value" id="ncStatClosed">0</div>
-        <div class="nc-stat-balloon-label">RNC Aberta</div>
-      </div>
-      <div class="nc-stat-balloon eightd">
-        <div class="nc-stat-balloon-value" id="ncStatEightD">0</div>
-        <div class="nc-stat-balloon-label">8D Finalizado</div>
       </div>
     </div>
     <!-- Bottom row: piece + failure mode charts -->
@@ -3961,14 +3960,12 @@ document.addEventListener("DOMContentLoaded", function() {
     if (totalEl) totalEl.textContent = filteredRecords.length;
 
     // Update stat balloons — always across all records (unfiltered)
-    var statAlerted = ncRecords.filter(function(nc){ return nc.alertFile; }).length;
+    // RNC Aberta and Alerta Emitido are the same concept (rncAberta flag)
     var statClosed  = ncRecords.filter(function(nc){ return nc.rncAberta; }).length;
     var statEightD  = ncRecords.filter(function(nc){ return nc.d8Finalizado; }).length;
     var elClosed  = document.getElementById('ncStatClosed');
-    var elAlerted = document.getElementById('ncStatAlerted');
     var elEightD  = document.getElementById('ncStatEightD');
     if (elClosed)  elClosed.textContent  = statClosed;
-    if (elAlerted) elAlerted.textContent = statAlerted;
     if (elEightD)  elEightD.textContent  = statEightD;
 
     // Standard palette — navy blue as primary bar color, warm palette for doughnut
