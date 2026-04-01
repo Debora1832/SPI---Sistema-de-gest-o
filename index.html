@@ -10,6 +10,7 @@
   <!-- Firebase SDK (compat) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 
   <!-- Chart.js (used by the NC page) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
@@ -17,7 +18,8 @@
   <style>
     *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; font-family:'Inter', sans-serif; }
 
-    body { display:flex; background:#f4f6f0; min-height:100vh; }
+    html { overflow-x:hidden; }
+    body { display:flex; background:#f4f6f0; min-height:100vh; overflow-x:hidden; }
 
     /* ===== SIDEBAR ===== */
     .sidebar {
@@ -137,7 +139,7 @@
 
 
     /* ===== MAIN ===== */
-    .main { flex:1; padding:28px 32px; overflow:auto; }
+    .main { flex:1; min-width:0; padding:28px 32px; overflow:auto; }
     .page-header { margin-bottom:24px; border-left:4px solid var(--tenant-sidebar-bg,#1E4D17); padding-left:14px; }
     .page-header h1 { font-size:22px; font-weight:700; color:var(--tenant-sidebar-bg,#1E4D17); }
     .page-header p { font-size:13px; color:#6b7280; margin-top:4px; }
@@ -855,12 +857,16 @@
     .nc-alert-viewer-content iframe { width:100%; height:70vh; border:none; border-radius:6px; background:#fff; }
 
     /* ===== RESPONSIVE ===== */
+    @media (max-width:900px) {
+      .sidebar { width:200px; min-width:200px; padding:16px 12px; }
+      .main { padding:20px 18px; }
+    }
     @media (max-width:680px) {
       body { flex-direction:column; }
       .sidebar { width:100%; min-width:unset; flex-direction:row; flex-wrap:wrap; padding:12px 16px; }
       .sidebar-logo { padding-bottom:0; border-bottom:none; padding-right:16px; }
       .sidebar-nav { flex-direction:row; margin-top:0; gap:4px; }
-      .main { padding:16px; }
+      .main { padding:14px 12px; }
     }
 
     /* ===== SIDEBAR BELL ===== */
@@ -1450,12 +1456,21 @@
     </div>
     <!-- Firestore security rules guidance (shown when a write-permission error is detected) -->
     <div id="fbRulesGuide" class="fb-rules-guide" style="display:none">
-      <strong>⚠ Permissão negada — ajuste as regras do Firestore:</strong>
-      <p style="margin:6px 0 4px">No <a href="https://console.firebase.google.com" target="_blank" rel="noopener" class="fb-guide-link">Firebase Console</a> → Firestore → Regras, cole:</p>
+      <strong>⚠ Permissão negada — ajuste as regras do Firebase:</strong>
+      <p style="margin:6px 0 4px">No <a href="https://console.firebase.google.com" target="_blank" rel="noopener" class="fb-guide-link">Firebase Console</a> → <strong>Firestore Database → Regras</strong>, cole:</p>
       <pre class="fb-rules-pre">rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}</pre>
+      <p style="margin:8px 0 4px">E em <strong>Storage → Regras</strong>, cole:</p>
+      <pre class="fb-rules-pre">rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
       allow read, write: if true;
     }
   }
@@ -1494,6 +1509,7 @@ document.addEventListener("DOMContentLoaded", function() {
   // once via the UI and they are persisted in localStorage.
 
   let db = null;
+  let storage = null;
   let firebaseConnected = false;
 
   function loadFirebaseCfgFromStorage() {
@@ -1520,9 +1536,12 @@ document.addEventListener("DOMContentLoaded", function() {
         return false;
       }
       if (firebase.apps.length) {
-        // Already initialised — just grab the existing Firestore instance and
+        // Already initialised — just grab the existing Firestore/Storage instances and
         // run a quick write-test to confirm we have write access.
         db = firebase.firestore();
+        if (typeof firebase.storage === 'function') {
+          try { storage = firebase.storage(); } catch(e) { console.warn('Storage init error:', e); }
+        }
         _testFirestoreWrite(cfg.projectId);
         return true;
       }
@@ -1535,6 +1554,9 @@ document.addEventListener("DOMContentLoaded", function() {
         appId:             cfg.appId || ""
       });
       db = firebase.firestore();
+      if (typeof firebase.storage === 'function') {
+        try { storage = firebase.storage(); } catch(e) { console.warn('Storage init error:', e); }
+      }
       _testFirestoreWrite(cfg.projectId);
       return true;
     } catch(e) {
@@ -3692,45 +3714,123 @@ document.addEventListener("DOMContentLoaded", function() {
     return r;
   }
 
-  // After loading a set of records from Firestore (which has no photos),
-  // restore the photo arrays from the matching localStorage records.
+  // Upload a single photo to Firebase Storage and return its download URL.
+  // If the photo is already an HTTPS URL (already uploaded), returns it unchanged.
+  // Returns null on failure so the caller can fall back to localStorage storage.
+  async function uploadPhotoToStorage(tenantId, ncId, dataUrl, index) {
+    if (!storage) return null;
+    if (typeof dataUrl === 'string' && dataUrl.startsWith('https://')) return dataUrl;
+    try {
+      var res = await fetch(dataUrl);
+      var blob = await res.blob();
+      var ext = blob.type === 'image/png' ? 'png' : 'jpg';
+      var path = 'nc_photos/' + tenantId + '/' + ncId + '/photo_' + index + '.' + ext;
+      var ref = storage.ref(path);
+      await ref.put(blob, { contentType: blob.type });
+      return await ref.getDownloadURL();
+    } catch(e) {
+      console.warn('Storage upload failed for ' + ncId + '[' + index + ']:', e);
+      return null;
+    }
+  }
+
+  // Prepare an NC record for Firestore: upload base64 photos to Storage and
+  // replace them with HTTPS download URLs. Preserves index correspondence —
+  // failed uploads are stored as null so that the merge step can fill in the
+  // localStorage base64 for those specific slots.
+  async function prepareRecordForFirestore(rec, tenantId) {
+    var r = Object.assign({}, rec);
+    var photos = Array.isArray(r.photos) ? r.photos.slice() : (r.photo ? [r.photo] : []);
+    delete r.photo;
+    if (!photos.length) { delete r.photos; return r; }
+    if (!storage) { delete r.photos; return r; }
+
+    // Upload all photos in parallel; each returns URL or null (keeps index alignment)
+    var urls = await Promise.all(photos.map(function(p, i) {
+      return uploadPhotoToStorage(tenantId, r.id, p, i);
+    }));
+    var hasAnyUrl = urls.some(function(u) { return u && u.startsWith('https://'); });
+    if (hasAnyUrl) {
+      r.photos = urls; // null entries = failed uploads (index-aligned with originals)
+    } else {
+      delete r.photos; // no successful uploads — strip to avoid storing base64 in Firestore
+    }
+    return r;
+  }
+
+  // After loading a set of records from Firestore, restore photo arrays.
+  // Storage HTTPS URLs are preferred; nulls and missing slots are filled from localStorage.
   function mergePhotosFromLocal(fbRecords, localRecords) {
     return fbRecords.map(function(fbRec) {
       var localRec = localRecords.find(function(lr) { return lr.id === fbRec.id; });
-      if (localRec) {
-        if (Array.isArray(localRec.photos) && localRec.photos.length) {
-          fbRec = Object.assign({}, fbRec, { photos: localRec.photos });
-        } else if (localRec.photo) {
-          fbRec = Object.assign({}, fbRec, { photo: localRec.photo });
+      var localPhotos = localRec
+        ? (Array.isArray(localRec.photos) ? localRec.photos : (localRec.photo ? [localRec.photo] : []))
+        : [];
+
+      if (Array.isArray(fbRec.photos) && fbRec.photos.length) {
+        // Firestore has a photos array (may contain Storage URLs or nulls).
+        // Keep Storage URLs; fill null slots with the localStorage version.
+        var merged = fbRec.photos.map(function(p, i) {
+          return (p && typeof p === 'string' && p.startsWith('https://')) ? p : (localPhotos[i] || null);
+        }).filter(Boolean); // remove still-null slots (upload truly failed and no local backup)
+        if (merged.length) {
+          return Object.assign({}, fbRec, { photos: merged });
         }
+      }
+
+      // No Storage photos in Firestore — fall back entirely to localStorage
+      if (localPhotos.length) {
+        return Object.assign({}, fbRec, { photos: localPhotos });
+      }
+      if (localRec && localRec.photo) {
+        return Object.assign({}, fbRec, { photo: localRec.photo });
       }
       return fbRec;
     });
   }
 
-  function saveNcRecords() {
+  async function saveNcRecords() {
     // Always save the full record (with photos) to localStorage so they survive a refresh.
     try { localStorage.setItem(ncStorageKey(), JSON.stringify(ncRecords)); } catch(e) {}
     if (db && firebaseConnected) {
-      setNcSyncBadge('syncing', '↻ Salvando no Firebase…');
-      // Strip base64 photos before writing to Firestore to stay well under the
-      // 1 MB document-size limit.  Photos are preserved in localStorage above.
-      var slim = ncRecords.map(stripPhotos);
-      db.collection('nc_records_' + currentTenant).doc('all')
-        .set({ records: slim })
-        .then(function() { setNcSyncBadge('synced', '✓ Salvo no Firebase'); })
-        .catch(function(e) {
-          console.error('NC Firebase save error:', e);
-          if (e.code === 'permission-denied') {
-            firebaseConnected = false;
-            setFirebaseStatus('error', 'Firebase: sem permissão de escrita');
-            setNcSyncBadge('offline', '⚠ Regras do Firestore bloqueiam escrita — abra Configurações do Firebase para corrigir');
-            // Show the rules guide in the modal when it opens next time
-            window._fbPermErrorPending = true;
-          } else {
-            setNcSyncBadge('offline', '⚠ Erro ao salvar no Firebase – dados preservados localmente');
-          }
-        });
+      setNcSyncBadge('syncing', storage ? '↻ Enviando fotos…' : '↻ Salvando no Firebase…');
+      try {
+        var slim;
+        if (storage) {
+          slim = await Promise.all(ncRecords.map(function(r) {
+            return prepareRecordForFirestore(r, currentTenant);
+          }));
+          // Update in-memory records with Storage URLs so subsequent saves skip re-upload
+          slim.forEach(function(prepRec) {
+            if (!Array.isArray(prepRec.photos) || !prepRec.photos.length) return;
+            var idx = ncRecords.findIndex(function(r) { return r.id === prepRec.id; });
+            if (idx === -1) return;
+            var origPhotos = Array.isArray(ncRecords[idx].photos) ? ncRecords[idx].photos : [];
+            // Replace only slots where Storage URL is available (index-aligned)
+            ncRecords[idx].photos = origPhotos.map(function(p, i) {
+              var storageUrl = prepRec.photos[i];
+              return (storageUrl && typeof storageUrl === 'string' && storageUrl.startsWith('https://'))
+                ? storageUrl : p;
+            });
+          });
+          // Re-save localStorage with the updated Storage URLs
+          try { localStorage.setItem(ncStorageKey(), JSON.stringify(ncRecords)); } catch(e) {}
+        } else {
+          slim = ncRecords.map(stripPhotos);
+        }
+        await db.collection('nc_records_' + currentTenant).doc('all').set({ records: slim });
+        setNcSyncBadge('synced', '✓ Salvo no Firebase');
+      } catch(e) {
+        console.error('NC Firebase save error:', e);
+        if (e.code === 'permission-denied') {
+          firebaseConnected = false;
+          setFirebaseStatus('error', 'Firebase: sem permissão de escrita');
+          setNcSyncBadge('offline', '⚠ Regras do Firebase bloqueiam escrita — abra Configurações do Firebase para corrigir');
+          window._fbPermErrorPending = true;
+        } else {
+          setNcSyncBadge('offline', '⚠ Erro ao salvar no Firebase – dados preservados localmente');
+        }
+      }
     } else {
       setNcSyncBadge('offline', '⚠ Salvo localmente (Firebase desconectado)');
     }
