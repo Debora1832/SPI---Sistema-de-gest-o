@@ -3584,9 +3584,9 @@ document.addEventListener("DOMContentLoaded", function() {
       failureCount[fm] = (failureCount[fm] || 0) + 1;
     });
 
-    // Update total count box (always shows full total)
+    // Update total count box — shows filtered count when a month filter is active
     var totalEl = document.getElementById('ncTotalCount');
-    if (totalEl) totalEl.textContent = ncRecords.length;
+    if (totalEl) totalEl.textContent = filteredRecords.length;
 
     // Standard palette — navy blue as primary bar color, warm palette for doughnut
     var navyBlue  = _ncChartSettings.barColor || '#1b4d8e';
