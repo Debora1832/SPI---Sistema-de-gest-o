@@ -23,8 +23,11 @@
 
     /* ===== SIDEBAR ===== */
     .sidebar {
+      position:relative;
       width:240px; min-width:240px; background:#1E4D17; color:white;
       padding:24px 16px; display:flex; flex-direction:column; gap:8px;
+      transition:width .25s ease, min-width .25s ease, padding .25s ease;
+      overflow:hidden;
     }
     .sidebar-logo {
       display:flex; align-items:center; gap:10px;
@@ -42,11 +45,58 @@
       padding:10px 12px; border-radius:8px; cursor:pointer;
       display:flex; align-items:center; gap:10px; font-size:14px;
       color:#c8e0c3; transition:background .15s, color .15s;
+      white-space:nowrap; overflow:hidden;
     }
     .sidebar-nav li .nav-icon { width:18px; text-align:center; flex-shrink:0; }
     .sidebar-nav li.active { background:var(--tenant-nav-active-bg,#367C2B); color:var(--tenant-nav-active-text,#FFDE00); font-weight:700; }
     .sidebar-nav li:not(.active):hover { background:rgba(255,255,255,.1); color:white; }
     .sidebar-footer { margin-top:auto; padding-top:16px; border-top:1px solid rgba(255,255,255,.12); font-size:11px; color:#7aaa6f; text-align:center; }
+
+    /* ===== SIDEBAR TOGGLE BUTTON ===== */
+    .sidebar-toggle-btn {
+      position:absolute; top:14px; right:8px;
+      width:26px; height:26px; border-radius:50%;
+      background:rgba(255,255,255,.15);
+      border:1.5px solid rgba(255,255,255,.25);
+      color:rgba(255,255,255,.85); cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+      transition:background .15s;
+      z-index:10; flex-shrink:0;
+    }
+    .sidebar-toggle-btn:hover { background:rgba(255,255,255,.3); }
+    .sidebar-toggle-btn svg { transition:transform .25s; flex-shrink:0; }
+    .sidebar.collapsed .sidebar-toggle-btn { right:auto; left:50%; transform:translateX(-50%); top:14px; }
+    .sidebar.collapsed .sidebar-toggle-btn svg { transform:rotate(180deg); }
+
+    /* ===== COLLAPSED SIDEBAR ===== */
+    .sidebar.collapsed { width:56px; min-width:56px; padding:24px 8px; }
+    .sidebar.collapsed .sidebar-logo { padding-bottom:18px; justify-content:center; padding-top:28px; }
+    .sidebar.collapsed .sidebar-logo > div:not(.logo-icon) { display:none; }
+    .sidebar.collapsed .sidebar-logo .logo-icon { width:40px; height:40px; border-radius:8px; }
+    .sidebar.collapsed .logo-initials { font-size:16px; }
+    .sidebar.collapsed .sidebar-nav li { padding:10px; justify-content:center; gap:0; }
+    .sidebar.collapsed .sidebar-nav li .nav-label { display:none; }
+    .sidebar.collapsed .sidebar-nav li { position:relative; }
+    .sidebar.collapsed .sidebar-nav li::after {
+      content:attr(data-tooltip);
+      position:absolute; left:calc(100% + 10px); top:50%;
+      transform:translateY(-50%);
+      background:rgba(0,0,0,.8); color:#fff;
+      font-size:12px; white-space:nowrap; padding:4px 8px;
+      border-radius:5px; pointer-events:none;
+      opacity:0; transition:opacity .15s;
+      z-index:200;
+    }
+    .sidebar.collapsed .sidebar-nav li:hover::after { opacity:1; }
+    .sidebar.collapsed .tenant-switcher { display:none; }
+    .sidebar.collapsed .sidebar-footer { padding-top:12px; }
+    .sidebar.collapsed .sidebar-footer .firebase-status-btn { padding:7px; justify-content:center; }
+    .sidebar.collapsed .sidebar-footer .firebase-status-btn > span:last-of-type,
+    .sidebar.collapsed .sidebar-footer .firebase-status-btn > svg:last-child,
+    .sidebar.collapsed .sidebar-footer #firebaseStatusLabel { display:none; }
+    .sidebar.collapsed .sidebar-footer > :last-child { display:none; }
+    /* Expand main when sidebar collapses */
+    body:has(.sidebar.collapsed) .main { flex:1; }
     .firebase-status-btn {
       display:flex; align-items:center; gap:6px; background:rgba(255,255,255,.08);
       border:1px solid rgba(255,255,255,.15); color:rgba(255,255,255,.7);
@@ -905,6 +955,7 @@
       .sidebar-logo { padding-bottom:0; border-bottom:none; padding-right:16px; }
       .sidebar-nav { flex-direction:row; margin-top:0; gap:4px; }
       .main { padding:14px 12px; }
+      .sidebar-toggle-btn { display:none; }
     }
 
     /* ===== SIDEBAR BELL ===== */
@@ -1022,6 +1073,9 @@
 <body>
 
 <div class="sidebar">
+  <button class="sidebar-toggle-btn" id="sidebarToggleBtn" title="Recolher menu" aria-label="Recolher menu">
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+  </button>
   <div class="sidebar-logo">
     <div class="logo-icon">
       <span class="logo-initials" id="logoInitials">JD</span>
@@ -1049,29 +1103,29 @@
     </div>
   </div>
   <ul class="sidebar-nav">
-    <li data-page="dashboard" class="active">
+    <li data-page="dashboard" class="active" data-tooltip="Dashboard">
       <span class="nav-icon">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path d="M2 11l8-8 8 8v7a1 1 0 01-1 1H3a1 1 0 01-1-1v-7z"/><path d="M7 18v-6h6v6"/></svg>
       </span>
-      Dashboard
+      <span class="nav-label">Dashboard</span>
     </li>
-    <li data-page="projects">
+    <li data-page="projects" data-tooltip="Projetos">
       <span class="nav-icon">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 0h8v12H6V4zm2 2h4v1H8V6zm0 3h4v1H8V9zm0 3h2v1H8v-1z" clip-rule="evenodd"/></svg>
       </span>
-      Projetos
+      <span class="nav-label">Projetos</span>
     </li>
-    <li data-page="ganttPage">
+    <li data-page="ganttPage" data-tooltip="Cronograma">
       <span class="nav-icon">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path d="M3 4h14v2H3V4zm0 5h10v2H3V9zm0 5h7v2H3v-2z"/></svg>
       </span>
-      Cronograma
+      <span class="nav-label">Cronograma</span>
     </li>
-    <li data-page="ncPage">
+    <li data-page="ncPage" data-tooltip="NC">
       <span class="nav-icon">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
       </span>
-      NC
+      <span class="nav-label">NC</span>
     </li>
   </ul>
   <div class="tenant-switcher">
@@ -3114,6 +3168,38 @@ document.addEventListener("DOMContentLoaded", function() {
       if(pageId === "ganttPage") setTimeout(renderGantt, 100);
     });
   });
+
+  // ── Collapsible sidebar ───────────────────────────────────────────────────
+  (function() {
+    var sidebar = document.querySelector('.sidebar');
+    var btn     = document.getElementById('sidebarToggleBtn');
+    if (!sidebar || !btn) return;
+
+    var STORAGE_KEY = 'spi_sidebar_collapsed';
+
+    function applyState(collapsed) {
+      if (collapsed) {
+        sidebar.classList.add('collapsed');
+        btn.title = 'Expandir menu';
+        btn.setAttribute('aria-label', 'Expandir menu');
+      } else {
+        sidebar.classList.remove('collapsed');
+        btn.title = 'Recolher menu';
+        btn.setAttribute('aria-label', 'Recolher menu');
+      }
+    }
+
+    // Restore saved state
+    try {
+      applyState(localStorage.getItem(STORAGE_KEY) === '1');
+    } catch(e) { applyState(false); }
+
+    btn.addEventListener('click', function() {
+      var willCollapse = !sidebar.classList.contains('collapsed');
+      applyState(willCollapse);
+      try { localStorage.setItem(STORAGE_KEY, willCollapse ? '1' : '0'); } catch(e) {}
+    });
+  })();
 
   // ── Init ──────────────────────────────────────────────────────────────────
 
