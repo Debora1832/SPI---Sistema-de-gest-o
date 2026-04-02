@@ -4724,15 +4724,9 @@ document.addEventListener("DOMContentLoaded", function() {
             renderNcCards();
             renderNcCharts();
           } else if (action === 'rnc_aberta') {
-            // Toggle off only if no document was attached yet; once locked, the button is read-only
+            // Once RNC Aberta is confirmed it is permanent and cannot be deactivated
             if (ncRecords[idx].rncAberta) {
-              if (ncRecords[idx].alertFile || ncRecords[idx].alertFileUrl) {
-                alert('RNC Aberta não pode ser desativada após o anexo do alerta/documento.');
-                return;
-              }
-              ncRecords[idx].rncAberta = false;
-              saveNcRecords();
-              renderNcCards();
+              return; // already active — do nothing
             } else {
               openNcStatusModal(id, 'rnc_aberta');
             }
@@ -5164,6 +5158,8 @@ document.addEventListener("DOMContentLoaded", function() {
     var input    = document.getElementById('ncPhotoInput');
     var thumbs   = document.getElementById('ncPhotoThumbs');
     var _editingNcId = null; // null = create mode; string id = edit mode
+    var _editAlertDataUrl  = null;
+    var _editAlertFileName = '';
 
     // ── Open / close modal ────────────────────────────────────────────────
     function openNcModal() {
@@ -5178,6 +5174,12 @@ document.addEventListener("DOMContentLoaded", function() {
       document.getElementById('ncDate').value        = new Date().toISOString().slice(0,10);
       document.getElementById('ncDescription').value = '';
       input.value = '';
+      // Hide alert section in create mode
+      document.getElementById('ncAlertEditSection').style.display = 'none';
+      _editAlertDataUrl  = null;
+      _editAlertFileName = '';
+      document.getElementById('ncEditAlertFileName').textContent = '';
+      document.getElementById('ncEditAlertFileInput').value = '';
       document.getElementById('ncModalTitle').innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 20 20" fill="currentColor" style="vertical-align:-2px;margin-right:6px"><path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/></svg>Cadastrar Nova NC';
       document.getElementById('ncBtnSubmit').innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/></svg> Cadastrar NC';
       backdrop.classList.add('open');
@@ -5197,6 +5199,23 @@ document.addEventListener("DOMContentLoaded", function() {
       document.getElementById('ncDate').value        = nc.date || new Date().toISOString().slice(0,10);
       document.getElementById('ncDescription').value = nc.description || '';
       input.value = '';
+      // Alert file replacement section — only visible when RNC is open
+      var alertSection = document.getElementById('ncAlertEditSection');
+      var alertDropLabel = document.getElementById('ncEditAlertDropLabel');
+      var alertFileName  = document.getElementById('ncEditAlertFileName');
+      _editAlertDataUrl  = null;
+      _editAlertFileName = '';
+      alertFileName.textContent = '';
+      document.getElementById('ncEditAlertFileInput').value = '';
+      if (nc.rncAberta) {
+        alertSection.style.display = '';
+        var existingName = nc.alertFileName || (nc.alertFileUrl ? 'alerta existente' : '');
+        alertDropLabel.textContent = existingName
+          ? 'Arquivo atual: ' + existingName + ' — clique para substituir'
+          : 'Clique ou arraste para anexar o alerta';
+      } else {
+        alertSection.style.display = 'none';
+      }
       document.getElementById('ncModalTitle').innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 20 20" fill="currentColor" style="vertical-align:-2px;margin-right:6px"><path stroke="currentColor" d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zm-2.207 2.207L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/></svg>Editar NC';
       document.getElementById('ncBtnSubmit').innerHTML = '✔ Salvar Alterações';
       backdrop.classList.add('open');
@@ -5225,6 +5244,30 @@ document.addEventListener("DOMContentLoaded", function() {
       addPhotos(e.dataTransfer.files);
     });
     input.addEventListener('change', function() { addPhotos(input.files); });
+
+    // ── Edit-mode alert file replacement ─────────────────────────────────
+    var editAlertDrop  = document.getElementById('ncEditAlertDrop');
+    var editAlertInput = document.getElementById('ncEditAlertFileInput');
+
+    editAlertDrop.addEventListener('click', function() { editAlertInput.click(); });
+    editAlertDrop.addEventListener('dragover', function(e) { e.preventDefault(); editAlertDrop.classList.add('dragover'); });
+    editAlertDrop.addEventListener('dragleave', function(e) { if (!editAlertDrop.contains(e.relatedTarget)) editAlertDrop.classList.remove('dragover'); });
+    editAlertDrop.addEventListener('drop', function(e) {
+      e.preventDefault(); editAlertDrop.classList.remove('dragover');
+      if (e.dataTransfer.files[0]) readEditAlertFile(e.dataTransfer.files[0]);
+    });
+    editAlertInput.addEventListener('change', function() { if (editAlertInput.files[0]) readEditAlertFile(editAlertInput.files[0]); });
+
+    function readEditAlertFile(file) {
+      _editAlertFileName = file.name;
+      var reader = new FileReader();
+      reader.onload = function(ev) {
+        _editAlertDataUrl = ev.target.result;
+        document.getElementById('ncEditAlertFileName').textContent = '📎 ' + file.name;
+        document.getElementById('ncEditAlertDropLabel').textContent = 'Arquivo selecionado — clique para trocar';
+      };
+      reader.readAsDataURL(file);
+    }
 
     function addPhotos(fileList) {
       Array.prototype.forEach.call(fileList, function(file) {
@@ -5287,6 +5330,13 @@ document.addEventListener("DOMContentLoaded", function() {
           ncRecords[idx].date        = date;
           ncRecords[idx].description = document.getElementById('ncDescription').value.trim();
           ncRecords[idx].photos      = _ncPhotos.slice();
+          // Replace alert file if a new one was selected
+          if (_editAlertDataUrl) {
+            ncRecords[idx].alertFile     = _editAlertDataUrl;
+            ncRecords[idx].alertFileName = _editAlertFileName || '';
+            // Clear the old URL so the new file takes precedence
+            delete ncRecords[idx].alertFileUrl;
+          }
           saveNcRecords();
           closeNcModal();
           renderNcCards();
@@ -5665,6 +5715,17 @@ document.addEventListener("DOMContentLoaded", function() {
         <div class="nc-field nc-field-full">
           <label>Descrição da Reclamação</label>
           <textarea id="ncDescription" placeholder="Descreva brevemente o problema encontrado…" maxlength="400"></textarea>
+        </div>
+
+        <!-- Alert file replacement (only shown in edit mode when rncAberta is true) -->
+        <div class="nc-field nc-field-full" id="ncAlertEditSection" style="display:none;">
+          <label>Alerta / Documento da RNC</label>
+          <div class="nc-alert-drop" id="ncEditAlertDrop" title="Clique ou arraste para trocar o arquivo">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01-.01.01m5.699-9.941-7.81 7.81a1.5 1.5 0 002.112 2.13"/></svg>
+            <span id="ncEditAlertDropLabel">Clique ou arraste para substituir o alerta atual</span>
+          </div>
+          <input type="file" id="ncEditAlertFileInput" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" style="display:none;" />
+          <div class="nc-alert-file-name" id="ncEditAlertFileName"></div>
         </div>
 
       </div>
