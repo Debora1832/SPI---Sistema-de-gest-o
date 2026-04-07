@@ -975,10 +975,10 @@
       border:1.5px solid #fff; line-height:1; pointer-events:none;
     }
     .sidebar-bell-panel {
-      position:absolute; top:calc(100% + 6px); left:0;
+      position:fixed; top:0; left:0;
       width:340px; max-width:calc(100vw - 20px);
       background:#fff; border-radius:10px;
-      box-shadow:0 8px 32px rgba(0,0,0,.22); z-index:1200;
+      box-shadow:0 8px 32px rgba(0,0,0,.22); z-index:9999;
       overflow:hidden; display:none;
     }
     .sidebar-bell-panel.open { display:block; }
@@ -1058,8 +1058,9 @@
     .bell-item {
       display:flex; flex-direction:column; gap:2px;
       padding:10px 16px; border-bottom:1px solid #f3f4f6;
-      font-size:12px;
+      font-size:12px; transition:background .12s;
     }
+    .bell-item[data-action-id]:hover { background:#f0fdf4; }
     .bell-item:last-child { border-bottom:none; }
     .bell-item-title { font-weight:700; color:#111827; font-size:13px; }
     .bell-item-sub   { color:#6b7280; }
@@ -2516,24 +2517,48 @@ document.addEventListener("DOMContentLoaded", function() {
       const label = daysLate === 0 ? "Venceu hoje" :
                     daysLate === 1 ? "Atrasada 1 dia" :
                     "Atrasada " + daysLate + " dias";
-      return '<div class="bell-item">' +
+      return '<div class="bell-item" data-action-id="' + a.id + '" style="cursor:pointer;" title="Clique para editar">' +
         '<span class="bell-item-title">#' + a.id + ' — ' + esc(truncate(a.desc, 60)) + '</span>' +
         '<span class="bell-item-sub">' + esc(a.group) + ' · ' + esc(a.lead || '—') + '</span>' +
         '<span class="bell-item-days urgent">' + label + ' (' + fmtDate(a.reprazo||a.end) + ')</span>' +
         '</div>';
     }).join('') + (delayed.length > 25 ? '<div class="bell-item" style="text-align:center;color:#6b7280;font-size:12px;">+' + (delayed.length - 25) + ' mais</div>' : '');
+
+    // Click on a bell item → open edit modal
+    body.querySelectorAll('.bell-item[data-action-id]').forEach(function(el){
+      el.addEventListener('click', function(e){
+        e.stopPropagation();
+        const actionId = parseInt(el.getAttribute('data-action-id'), 10);
+        document.getElementById("sidebarBellPanel").classList.remove("open");
+        openEditModal(actionId);
+      });
+    });
   }
 
   document.getElementById("sidebarBtnBell").addEventListener("click", function(e){
     e.stopPropagation();
-    renderSidebarBell();
-    document.getElementById("sidebarBellPanel").classList.toggle("open");
+    const panel = document.getElementById("sidebarBellPanel");
+    const isOpen = panel.classList.contains("open");
+    if (!isOpen) {
+      renderSidebarBell();
+      // Position panel below the bell button using fixed coords
+      const btnRect = document.getElementById("sidebarBtnBell").getBoundingClientRect();
+      panel.style.top  = (btnRect.bottom + 6) + "px";
+      panel.style.left = Math.min(btnRect.left, window.innerWidth - 350) + "px";
+      panel.classList.add("open");
+    } else {
+      panel.classList.remove("open");
+    }
   });
   document.getElementById("sidebarBellPanel").addEventListener("click", function(e){ e.stopPropagation(); });
 
-  // Close sidebar panel when clicking outside
-  document.addEventListener("click", function(){
-    document.getElementById("sidebarBellPanel").classList.remove("open");
+  // Close sidebar panel when clicking outside the bell wrap
+  document.addEventListener("click", function(e){
+    const wrap = document.getElementById("sidebarBellWrap");
+    const panel = document.getElementById("sidebarBellPanel");
+    if (!wrap.contains(e.target) && !panel.contains(e.target)) {
+      panel.classList.remove("open");
+    }
   });
 
   // ── Firebase Config Modal ─────────────────────────────────────────────────
