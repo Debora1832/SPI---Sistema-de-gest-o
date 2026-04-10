@@ -1089,15 +1089,6 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22a2 2 0 01-2-2h4a2 2 0 01-2 2zm6-6H6l-2 2V9a8 8 0 1116 0v9l-2-2z"/></svg>
             <span class="sidebar-bell-badge" id="sidebarBellBadge" style="display:none">0</span>
           </button>
-          <div class="bell-panel sidebar-bell-panel" id="sidebarBellPanel">
-            <div class="bell-panel-header">
-              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22a2 2 0 01-2-2h4a2 2 0 01-2 2zm6-6H6l-2 2V9a8 8 0 1116 0v9l-2-2z"/></svg>
-              Ações em atraso
-            </div>
-            <div class="bell-panel-body" id="sidebarBellPanelBody">
-              <div class="bell-empty">Nenhuma ação em atraso.</div>
-            </div>
-          </div>
         </div>
       </div>
       <span id="sidebarSubtitle">Gestão do Projeto</span>
@@ -2552,11 +2543,11 @@ document.addEventListener("DOMContentLoaded", function() {
   });
   document.getElementById("sidebarBellPanel").addEventListener("click", function(e){ e.stopPropagation(); });
 
-  // Close sidebar panel when clicking outside the bell wrap
+  // Close sidebar bell panel when clicking outside the button or the panel
   document.addEventListener("click", function(e){
-    const wrap = document.getElementById("sidebarBellWrap");
+    const btn   = document.getElementById("sidebarBtnBell");
     const panel = document.getElementById("sidebarBellPanel");
-    if (!wrap.contains(e.target) && !panel.contains(e.target)) {
+    if (!btn.contains(e.target) && !panel.contains(e.target)) {
       panel.classList.remove("open");
     }
   });
@@ -5977,6 +5968,17 @@ document.addEventListener("DOMContentLoaded", function() {
       <button class="nt-btn-cancel" id="newTenantCancel">Cancelar</button>
       <button class="nt-btn-save" id="newTenantSave">Criar cliente</button>
     </div>
+  </div>
+</div>
+
+<!-- ── Sidebar Bell Panel (rendered outside sidebar to avoid overflow/stacking issues) ── -->
+<div class="bell-panel sidebar-bell-panel" id="sidebarBellPanel">
+  <div class="bell-panel-header">
+    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22a2 2 0 01-2-2h4a2 2 0 01-2 2zm6-6H6l-2 2V9a8 8 0 1116 0v9l-2-2z"/></svg>
+    Ações em atraso
+  </div>
+  <div class="bell-panel-body" id="sidebarBellPanelBody">
+    <div class="bell-empty">Nenhuma ação em atraso.</div>
   </div>
 </div>
 
