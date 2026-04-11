@@ -723,6 +723,36 @@
     .nc-alert-filter-btn:hover { background:#f9fafb; }
     /* checkbox in popover */
     .nc-cep-row input[type=checkbox] { width:16px; height:16px; flex-shrink:0; cursor:pointer; }
+    /* ── Custom charts section ─────────────────────────────────────────────── */
+    .nc-custom-section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap; gap:8px; }
+    .nc-add-chart-btn { display:inline-flex; align-items:center; gap:6px; background:#1b4d8e; color:#fff; border:none; border-radius:8px; padding:7px 16px; font-size:13px; font-weight:700; cursor:pointer; transition:background .15s; flex-shrink:0; }
+    .nc-add-chart-btn:hover { background:#163d77; }
+    .nc-custom-charts-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; }
+    @media (max-width:640px) { .nc-custom-charts-grid { grid-template-columns:1fr; } }
+    .nc-custom-chart-item h4 { display:flex; align-items:center; gap:6px; }
+    .nc-custom-chart-item canvas { max-height:260px; }
+    .nc-custom-empty { color:#9ca3af; font-size:13px; padding:20px 0; grid-column:1/-1; }
+    .nc-custom-del-btn { color:#ef4444 !important; }
+    /* ── Builder modal ─────────────────────────────────────────────────────── */
+    .nc-builder-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:2100; }
+    .nc-builder-backdrop.open { display:block; }
+    .nc-builder-modal { display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:2200; background:#fff; border-radius:14px; box-shadow:0 20px 60px rgba(0,0,0,.22); width:min(480px,92vw); overflow:hidden; }
+    .nc-builder-modal.open { display:block; }
+    .nc-builder-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid #e5e7eb; }
+    .nc-builder-header h3 { font-size:16px; font-weight:700; color:#111; margin:0; }
+    .nc-builder-close { background:none; border:none; font-size:18px; cursor:pointer; color:#6b7280; line-height:1; padding:2px 6px; border-radius:6px; }
+    .nc-builder-close:hover { background:#f3f4f6; color:#111; }
+    .nc-builder-body { padding:20px; display:flex; flex-direction:column; gap:14px; }
+    .nc-builder-row { display:flex; flex-direction:column; gap:5px; }
+    .nc-builder-row label { font-size:12px; font-weight:600; color:#374151; }
+    .nc-builder-row input[type=text], .nc-builder-row select { padding:8px 12px; border:1px solid #e5e7eb; border-radius:8px; font-size:13px; color:#111; outline:none; transition:border-color .15s; }
+    .nc-builder-row input[type=text]:focus, .nc-builder-row select:focus { border-color:#1b4d8e; }
+    .nc-builder-row input[type=color] { width:44px; height:34px; padding:2px; border:1px solid #e5e7eb; border-radius:8px; cursor:pointer; }
+    .nc-builder-footer { display:flex; gap:10px; justify-content:flex-end; padding:14px 20px; border-top:1px solid #f3f4f6; background:#fafafa; }
+    .nc-builder-cancel { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:8px 18px; font-size:13px; font-weight:600; color:#374151; cursor:pointer; }
+    .nc-builder-cancel:hover { background:#f3f4f6; }
+    .nc-builder-save { background:#1b4d8e; color:#fff; border:none; border-radius:8px; padding:8px 20px; font-size:13px; font-weight:700; cursor:pointer; transition:background .15s; }
+    .nc-builder-save:hover { background:#163d77; }
     /* NC search bar */
     .nc-search-bar { display:flex; align-items:center; gap:10px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:12px; padding:10px 16px; margin-bottom:12px; }
     .nc-search-bar svg { flex-shrink:0; color:#6b7280; }
@@ -1378,6 +1408,18 @@
       </div>
     </div>
 
+    <!-- Custom Charts Section -->
+    <div class="nc-custom-section-header">
+      <div class="nc-section-title" style="margin-bottom:0">Gráficos Personalizados</div>
+      <button class="nc-add-chart-btn" id="ncAddCustomChartBtn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/></svg>
+        Adicionar Gráfico
+      </button>
+    </div>
+    <div class="nc-custom-charts-grid" id="ncCustomChartsGrid">
+      <div class="nc-custom-empty">Nenhum gráfico personalizado. Clique em "Adicionar Gráfico" para criar.</div>
+    </div>
+
     <!-- NC Cards List -->
     <div class="nc-section-title" style="margin-bottom:14px">NCs Cadastradas</div>
     <div class="nc-search-bar">
@@ -1420,6 +1462,58 @@
 
   </div>
 
+</div>
+
+<!-- CUSTOM CHART BUILDER MODAL -->
+<div class="nc-builder-backdrop" id="ncBuilderBackdrop"></div>
+<div class="nc-builder-modal" id="ncBuilderModal" role="dialog" aria-modal="true" aria-labelledby="ncBuilderModalTitle">
+  <div class="nc-builder-header">
+    <h3 id="ncBuilderModalTitle">Novo Gráfico</h3>
+    <button class="nc-builder-close" id="ncBuilderClose" aria-label="Fechar">✕</button>
+  </div>
+  <div class="nc-builder-body">
+    <div class="nc-builder-row">
+      <label for="ncBuilderTitleInput">Título do gráfico</label>
+      <input type="text" id="ncBuilderTitleInput" placeholder="Ex: NCs por Peça" maxlength="80" autocomplete="off" />
+    </div>
+    <div class="nc-builder-row">
+      <label for="ncBuilderField">Dado a visualizar (categorias / eixo X)</label>
+      <select id="ncBuilderField">
+        <option value="piece">Peça</option>
+        <option value="failureMode">Modo de Falha</option>
+        <option value="month">Mês (últimos 12)</option>
+        <option value="customer">Cliente</option>
+        <option value="status">Status (Em aberto / RNC / 8D)</option>
+      </select>
+    </div>
+    <div class="nc-builder-row">
+      <label for="ncBuilderType">Tipo de gráfico</label>
+      <select id="ncBuilderType">
+        <option value="bar">Barras verticais</option>
+        <option value="bar-h">Barras horizontais</option>
+        <option value="pie">Pizza</option>
+        <option value="doughnut">Rosca (Doughnut)</option>
+        <option value="line">Linha</option>
+      </select>
+    </div>
+    <div class="nc-builder-row">
+      <label for="ncBuilderColor">Cor principal</label>
+      <input type="color" id="ncBuilderColor" value="#1b4d8e" />
+    </div>
+    <div class="nc-builder-row" id="ncBuilderSortRow">
+      <label for="ncBuilderSort">Ordenar por</label>
+      <select id="ncBuilderSort">
+        <option value="desc">Maior → Menor</option>
+        <option value="asc">Menor → Maior</option>
+        <option value="az">A → Z</option>
+        <option value="za">Z → A</option>
+      </select>
+    </div>
+  </div>
+  <div class="nc-builder-footer">
+    <button class="nc-builder-cancel" id="ncBuilderCancel">Cancelar</button>
+    <button class="nc-builder-save" id="ncBuilderSave">✔ Salvar Gráfico</button>
+  </div>
 </div>
 
 <!-- ACTION DETAIL MODAL -->
@@ -1818,6 +1912,7 @@ document.addEventListener("DOMContentLoaded", function() {
                   try { localStorage.setItem('spi_nc_records_' + currentTenant, JSON.stringify(ncRecords)); } catch(e) {}
                   renderNcCards();
                   if (typeof renderNcCharts === 'function') renderNcCharts();
+                  if (typeof renderNcCustomCharts === 'function') renderNcCustomCharts();
                 }
               }
             }).catch(function(e) { console.warn('NC Firebase reload error:', e); });
@@ -1858,6 +1953,7 @@ document.addEventListener("DOMContentLoaded", function() {
           if (typeof setNcSyncBadge === 'function') setNcSyncBadge('synced', '✓ Atualizado em tempo real');
           if (typeof renderNcCards === 'function')  renderNcCards();
           if (typeof renderNcCharts === 'function') renderNcCharts();
+          if (typeof renderNcCustomCharts === 'function') renderNcCustomCharts();
         }, function(e) { console.warn('NC onSnapshot error:', e); });
     } catch(e) { console.warn('NC onSnapshot setup error:', e); }
 
@@ -1921,20 +2017,20 @@ document.addEventListener("DOMContentLoaded", function() {
     {id:2,  group:"PFMEA e Plano de Controle",      status:"complete",    start:"2025-06-30", end:"2025-07-01",  completionDate:"2025-07-01", reprazo:"2025-07-01",  team:"ENGENHARIA", lead:"EDVAN",
       comments:"355 itens ativos para a John Deere e que necessitam revisão",
       desc:"Avaliar quantidade de PFMEA e Planos de Controle que estão atualizados e adequados e quantos não estão"},
-    {id:3,  group:"PFMEA e Plano de Controle",      status:"complete",    start:"2025-07-01", end:"2025-07-04",  completionDate:"2025-08-11", reprazo:"2025-08-11",  team:"QUALIDADE",  lead:"ANDRE",
-      comments:"355 itens\n29/07/2025: Novo Prazo - 05/08/2025\n06/08/2025: Mapeado que até 31 de Outubro, 89 códigos representam 80% das entregas (quantidade de peças) para a John Deere - faltando definição da contenção - novo prazo - 08/08/2025\n27/08/2025: definindo a implementação de embarque controlado interno",
+    {id:3,  group:"PFMEA e Plano de Controle",      status:"on_going",    start:"2025-07-01", end:"2025-09-30",  completionDate:"", reprazo:"",               team:"ENGENHARIA", lead:"ANDRE KEIJI",
+      comments:"330 itens - Ver prazo com André",
       desc:"Definir estratégia de contenção para itens com plano de controle desatualizados"},
-    {id:4,  group:"PFMEA e Plano de Controle",      status:"complete",    start:"2025-06-30", end:"2025-07-11",  completionDate:"2025-07-29", reprazo:"2025-07-29",  team:"ENGENHARIA", lead:"EDVAN",
-      comments:"Gestão sendo realizada via sistema pipefy",
+    {id:4,  group:"PFMEA e Plano de Controle",      status:"on_going",    start:"2025-06-30", end:"2025-07-11",  completionDate:"", reprazo:"",               team:"ENGENHARIA", lead:"ANDRE KEIJI",
+      comments:"Já existe a gestão",
       desc:"Implementar gestão de PFMEA e Planos de controle"},
-    {id:5,  group:"PFMEA e Plano de Controle",      status:"complete",    start:"2025-07-01", end:"2025-07-11",  completionDate:"2025-08-11", reprazo:"2025-08-11",  team:"ENGENHARIA", lead:"EDVAN",
-      comments:"29/07/2025: Novo prazo: 05/08/2025\n06/08/2025: Novo prazo: 11/08/2025",
+    {id:5,  group:"PFMEA e Plano de Controle",      status:"on_going",    start:"2025-07-01", end:"2025-07-11",  completionDate:"", reprazo:"",               team:"ENGENHARIA", lead:"ANDRE KEIJI",
+      comments:"Ver com ANDRÉ - Adequação de processo após a revisão?",
       desc:"Elaborar plano de ação (5W2H) para adequação dos PFMEA e Plano de controle não adequados"},
     {id:6,  group:"PFMEA e Plano de Controle",      status:"complete",    start:"2025-06-25", end:"2025-07-30",  completionDate:"2025-07-31", reprazo:"2025-07-31",  team:"ENGENHARIA", lead:"ELISANGELA",
       comments:"06/08/2025: Definido o fluxo para acionamento de líder de produção e definição imediata in loco",
       desc:"Definir estratégia para plano de reação e contenção em caso de reprovações"},
-    {id:7,  group:"PFMEA e Plano de Controle",      status:"complete",    start:"2025-06-30", end:"2025-12-19",  completionDate:"2026-01-05", reprazo:"2026-01-05",  team:"ENGENHARIA", lead:"ANDRE",
-      comments:"",
+    {id:7,  group:"PFMEA e Plano de Controle",      status:"on_going",    start:"2025-06-30", end:"2025-12-19",  completionDate:"", reprazo:"",               team:"ENGENHARIA", lead:"ANDRE KEIJI",
+      comments:"Ver com o André prazos",
       desc:"Concluir a avaliação e revisão do PFMEA e do Plano de Controle dos 355 PN mapeados na atividade n°2 (evolução de acordo com o plano de ação criado na atividade n° 8)"},
 
     {id:8,  group:"Plano de Controle e Setup",      status:"complete",    start:"2025-06-16", end:"2026-02-27",  completionDate:"2025-07-01", reprazo:"2025-07-01",  team:"QUALIDADE",  lead:"MIKE",
@@ -1952,53 +2048,53 @@ document.addEventListener("DOMContentLoaded", function() {
     {id:12, group:"Plano de Controle e Setup",      status:"complete",    start:"2025-07-01", end:"2025-07-11",  completionDate:"2025-09-12", reprazo:"2025-09-12",  team:"QUALIDADE",  lead:"AILEN",
       comments:"29/07/2025: Novo Prazo - 05/08/2025\n06/08/2025: Novo prazo: 08/08/2025\n27/08/2025: Novo Prazo - 02/09/2025\n02/09/2025: Novo prazo - 16/09/2025",
       desc:"Elaborar cronograma para KICKOFF da nova estratégia para cada um dos postos mapeados (59)"},
-    {id:13, group:"Plano de Controle e Setup",      status:"complete",    start:"2025-07-01", end:"2025-11-28",  completionDate:"2025-12-10", reprazo:"2025-12-10",  team:"QUALIDADE",  lead:"EDVAN",
+    {id:13, group:"Plano de Controle e Setup",      status:"on_going",    start:"2025-07-01", end:"2025-11-28",  completionDate:"", reprazo:"",               team:"QUALIDADE",  lead:"ERON",
       comments:"",
       desc:"Executar Kick off da nova estrategia de Setup nos 59 postos de trabalho mapeados"},
-    {id:14, group:"Plano de Controle e Setup",      status:"complete",    start:"2025-07-01", end:"2025-11-28",  completionDate:"2025-12-10", reprazo:"2025-12-10",  team:"QUALIDADE",  lead:"EDVAN",
+    {id:14, group:"Plano de Controle e Setup",      status:"on_going",    start:"2025-07-01", end:"2025-08-28",  completionDate:"", reprazo:"",               team:"QUALIDADE",  lead:"ERON",
       comments:"",
       desc:"Treinar colaboradores na operação para executar setup conforme cronograma elaborado na atividade 12"},
 
-    {id:15, group:"Inspeção Volante da Qualidade",  status:"complete",    start:"2025-06-25", end:"2025-11-28",  completionDate:"2025-12-10", reprazo:"2025-12-10",  team:"QUALIDADE",  lead:"AILEN",
+    {id:15, group:"Inspeção Volante da Qualidade",  status:"on_going",    start:"2025-06-25", end:"2025-11-28",  completionDate:"", reprazo:"",               team:"QUALIDADE",  lead:"ERON",
       comments:"",
       desc:"Mapear todas as inspeções necessárias a partir dos PCs existentes"},
-    {id:16, group:"Inspeção Volante da Qualidade",  status:"complete",    start:"2025-06-25", end:"2025-12-06",  completionDate:"", reprazo:"",               team:"QUALIDADE",  lead:"AILEN",
-      comments:"",
+    {id:16, group:"Inspeção Volante da Qualidade",  status:"complete",    start:"2025-06-25", end:"2025-12-06",  completionDate:"", reprazo:"",               team:"QUALIDADE",  lead:"ERON",
+      comments:"Ver evidência com Eron",
       desc:"Elaborar e definir estratégia de priorização e execução Inspeção Volante da Qualidade (IVQ)"},
-    {id:17, group:"Inspeção Volante da Qualidade",  status:"complete",    start:"2025-06-25", end:"2025-08-29",  completionDate:"2025-10-07", reprazo:"2025-10-07",  team:"QUALIDADE",  lead:"AILEN",
-      comments:"",
+    {id:17, group:"Inspeção Volante da Qualidade",  status:"on_going",    start:"2025-06-25", end:"2025-08-29",  completionDate:"", reprazo:"",               team:"QUALIDADE",  lead:"ERON",
+      comments:"Ver evidência com Eron",
       desc:"Elaborar e definir cronograma para Kickoff da Inspeção Volante da Qualidade (IVQ)"},
 
     {id:18, group:"Gestão de sucata / refugo",      status:"complete",    start:"2025-03-17", end:"2025-06-30",  completionDate:"2025-06-23", reprazo:"2025-06-23",  team:"QUALIDADE",  lead:"NADJA",
       comments:"",
       desc:"Definir rotina na fabrica para tratar sucata / refugo (QR1, QR2, QR3)"},
 
-    {id:19, group:"Gestão de Calibrações",          status:"complete",    start:"2025-03-17", end:"2025-09-30",  completionDate:"2025-10-17", reprazo:"2025-10-17",  team:"QUALIDADE",  lead:"RODRIGO",
-      comments:"07/10/2025: Novo prazo - TBD (Ailen ira confirmar)",
+    {id:19, group:"Gestão de Calibrações",          status:"on_going",    start:"2025-03-17", end:"2025-09-30",  completionDate:"", reprazo:"",               team:"QUALIDADE",  lead:"RODRIGO",
+      comments:"Ver evidência com Rodrigo",
       desc:"Implementar gestão e monitoramento de equipamentos de calibração"},
-    {id:20, group:"Gestão de Calibrações",          status:"complete",    start:"2025-03-17", end:"2025-09-30",  completionDate:"2025-10-17", reprazo:"2025-10-17",  team:"QUALIDADE",  lead:"RODRIGO",
-      comments:"07/10/2025: Novo prazo - TBD (Ailen ira confirmar)",
+    {id:20, group:"Gestão de Calibrações",          status:"on_going",    start:"2025-03-17", end:"2025-09-30",  completionDate:"", reprazo:"",               team:"QUALIDADE",  lead:"RODRIGO",
+      comments:"Ver evidência com Rodrigo",
       desc:"Executar calibração de equipamentos com calibração pendente"},
 
-    {id:21, group:"Fluxo de Processo",              status:"complete",    start:"2025-06-11", end:"2025-07-18",  completionDate:"2025-07-31", reprazo:"2025-07-31",  team:"LOGISTICA",  lead:"JORGE",
-      comments:"29/07/2025: Novo Prazo - 05/08/2025\n06/08/2025: Ação concluída e em monitoramento",
+    {id:21, group:"Fluxo de Processo",              status:"on_going",    start:"2025-06-11", end:"2025-07-18",  completionDate:"", reprazo:"",               team:"LOGISTICA",  lead:"JORGE",
+      comments:"Conversar com Jorge Miguel sobre esta ação (e-mail de 01/07)",
       desc:"Definir fluxo de processo para desembarque e embarque de peças no HUB - foco em peças oleadas"},
 
     {id:22, group:"Embalamento",                    status:"complete",    start:"2025-07-04", end:"2025-08-29",  completionDate:"", reprazo:"",               team:"QUALIDADE",  lead:"MIKE",
       comments:"",
       desc:"Criar guide line de embalamento de peças em metal fab"},
 
-    {id:23, group:"Dispositivos de Medição",        status:"complete",    start:"2025-06-16", end:"2025-09-16",  completionDate:"2025-09-12", reprazo:"2025-09-12",  team:"QUALIDADE",  lead:"EDVAN",
-      comments:"Mapeado a necessidade de medir 410 dispositivos",
+    {id:23, group:"Dispositivos de Medição",        status:"on_going",    start:"2025-06-16", end:"2025-09-16",  completionDate:"", reprazo:"",               team:"QUALIDADE",  lead:"RODRIGO",
+      comments:"Mapeado a necessidade de medir 410 dispositivos - Ver com Rodrigo",
       desc:"Avaliar quantidade de itens que estão com dispositivo de medição adequados e a disposição da operação e os que não estão"},
-    {id:24, group:"Dispositivos de Medição",        status:"complete",    start:"2025-06-16", end:"2025-06-27",  completionDate:"", reprazo:"",               team:"QUALIDADE",  lead:"MIKE",
+    {id:24, group:"Dispositivos de Medição",        status:"complete",    start:"2025-06-16", end:"2025-06-27",  completionDate:"", reprazo:"",               team:"QUALIDADE",  lead:"RODRIGO",
       comments:"",
       desc:"Implementar gestão de dispositivos de verificação (go/non go gage)"},
     {id:25, group:"Dispositivos de Medição",        status:"complete",    start:"2025-06-23", end:"2025-07-04",  completionDate:"2025-07-04", reprazo:"2025-07-04",  team:"QUALIDADE",  lead:"IZABELLA",
       comments:"",
       desc:"Avaliar disponibilidade de equipamentos de medição e execução dos controles na fábrica"},
-    {id:26, group:"Dispositivos de Medição",        status:"complete",    start:"2025-07-01", end:"2025-07-11",  completionDate:"2025-08-27", reprazo:"2025-08-27",  team:"QUALIDADE",  lead:"EDVAN",
-      comments:"29/07/2025: Novo Prazo - 05/08/2025\n06/08/2025: Novo Prazo - 05/08/2025",
+    {id:26, group:"Dispositivos de Medição",        status:"on_going",    start:"2025-07-01", end:"2025-07-11",  completionDate:"", reprazo:"",               team:"QUALIDADE",  lead:"RODRIGO",
+      comments:"Ver com Rodrigo tratativas",
       desc:"Elaborar plano de ação (5W2H) para adequação dos dispositivos de verificação (go/non go gages) na fábrica"},
 
     {id:27, group:"CARs John Deere",                status:"complete",    start:"2025-04-24", end:"2025-07-07",  completionDate:"2025-07-04", reprazo:"2025-07-04",  team:"QUALIDADE",  lead:"LEONARDO",
@@ -2012,8 +2108,8 @@ document.addEventListener("DOMContentLoaded", function() {
       comments:"",
       desc:"Aplicar metodologia de fast response (dentro da RRQ - modelo inicial)"},
 
-    {id:30, group:"Melhoria Continua",              status:"not_started", start:"2025-07-04", end:"2026-02-20",  completionDate:"", reprazo:"",               team:"OPERAÇÕES",  lead:"NADIA",
-      comments:"",
+    {id:30, group:"Melhoria Continua",              status:"not_started", start:"2025-07-04", end:"2026-02-20",  completionDate:"", reprazo:"",               team:"OPERAÇÕES",  lead:"NADJA",
+      comments:"Ver com Edvan se esta ação permanece",
       desc:"Criar programa de CI - possibilitar que os operadores realizem sugestões de melhorias (processo, dispositivos, controles, etc)"},
 
     {id:31, group:"Dispositivos de Medição",        status:"complete",    start:"2025-07-01", end:"2025-09-30",  completionDate:"2025-09-25", reprazo:"2025-09-25",  team:"QUALIDADE",  lead:"AILEN",
@@ -3250,7 +3346,9 @@ document.addEventListener("DOMContentLoaded", function() {
       ncRecords = records;
       renderNcCards();
       renderNcCharts();
+      renderNcCustomCharts();
     });
+    loadNcCustomCharts().then(function() { renderNcCustomCharts(); });
     updateNcVisibility();
     // Switch real-time listeners to the new tenant
     if (typeof setupFirebaseListeners === 'function') setupFirebaseListeners(key);
@@ -3394,7 +3492,7 @@ document.addEventListener("DOMContentLoaded", function() {
     try { localStorage.setItem('spi_all_tenants', JSON.stringify(all)); }
     catch(e) { console.warn('localStorage error saving tenants:', e); }
     if (db) {
-      db.collection('tenants').doc('spi-tenants').set({ all: all }, { merge: true })
+      db.collection('tenants').doc('spi-tenants').set({ all: all })
         .catch(function(e) { console.error('Firebase save tenants error:', e); });
     }
   }
@@ -4603,6 +4701,224 @@ document.addEventListener("DOMContentLoaded", function() {
 
   }
 
+  // ── Custom charts ──────────────────────────────────────────────────────────
+
+  var _ncCustomCharts = [];
+  var _ncCustomChartInstances = {};
+  var _ncBuilderEditId = null;
+
+  var NC_CUSTOM_PIE_COLORS = [
+    '#1b4d8e','#2563eb','#0ea5e9','#10b981','#f59e0b','#ef4444',
+    '#8b5cf6','#ec4899','#14b8a6','#f97316','#6366f1','#84cc16',
+    '#0284c7','#16a34a','#dc2626','#7c3aed','#db2777','#0d9488'
+  ];
+
+  function _ncCustomChartsKey() {
+    return 'spi_nc_custom_charts_' + currentTenant;
+  }
+
+  function saveNcCustomCharts() {
+    try { localStorage.setItem(_ncCustomChartsKey(), JSON.stringify(_ncCustomCharts)); } catch(e) {}
+    if (db) {
+      db.collection('nc_custom_charts').doc('spi-' + currentTenant)
+        .set({ charts: _ncCustomCharts })
+        .catch(function(e) { console.error('Firebase save custom charts error:', e); });
+    }
+  }
+
+  async function loadNcCustomCharts() {
+    var charts = null;
+    if (db) {
+      try {
+        var snap = await db.collection('nc_custom_charts').doc('spi-' + currentTenant).get();
+        if (snap.exists) { var d = snap.data(); if (Array.isArray(d.charts)) charts = d.charts; }
+      } catch(e) { console.warn('Firebase load custom charts error:', e); }
+    }
+    if (!charts) {
+      try {
+        var raw = localStorage.getItem(_ncCustomChartsKey());
+        if (raw) charts = JSON.parse(raw);
+      } catch(e) {}
+    }
+    _ncCustomCharts = Array.isArray(charts) ? charts : [];
+  }
+
+  function _getCustomChartData(def) {
+    var counts = {};
+    var orderedKeys = null;
+
+    if (def.field === 'month') {
+      var now = new Date();
+      orderedKeys = [];
+      for (var i = 11; i >= 0; i--) {
+        var d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        var k = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+        counts[k] = 0;
+        orderedKeys.push(k);
+      }
+      ncRecords.forEach(function(nc) {
+        if (nc.date) { var mk = nc.date.slice(0, 7); if (mk in counts) counts[mk]++; }
+      });
+    } else if (def.field === 'status') {
+      counts = { 'Em aberto': 0, 'RNC Aberta': 0, '8D Finalizado': 0 };
+      ncRecords.forEach(function(nc) {
+        if (nc.d8Finalizado)   counts['8D Finalizado']++;
+        else if (nc.rncAberta) counts['RNC Aberta']++;
+        else                   counts['Em aberto']++;
+      });
+      orderedKeys = ['Em aberto', 'RNC Aberta', '8D Finalizado'];
+    } else {
+      var fallback = def.field === 'piece' ? '(sem nome)' : def.field === 'failureMode' ? 'Outro' : '(sem cliente)';
+      ncRecords.forEach(function(nc) {
+        var v = nc[def.field] || fallback;
+        counts[v] = (counts[v] || 0) + 1;
+      });
+    }
+
+    var keys = orderedKeys ? orderedKeys.slice() : Object.keys(counts);
+    if (!orderedKeys) {
+      var sort = def.sort || 'desc';
+      if (sort === 'desc') keys.sort(function(a, b) { return counts[b] - counts[a]; });
+      else if (sort === 'asc') keys.sort(function(a, b) { return counts[a] - counts[b]; });
+      else if (sort === 'az') keys.sort(function(a, b) { return a.localeCompare(b); });
+      else if (sort === 'za') keys.sort(function(a, b) { return b.localeCompare(a); });
+    }
+
+    var labels = keys.map(function(k) {
+      if (def.field === 'month') {
+        var parts = k.split('-');
+        return (typeof PT_MONTHS !== 'undefined' ? PT_MONTHS[parseInt(parts[1], 10) - 1] : k) || k;
+      }
+      return k;
+    });
+
+    return { labels: labels, values: keys.map(function(k) { return counts[k]; }) };
+  }
+
+  function _buildCustomChart(def) {
+    var canvas = document.getElementById('ncCustomCanvas_' + def.id);
+    if (!canvas || typeof Chart === 'undefined') return;
+    var data = _getCustomChartData(def);
+    var color = def.color || '#1b4d8e';
+    var isPie = def.type === 'pie' || def.type === 'doughnut';
+    var isLine = def.type === 'line';
+    var isHBar = def.type === 'bar-h';
+    var chartType = isHBar ? 'bar' : (def.type || 'bar');
+
+    var backgroundColor = isPie
+      ? data.labels.map(function(_, i) { return NC_CUSTOM_PIE_COLORS[i % NC_CUSTOM_PIE_COLORS.length]; })
+      : (isLine ? color + '33' : color);
+
+    var config = {
+      type: chartType,
+      data: {
+        labels: data.labels,
+        datasets: [{
+          data: data.values,
+          backgroundColor: backgroundColor,
+          borderColor: isPie ? '#fff' : color,
+          borderWidth: isPie ? 2 : (isLine ? 2 : 0),
+          borderRadius: (isPie || isLine) ? 0 : 4,
+          tension: isLine ? 0.3 : 0,
+          fill: isLine,
+          pointRadius: isLine ? 4 : 0
+        }]
+      },
+      options: {
+        indexAxis: isHBar ? 'y' : 'x',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: isPie, position: 'bottom', labels: { font: { size: 11 }, padding: 12, boxWidth: 12 } },
+          tooltip: { enabled: true }
+        },
+        scales: isPie ? {} : {
+          x: { ticks: { color: '#374151', font: { size: 11 } }, grid: { color: 'rgba(0,0,0,.06)' }, border: { display: false } },
+          y: { ticks: { color: '#374151', font: { size: 11 }, padding: 4 }, grid: { display: false }, border: { display: false } }
+        }
+      }
+    };
+
+    if (_ncCustomChartInstances[def.id]) {
+      try { _ncCustomChartInstances[def.id].destroy(); } catch(e) {}
+    }
+    _ncCustomChartInstances[def.id] = new Chart(canvas, config);
+  }
+
+  function renderNcCustomCharts() {
+    var grid = document.getElementById('ncCustomChartsGrid');
+    if (!grid) return;
+
+    // Destroy existing chart instances
+    Object.keys(_ncCustomChartInstances).forEach(function(id) {
+      try { if (_ncCustomChartInstances[id]) _ncCustomChartInstances[id].destroy(); } catch(e) {}
+    });
+    _ncCustomChartInstances = {};
+
+    if (!_ncCustomCharts.length) {
+      grid.innerHTML = '<div class="nc-custom-empty">Nenhum gráfico personalizado. Clique em "Adicionar Gráfico" para criar.</div>';
+      return;
+    }
+
+    grid.innerHTML = '';
+    _ncCustomCharts.forEach(function(def) {
+      var card = document.createElement('div');
+      card.className = 'nc-chart-card nc-custom-chart-item';
+      card.dataset.chartId = def.id;
+      card.innerHTML =
+        '<h4>' + escHtml(def.title || 'Gráfico') +
+          '<div style="display:flex;gap:6px;margin-left:auto;">' +
+            '<button class="nc-chart-edit-btn nc-custom-edit-btn" aria-label="Editar gráfico ' + escHtml(def.title || 'Gráfico') + '" title="Editar gráfico">✏ Editar</button>' +
+            '<button class="nc-chart-edit-btn nc-custom-del-btn" aria-label="Excluir gráfico ' + escHtml(def.title || 'Gráfico') + '" title="Excluir gráfico" style="color:#ef4444">🗑</button>' +
+          '</div>' +
+        '</h4>' +
+        '<canvas id="ncCustomCanvas_' + def.id + '" style="max-height:260px;"></canvas>';
+      grid.appendChild(card);
+
+      card.querySelector('.nc-custom-edit-btn').addEventListener('click', function() { _openNcBuilder(def.id); });
+      card.querySelector('.nc-custom-del-btn').addEventListener('click', function() {
+        if (!confirm('Remover o gráfico "' + (def.title || 'Gráfico') + '"?')) return;
+        _ncCustomCharts = _ncCustomCharts.filter(function(c) { return c.id !== def.id; });
+        saveNcCustomCharts();
+        renderNcCustomCharts();
+      });
+
+      _buildCustomChart(def);
+    });
+  }
+
+  function _openNcBuilder(editId) {
+    _ncBuilderEditId = editId || null;
+    var modal    = document.getElementById('ncBuilderModal');
+    var backdrop = document.getElementById('ncBuilderBackdrop');
+    if (!modal) return;
+    var def = editId ? _ncCustomCharts.find(function(c) { return c.id === editId; }) : null;
+    document.getElementById('ncBuilderModalTitle').textContent = def ? 'Editar Gráfico' : 'Novo Gráfico';
+    document.getElementById('ncBuilderTitleInput').value = def ? (def.title || '') : '';
+    document.getElementById('ncBuilderField').value      = def ? (def.field || 'piece') : 'piece';
+    document.getElementById('ncBuilderType').value       = def ? (def.type  || 'bar')   : 'bar';
+    document.getElementById('ncBuilderColor').value      = def ? (def.color || '#1b4d8e') : '#1b4d8e';
+    document.getElementById('ncBuilderSort').value       = def ? (def.sort  || 'desc')  : 'desc';
+    // Show/hide sort row depending on field (read from the select after setting its value)
+    var sortRow = document.getElementById('ncBuilderSortRow');
+    var fieldSel = document.getElementById('ncBuilderField');
+    if (sortRow && fieldSel) {
+      var fieldVal = fieldSel.value;
+      sortRow.style.display = (fieldVal === 'month' || fieldVal === 'status') ? 'none' : '';
+    }
+    modal.classList.add('open');
+    backdrop.classList.add('open');
+    setTimeout(function() { var t = document.getElementById('ncBuilderTitleInput'); if (t) t.focus(); }, 60);
+  }
+
+  function _closeNcBuilder() {
+    var modal    = document.getElementById('ncBuilderModal');
+    var backdrop = document.getElementById('ncBuilderBackdrop');
+    if (modal)    modal.classList.remove('open');
+    if (backdrop) backdrop.classList.remove('open');
+    _ncBuilderEditId = null;
+  }
+
   function _updateMonthFilterChip() {
     var chip  = document.getElementById('ncMonthFilterChip');
     var label = document.getElementById('ncMonthFilterLabel');
@@ -4739,6 +5055,7 @@ document.addEventListener("DOMContentLoaded", function() {
             saveNcRecords();
             renderNcCards();
             renderNcCharts();
+            renderNcCustomCharts();
           } else if (action === 'rnc_aberta') {
             // Once RNC Aberta is confirmed it is permanent and cannot be deactivated
             if (ncRecords[idx].rncAberta) {
@@ -4757,6 +5074,7 @@ document.addEventListener("DOMContentLoaded", function() {
               saveNcRecords();
               renderNcCards();
               renderNcCharts();
+              renderNcCustomCharts();
             } else {
               openNcStatusModal(id, '8d_finalizado');
             }
@@ -4841,6 +5159,7 @@ document.addEventListener("DOMContentLoaded", function() {
         saveNcRecords();
         renderNcCards();
         renderNcCharts();
+        if (typeof renderNcCustomCharts === 'function') renderNcCustomCharts();
       }
       closeStatusModal();
     });
@@ -5169,6 +5488,9 @@ document.addEventListener("DOMContentLoaded", function() {
       renderNcCharts();
     });
 
+    // Load and render custom charts
+    loadNcCustomCharts().then(function() { renderNcCustomCharts(); });
+
     var backdrop = document.getElementById('ncModalBackdrop');
     var drop     = document.getElementById('ncPhotoDrop');
     var input    = document.getElementById('ncPhotoInput');
@@ -5415,6 +5737,7 @@ document.addEventListener("DOMContentLoaded", function() {
           closeNcModal();
           renderNcCards();
           renderNcCharts();
+          renderNcCustomCharts();
         } else {
           alert('Não foi possível encontrar a NC para editar. Por favor, tente novamente.');
         }
@@ -5438,6 +5761,7 @@ document.addEventListener("DOMContentLoaded", function() {
         closeNcModal();
         renderNcCards();
         renderNcCharts();
+        renderNcCustomCharts();
       }
     });
 
@@ -5666,8 +5990,65 @@ document.addEventListener("DOMContentLoaded", function() {
     if (ncNavItem) {
       ncNavItem.addEventListener('click', function() {
         setTimeout(renderNcCharts, 80);
+        setTimeout(renderNcCustomCharts, 80);
       });
     }
+
+    // ── Custom chart builder ───────────────────────────────────────────────
+    var addCustomChartBtn = document.getElementById('ncAddCustomChartBtn');
+    if (addCustomChartBtn) {
+      addCustomChartBtn.addEventListener('click', function() { _openNcBuilder(null); });
+    }
+
+    var builderSaveBtn   = document.getElementById('ncBuilderSave');
+    var builderCancelBtn = document.getElementById('ncBuilderCancel');
+    var builderCloseBtn  = document.getElementById('ncBuilderClose');
+    var builderBackdrop  = document.getElementById('ncBuilderBackdrop');
+    var builderFieldSel  = document.getElementById('ncBuilderField');
+
+    if (builderFieldSel) {
+      builderFieldSel.addEventListener('change', function() {
+        var sortRow = document.getElementById('ncBuilderSortRow');
+        if (sortRow) {
+          var v = builderFieldSel.value;
+          sortRow.style.display = (v === 'month' || v === 'status') ? 'none' : '';
+        }
+      });
+    }
+
+    if (builderSaveBtn) {
+      builderSaveBtn.addEventListener('click', function() {
+        var title = (document.getElementById('ncBuilderTitleInput').value || '').trim();
+        var field = document.getElementById('ncBuilderField').value;
+        var type  = document.getElementById('ncBuilderType').value;
+        var color = document.getElementById('ncBuilderColor').value;
+        var sort  = document.getElementById('ncBuilderSort').value;
+        if (!title) {
+          alert('Por favor, insira um título para o gráfico.');
+          document.getElementById('ncBuilderTitleInput').focus();
+          return;
+        }
+        if (_ncBuilderEditId) {
+          var idx = _ncCustomCharts.findIndex(function(c) { return c.id === _ncBuilderEditId; });
+          if (idx >= 0) {
+            _ncCustomCharts[idx] = { id: _ncBuilderEditId, title: title, field: field, type: type, color: color, sort: sort };
+          }
+        } else {
+          _ncCustomCharts.push({ id: 'cc_' + Date.now() + '_' + Math.floor(Math.random() * 1e6), title: title, field: field, type: type, color: color, sort: sort });
+        }
+        saveNcCustomCharts();
+        _closeNcBuilder();
+        renderNcCustomCharts();
+      });
+    }
+    if (builderCancelBtn) builderCancelBtn.addEventListener('click', _closeNcBuilder);
+    if (builderCloseBtn)  builderCloseBtn.addEventListener('click', _closeNcBuilder);
+    if (builderBackdrop)  builderBackdrop.addEventListener('click', _closeNcBuilder);
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && document.getElementById('ncBuilderModal').classList.contains('open')) {
+        _closeNcBuilder();
+      }
+    });
   }
 
 });
