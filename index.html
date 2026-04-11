@@ -1454,6 +1454,10 @@
         <span id="ncFailureFilterLabel">Falha: —</span>
         <span class="nc-month-filter-chip-x" title="Limpar filtro">✕</span>
       </div>
+      <div class="nc-month-filter-chip" id="ncCustomFilterChip" style="background:#ede9fe;border-color:#a78bfa;color:#5b21b6;display:none">
+        <span id="ncCustomFilterLabel">Filtro: —</span>
+        <span class="nc-month-filter-chip-x" title="Limpar filtro">✕</span>
+      </div>
     </div>
     <div id="ncSearchCount" class="nc-search-count" style="display:none"></div>
     <div class="nc-cards-grid" id="ncCardsGrid">
@@ -3954,6 +3958,7 @@ document.addEventListener("DOMContentLoaded", function() {
   var _ncMonthFilter   = null; // active YYYY-MM filter key, or null
   var _ncPieceFilter   = null; // active piece name filter, or null
   var _ncFailureFilter = null; // active failure mode filter, or null
+  var _ncCustomFilter  = { field: null, key: null, chartId: null }; // active custom chart filter
   var _ncCardsSort     = 'recent'; // 'recent'|'oldest'|'ncAsc'|'ncDesc'|'dateAsc'|'dateDesc'
   var _ncAlertFilter   = false;   // show only cards with atencao flag
   // Chart settings (bar color, meta color, meta value, title) — persisted to localStorage
@@ -4792,7 +4797,7 @@ document.addEventListener("DOMContentLoaded", function() {
       return k;
     });
 
-    return { labels: labels, values: keys.map(function(k) { return counts[k]; }) };
+    return { labels: labels, values: keys.map(function(k) { return counts[k]; }), keys: keys };
   }
 
   function _buildCustomChart(def) {
@@ -4805,9 +4810,23 @@ document.addEventListener("DOMContentLoaded", function() {
     var isHBar = def.type === 'bar-h';
     var chartType = isHBar ? 'bar' : (def.type || 'bar');
 
-    var backgroundColor = isPie
-      ? data.labels.map(function(_, i) { return NC_CUSTOM_PIE_COLORS[i % NC_CUSTOM_PIE_COLORS.length]; })
-      : (isLine ? color + '33' : color);
+    var activeCustomKey = (_ncCustomFilter.chartId === def.id) ? _ncCustomFilter.key : null;
+
+    var backgroundColor;
+    if (isPie) {
+      backgroundColor = data.keys.map(function(k, i) {
+        var base = NC_CUSTOM_PIE_COLORS[i % NC_CUSTOM_PIE_COLORS.length];
+        if (activeCustomKey && k !== activeCustomKey) return base + '55';
+        return base;
+      });
+    } else if (isLine) {
+      backgroundColor = color + '33';
+    } else {
+      backgroundColor = data.keys.map(function(k) {
+        if (activeCustomKey && k !== activeCustomKey) return color + '44';
+        return color;
+      });
+    }
 
     var config = {
       type: chartType,
@@ -4828,6 +4847,19 @@ document.addEventListener("DOMContentLoaded", function() {
         indexAxis: isHBar ? 'y' : 'x',
         responsive: true,
         maintainAspectRatio: false,
+        onClick: function(evt, elements) {
+          if (!elements.length) return;
+          var idx = elements[0].index;
+          var rawKey = data.keys[idx];
+          if (_ncCustomFilter.chartId === def.id && _ncCustomFilter.key === rawKey) {
+            _ncCustomFilter = { field: null, key: null, chartId: null };
+          } else {
+            _ncCustomFilter = { field: def.field, key: rawKey, chartId: def.id };
+          }
+          _updateCustomFilterChip();
+          renderNcCustomCharts();
+          if (window._applyNcSearch) window._applyNcSearch();
+        },
         plugins: {
           legend: { display: isPie, position: 'bottom', labels: { font: { size: 11 }, padding: 12, boxWidth: 12 } },
           tooltip: { enabled: true }
@@ -4848,6 +4880,12 @@ document.addEventListener("DOMContentLoaded", function() {
   function renderNcCustomCharts() {
     var grid = document.getElementById('ncCustomChartsGrid');
     if (!grid) return;
+
+    // Clear custom filter if its chart no longer exists
+    if (_ncCustomFilter.chartId && !_ncCustomCharts.find(function(c) { return c.id === _ncCustomFilter.chartId; })) {
+      _ncCustomFilter = { field: null, key: null, chartId: null };
+      _updateCustomFilterChip();
+    }
 
     // Destroy existing chart instances
     Object.keys(_ncCustomChartInstances).forEach(function(id) {
@@ -4954,6 +4992,25 @@ document.addEventListener("DOMContentLoaded", function() {
       chip.classList.add('active');
     } else {
       chip.classList.remove('active');
+    }
+  }
+
+  function _updateCustomFilterChip() {
+    var chip  = document.getElementById('ncCustomFilterChip');
+    var label = document.getElementById('ncCustomFilterLabel');
+    if (!chip) return;
+    if (_ncCustomFilter.key) {
+      var displayKey = _ncCustomFilter.key;
+      if (_ncCustomFilter.field === 'month') {
+        var parts = _ncCustomFilter.key.split('-');
+        displayKey = (typeof PT_MONTHS_SHORT !== 'undefined' ? PT_MONTHS_SHORT[parseInt(parts[1],10)-1] : parts[1]) + '/' + parts[0];
+      }
+      label.textContent = displayKey;
+      chip.classList.add('active');
+      chip.style.display = '';
+    } else {
+      chip.classList.remove('active');
+      chip.style.display = 'none';
     }
   }
 
@@ -5792,6 +5849,23 @@ document.addEventListener("DOMContentLoaded", function() {
         if (_ncPieceFilter && (nc.piece || '(sem nome)') !== _ncPieceFilter) { card.classList.add('nc-hidden'); return; }
         // Apply failure mode filter
         if (_ncFailureFilter && (nc.failureMode || 'Outro') !== _ncFailureFilter) { card.classList.add('nc-hidden'); return; }
+        // Apply custom chart filter
+        if (_ncCustomFilter.key) {
+          var cf = _ncCustomFilter;
+          if (cf.field === 'month') {
+            var ncMkC = nc.date ? nc.date.slice(0,7) : '';
+            if (ncMkC !== cf.key) { card.classList.add('nc-hidden'); return; }
+          } else if (cf.field === 'status') {
+            var ncStatus;
+            if (nc.d8Finalizado)   ncStatus = '8D Finalizado';
+            else if (nc.rncAberta) ncStatus = 'RNC Aberta';
+            else                   ncStatus = 'Em aberto';
+            if (ncStatus !== cf.key) { card.classList.add('nc-hidden'); return; }
+          } else {
+            var fallbackC = cf.field === 'piece' ? '(sem nome)' : cf.field === 'failureMode' ? 'Outro' : '(sem cliente)';
+            if ((nc[cf.field] || fallbackC) !== cf.key) { card.classList.add('nc-hidden'); return; }
+          }
+        }
         // Apply alert filter
         if (_ncAlertFilter && !nc.atencao) { card.classList.add('nc-hidden'); return; }
         if (!q) { card.classList.remove('nc-hidden'); shown++; return; }
@@ -5806,7 +5880,7 @@ document.addEventListener("DOMContentLoaded", function() {
           card.classList.add('nc-hidden');
         }
       });
-      var activeFilters = q || _ncMonthFilter || _ncPieceFilter || _ncFailureFilter || _ncAlertFilter;
+      var activeFilters = q || _ncMonthFilter || _ncPieceFilter || _ncFailureFilter || _ncAlertFilter || _ncCustomFilter.key;
       if (activeFilters) {
         var filterDesc = [];
         if (_ncMonthFilter) {
@@ -5815,6 +5889,7 @@ document.addEventListener("DOMContentLoaded", function() {
         }
         if (_ncPieceFilter)   filterDesc.push('Peça: ' + _ncPieceFilter);
         if (_ncFailureFilter) filterDesc.push('Falha: ' + _ncFailureFilter);
+        if (_ncCustomFilter.key) filterDesc.push(_ncCustomFilter.key);
         if (_ncAlertFilter)   filterDesc.push('Com alertas');
         if (q) filterDesc.push('"'+q+'"');
         ncSearchCount.textContent = shown + (shown === 1 ? ' NC encontrada' : ' NCs encontradas') + ' para ' + filterDesc.join(' + ');
@@ -5864,6 +5939,17 @@ document.addEventListener("DOMContentLoaded", function() {
         _ncFailureFilter = null;
         _updateFailureFilterChip();
         renderNcCharts();
+        if (window._applyNcSearch) window._applyNcSearch();
+      });
+    }
+
+    // ── Custom chart filter chip ──────────────────────────────────────────
+    var customChip = document.getElementById('ncCustomFilterChip');
+    if (customChip) {
+      customChip.addEventListener('click', function() {
+        _ncCustomFilter = { field: null, key: null, chartId: null };
+        _updateCustomFilterChip();
+        renderNcCustomCharts();
         if (window._applyNcSearch) window._applyNcSearch();
       });
     }
