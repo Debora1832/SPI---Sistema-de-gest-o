@@ -3394,7 +3394,7 @@ document.addEventListener("DOMContentLoaded", function() {
     try { localStorage.setItem('spi_all_tenants', JSON.stringify(all)); }
     catch(e) { console.warn('localStorage error saving tenants:', e); }
     if (db) {
-      db.collection('tenants').doc('spi-tenants').set({ all: all }, { merge: true })
+      db.collection('tenants').doc('spi-tenants').set({ all: all })
         .catch(function(e) { console.error('Firebase save tenants error:', e); });
     }
   }
