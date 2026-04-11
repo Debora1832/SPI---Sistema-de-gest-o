@@ -4868,8 +4868,8 @@ document.addEventListener("DOMContentLoaded", function() {
       card.innerHTML =
         '<h4>' + escHtml(def.title || 'Gráfico') +
           '<div style="display:flex;gap:6px;margin-left:auto;">' +
-            '<button class="nc-chart-edit-btn nc-custom-edit-btn" title="Editar gráfico">✏ Editar</button>' +
-            '<button class="nc-chart-edit-btn nc-custom-del-btn" title="Excluir gráfico" style="color:#ef4444">🗑</button>' +
+            '<button class="nc-chart-edit-btn nc-custom-edit-btn" aria-label="Editar gráfico ' + escHtml(def.title || 'Gráfico') + '" title="Editar gráfico">✏ Editar</button>' +
+            '<button class="nc-chart-edit-btn nc-custom-del-btn" aria-label="Excluir gráfico ' + escHtml(def.title || 'Gráfico') + '" title="Excluir gráfico" style="color:#ef4444">🗑</button>' +
           '</div>' +
         '</h4>' +
         '<canvas id="ncCustomCanvas_' + def.id + '" style="max-height:260px;"></canvas>';
@@ -4899,9 +4899,13 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById('ncBuilderType').value       = def ? (def.type  || 'bar')   : 'bar';
     document.getElementById('ncBuilderColor').value      = def ? (def.color || '#1b4d8e') : '#1b4d8e';
     document.getElementById('ncBuilderSort').value       = def ? (def.sort  || 'desc')  : 'desc';
-    // Show/hide sort row depending on field
+    // Show/hide sort row depending on field (read from the select after setting its value)
     var sortRow = document.getElementById('ncBuilderSortRow');
-    if (sortRow) sortRow.style.display = (def && (def.field === 'month' || def.field === 'status')) ? 'none' : '';
+    var fieldSel = document.getElementById('ncBuilderField');
+    if (sortRow && fieldSel) {
+      var fieldVal = fieldSel.value;
+      sortRow.style.display = (fieldVal === 'month' || fieldVal === 'status') ? 'none' : '';
+    }
     modal.classList.add('open');
     backdrop.classList.add('open');
     setTimeout(function() { var t = document.getElementById('ncBuilderTitleInput'); if (t) t.focus(); }, 60);
@@ -6030,7 +6034,7 @@ document.addEventListener("DOMContentLoaded", function() {
             _ncCustomCharts[idx] = { id: _ncBuilderEditId, title: title, field: field, type: type, color: color, sort: sort };
           }
         } else {
-          _ncCustomCharts.push({ id: 'cc_' + Date.now(), title: title, field: field, type: type, color: color, sort: sort });
+          _ncCustomCharts.push({ id: 'cc_' + Date.now() + '_' + Math.floor(Math.random() * 1e6), title: title, field: field, type: type, color: color, sort: sort });
         }
         saveNcCustomCharts();
         _closeNcBuilder();
