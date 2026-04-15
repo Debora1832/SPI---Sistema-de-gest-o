@@ -15,6 +15,9 @@
   <!-- Chart.js (used by the NC page) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 
+  <!-- SheetJS – Excel export -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
   <style>
     *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; font-family:'Inter', sans-serif; }
 
@@ -631,6 +634,15 @@
     .nc-photo-drop:hover, .nc-photo-drop.dragover { border-color:var(--tenant-sidebar-bg,#1E4D17); background:#f0fdf4; color:var(--tenant-sidebar-bg,#1E4D17); }
     .nc-photo-preview { width:100%; height:100px; object-fit:cover; border-radius:8px; margin-top:6px; display:none; }
     #ncPhotoInput { display:none; }
+    #ncPdfInput { display:none; }
+    .nc-pdf-drop { border:2px dashed #d1d5db; border-radius:10px; padding:14px; text-align:center; cursor:pointer; color:#9ca3af; font-size:12px; transition:border-color .2s, background .2s; display:flex; flex-direction:column; align-items:center; gap:4px; min-height:72px; justify-content:center; background:#f9fafb; }
+    .nc-pdf-drop:hover, .nc-pdf-drop.dragover { border-color:#1b4d8e; background:#eff6ff; color:#1b4d8e; }
+    .nc-pdf-list { margin-top:8px; display:flex; flex-direction:column; gap:5px; }
+    .nc-pdf-list-item { display:flex; align-items:center; gap:8px; background:#f1f5f9; border-radius:7px; padding:6px 10px; font-size:12px; color:#374151; }
+    .nc-pdf-list-item span { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .nc-pdf-list-item button { background:none; border:none; cursor:pointer; color:#ef4444; font-size:14px; line-height:1; padding:0 2px; }
+    .nc-card-pdfs { margin-top:4px; font-size:11px; color:#4b5563; display:flex; flex-direction:column; gap:3px; }
+    .nc-card-pdfs a { color:#1b4d8e; text-decoration:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block; }
     .nc-btn-submit { margin-top:18px; background:var(--tenant-sidebar-bg,#1E4D17); color:#fff; border:none; border-radius:8px; padding:10px 30px; font-size:13px; font-weight:700; cursor:pointer; letter-spacing:.04em; transition:background .15s; display:inline-flex; align-items:center; gap:6px; }
     .nc-btn-submit:hover { background:var(--tenant-sidebar-hover,#163d10); }
     /* NC Dashboard layout — total box + charts */
@@ -761,6 +773,23 @@
     .nc-search-clear { background:none; border:none; color:#9ca3af; cursor:pointer; font-size:14px; padding:0 2px; line-height:1; }
     .nc-search-clear:hover { color:#374151; }
     .nc-search-count { font-size:11px; color:#6b7280; margin-bottom:10px; padding-left:2px; }
+    /* NC Excel export button */
+    .nc-excel-btn { background:#217346; color:#fff; border:none; border-radius:8px; padding:7px 14px; font-size:12px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:background .15s; }
+    .nc-excel-btn:hover { background:#1a5e38; }
+    /* NC Excel export modal */
+    #ncExcelModal { display:none; position:fixed; inset:0; z-index:9100; background:rgba(0,0,0,.45); align-items:center; justify-content:center; }
+    #ncExcelModal.open { display:flex; }
+    .nc-excel-modal-box { background:#fff; border-radius:14px; padding:28px 28px 22px; width:min(480px,92vw); max-height:90vh; overflow-y:auto; box-shadow:0 8px 32px rgba(0,0,0,.22); }
+    .nc-excel-modal-box h3 { margin:0 0 6px; font-size:16px; color:#1a1a2e; display:flex; align-items:center; gap:8px; }
+    .nc-excel-modal-box .nc-excel-subtitle { font-size:12px; color:#6b7280; margin-bottom:18px; }
+    .nc-excel-cols-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:18px; }
+    .nc-excel-col-item { display:flex; align-items:center; gap:8px; font-size:13px; color:#374151; background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:8px 10px; cursor:pointer; user-select:none; }
+    .nc-excel-col-item input[type=checkbox] { width:15px; height:15px; accent-color:#217346; cursor:pointer; }
+    .nc-excel-modal-actions { display:flex; gap:10px; justify-content:flex-end; }
+    .nc-excel-btn-cancel { background:#f3f4f6; color:#374151; border:none; border-radius:8px; padding:9px 18px; font-size:13px; font-weight:600; cursor:pointer; }
+    .nc-excel-btn-cancel:hover { background:#e5e7eb; }
+    .nc-excel-btn-confirm { background:#217346; color:#fff; border:none; border-radius:8px; padding:9px 18px; font-size:13px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:6px; }
+    .nc-excel-btn-confirm:hover { background:#1a5e38; }
     .nc-card.nc-hidden { display:none; }
     .nc-sync-badge { font-size:11px; font-weight:600; padding:4px 10px; border-radius:20px; display:inline-flex; align-items:center; gap:6px; }
     .nc-sync-badge.synced   { background:rgba(34,197,94,.15); color:#16a34a; border:1px solid rgba(34,197,94,.3); }
@@ -782,6 +811,7 @@
     .nc-card-customer { font-size:11px; color:#9ca3af; }
     .nc-card-desc { font-size:11px; color:#9ca3af; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .nc-card-date { font-size:11px; color:#6b7280; margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,.08); }
+    .nc-card-qty  { font-size:11px; color:#6b7280; margin-top:4px; }
     .nc-card-actions { padding:10px 16px 14px; display:flex; gap:8px; align-items:center; }
     .nc-btn-status { flex:1; font-size:10px; font-weight:700; padding:6px 6px; border-radius:7px; border:2px solid transparent; cursor:pointer; text-transform:uppercase; letter-spacing:.04em; transition:all .15s; text-align:center; }
     .nc-btn-rnc { border-color:#ef4444; color:#ef4444; background:transparent; }
@@ -1408,6 +1438,14 @@
       </div>
     </div>
 
+    <!-- Qty chart row: peças apontadas por mês -->
+    <div class="nc-charts-row" style="margin-bottom:24px;">
+      <div class="nc-chart-card nc-chart-month-card" style="position:relative;">
+        <h4>Peças Apontadas por Mês</h4>
+        <canvas id="ncChartQtyMonth"></canvas>
+      </div>
+    </div>
+
     <!-- Custom Charts Section -->
     <div class="nc-custom-section-header">
       <div class="nc-section-title" style="margin-bottom:0">Gráficos Personalizados</div>
@@ -1439,6 +1477,10 @@
         <option value="dateDesc">Data (↓)</option>
       </select>
       <button class="nc-alert-filter-btn" id="ncAlertFilterBtn">⚠ Com alertas</button>
+      <button class="nc-excel-btn" id="ncExcelExportBtn" title="Exportar para Excel">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M4 3a1 1 0 000 2h1v10H4a1 1 0 100 2h12a1 1 0 100-2h-1V5h1a1 1 0 100-2H4zm3 2h6v10H7V5zm2 2v2h2V7H9zm0 4v2h2v-2H9z"/></svg>
+        Exportar Excel
+      </button>
     </div>
     <!-- Active filter chips -->
     <div class="nc-filter-chips-row" id="ncFilterChipsRow">
@@ -1488,6 +1530,8 @@
         <option value="month">Mês (últimos 12)</option>
         <option value="customer">Cliente</option>
         <option value="status">Status (Em aberto / RNC / 8D)</option>
+        <option value="qty_month">Qtd. de Peças por Mês (soma)</option>
+        <option value="qty_piece">Qtd. de Peças por Peça (soma)</option>
       </select>
     </div>
     <div class="nc-builder-row">
@@ -3951,7 +3995,7 @@ document.addEventListener("DOMContentLoaded", function() {
   // ── NC (Non-Conformance) Page ────────────────────────────────────────────
 
   var ncRecords = [];
-  var _ncChartPiece = null, _ncChartFailure = null, _ncChartMonth = null;
+  var _ncChartPiece = null, _ncChartFailure = null, _ncChartMonth = null, _ncChartQtyMonth = null;
   var _ncMonthFilter   = null; // active YYYY-MM filter key, or null
   var _ncPieceFilter   = null; // active piece name filter, or null
   var _ncFailureFilter = null; // active failure mode filter, or null
@@ -3973,6 +4017,7 @@ document.addEventListener("DOMContentLoaded", function() {
   var NC_CHART_DEFAULT_TITLE = 'Volume de Reclamações do Cliente (por mês)';
   var BAR_DIM_SUFFIX = '66'; // 40 % opacity hex appended to bar color when dimmed
   var _ncPhotos = []; // array of data-URL strings for the modal in progress
+  var _ncPdfs   = []; // array of {name, data} objects for PDF attachments
   var _ncStatusPending = null; // { id, action } while status popup is open
   var _ncDetailCurrent = null; // nc record shown in detail popup
 
@@ -4701,6 +4746,62 @@ document.addEventListener("DOMContentLoaded", function() {
     if (failureSortInput)       failureSortInput.value        = _ncChartSettings.failureSort     || 'desc';
     if (failureShowLabelsInput) failureShowLabelsInput.checked = _ncChartSettings.failureShowLabels !== false;
 
+    // ── Qty-per-month chart ───────────────────────────────────────────────────
+    if (_ncChartQtyMonth) { _ncChartQtyMonth.destroy(); _ncChartQtyMonth = null; }
+    var ctxQ = document.getElementById('ncChartQtyMonth');
+    if (ctxQ && typeof Chart !== 'undefined') {
+      var now2 = new Date();
+      var qtyMonthKeys = [], qtyMonthCounts = {};
+      for (var qi = 11; qi >= 0; qi--) {
+        var qd = new Date(now2.getFullYear(), now2.getMonth() - qi, 1);
+        var qk = qd.getFullYear() + '-' + String(qd.getMonth() + 1).padStart(2, '0');
+        qtyMonthKeys.push(qk);
+        qtyMonthCounts[qk] = 0;
+      }
+      ncRecords.forEach(function(nc) {
+        if (nc.date && nc.qty) {
+          var mk = nc.date.slice(0, 7);
+          if (mk in qtyMonthCounts) qtyMonthCounts[mk] += (parseInt(nc.qty, 10) || 0);
+        }
+      });
+      var qtyLabels = qtyMonthKeys.map(function(k) {
+        var parts = k.split('-');
+        return (typeof PT_MONTHS !== 'undefined' ? PT_MONTHS[parseInt(parts[1], 10) - 1] : k) || k;
+      });
+      var qtyValues = qtyMonthKeys.map(function(k) { return qtyMonthCounts[k]; });
+      var darkText2 = '#374151', lightGrid2 = 'rgba(0,0,0,.06)';
+      _ncChartQtyMonth = new Chart(ctxQ.getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: qtyLabels,
+          datasets: [{
+            label: 'Peças apontadas',
+            data: qtyValues,
+            backgroundColor: '#16a34a',
+            borderRadius: 5,
+            borderSkipped: false
+          }]
+        },
+        options: {
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: function(ctx) { return ctx.parsed.y + ' peça' + (ctx.parsed.y !== 1 ? 's' : ''); } } },
+            datalabels: {
+              display: function(ctx) { return ctx.dataset.data[ctx.dataIndex] > 0; },
+              anchor: 'end', align: 'top', color: darkText2,
+              font: { size: 11, weight: 'bold' },
+              formatter: function(v) { return v; }
+            }
+          },
+          scales: {
+            x: { ticks: { color: darkText2, font: { size: 12 } }, grid: { display: false }, border: { display: false } },
+            y: { beginAtZero: true, ticks: { color: darkText2, font: { size: 12 }, stepSize: 1, precision: 0 }, grid: { color: lightGrid2 }, border: { display: false } }
+          },
+          responsive: true, maintainAspectRatio: false
+        }
+      });
+    }
+
   }
 
   // ── Custom charts ──────────────────────────────────────────────────────────
@@ -4761,6 +4862,23 @@ document.addEventListener("DOMContentLoaded", function() {
       ncRecords.forEach(function(nc) {
         if (nc.date) { var mk = nc.date.slice(0, 7); if (mk in counts) counts[mk]++; }
       });
+    } else if (def.field === 'qty_month') {
+      var now = new Date();
+      orderedKeys = [];
+      for (var i = 11; i >= 0; i--) {
+        var d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        var k = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+        counts[k] = 0;
+        orderedKeys.push(k);
+      }
+      ncRecords.forEach(function(nc) {
+        if (nc.date && nc.qty) { var mk = nc.date.slice(0, 7); if (mk in counts) counts[mk] += (parseInt(nc.qty, 10) || 0); }
+      });
+    } else if (def.field === 'qty_piece') {
+      ncRecords.forEach(function(nc) {
+        var v = nc.piece || '(sem nome)';
+        counts[v] = (counts[v] || 0) + (parseInt(nc.qty, 10) || 0);
+      });
     } else if (def.field === 'status') {
       counts = { 'Em aberto': 0, 'RNC Aberta': 0, '8D Finalizado': 0 };
       ncRecords.forEach(function(nc) {
@@ -4787,7 +4905,7 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     var labels = keys.map(function(k) {
-      if (def.field === 'month') {
+      if (def.field === 'month' || def.field === 'qty_month') {
         var parts = k.split('-');
         return (typeof PT_MONTHS !== 'undefined' ? PT_MONTHS[parseInt(parts[1], 10) - 1] : k) || k;
       }
@@ -4998,7 +5116,7 @@ document.addEventListener("DOMContentLoaded", function() {
     if (!chip) return;
     if (_ncCustomFilter.key) {
       var displayKey = _ncCustomFilter.key;
-      if (_ncCustomFilter.field === 'month') {
+      if (_ncCustomFilter.field === 'month' || _ncCustomFilter.field === 'qty_month') {
         var parts = _ncCustomFilter.key.split('-');
         displayKey = (typeof PT_MONTHS_SHORT !== 'undefined' ? PT_MONTHS_SHORT[parseInt(parts[1],10)-1] : parts[1]) + '/' + parts[0];
       }
@@ -5054,6 +5172,12 @@ document.addEventListener("DOMContentLoaded", function() {
           (nc.customer ? '<div class="nc-card-customer">Cliente: ' + escHtml(nc.customer) + '</div>' : '') +
           (nc.description ? '<div class="nc-card-desc" title="' + escHtml(nc.description) + '">' + escHtml(nc.description) + '</div>' : '') +
           '<div class="nc-card-date">📅 ' + dateStr + '</div>' +
+          (nc.qty ? '<div class="nc-card-qty">📦 ' + nc.qty + ' peça' + (nc.qty !== 1 ? 's' : '') + '</div>' : '') +
+          (Array.isArray(nc.pdfs) && nc.pdfs.length
+            ? '<div class="nc-card-pdfs">' + nc.pdfs.map(function(p) {
+                return '<a href="' + p.data + '" download="' + escHtml(p.name) + '" title="' + escHtml(p.name) + '" target="_blank">📄 ' + escHtml(p.name) + '</a>';
+              }).join('') + '</div>'
+            : '') +
         '</div>' +
         '<div class="nc-card-actions">' +
           '<button class="nc-btn-status nc-btn-rnc ' + rncActive + '" data-action="rnc_aberta">RNC Aberta</button>' +
@@ -5328,8 +5452,15 @@ document.addEventListener("DOMContentLoaded", function() {
             '<div class="nc-detail-field"><label>Peça</label><span>' + escHtml(nc.piece || '—') + '</span></div>' +
             '<div class="nc-detail-field"><label>Modo de Falha</label><span>' + escHtml(nc.failureMode || '—') + '</span></div>' +
             '<div class="nc-detail-field"><label>Cliente</label><span>' + escHtml(nc.customer || '—') + '</span></div>' +
+            (nc.qty ? '<div class="nc-detail-field"><label>Qtd. de Peças</label><span>' + nc.qty + '</span></div>' : '') +
             '<div class="nc-detail-field"><label>Status</label><span><div class="nc-detail-status-row">' + statusBadges + '</div></span></div>' +
             (nc.description ? '<div class="nc-detail-field full"><label>Descrição</label><span>' + escHtml(nc.description) + '</span></div>' : '') +
+            (Array.isArray(nc.pdfs) && nc.pdfs.length
+              ? '<div class="nc-detail-field full"><label>Documentos PDF</label><span style="display:flex;flex-direction:column;gap:4px">' +
+                  nc.pdfs.map(function(p) {
+                    return '<a href="' + p.data + '" download="' + escHtml(p.name) + '" target="_blank" style="color:#1b4d8e;font-size:12px;text-decoration:none">📄 ' + escHtml(p.name) + '</a>';
+                  }).join('') + '</span></div>'
+              : '') +
           '</div>' +
         '</div>';
 
@@ -5518,8 +5649,14 @@ document.addEventListener("DOMContentLoaded", function() {
           '</div>' +
           '<div class="prt-row" style="margin-top:10px;">' +
             '<div class="prt-field"><label>Status</label><span>' + statusBadgesHtml + '</span></div>' +
+            (nc.qty ? '<div class="prt-field"><label>Qtd. de Peças</label><span>' + nc.qty + '</span></div>' : '') +
           '</div>' +
           (nc.description ? '<div class="prt-row" style="margin-top:10px;"><div class="prt-field" style="flex:1"><label>Descrição</label><span class="prt-desc">' + escHtml(nc.description) + '</span></div></div>' : '') +
+          (Array.isArray(nc.pdfs) && nc.pdfs.length
+            ? '<div class="prt-row" style="margin-top:10px;"><div class="prt-field" style="flex:1"><label>Documentos PDF Anexados</label><span style="font-size:11px;color:#374151">' +
+                nc.pdfs.map(function(p) { return '📄 ' + escHtml(p.name); }).join(' &nbsp;·&nbsp; ') +
+              '</span></div></div>'
+            : '') +
         '</div>' +
       '</div>' +
       rncHtml +
@@ -5561,11 +5698,14 @@ document.addEventListener("DOMContentLoaded", function() {
       // Reset modal state
       _ncPhotos = [];
       thumbs.innerHTML = '';
+      _ncPdfs = [];
+      document.getElementById('ncPdfList').innerHTML = '';
       document.getElementById('ncNumber').value      = '';
       document.getElementById('ncCustomer').value    = '';
       document.getElementById('ncPiece').value       = '';
       document.getElementById('ncFailureMode').value = '';
       document.getElementById('ncDate').value        = new Date().toISOString().slice(0,10);
+      document.getElementById('ncQty').value         = '';
       document.getElementById('ncDescription').value = '';
       input.value = '';
       // Hide RNC/8D sections in create mode
@@ -5591,11 +5731,14 @@ document.addEventListener("DOMContentLoaded", function() {
       _ncPhotos = photos.slice();
       thumbs.innerHTML = '';
       _ncPhotos.forEach(function(src, i) { renderThumb(src, i); });
+      _ncPdfs = Array.isArray(nc.pdfs) ? nc.pdfs.slice() : [];
+      rebuildPdfList();
       document.getElementById('ncNumber').value      = nc.ncNumber || '';
       document.getElementById('ncCustomer').value    = nc.customer || '';
       document.getElementById('ncPiece').value       = nc.piece || '';
       document.getElementById('ncFailureMode').value = nc.failureMode || '';
       document.getElementById('ncDate').value        = nc.date || new Date().toISOString().slice(0,10);
+      document.getElementById('ncQty').value         = nc.qty != null ? nc.qty : '';
       document.getElementById('ncDescription').value = nc.description || '';
       input.value = '';
       // RNC section — visible when rncAberta
@@ -5649,6 +5792,58 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // Expose edit opener globally (called from renderNcCards action handler)
     window.openNcModalEdit = openNcModalEdit;
+
+    // ── PDF upload ────────────────────────────────────────────────────────
+    var pdfDrop  = document.getElementById('ncPdfDrop');
+    var pdfInput = document.getElementById('ncPdfInput');
+
+    pdfDrop.addEventListener('click', function() { pdfInput.click(); });
+    pdfDrop.addEventListener('dragover', function(e) { e.preventDefault(); pdfDrop.classList.add('dragover'); });
+    pdfDrop.addEventListener('dragleave', function(e) { if (!pdfDrop.contains(e.relatedTarget)) pdfDrop.classList.remove('dragover'); });
+    pdfDrop.addEventListener('drop', function(e) {
+      e.preventDefault(); pdfDrop.classList.remove('dragover');
+      addPdfs(e.dataTransfer.files);
+    });
+    pdfInput.addEventListener('change', function() { addPdfs(pdfInput.files); pdfInput.value = ''; });
+
+    function addPdfs(fileList) {
+      Array.prototype.forEach.call(fileList, function(file) {
+        if (file.type !== 'application/pdf') return;
+        var reader = new FileReader();
+        reader.onload = function(ev) {
+          _ncPdfs.push({ name: file.name, data: ev.target.result });
+          rebuildPdfList();
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function rebuildPdfList() {
+      var list = document.getElementById('ncPdfList');
+      list.innerHTML = '';
+      _ncPdfs.forEach(function(pdf, i) {
+        var item = document.createElement('div');
+        item.className = 'nc-pdf-list-item';
+        var icon = document.createElement('span');
+        icon.textContent = '📄';
+        icon.style.flexShrink = '0';
+        var name = document.createElement('span');
+        name.textContent = pdf.name;
+        name.title = pdf.name;
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.title = 'Remover PDF';
+        btn.textContent = '✕';
+        btn.addEventListener('click', function() {
+          _ncPdfs.splice(i, 1);
+          rebuildPdfList();
+        });
+        item.appendChild(icon);
+        item.appendChild(name);
+        item.appendChild(btn);
+        list.appendChild(item);
+      });
+    }
 
     // ── Multi-photo upload ────────────────────────────────────────────────
     drop.addEventListener('click', function() { input.click(); });
@@ -5769,8 +5964,10 @@ document.addEventListener("DOMContentLoaded", function() {
           ncRecords[idx].piece       = piece;
           ncRecords[idx].failureMode = failureMode;
           ncRecords[idx].date        = date;
+          ncRecords[idx].qty         = parseInt(document.getElementById('ncQty').value, 10) || 0;
           ncRecords[idx].description = document.getElementById('ncDescription').value.trim();
           ncRecords[idx].photos      = _ncPhotos.slice();
+          ncRecords[idx].pdfs        = _ncPdfs.slice();
           // Replace alert file / update RNC number if RNC is open
           if (ncRecords[idx].rncAberta) {
             var editedRncNum = document.getElementById('ncEditRncNumber').value.trim();
@@ -5805,10 +6002,12 @@ document.addEventListener("DOMContentLoaded", function() {
           piece:       piece,
           failureMode: failureMode,
           date:        date,
+          qty:         parseInt(document.getElementById('ncQty').value, 10) || 0,
           description: document.getElementById('ncDescription').value.trim(),
           rncAberta:    false,
           d8Finalizado: false,
-          photos:      _ncPhotos.slice()
+          photos:      _ncPhotos.slice(),
+          pdfs:        _ncPdfs.slice()
         };
         ncRecords.push(newNc);
         saveNcRecords();
@@ -5849,9 +6048,12 @@ document.addEventListener("DOMContentLoaded", function() {
         // Apply custom chart filter
         if (_ncCustomFilter.key) {
           var cf = _ncCustomFilter;
-          if (cf.field === 'month') {
+          if (cf.field === 'month' || cf.field === 'qty_month') {
             var ncMkC = nc.date ? nc.date.slice(0,7) : '';
             if (ncMkC !== cf.key) { card.classList.add('nc-hidden'); return; }
+          } else if (cf.field === 'qty_piece') {
+            var ncPieceC = nc.piece || '(sem nome)';
+            if (ncPieceC !== cf.key) { card.classList.add('nc-hidden'); return; }
           } else if (cf.field === 'status') {
             var ncStatus;
             if (nc.d8Finalizado)   ncStatus = '8D Finalizado';
@@ -5968,6 +6170,104 @@ document.addEventListener("DOMContentLoaded", function() {
         _ncAlertFilter = !_ncAlertFilter;
         alertFilterBtn.classList.toggle('active', _ncAlertFilter);
         if (window._applyNcSearch) window._applyNcSearch();
+      });
+    }
+
+    // ── Excel export ──────────────────────────────────────────────────────
+    var NC_EXCEL_COLUMNS = [
+      { key: 'ncNumber',    label: 'Nº NC' },
+      { key: 'date',        label: 'Data' },
+      { key: 'customer',    label: 'Cliente' },
+      { key: 'piece',       label: 'Peça' },
+      { key: 'failureMode', label: 'Modo de Falha' },
+      { key: 'qty',         label: 'Qtd. de Peças' },
+      { key: 'description', label: 'Descrição' },
+      { key: 'status',      label: 'Status' },
+      { key: 'rncNumber',   label: 'Nº RNC' },
+      { key: 'observacoes', label: 'Observações' }
+    ];
+
+    var ncExcelModal   = document.getElementById('ncExcelModal');
+    var ncExcelColsGrid = document.getElementById('ncExcelColsGrid');
+    var ncExcelSubtitle = document.getElementById('ncExcelSubtitle');
+    var ncExcelExportBtn = document.getElementById('ncExcelExportBtn');
+    var ncExcelCancelBtn = document.getElementById('ncExcelCancelBtn');
+    var ncExcelConfirmBtn = document.getElementById('ncExcelConfirmBtn');
+
+    function openNcExcelModal() {
+      // Build checkboxes
+      ncExcelColsGrid.innerHTML = '';
+      NC_EXCEL_COLUMNS.forEach(function(col) {
+        var label = document.createElement('label');
+        label.className = 'nc-excel-col-item';
+        var cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.value = col.key;
+        cb.checked = true;
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(col.label));
+        ncExcelColsGrid.appendChild(label);
+      });
+      // Count visible NCs
+      var visible = document.querySelectorAll('#ncCardsGrid .nc-card:not(.nc-hidden)');
+      ncExcelSubtitle.textContent = 'Selecione as colunas a incluir na planilha (' + visible.length + ' NC' + (visible.length !== 1 ? 's' : '') + ' visíveis):';
+      ncExcelModal.classList.add('open');
+    }
+
+    function closeNcExcelModal() { ncExcelModal.classList.remove('open'); }
+
+    if (ncExcelExportBtn) ncExcelExportBtn.addEventListener('click', openNcExcelModal);
+    if (ncExcelCancelBtn) ncExcelCancelBtn.addEventListener('click', closeNcExcelModal);
+    ncExcelModal.addEventListener('click', function(e) { if (e.target === ncExcelModal) closeNcExcelModal(); });
+
+    if (ncExcelConfirmBtn) {
+      ncExcelConfirmBtn.addEventListener('click', function() {
+        // Gather selected columns
+        var selected = [];
+        ncExcelColsGrid.querySelectorAll('input[type=checkbox]:checked').forEach(function(cb) {
+          var col = NC_EXCEL_COLUMNS.find(function(c){ return c.key === cb.value; });
+          if (col) selected.push(col);
+        });
+        if (!selected.length) { alert('Selecione pelo menos uma coluna.'); return; }
+
+        // Gather visible records (in DOM order)
+        var rows = [];
+        // Header row
+        var header = {};
+        selected.forEach(function(col) { header[col.label] = col.label; });
+        rows.push(selected.map(function(c){ return c.label; }));
+
+        document.querySelectorAll('#ncCardsGrid .nc-card:not(.nc-hidden)').forEach(function(card) {
+          var id = card.dataset.ncId;
+          var nc = ncRecords.find(function(r){ return r.id === id; });
+          if (!nc) return;
+          var status = nc.d8Finalizado ? '8D Finalizado' : nc.rncAberta ? 'RNC Aberta' : 'Em aberto';
+          var row = selected.map(function(col) {
+            if (col.key === 'status') return status;
+            var v = nc[col.key];
+            return (v === undefined || v === null) ? '' : v;
+          });
+          rows.push(row);
+        });
+
+        // Build workbook
+        var wb = XLSX.utils.book_new();
+        var ws = XLSX.utils.aoa_to_sheet(rows);
+        // Auto column width
+        var colWidths = selected.map(function(col, ci) {
+          var max = col.label.length;
+          rows.forEach(function(row) {
+            var v = row[ci] !== undefined ? String(row[ci]) : '';
+            if (v.length > max) max = v.length;
+          });
+          return { wch: Math.min(max + 4, 60) };
+        });
+        ws['!cols'] = colWidths;
+        XLSX.utils.book_append_sheet(wb, ws, 'NCs');
+
+        var today = new Date().toISOString().slice(0,10);
+        XLSX.writeFile(wb, 'relatorio_nc_' + today + '.xlsx');
+        closeNcExcelModal();
       });
     }
 
@@ -6161,6 +6461,17 @@ document.addEventListener("DOMContentLoaded", function() {
           <div class="nc-photo-thumbs" id="ncPhotoThumbs"></div>
         </div>
 
+        <!-- PDF attachments (full width) -->
+        <div class="nc-field nc-field-full">
+          <label>Documentos PDF</label>
+          <div class="nc-pdf-drop" id="ncPdfDrop" title="Clique ou arraste PDFs">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
+            <span>Clique ou arraste arquivos PDF</span>
+          </div>
+          <input type="file" id="ncPdfInput" accept="application/pdf" multiple />
+          <div class="nc-pdf-list" id="ncPdfList"></div>
+        </div>
+
         <!-- NC Number -->
         <div class="nc-field">
           <label>Nº da NC</label>
@@ -6247,6 +6558,12 @@ document.addEventListener("DOMContentLoaded", function() {
         <div class="nc-field">
           <label>Data da Reclamação <span style="color:#dc2626">*</span></label>
           <input type="date" id="ncDate" />
+        </div>
+
+        <!-- Quantity of pieces -->
+        <div class="nc-field">
+          <label>Quantidade de Peças</label>
+          <input type="number" id="ncQty" placeholder="Ex: 10" min="1" step="1" autocomplete="off" />
         </div>
 
         <!-- Description (full width) -->
@@ -6443,6 +6760,27 @@ document.addEventListener("DOMContentLoaded", function() {
   </div>
   <div class="bell-panel-body" id="sidebarBellPanelBody">
     <div class="bell-empty">Nenhuma ação em atraso.</div>
+  </div>
+</div>
+
+<!-- NC – Excel Export Modal -->
+<div id="ncExcelModal">
+  <div class="nc-excel-modal-box">
+    <h3>
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="#217346"><path d="M4 3a1 1 0 000 2h1v10H4a1 1 0 100 2h12a1 1 0 100-2h-1V5h1a1 1 0 100-2H4zm3 2h6v10H7V5zm2 2v2h2V7H9zm0 4v2h2v-2H9z"/></svg>
+      Exportar Relatório Excel
+    </h3>
+    <div class="nc-excel-subtitle" id="ncExcelSubtitle">Selecione as colunas a incluir na planilha:</div>
+    <div class="nc-excel-cols-grid" id="ncExcelColsGrid">
+      <!-- populated by JS -->
+    </div>
+    <div class="nc-excel-modal-actions">
+      <button class="nc-excel-btn-cancel" id="ncExcelCancelBtn">Cancelar</button>
+      <button class="nc-excel-btn-confirm" id="ncExcelConfirmBtn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+        Baixar Excel
+      </button>
+    </div>
   </div>
 </div>
 
