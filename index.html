@@ -1448,14 +1448,6 @@
       </div>
     </div>
 
-    <!-- Qty chart row: peças apontadas por mês -->
-    <div class="nc-charts-row" style="margin-bottom:24px;">
-      <div class="nc-chart-card nc-chart-month-card" style="position:relative;">
-        <h4>Peças Apontadas por Mês</h4>
-        <canvas id="ncChartQtyMonth"></canvas>
-      </div>
-    </div>
-
     <!-- Custom Charts Section -->
     <div class="nc-custom-section-header">
       <div class="nc-section-title" style="margin-bottom:0">Gráficos Personalizados</div>
@@ -4005,7 +3997,7 @@ document.addEventListener("DOMContentLoaded", function() {
   // ── NC (Non-Conformance) Page ────────────────────────────────────────────
 
   var ncRecords = [];
-  var _ncChartPiece = null, _ncChartFailure = null, _ncChartMonth = null, _ncChartQtyMonth = null;
+  var _ncChartPiece = null, _ncChartFailure = null, _ncChartMonth = null;
   var _ncMonthFilter   = null; // active YYYY-MM filter key, or null
   var _ncPieceFilter   = null; // active piece name filter, or null
   var _ncFailureFilter = null; // active failure mode filter, or null
@@ -4757,63 +4749,6 @@ document.addEventListener("DOMContentLoaded", function() {
     if (failureBarInput)        failureBarInput.value         = _ncChartSettings.failureBarColor || '#2563eb';
     if (failureSortInput)       failureSortInput.value        = _ncChartSettings.failureSort     || 'desc';
     if (failureShowLabelsInput) failureShowLabelsInput.checked = _ncChartSettings.failureShowLabels !== false;
-
-    // ── Qty-per-month chart ───────────────────────────────────────────────────
-    if (_ncChartQtyMonth) { _ncChartQtyMonth.destroy(); _ncChartQtyMonth = null; }
-    var ctxQ = document.getElementById('ncChartQtyMonth');
-    if (ctxQ && typeof Chart !== 'undefined') {
-      var now2 = new Date();
-      var qtyMonthKeys = [], qtyMonthCounts = {};
-      for (var qi = 11; qi >= 0; qi--) {
-        var qd = new Date(now2.getFullYear(), now2.getMonth() - qi, 1);
-        var qk = qd.getFullYear() + '-' + String(qd.getMonth() + 1).padStart(2, '0');
-        qtyMonthKeys.push(qk);
-        qtyMonthCounts[qk] = 0;
-      }
-      ncRecords.forEach(function(nc) {
-        if (nc.naoProcedente) return;
-        if (nc.date && nc.qty) {
-          var mk = nc.date.slice(0, 7);
-          if (mk in qtyMonthCounts) qtyMonthCounts[mk] += (parseInt(nc.qty, 10) || 0);
-        }
-      });
-      var qtyLabels = qtyMonthKeys.map(function(k) {
-        var parts = k.split('-');
-        return (typeof PT_MONTHS !== 'undefined' ? PT_MONTHS[parseInt(parts[1], 10) - 1] : k) || k;
-      });
-      var qtyValues = qtyMonthKeys.map(function(k) { return qtyMonthCounts[k]; });
-      var darkText2 = '#374151', lightGrid2 = 'rgba(0,0,0,.06)';
-      _ncChartQtyMonth = new Chart(ctxQ.getContext('2d'), {
-        type: 'bar',
-        data: {
-          labels: qtyLabels,
-          datasets: [{
-            label: 'Peças apontadas',
-            data: qtyValues,
-            backgroundColor: '#16a34a',
-            borderRadius: 5,
-            borderSkipped: false
-          }]
-        },
-        options: {
-          plugins: {
-            legend: { display: false },
-            tooltip: { callbacks: { label: function(ctx) { return ctx.parsed.y + ' peça' + (ctx.parsed.y !== 1 ? 's' : ''); } } },
-            datalabels: {
-              display: function(ctx) { return ctx.dataset.data[ctx.dataIndex] > 0; },
-              anchor: 'end', align: 'top', color: darkText2,
-              font: { size: 11, weight: 'bold' },
-              formatter: function(v) { return v; }
-            }
-          },
-          scales: {
-            x: { ticks: { color: darkText2, font: { size: 12 } }, grid: { display: false }, border: { display: false } },
-            y: { beginAtZero: true, ticks: { color: darkText2, font: { size: 12 }, stepSize: 1, precision: 0 }, grid: { color: lightGrid2 }, border: { display: false } }
-          },
-          responsive: true, maintainAspectRatio: false
-        }
-      });
-    }
 
   }
 
