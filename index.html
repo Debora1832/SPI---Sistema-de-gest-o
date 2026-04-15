@@ -782,6 +782,7 @@
     .nc-card-customer { font-size:11px; color:#9ca3af; }
     .nc-card-desc { font-size:11px; color:#9ca3af; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .nc-card-date { font-size:11px; color:#6b7280; margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,.08); }
+    .nc-card-qty  { font-size:11px; color:#6b7280; margin-top:4px; }
     .nc-card-actions { padding:10px 16px 14px; display:flex; gap:8px; align-items:center; }
     .nc-btn-status { flex:1; font-size:10px; font-weight:700; padding:6px 6px; border-radius:7px; border:2px solid transparent; cursor:pointer; text-transform:uppercase; letter-spacing:.04em; transition:all .15s; text-align:center; }
     .nc-btn-rnc { border-color:#ef4444; color:#ef4444; background:transparent; }
@@ -1408,6 +1409,14 @@
       </div>
     </div>
 
+    <!-- Qty chart row: peças apontadas por mês -->
+    <div class="nc-charts-row" style="margin-bottom:24px;">
+      <div class="nc-chart-card nc-chart-month-card" style="position:relative;">
+        <h4>Peças Apontadas por Mês</h4>
+        <canvas id="ncChartQtyMonth"></canvas>
+      </div>
+    </div>
+
     <!-- Custom Charts Section -->
     <div class="nc-custom-section-header">
       <div class="nc-section-title" style="margin-bottom:0">Gráficos Personalizados</div>
@@ -1488,6 +1497,8 @@
         <option value="month">Mês (últimos 12)</option>
         <option value="customer">Cliente</option>
         <option value="status">Status (Em aberto / RNC / 8D)</option>
+        <option value="qty_month">Qtd. de Peças por Mês (soma)</option>
+        <option value="qty_piece">Qtd. de Peças por Peça (soma)</option>
       </select>
     </div>
     <div class="nc-builder-row">
@@ -3951,7 +3962,7 @@ document.addEventListener("DOMContentLoaded", function() {
   // ── NC (Non-Conformance) Page ────────────────────────────────────────────
 
   var ncRecords = [];
-  var _ncChartPiece = null, _ncChartFailure = null, _ncChartMonth = null;
+  var _ncChartPiece = null, _ncChartFailure = null, _ncChartMonth = null, _ncChartQtyMonth = null;
   var _ncMonthFilter   = null; // active YYYY-MM filter key, or null
   var _ncPieceFilter   = null; // active piece name filter, or null
   var _ncFailureFilter = null; // active failure mode filter, or null
@@ -4701,6 +4712,62 @@ document.addEventListener("DOMContentLoaded", function() {
     if (failureSortInput)       failureSortInput.value        = _ncChartSettings.failureSort     || 'desc';
     if (failureShowLabelsInput) failureShowLabelsInput.checked = _ncChartSettings.failureShowLabels !== false;
 
+    // ── Qty-per-month chart ───────────────────────────────────────────────────
+    if (_ncChartQtyMonth) { _ncChartQtyMonth.destroy(); _ncChartQtyMonth = null; }
+    var ctxQ = document.getElementById('ncChartQtyMonth');
+    if (ctxQ && typeof Chart !== 'undefined') {
+      var now2 = new Date();
+      var qtyMonthKeys = [], qtyMonthCounts = {};
+      for (var qi = 11; qi >= 0; qi--) {
+        var qd = new Date(now2.getFullYear(), now2.getMonth() - qi, 1);
+        var qk = qd.getFullYear() + '-' + String(qd.getMonth() + 1).padStart(2, '0');
+        qtyMonthKeys.push(qk);
+        qtyMonthCounts[qk] = 0;
+      }
+      ncRecords.forEach(function(nc) {
+        if (nc.date && nc.qty) {
+          var mk = nc.date.slice(0, 7);
+          if (mk in qtyMonthCounts) qtyMonthCounts[mk] += (parseInt(nc.qty, 10) || 0);
+        }
+      });
+      var qtyLabels = qtyMonthKeys.map(function(k) {
+        var parts = k.split('-');
+        return (typeof PT_MONTHS !== 'undefined' ? PT_MONTHS[parseInt(parts[1], 10) - 1] : k) || k;
+      });
+      var qtyValues = qtyMonthKeys.map(function(k) { return qtyMonthCounts[k]; });
+      var darkText2 = '#374151', lightGrid2 = 'rgba(0,0,0,.06)';
+      _ncChartQtyMonth = new Chart(ctxQ.getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: qtyLabels,
+          datasets: [{
+            label: 'Peças apontadas',
+            data: qtyValues,
+            backgroundColor: '#16a34a',
+            borderRadius: 5,
+            borderSkipped: false
+          }]
+        },
+        options: {
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: function(ctx) { return ctx.parsed.y + ' peça' + (ctx.parsed.y !== 1 ? 's' : ''); } } },
+            datalabels: {
+              display: function(ctx) { return ctx.dataset.data[ctx.dataIndex] > 0; },
+              anchor: 'end', align: 'top', color: darkText2,
+              font: { size: 11, weight: 'bold' },
+              formatter: function(v) { return v; }
+            }
+          },
+          scales: {
+            x: { ticks: { color: darkText2, font: { size: 12 } }, grid: { display: false }, border: { display: false } },
+            y: { beginAtZero: true, ticks: { color: darkText2, font: { size: 12 }, stepSize: 1, precision: 0 }, grid: { color: lightGrid2 }, border: { display: false } }
+          },
+          responsive: true, maintainAspectRatio: false
+        }
+      });
+    }
+
   }
 
   // ── Custom charts ──────────────────────────────────────────────────────────
@@ -4761,6 +4828,23 @@ document.addEventListener("DOMContentLoaded", function() {
       ncRecords.forEach(function(nc) {
         if (nc.date) { var mk = nc.date.slice(0, 7); if (mk in counts) counts[mk]++; }
       });
+    } else if (def.field === 'qty_month') {
+      var now = new Date();
+      orderedKeys = [];
+      for (var i = 11; i >= 0; i--) {
+        var d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        var k = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+        counts[k] = 0;
+        orderedKeys.push(k);
+      }
+      ncRecords.forEach(function(nc) {
+        if (nc.date && nc.qty) { var mk = nc.date.slice(0, 7); if (mk in counts) counts[mk] += (parseInt(nc.qty, 10) || 0); }
+      });
+    } else if (def.field === 'qty_piece') {
+      ncRecords.forEach(function(nc) {
+        var v = nc.piece || '(sem nome)';
+        counts[v] = (counts[v] || 0) + (parseInt(nc.qty, 10) || 0);
+      });
     } else if (def.field === 'status') {
       counts = { 'Em aberto': 0, 'RNC Aberta': 0, '8D Finalizado': 0 };
       ncRecords.forEach(function(nc) {
@@ -4787,7 +4871,7 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     var labels = keys.map(function(k) {
-      if (def.field === 'month') {
+      if (def.field === 'month' || def.field === 'qty_month') {
         var parts = k.split('-');
         return (typeof PT_MONTHS !== 'undefined' ? PT_MONTHS[parseInt(parts[1], 10) - 1] : k) || k;
       }
@@ -4998,7 +5082,7 @@ document.addEventListener("DOMContentLoaded", function() {
     if (!chip) return;
     if (_ncCustomFilter.key) {
       var displayKey = _ncCustomFilter.key;
-      if (_ncCustomFilter.field === 'month') {
+      if (_ncCustomFilter.field === 'month' || _ncCustomFilter.field === 'qty_month') {
         var parts = _ncCustomFilter.key.split('-');
         displayKey = (typeof PT_MONTHS_SHORT !== 'undefined' ? PT_MONTHS_SHORT[parseInt(parts[1],10)-1] : parts[1]) + '/' + parts[0];
       }
@@ -5054,6 +5138,7 @@ document.addEventListener("DOMContentLoaded", function() {
           (nc.customer ? '<div class="nc-card-customer">Cliente: ' + escHtml(nc.customer) + '</div>' : '') +
           (nc.description ? '<div class="nc-card-desc" title="' + escHtml(nc.description) + '">' + escHtml(nc.description) + '</div>' : '') +
           '<div class="nc-card-date">📅 ' + dateStr + '</div>' +
+          (nc.qty ? '<div class="nc-card-qty">📦 ' + nc.qty + ' peça' + (nc.qty !== 1 ? 's' : '') + '</div>' : '') +
         '</div>' +
         '<div class="nc-card-actions">' +
           '<button class="nc-btn-status nc-btn-rnc ' + rncActive + '" data-action="rnc_aberta">RNC Aberta</button>' +
@@ -5328,6 +5413,7 @@ document.addEventListener("DOMContentLoaded", function() {
             '<div class="nc-detail-field"><label>Peça</label><span>' + escHtml(nc.piece || '—') + '</span></div>' +
             '<div class="nc-detail-field"><label>Modo de Falha</label><span>' + escHtml(nc.failureMode || '—') + '</span></div>' +
             '<div class="nc-detail-field"><label>Cliente</label><span>' + escHtml(nc.customer || '—') + '</span></div>' +
+            (nc.qty ? '<div class="nc-detail-field"><label>Qtd. de Peças</label><span>' + nc.qty + '</span></div>' : '') +
             '<div class="nc-detail-field"><label>Status</label><span><div class="nc-detail-status-row">' + statusBadges + '</div></span></div>' +
             (nc.description ? '<div class="nc-detail-field full"><label>Descrição</label><span>' + escHtml(nc.description) + '</span></div>' : '') +
           '</div>' +
@@ -5518,6 +5604,7 @@ document.addEventListener("DOMContentLoaded", function() {
           '</div>' +
           '<div class="prt-row" style="margin-top:10px;">' +
             '<div class="prt-field"><label>Status</label><span>' + statusBadgesHtml + '</span></div>' +
+            (nc.qty ? '<div class="prt-field"><label>Qtd. de Peças</label><span>' + nc.qty + '</span></div>' : '') +
           '</div>' +
           (nc.description ? '<div class="prt-row" style="margin-top:10px;"><div class="prt-field" style="flex:1"><label>Descrição</label><span class="prt-desc">' + escHtml(nc.description) + '</span></div></div>' : '') +
         '</div>' +
@@ -5566,6 +5653,7 @@ document.addEventListener("DOMContentLoaded", function() {
       document.getElementById('ncPiece').value       = '';
       document.getElementById('ncFailureMode').value = '';
       document.getElementById('ncDate').value        = new Date().toISOString().slice(0,10);
+      document.getElementById('ncQty').value         = '';
       document.getElementById('ncDescription').value = '';
       input.value = '';
       // Hide RNC/8D sections in create mode
@@ -5596,6 +5684,7 @@ document.addEventListener("DOMContentLoaded", function() {
       document.getElementById('ncPiece').value       = nc.piece || '';
       document.getElementById('ncFailureMode').value = nc.failureMode || '';
       document.getElementById('ncDate').value        = nc.date || new Date().toISOString().slice(0,10);
+      document.getElementById('ncQty').value         = nc.qty != null ? nc.qty : '';
       document.getElementById('ncDescription').value = nc.description || '';
       input.value = '';
       // RNC section — visible when rncAberta
@@ -5769,6 +5858,7 @@ document.addEventListener("DOMContentLoaded", function() {
           ncRecords[idx].piece       = piece;
           ncRecords[idx].failureMode = failureMode;
           ncRecords[idx].date        = date;
+          ncRecords[idx].qty         = parseInt(document.getElementById('ncQty').value, 10) || 0;
           ncRecords[idx].description = document.getElementById('ncDescription').value.trim();
           ncRecords[idx].photos      = _ncPhotos.slice();
           // Replace alert file / update RNC number if RNC is open
@@ -5805,6 +5895,7 @@ document.addEventListener("DOMContentLoaded", function() {
           piece:       piece,
           failureMode: failureMode,
           date:        date,
+          qty:         parseInt(document.getElementById('ncQty').value, 10) || 0,
           description: document.getElementById('ncDescription').value.trim(),
           rncAberta:    false,
           d8Finalizado: false,
@@ -5849,9 +5940,12 @@ document.addEventListener("DOMContentLoaded", function() {
         // Apply custom chart filter
         if (_ncCustomFilter.key) {
           var cf = _ncCustomFilter;
-          if (cf.field === 'month') {
+          if (cf.field === 'month' || cf.field === 'qty_month') {
             var ncMkC = nc.date ? nc.date.slice(0,7) : '';
             if (ncMkC !== cf.key) { card.classList.add('nc-hidden'); return; }
+          } else if (cf.field === 'qty_piece') {
+            var ncPieceC = nc.piece || '(sem nome)';
+            if (ncPieceC !== cf.key) { card.classList.add('nc-hidden'); return; }
           } else if (cf.field === 'status') {
             var ncStatus;
             if (nc.d8Finalizado)   ncStatus = '8D Finalizado';
@@ -6247,6 +6341,12 @@ document.addEventListener("DOMContentLoaded", function() {
         <div class="nc-field">
           <label>Data da Reclamação <span style="color:#dc2626">*</span></label>
           <input type="date" id="ncDate" />
+        </div>
+
+        <!-- Quantity of pieces -->
+        <div class="nc-field">
+          <label>Quantidade de Peças</label>
+          <input type="number" id="ncQty" placeholder="Ex: 10" min="1" step="1" autocomplete="off" />
         </div>
 
         <!-- Description (full width) -->
