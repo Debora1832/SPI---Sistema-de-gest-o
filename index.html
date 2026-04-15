@@ -15,6 +15,9 @@
   <!-- Chart.js (used by the NC page) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 
+  <!-- SheetJS – Excel export -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
   <style>
     *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; font-family:'Inter', sans-serif; }
 
@@ -770,6 +773,23 @@
     .nc-search-clear { background:none; border:none; color:#9ca3af; cursor:pointer; font-size:14px; padding:0 2px; line-height:1; }
     .nc-search-clear:hover { color:#374151; }
     .nc-search-count { font-size:11px; color:#6b7280; margin-bottom:10px; padding-left:2px; }
+    /* NC Excel export button */
+    .nc-excel-btn { background:#217346; color:#fff; border:none; border-radius:8px; padding:7px 14px; font-size:12px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:background .15s; }
+    .nc-excel-btn:hover { background:#1a5e38; }
+    /* NC Excel export modal */
+    #ncExcelModal { display:none; position:fixed; inset:0; z-index:9100; background:rgba(0,0,0,.45); align-items:center; justify-content:center; }
+    #ncExcelModal.open { display:flex; }
+    .nc-excel-modal-box { background:#fff; border-radius:14px; padding:28px 28px 22px; width:min(480px,92vw); max-height:90vh; overflow-y:auto; box-shadow:0 8px 32px rgba(0,0,0,.22); }
+    .nc-excel-modal-box h3 { margin:0 0 6px; font-size:16px; color:#1a1a2e; display:flex; align-items:center; gap:8px; }
+    .nc-excel-modal-box .nc-excel-subtitle { font-size:12px; color:#6b7280; margin-bottom:18px; }
+    .nc-excel-cols-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:18px; }
+    .nc-excel-col-item { display:flex; align-items:center; gap:8px; font-size:13px; color:#374151; background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:8px 10px; cursor:pointer; user-select:none; }
+    .nc-excel-col-item input[type=checkbox] { width:15px; height:15px; accent-color:#217346; cursor:pointer; }
+    .nc-excel-modal-actions { display:flex; gap:10px; justify-content:flex-end; }
+    .nc-excel-btn-cancel { background:#f3f4f6; color:#374151; border:none; border-radius:8px; padding:9px 18px; font-size:13px; font-weight:600; cursor:pointer; }
+    .nc-excel-btn-cancel:hover { background:#e5e7eb; }
+    .nc-excel-btn-confirm { background:#217346; color:#fff; border:none; border-radius:8px; padding:9px 18px; font-size:13px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:6px; }
+    .nc-excel-btn-confirm:hover { background:#1a5e38; }
     .nc-card.nc-hidden { display:none; }
     .nc-sync-badge { font-size:11px; font-weight:600; padding:4px 10px; border-radius:20px; display:inline-flex; align-items:center; gap:6px; }
     .nc-sync-badge.synced   { background:rgba(34,197,94,.15); color:#16a34a; border:1px solid rgba(34,197,94,.3); }
@@ -1457,6 +1477,10 @@
         <option value="dateDesc">Data (↓)</option>
       </select>
       <button class="nc-alert-filter-btn" id="ncAlertFilterBtn">⚠ Com alertas</button>
+      <button class="nc-excel-btn" id="ncExcelExportBtn" title="Exportar para Excel">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M4 3a1 1 0 000 2h1v10H4a1 1 0 100 2h12a1 1 0 100-2h-1V5h1a1 1 0 100-2H4zm3 2h6v10H7V5zm2 2v2h2V7H9zm0 4v2h2v-2H9z"/></svg>
+        Exportar Excel
+      </button>
     </div>
     <!-- Active filter chips -->
     <div class="nc-filter-chips-row" id="ncFilterChipsRow">
@@ -6149,6 +6173,104 @@ document.addEventListener("DOMContentLoaded", function() {
       });
     }
 
+    // ── Excel export ──────────────────────────────────────────────────────
+    var NC_EXCEL_COLUMNS = [
+      { key: 'ncNumber',    label: 'Nº NC' },
+      { key: 'date',        label: 'Data' },
+      { key: 'customer',    label: 'Cliente' },
+      { key: 'piece',       label: 'Peça' },
+      { key: 'failureMode', label: 'Modo de Falha' },
+      { key: 'qty',         label: 'Qtd. de Peças' },
+      { key: 'description', label: 'Descrição' },
+      { key: 'status',      label: 'Status' },
+      { key: 'rncNumber',   label: 'Nº RNC' },
+      { key: 'observacoes', label: 'Observações' }
+    ];
+
+    var ncExcelModal   = document.getElementById('ncExcelModal');
+    var ncExcelColsGrid = document.getElementById('ncExcelColsGrid');
+    var ncExcelSubtitle = document.getElementById('ncExcelSubtitle');
+    var ncExcelExportBtn = document.getElementById('ncExcelExportBtn');
+    var ncExcelCancelBtn = document.getElementById('ncExcelCancelBtn');
+    var ncExcelConfirmBtn = document.getElementById('ncExcelConfirmBtn');
+
+    function openNcExcelModal() {
+      // Build checkboxes
+      ncExcelColsGrid.innerHTML = '';
+      NC_EXCEL_COLUMNS.forEach(function(col) {
+        var label = document.createElement('label');
+        label.className = 'nc-excel-col-item';
+        var cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.value = col.key;
+        cb.checked = true;
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(col.label));
+        ncExcelColsGrid.appendChild(label);
+      });
+      // Count visible NCs
+      var visible = document.querySelectorAll('#ncCardsGrid .nc-card:not(.nc-hidden)');
+      ncExcelSubtitle.textContent = 'Selecione as colunas a incluir na planilha (' + visible.length + ' NC' + (visible.length !== 1 ? 's' : '') + ' visíveis):';
+      ncExcelModal.classList.add('open');
+    }
+
+    function closeNcExcelModal() { ncExcelModal.classList.remove('open'); }
+
+    if (ncExcelExportBtn) ncExcelExportBtn.addEventListener('click', openNcExcelModal);
+    if (ncExcelCancelBtn) ncExcelCancelBtn.addEventListener('click', closeNcExcelModal);
+    ncExcelModal.addEventListener('click', function(e) { if (e.target === ncExcelModal) closeNcExcelModal(); });
+
+    if (ncExcelConfirmBtn) {
+      ncExcelConfirmBtn.addEventListener('click', function() {
+        // Gather selected columns
+        var selected = [];
+        ncExcelColsGrid.querySelectorAll('input[type=checkbox]:checked').forEach(function(cb) {
+          var col = NC_EXCEL_COLUMNS.find(function(c){ return c.key === cb.value; });
+          if (col) selected.push(col);
+        });
+        if (!selected.length) { alert('Selecione pelo menos uma coluna.'); return; }
+
+        // Gather visible records (in DOM order)
+        var rows = [];
+        // Header row
+        var header = {};
+        selected.forEach(function(col) { header[col.label] = col.label; });
+        rows.push(selected.map(function(c){ return c.label; }));
+
+        document.querySelectorAll('#ncCardsGrid .nc-card:not(.nc-hidden)').forEach(function(card) {
+          var id = card.dataset.ncId;
+          var nc = ncRecords.find(function(r){ return r.id === id; });
+          if (!nc) return;
+          var status = nc.d8Finalizado ? '8D Finalizado' : nc.rncAberta ? 'RNC Aberta' : 'Em aberto';
+          var row = selected.map(function(col) {
+            if (col.key === 'status') return status;
+            var v = nc[col.key];
+            return (v === undefined || v === null) ? '' : v;
+          });
+          rows.push(row);
+        });
+
+        // Build workbook
+        var wb = XLSX.utils.book_new();
+        var ws = XLSX.utils.aoa_to_sheet(rows);
+        // Auto column width
+        var colWidths = selected.map(function(col, ci) {
+          var max = col.label.length;
+          rows.forEach(function(row) {
+            var v = row[ci] !== undefined ? String(row[ci]) : '';
+            if (v.length > max) max = v.length;
+          });
+          return { wch: Math.min(max + 4, 60) };
+        });
+        ws['!cols'] = colWidths;
+        XLSX.utils.book_append_sheet(wb, ws, 'NCs');
+
+        var today = new Date().toISOString().slice(0,10);
+        XLSX.writeFile(wb, 'relatorio_nc_' + today + '.xlsx');
+        closeNcExcelModal();
+      });
+    }
+
     // ── Chart settings edit popover ───────────────────────────────────────
     var editBtn     = document.getElementById('ncChartEditBtn');
     var editPopover = document.getElementById('ncChartEditPopover');
@@ -6638,6 +6760,27 @@ document.addEventListener("DOMContentLoaded", function() {
   </div>
   <div class="bell-panel-body" id="sidebarBellPanelBody">
     <div class="bell-empty">Nenhuma ação em atraso.</div>
+  </div>
+</div>
+
+<!-- NC – Excel Export Modal -->
+<div id="ncExcelModal">
+  <div class="nc-excel-modal-box">
+    <h3>
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="#217346"><path d="M4 3a1 1 0 000 2h1v10H4a1 1 0 100 2h12a1 1 0 100-2h-1V5h1a1 1 0 100-2H4zm3 2h6v10H7V5zm2 2v2h2V7H9zm0 4v2h2v-2H9z"/></svg>
+      Exportar Relatório Excel
+    </h3>
+    <div class="nc-excel-subtitle" id="ncExcelSubtitle">Selecione as colunas a incluir na planilha:</div>
+    <div class="nc-excel-cols-grid" id="ncExcelColsGrid">
+      <!-- populated by JS -->
+    </div>
+    <div class="nc-excel-modal-actions">
+      <button class="nc-excel-btn-cancel" id="ncExcelCancelBtn">Cancelar</button>
+      <button class="nc-excel-btn-confirm" id="ncExcelConfirmBtn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+        Baixar Excel
+      </button>
+    </div>
   </div>
 </div>
 
