@@ -631,6 +631,15 @@
     .nc-photo-drop:hover, .nc-photo-drop.dragover { border-color:var(--tenant-sidebar-bg,#1E4D17); background:#f0fdf4; color:var(--tenant-sidebar-bg,#1E4D17); }
     .nc-photo-preview { width:100%; height:100px; object-fit:cover; border-radius:8px; margin-top:6px; display:none; }
     #ncPhotoInput { display:none; }
+    #ncPdfInput { display:none; }
+    .nc-pdf-drop { border:2px dashed #d1d5db; border-radius:10px; padding:14px; text-align:center; cursor:pointer; color:#9ca3af; font-size:12px; transition:border-color .2s, background .2s; display:flex; flex-direction:column; align-items:center; gap:4px; min-height:72px; justify-content:center; background:#f9fafb; }
+    .nc-pdf-drop:hover, .nc-pdf-drop.dragover { border-color:#1b4d8e; background:#eff6ff; color:#1b4d8e; }
+    .nc-pdf-list { margin-top:8px; display:flex; flex-direction:column; gap:5px; }
+    .nc-pdf-list-item { display:flex; align-items:center; gap:8px; background:#f1f5f9; border-radius:7px; padding:6px 10px; font-size:12px; color:#374151; }
+    .nc-pdf-list-item span { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .nc-pdf-list-item button { background:none; border:none; cursor:pointer; color:#ef4444; font-size:14px; line-height:1; padding:0 2px; }
+    .nc-card-pdfs { margin-top:4px; font-size:11px; color:#4b5563; display:flex; flex-direction:column; gap:3px; }
+    .nc-card-pdfs a { color:#1b4d8e; text-decoration:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block; }
     .nc-btn-submit { margin-top:18px; background:var(--tenant-sidebar-bg,#1E4D17); color:#fff; border:none; border-radius:8px; padding:10px 30px; font-size:13px; font-weight:700; cursor:pointer; letter-spacing:.04em; transition:background .15s; display:inline-flex; align-items:center; gap:6px; }
     .nc-btn-submit:hover { background:var(--tenant-sidebar-hover,#163d10); }
     /* NC Dashboard layout — total box + charts */
@@ -3984,6 +3993,7 @@ document.addEventListener("DOMContentLoaded", function() {
   var NC_CHART_DEFAULT_TITLE = 'Volume de Reclamações do Cliente (por mês)';
   var BAR_DIM_SUFFIX = '66'; // 40 % opacity hex appended to bar color when dimmed
   var _ncPhotos = []; // array of data-URL strings for the modal in progress
+  var _ncPdfs   = []; // array of {name, data} objects for PDF attachments
   var _ncStatusPending = null; // { id, action } while status popup is open
   var _ncDetailCurrent = null; // nc record shown in detail popup
 
@@ -5139,6 +5149,11 @@ document.addEventListener("DOMContentLoaded", function() {
           (nc.description ? '<div class="nc-card-desc" title="' + escHtml(nc.description) + '">' + escHtml(nc.description) + '</div>' : '') +
           '<div class="nc-card-date">📅 ' + dateStr + '</div>' +
           (nc.qty ? '<div class="nc-card-qty">📦 ' + nc.qty + ' peça' + (nc.qty !== 1 ? 's' : '') + '</div>' : '') +
+          (Array.isArray(nc.pdfs) && nc.pdfs.length
+            ? '<div class="nc-card-pdfs">' + nc.pdfs.map(function(p) {
+                return '<a href="' + p.data + '" download="' + escHtml(p.name) + '" title="' + escHtml(p.name) + '" target="_blank">📄 ' + escHtml(p.name) + '</a>';
+              }).join('') + '</div>'
+            : '') +
         '</div>' +
         '<div class="nc-card-actions">' +
           '<button class="nc-btn-status nc-btn-rnc ' + rncActive + '" data-action="rnc_aberta">RNC Aberta</button>' +
@@ -5416,6 +5431,12 @@ document.addEventListener("DOMContentLoaded", function() {
             (nc.qty ? '<div class="nc-detail-field"><label>Qtd. de Peças</label><span>' + nc.qty + '</span></div>' : '') +
             '<div class="nc-detail-field"><label>Status</label><span><div class="nc-detail-status-row">' + statusBadges + '</div></span></div>' +
             (nc.description ? '<div class="nc-detail-field full"><label>Descrição</label><span>' + escHtml(nc.description) + '</span></div>' : '') +
+            (Array.isArray(nc.pdfs) && nc.pdfs.length
+              ? '<div class="nc-detail-field full"><label>Documentos PDF</label><span style="display:flex;flex-direction:column;gap:4px">' +
+                  nc.pdfs.map(function(p) {
+                    return '<a href="' + p.data + '" download="' + escHtml(p.name) + '" target="_blank" style="color:#1b4d8e;font-size:12px;text-decoration:none">📄 ' + escHtml(p.name) + '</a>';
+                  }).join('') + '</span></div>'
+              : '') +
           '</div>' +
         '</div>';
 
@@ -5607,6 +5628,11 @@ document.addEventListener("DOMContentLoaded", function() {
             (nc.qty ? '<div class="prt-field"><label>Qtd. de Peças</label><span>' + nc.qty + '</span></div>' : '') +
           '</div>' +
           (nc.description ? '<div class="prt-row" style="margin-top:10px;"><div class="prt-field" style="flex:1"><label>Descrição</label><span class="prt-desc">' + escHtml(nc.description) + '</span></div></div>' : '') +
+          (Array.isArray(nc.pdfs) && nc.pdfs.length
+            ? '<div class="prt-row" style="margin-top:10px;"><div class="prt-field" style="flex:1"><label>Documentos PDF Anexados</label><span style="font-size:11px;color:#374151">' +
+                nc.pdfs.map(function(p) { return '📄 ' + escHtml(p.name); }).join(' &nbsp;·&nbsp; ') +
+              '</span></div></div>'
+            : '') +
         '</div>' +
       '</div>' +
       rncHtml +
@@ -5648,6 +5674,8 @@ document.addEventListener("DOMContentLoaded", function() {
       // Reset modal state
       _ncPhotos = [];
       thumbs.innerHTML = '';
+      _ncPdfs = [];
+      document.getElementById('ncPdfList').innerHTML = '';
       document.getElementById('ncNumber').value      = '';
       document.getElementById('ncCustomer').value    = '';
       document.getElementById('ncPiece').value       = '';
@@ -5679,6 +5707,8 @@ document.addEventListener("DOMContentLoaded", function() {
       _ncPhotos = photos.slice();
       thumbs.innerHTML = '';
       _ncPhotos.forEach(function(src, i) { renderThumb(src, i); });
+      _ncPdfs = Array.isArray(nc.pdfs) ? nc.pdfs.slice() : [];
+      rebuildPdfList();
       document.getElementById('ncNumber').value      = nc.ncNumber || '';
       document.getElementById('ncCustomer').value    = nc.customer || '';
       document.getElementById('ncPiece').value       = nc.piece || '';
@@ -5738,6 +5768,58 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // Expose edit opener globally (called from renderNcCards action handler)
     window.openNcModalEdit = openNcModalEdit;
+
+    // ── PDF upload ────────────────────────────────────────────────────────
+    var pdfDrop  = document.getElementById('ncPdfDrop');
+    var pdfInput = document.getElementById('ncPdfInput');
+
+    pdfDrop.addEventListener('click', function() { pdfInput.click(); });
+    pdfDrop.addEventListener('dragover', function(e) { e.preventDefault(); pdfDrop.classList.add('dragover'); });
+    pdfDrop.addEventListener('dragleave', function(e) { if (!pdfDrop.contains(e.relatedTarget)) pdfDrop.classList.remove('dragover'); });
+    pdfDrop.addEventListener('drop', function(e) {
+      e.preventDefault(); pdfDrop.classList.remove('dragover');
+      addPdfs(e.dataTransfer.files);
+    });
+    pdfInput.addEventListener('change', function() { addPdfs(pdfInput.files); pdfInput.value = ''; });
+
+    function addPdfs(fileList) {
+      Array.prototype.forEach.call(fileList, function(file) {
+        if (file.type !== 'application/pdf') return;
+        var reader = new FileReader();
+        reader.onload = function(ev) {
+          _ncPdfs.push({ name: file.name, data: ev.target.result });
+          rebuildPdfList();
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function rebuildPdfList() {
+      var list = document.getElementById('ncPdfList');
+      list.innerHTML = '';
+      _ncPdfs.forEach(function(pdf, i) {
+        var item = document.createElement('div');
+        item.className = 'nc-pdf-list-item';
+        var icon = document.createElement('span');
+        icon.textContent = '📄';
+        icon.style.flexShrink = '0';
+        var name = document.createElement('span');
+        name.textContent = pdf.name;
+        name.title = pdf.name;
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.title = 'Remover PDF';
+        btn.textContent = '✕';
+        btn.addEventListener('click', function() {
+          _ncPdfs.splice(i, 1);
+          rebuildPdfList();
+        });
+        item.appendChild(icon);
+        item.appendChild(name);
+        item.appendChild(btn);
+        list.appendChild(item);
+      });
+    }
 
     // ── Multi-photo upload ────────────────────────────────────────────────
     drop.addEventListener('click', function() { input.click(); });
@@ -5861,6 +5943,7 @@ document.addEventListener("DOMContentLoaded", function() {
           ncRecords[idx].qty         = parseInt(document.getElementById('ncQty').value, 10) || 0;
           ncRecords[idx].description = document.getElementById('ncDescription').value.trim();
           ncRecords[idx].photos      = _ncPhotos.slice();
+          ncRecords[idx].pdfs        = _ncPdfs.slice();
           // Replace alert file / update RNC number if RNC is open
           if (ncRecords[idx].rncAberta) {
             var editedRncNum = document.getElementById('ncEditRncNumber').value.trim();
@@ -5899,7 +5982,8 @@ document.addEventListener("DOMContentLoaded", function() {
           description: document.getElementById('ncDescription').value.trim(),
           rncAberta:    false,
           d8Finalizado: false,
-          photos:      _ncPhotos.slice()
+          photos:      _ncPhotos.slice(),
+          pdfs:        _ncPdfs.slice()
         };
         ncRecords.push(newNc);
         saveNcRecords();
@@ -6253,6 +6337,17 @@ document.addEventListener("DOMContentLoaded", function() {
           </div>
           <input type="file" id="ncPhotoInput" accept="image/*" multiple />
           <div class="nc-photo-thumbs" id="ncPhotoThumbs"></div>
+        </div>
+
+        <!-- PDF attachments (full width) -->
+        <div class="nc-field nc-field-full">
+          <label>Documentos PDF</label>
+          <div class="nc-pdf-drop" id="ncPdfDrop" title="Clique ou arraste PDFs">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
+            <span>Clique ou arraste arquivos PDF</span>
+          </div>
+          <input type="file" id="ncPdfInput" accept="application/pdf" multiple />
+          <div class="nc-pdf-list" id="ncPdfList"></div>
         </div>
 
         <!-- NC Number -->
