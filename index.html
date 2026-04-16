@@ -800,6 +800,16 @@
     .nc-card:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,.3); }
     /* Atenção badge — shown on NC card when attention flag is set */
     .nc-card-atencao-badge { position:absolute; top:8px; right:8px; background:#f97316; color:#fff; border-radius:20px; font-size:11px; font-weight:800; padding:3px 8px; display:flex; align-items:center; gap:4px; box-shadow:0 2px 8px rgba(249,115,22,.5); z-index:10; letter-spacing:.04em; pointer-events:none; animation:nc-atencao-pulse 2s infinite; }
+    /* Não Procedente – card style */
+    .nc-card.nc-nao-procedente { opacity:.55; filter:grayscale(1); }
+    .nc-card.nc-nao-procedente .nc-card-body, .nc-card.nc-nao-procedente .nc-card-actions { pointer-events:auto; }
+    .nc-nao-procedente-badge { position:absolute; top:8px; left:8px; background:#6b7280; color:#fff; border-radius:20px; font-size:11px; font-weight:800; padding:3px 8px; display:flex; align-items:center; gap:4px; z-index:10; letter-spacing:.04em; pointer-events:none; }
+    /* Não Procedente – checkbox toggle in edit form */
+    .nc-nao-proc-toggle { display:flex; align-items:center; gap:10px; background:#f9fafb; border:1.5px solid #e5e7eb; border-radius:10px; padding:12px 14px; cursor:pointer; user-select:none; margin-top:4px; transition:border-color .15s,background .15s; }
+    .nc-nao-proc-toggle:has(input:checked) { background:#fee2e2; border-color:#fca5a5; }
+    .nc-nao-proc-toggle input[type=checkbox] { width:17px; height:17px; accent-color:#dc2626; cursor:pointer; flex-shrink:0; }
+    .nc-nao-proc-toggle-label { font-size:13px; font-weight:600; color:#374151; line-height:1.3; }
+    .nc-nao-proc-toggle-label small { display:block; font-weight:400; font-size:11px; color:#6b7280; margin-top:2px; }
     @keyframes nc-atencao-pulse { 0%,100%{ box-shadow:0 2px 8px rgba(249,115,22,.5); } 50%{ box-shadow:0 0 16px rgba(249,115,22,.8); } }
     .nc-card-photo { width:100%; height:150px; object-fit:cover; display:block; }
     .nc-card-photo-placeholder { width:100%; height:150px; background:#2a2a2e; display:flex; align-items:center; justify-content:center; }
@@ -1435,14 +1445,6 @@
           <button class="nc-cep-apply" id="ncCepFailureApply">Aplicar</button>
         </div>
         <canvas id="ncChartFailure"></canvas>
-      </div>
-    </div>
-
-    <!-- Qty chart row: peças apontadas por mês -->
-    <div class="nc-charts-row" style="margin-bottom:24px;">
-      <div class="nc-chart-card nc-chart-month-card" style="position:relative;">
-        <h4>Peças Apontadas por Mês</h4>
-        <canvas id="ncChartQtyMonth"></canvas>
       </div>
     </div>
 
@@ -3995,7 +3997,7 @@ document.addEventListener("DOMContentLoaded", function() {
   // ── NC (Non-Conformance) Page ────────────────────────────────────────────
 
   var ncRecords = [];
-  var _ncChartPiece = null, _ncChartFailure = null, _ncChartMonth = null, _ncChartQtyMonth = null;
+  var _ncChartPiece = null, _ncChartFailure = null, _ncChartMonth = null;
   var _ncMonthFilter   = null; // active YYYY-MM filter key, or null
   var _ncPieceFilter   = null; // active piece name filter, or null
   var _ncFailureFilter = null; // active failure mode filter, or null
@@ -4383,6 +4385,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // pieceCount and failureCount only include filtered records when a filter is active
     var filteredRecords = ncRecords.filter(function(nc) {
+      if (nc.naoProcedente) return false;
       if (_ncMonthFilter && (!nc.date || nc.date.slice(0,7) !== _ncMonthFilter)) return false;
       if (_ncPieceFilter && (nc.piece || '(sem nome)') !== _ncPieceFilter) return false;
       if (_ncFailureFilter && (nc.failureMode || 'Outro') !== _ncFailureFilter) return false;
@@ -4391,6 +4394,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
     ncRecords.forEach(function(nc) {
       // Monthly chart always shows all data (the bar highlight shows the selected month)
+      if (nc.naoProcedente) return;
       if (nc.date) {
         var mk = nc.date.slice(0,7);
         if (mk in monthCount) monthCount[mk]++;
@@ -4410,8 +4414,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // Update stat balloons — always across all records (unfiltered)
     // RNC Aberta and Alerta Emitido are the same concept (rncAberta flag)
-    var statClosed  = ncRecords.filter(function(nc){ return nc.rncAberta; }).length;
-    var statEightD  = ncRecords.filter(function(nc){ return nc.d8Finalizado; }).length;
+    var statClosed  = ncRecords.filter(function(nc){ return nc.rncAberta && !nc.naoProcedente; }).length;
+    var statEightD  = ncRecords.filter(function(nc){ return nc.d8Finalizado && !nc.naoProcedente; }).length;
     var elClosed  = document.getElementById('ncStatClosed');
     var elEightD  = document.getElementById('ncStatEightD');
     if (elClosed)  elClosed.textContent  = statClosed;
@@ -4746,62 +4750,6 @@ document.addEventListener("DOMContentLoaded", function() {
     if (failureSortInput)       failureSortInput.value        = _ncChartSettings.failureSort     || 'desc';
     if (failureShowLabelsInput) failureShowLabelsInput.checked = _ncChartSettings.failureShowLabels !== false;
 
-    // ── Qty-per-month chart ───────────────────────────────────────────────────
-    if (_ncChartQtyMonth) { _ncChartQtyMonth.destroy(); _ncChartQtyMonth = null; }
-    var ctxQ = document.getElementById('ncChartQtyMonth');
-    if (ctxQ && typeof Chart !== 'undefined') {
-      var now2 = new Date();
-      var qtyMonthKeys = [], qtyMonthCounts = {};
-      for (var qi = 11; qi >= 0; qi--) {
-        var qd = new Date(now2.getFullYear(), now2.getMonth() - qi, 1);
-        var qk = qd.getFullYear() + '-' + String(qd.getMonth() + 1).padStart(2, '0');
-        qtyMonthKeys.push(qk);
-        qtyMonthCounts[qk] = 0;
-      }
-      ncRecords.forEach(function(nc) {
-        if (nc.date && nc.qty) {
-          var mk = nc.date.slice(0, 7);
-          if (mk in qtyMonthCounts) qtyMonthCounts[mk] += (parseInt(nc.qty, 10) || 0);
-        }
-      });
-      var qtyLabels = qtyMonthKeys.map(function(k) {
-        var parts = k.split('-');
-        return (typeof PT_MONTHS !== 'undefined' ? PT_MONTHS[parseInt(parts[1], 10) - 1] : k) || k;
-      });
-      var qtyValues = qtyMonthKeys.map(function(k) { return qtyMonthCounts[k]; });
-      var darkText2 = '#374151', lightGrid2 = 'rgba(0,0,0,.06)';
-      _ncChartQtyMonth = new Chart(ctxQ.getContext('2d'), {
-        type: 'bar',
-        data: {
-          labels: qtyLabels,
-          datasets: [{
-            label: 'Peças apontadas',
-            data: qtyValues,
-            backgroundColor: '#16a34a',
-            borderRadius: 5,
-            borderSkipped: false
-          }]
-        },
-        options: {
-          plugins: {
-            legend: { display: false },
-            tooltip: { callbacks: { label: function(ctx) { return ctx.parsed.y + ' peça' + (ctx.parsed.y !== 1 ? 's' : ''); } } },
-            datalabels: {
-              display: function(ctx) { return ctx.dataset.data[ctx.dataIndex] > 0; },
-              anchor: 'end', align: 'top', color: darkText2,
-              font: { size: 11, weight: 'bold' },
-              formatter: function(v) { return v; }
-            }
-          },
-          scales: {
-            x: { ticks: { color: darkText2, font: { size: 12 } }, grid: { display: false }, border: { display: false } },
-            y: { beginAtZero: true, ticks: { color: darkText2, font: { size: 12 }, stepSize: 1, precision: 0 }, grid: { color: lightGrid2 }, border: { display: false } }
-          },
-          responsive: true, maintainAspectRatio: false
-        }
-      });
-    }
-
   }
 
   // ── Custom charts ──────────────────────────────────────────────────────────
@@ -4860,6 +4808,7 @@ document.addEventListener("DOMContentLoaded", function() {
         orderedKeys.push(k);
       }
       ncRecords.forEach(function(nc) {
+        if (nc.naoProcedente) return;
         if (nc.date) { var mk = nc.date.slice(0, 7); if (mk in counts) counts[mk]++; }
       });
     } else if (def.field === 'qty_month') {
@@ -4872,16 +4821,19 @@ document.addEventListener("DOMContentLoaded", function() {
         orderedKeys.push(k);
       }
       ncRecords.forEach(function(nc) {
+        if (nc.naoProcedente) return;
         if (nc.date && nc.qty) { var mk = nc.date.slice(0, 7); if (mk in counts) counts[mk] += (parseInt(nc.qty, 10) || 0); }
       });
     } else if (def.field === 'qty_piece') {
       ncRecords.forEach(function(nc) {
+        if (nc.naoProcedente) return;
         var v = nc.piece || '(sem nome)';
         counts[v] = (counts[v] || 0) + (parseInt(nc.qty, 10) || 0);
       });
     } else if (def.field === 'status') {
       counts = { 'Em aberto': 0, 'RNC Aberta': 0, '8D Finalizado': 0 };
       ncRecords.forEach(function(nc) {
+        if (nc.naoProcedente) return;
         if (nc.d8Finalizado)   counts['8D Finalizado']++;
         else if (nc.rncAberta) counts['RNC Aberta']++;
         else                   counts['Em aberto']++;
@@ -4890,6 +4842,7 @@ document.addEventListener("DOMContentLoaded", function() {
     } else {
       var fallback = def.field === 'piece' ? '(sem nome)' : def.field === 'failureMode' ? 'Outro' : '(sem cliente)';
       ncRecords.forEach(function(nc) {
+        if (nc.naoProcedente) return;
         var v = nc[def.field] || fallback;
         counts[v] = (counts[v] || 0) + 1;
       });
@@ -5162,7 +5115,10 @@ document.addEventListener("DOMContentLoaded", function() {
       var d8Active  = nc.d8Finalizado ? 'active' : '';
       var dateStr = ncFmtDate(nc.date);
       var atencaoBadge = nc.atencao ? '<div class="nc-card-atencao-badge">⚠ Atenção</div>' : '';
-      return '<div class="nc-card" data-nc-id="' + nc.id + '">' +
+      var naoProcBadge = nc.naoProcedente ? '<div class="nc-nao-procedente-badge">✕ Não Procedente</div>' : '';
+      var naoProcClass = nc.naoProcedente ? ' nc-nao-procedente' : '';
+      return '<div class="nc-card' + naoProcClass + '" data-nc-id="' + nc.id + '">' +
+        naoProcBadge +
         atencaoBadge +
         photoHtml +
         '<div class="nc-card-body">' +
@@ -5719,6 +5675,7 @@ document.addEventListener("DOMContentLoaded", function() {
       document.getElementById('ncEditAlertFileInput').value = '';
       document.getElementById('ncEditD8FileName').textContent = '';
       document.getElementById('ncEditD8FileInput').value = '';
+      document.getElementById('ncNaoProcedente').checked = false;
       document.getElementById('ncModalTitle').innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 20 20" fill="currentColor" style="vertical-align:-2px;margin-right:6px"><path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/></svg>Cadastrar Nova NC';
       document.getElementById('ncBtnSubmit').innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/></svg> Cadastrar NC';
       backdrop.classList.add('open');
@@ -5778,6 +5735,7 @@ document.addEventListener("DOMContentLoaded", function() {
       }
       document.getElementById('ncModalTitle').innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 20 20" fill="currentColor" style="vertical-align:-2px;margin-right:6px"><path stroke="currentColor" d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zm-2.207 2.207L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/></svg>Editar NC';
       document.getElementById('ncBtnSubmit').innerHTML = '✔ Salvar Alterações';
+      document.getElementById('ncNaoProcedente').checked = !!nc.naoProcedente;
       backdrop.classList.add('open');
       setTimeout(function(){ document.getElementById('ncPiece').focus(); }, 80);
     }
@@ -5966,6 +5924,7 @@ document.addEventListener("DOMContentLoaded", function() {
           ncRecords[idx].date        = date;
           ncRecords[idx].qty         = parseInt(document.getElementById('ncQty').value, 10) || 0;
           ncRecords[idx].description = document.getElementById('ncDescription').value.trim();
+          ncRecords[idx].naoProcedente = document.getElementById('ncNaoProcedente').checked;
           ncRecords[idx].photos      = _ncPhotos.slice();
           ncRecords[idx].pdfs        = _ncPdfs.slice();
           // Replace alert file / update RNC number if RNC is open
@@ -6006,6 +5965,7 @@ document.addEventListener("DOMContentLoaded", function() {
           description: document.getElementById('ncDescription').value.trim(),
           rncAberta:    false,
           d8Finalizado: false,
+          naoProcedente: document.getElementById('ncNaoProcedente').checked,
           photos:      _ncPhotos.slice(),
           pdfs:        _ncPdfs.slice()
         };
@@ -6184,7 +6144,8 @@ document.addEventListener("DOMContentLoaded", function() {
       { key: 'description', label: 'Descrição' },
       { key: 'status',      label: 'Status' },
       { key: 'rncNumber',   label: 'Nº RNC' },
-      { key: 'observacoes', label: 'Observações' }
+      { key: 'observacoes', label: 'Observações' },
+      { key: 'naoProcedente', label: 'Não Procedente' }
     ];
 
     var ncExcelModal   = document.getElementById('ncExcelModal');
@@ -6244,6 +6205,7 @@ document.addEventListener("DOMContentLoaded", function() {
           var status = nc.d8Finalizado ? '8D Finalizado' : nc.rncAberta ? 'RNC Aberta' : 'Em aberto';
           var row = selected.map(function(col) {
             if (col.key === 'status') return status;
+            if (col.key === 'naoProcedente') return nc.naoProcedente ? 'Sim' : 'Não';
             var v = nc[col.key];
             return (v === undefined || v === null) ? '' : v;
           });
@@ -6602,6 +6564,18 @@ document.addEventListener("DOMContentLoaded", function() {
             <input type="file" id="ncEditD8FileInput" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" style="display:none;" />
             <div class="nc-alert-file-name" id="ncEditD8FileName"></div>
           </div>
+        </div>
+
+        <!-- Não Procedente toggle (full width) -->
+        <div class="nc-field nc-field-full">
+          <label>Situação da NC</label>
+          <label class="nc-nao-proc-toggle">
+            <input type="checkbox" id="ncNaoProcedente" />
+            <span class="nc-nao-proc-toggle-label">
+              Não Procedente
+              <small>Marque se esta reclamação não tem fundamento. O card ficará cinza e a NC será excluída das contagens e gráficos.</small>
+            </span>
+          </label>
         </div>
 
       </div>
