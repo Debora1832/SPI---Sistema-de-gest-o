@@ -1958,6 +1958,9 @@ document.addEventListener("DOMContentLoaded", function() {
                   records = (typeof mergePhotosFromLocal === 'function')
                     ? mergePhotosFromLocal(records, ncRecords)
                     : records;
+                  // Keep any local records that Firebase doesn't have (saved while offline)
+                  var fbIds = records.map(function(r) { return r.id; });
+                  ncRecords.forEach(function(lr) { if (lr && lr.id && !fbIds.includes(lr.id)) records.push(lr); });
                   ncRecords = records;
                   try { localStorage.setItem('spi_nc_records_' + currentTenant, JSON.stringify(ncRecords)); } catch(e) {}
                   renderNcCards();
@@ -1998,6 +2001,9 @@ document.addEventListener("DOMContentLoaded", function() {
           records = (typeof mergePhotosFromLocal === 'function')
             ? mergePhotosFromLocal(records, ncRecords)
             : records;
+          // Keep any in-memory records not yet in Firebase (saved while connection was down)
+          var fbSnapshotIds = records.map(function(r) { return r.id; });
+          ncRecords.forEach(function(lr) { if (lr && lr.id && !fbSnapshotIds.includes(lr.id)) records.push(lr); });
           ncRecords = records;
           try { localStorage.setItem('spi_nc_records_' + tenantId, JSON.stringify(ncRecords)); } catch(e) {}
           if (typeof setNcSyncBadge === 'function') setNcSyncBadge('synced', '✓ Atualizado em tempo real');
@@ -4333,6 +4339,9 @@ document.addEventListener("DOMContentLoaded", function() {
           // Restore photos from localStorage (Firestore records don't carry photos)
           var localRecords = loadNcRecordsLocal();
           records = mergePhotosFromLocal(records, localRecords);
+          // Keep any local records that Firebase doesn't have (saved while offline)
+          var fbIds = records.map(function(r) { return r.id; });
+          localRecords.forEach(function(lr) { if (lr && lr.id && !fbIds.includes(lr.id)) records.push(lr); });
           // Keep localStorage in sync (with photos merged in)
           try { localStorage.setItem(key, JSON.stringify(records)); } catch(e) {}
           if (needsSave) {
