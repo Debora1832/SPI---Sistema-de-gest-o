@@ -4080,6 +4080,12 @@ document.addEventListener("DOMContentLoaded", function() {
     delete r.photo;
     delete r.alertFile;
     delete r.d8File;
+    // Strip PDF base64 data; keep only name + Storage URL (if present)
+    if (Array.isArray(r.pdfs)) {
+      r.pdfs = r.pdfs.map(function(p) {
+        return p.url ? { name: p.name, url: p.url } : { name: p.name };
+      });
+    }
     return r;
   }
 
@@ -4210,6 +4216,20 @@ document.addEventListener("DOMContentLoaded", function() {
       delete r.d8File;
     }
 
+    // ── PDFs — upload each to Storage, strip base64 ───────────────────────────
+    if (Array.isArray(r.pdfs) && r.pdfs.length) {
+      r.pdfs = await Promise.all(r.pdfs.map(function(pdf, i) {
+        if (!pdf.data || !pdf.data.startsWith('data:')) {
+          // Already a URL or stripped — keep as-is (name + url only)
+          return Promise.resolve({ name: pdf.name, url: pdf.url || undefined });
+        }
+        return uploadFileToStorage(tenantId, r.id, pdf.data, 'pdf_' + i, pdf.name)
+          .then(function(url) {
+            return url ? { name: pdf.name, url: url } : { name: pdf.name };
+          });
+      }));
+    }
+
     return r;
   }
 
@@ -4255,6 +4275,28 @@ document.addEventListener("DOMContentLoaded", function() {
         });
       }
 
+      // Restore PDF base64 data from localStorage.
+      // Firestore stores PDFs as {name, url} (base64 stripped); localStorage keeps {name, data}.
+      // Merge: prefer Storage URL but attach local base64 so the viewer and edit modal work.
+      if (localRec && Array.isArray(localRec.pdfs) && localRec.pdfs.length) {
+        var localPdfs = localRec.pdfs;
+        if (!Array.isArray(out.pdfs) || !out.pdfs.length) {
+          // Firestore has no pdfs entry at all — use localStorage version intact
+          out = Object.assign({}, out, { pdfs: localPdfs });
+        } else {
+          // Firestore has pdfs (possibly with only name+url, no base64).
+          // Re-attach base64 data from localStorage for each matching entry.
+          var mergedPdfs = out.pdfs.map(function(fbPdf) {
+            var localMatch = localPdfs.find(function(lp) { return lp.name === fbPdf.name; });
+            if (localMatch && localMatch.data) {
+              return Object.assign({}, fbPdf, { data: localMatch.data });
+            }
+            return fbPdf;
+          });
+          out = Object.assign({}, out, { pdfs: mergedPdfs });
+        }
+      }
+
       return out;
     });
   }
@@ -4290,6 +4332,14 @@ document.addEventListener("DOMContentLoaded", function() {
             // 8D file URL
             if (prepRec.d8FileUrl && typeof prepRec.d8FileUrl === 'string' && prepRec.d8FileUrl.startsWith('https://')) {
               ncRecords[idx].d8FileUrl = prepRec.d8FileUrl;
+            }
+            // PDF Storage URLs — store alongside existing base64 data
+            if (Array.isArray(prepRec.pdfs) && prepRec.pdfs.length) {
+              var origPdfs = Array.isArray(ncRecords[idx].pdfs) ? ncRecords[idx].pdfs : [];
+              ncRecords[idx].pdfs = prepRec.pdfs.map(function(prepPdf, i) {
+                var orig = origPdfs.find(function(op) { return op.name === prepPdf.name; }) || origPdfs[i] || {};
+                return Object.assign({}, orig, prepPdf.url ? { url: prepPdf.url } : {});
+              });
             }
           });
           // Re-save localStorage with the updated Storage URLs
@@ -5140,7 +5190,8 @@ document.addEventListener("DOMContentLoaded", function() {
           (nc.qty ? '<div class="nc-card-qty">📦 ' + nc.qty + ' peça' + (nc.qty !== 1 ? 's' : '') + '</div>' : '') +
           (Array.isArray(nc.pdfs) && nc.pdfs.length
             ? '<div class="nc-card-pdfs">' + nc.pdfs.map(function(p) {
-                return '<a href="' + p.data + '" download="' + escHtml(p.name) + '" title="' + escHtml(p.name) + '" target="_blank">📄 ' + escHtml(p.name) + '</a>';
+                var href = p.data || p.url || '#';
+                return '<a href="' + href + '" download="' + escHtml(p.name) + '" title="' + escHtml(p.name) + '" target="_blank">📄 ' + escHtml(p.name) + '</a>';
               }).join('') + '</div>'
             : '') +
         '</div>' +
@@ -5511,7 +5562,7 @@ document.addEventListener("DOMContentLoaded", function() {
           var rec = ncRecords.find(function(r){ return r.id === btn.dataset.openPdfId; });
           var idx = parseInt(btn.dataset.openPdfIdx, 10);
           if (rec && Array.isArray(rec.pdfs) && rec.pdfs[idx] && window._openAlertViewer) {
-            window._openAlertViewer(rec.pdfs[idx].data, rec.pdfs[idx].name);
+            window._openAlertViewer(rec.pdfs[idx].data || rec.pdfs[idx].url, rec.pdfs[idx].name);
           }
         });
       });
