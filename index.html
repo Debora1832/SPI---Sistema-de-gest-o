@@ -5421,9 +5421,9 @@ document.addEventListener("DOMContentLoaded", function() {
             '<div class="nc-detail-field"><label>Status</label><span><div class="nc-detail-status-row">' + statusBadges + '</div></span></div>' +
             (nc.description ? '<div class="nc-detail-field full"><label>Descrição</label><span>' + escHtml(nc.description) + '</span></div>' : '') +
             (Array.isArray(nc.pdfs) && nc.pdfs.length
-              ? '<div class="nc-detail-field full"><label>Documentos PDF</label><span style="display:flex;flex-direction:column;gap:4px">' +
-                  nc.pdfs.map(function(p) {
-                    return '<a href="' + p.data + '" download="' + escHtml(p.name) + '" target="_blank" style="color:#1b4d8e;font-size:12px;text-decoration:none">📄 ' + escHtml(p.name) + '</a>';
+              ? '<div class="nc-detail-field full"><label>Documentos PDF</label><span style="display:flex;flex-direction:column;gap:6px">' +
+                  nc.pdfs.map(function(p, i) {
+                    return '<button class="nc-detail-alert-btn" data-open-pdf-id="' + escHtml(nc.id) + '" data-open-pdf-idx="' + i + '" style="background:#1b4d8e;justify-content:flex-start;">📄 ' + escHtml(p.name) + '</button>';
                   }).join('') + '</span></div>'
               : '') +
           '</div>' +
@@ -5501,6 +5501,17 @@ document.addEventListener("DOMContentLoaded", function() {
           var rec = ncRecords.find(function(r){ return r.id === btn.dataset.openD8; });
           if (rec && (rec.d8File || rec.d8FileUrl) && window._openAlertViewer) {
             window._openAlertViewer(rec.d8File || rec.d8FileUrl, rec.d8FileName || 'arquivo-8d');
+          }
+        });
+      });
+
+      // Wire PDF attachment buttons — view inline using the existing alert viewer
+      bodyEl.querySelectorAll('[data-open-pdf-id]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var rec = ncRecords.find(function(r){ return r.id === btn.dataset.openPdfId; });
+          var idx = parseInt(btn.dataset.openPdfIdx, 10);
+          if (rec && Array.isArray(rec.pdfs) && rec.pdfs[idx] && window._openAlertViewer) {
+            window._openAlertViewer(rec.pdfs[idx].data, rec.pdfs[idx].name);
           }
         });
       });
