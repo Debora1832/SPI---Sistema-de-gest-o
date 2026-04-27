@@ -677,6 +677,7 @@
     .nc-stat-balloon.closed   { background:#dcfce7; border:2px solid #16a34a; color:#15803d; }
     .nc-stat-balloon.eightd   { background:#dbeafe; border:2px solid #2563eb; color:#1565C0; }
     .nc-stat-balloon.rnc      { background:#fff7ed; border:2px solid #f97316; color:#c2410c; }
+    .nc-stat-balloon.qty      { background:#f3e8ff; border:2px solid #9333ea; color:#7e22ce; }
     .nc-charts-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:0; }
     @media (max-width:600px) { .nc-charts-row { grid-template-columns:1fr; } }
     .nc-chart-card {
@@ -1354,6 +1355,10 @@
             <div class="nc-stat-balloon-value" id="ncStatEightD">0</div>
             <div class="nc-stat-balloon-label">8D Finalizado</div>
           </div>
+          <div class="nc-stat-balloon qty">
+            <div class="nc-stat-balloon-value" id="ncStatQty">0</div>
+            <div class="nc-stat-balloon-label">Qtd. de<br>Peças</div>
+          </div>
         </div>
       </div>
       <div class="nc-chart-card nc-chart-month-card" style="position:relative;">
@@ -1960,12 +1965,15 @@ document.addEventListener("DOMContentLoaded", function() {
                     : records;
                   // Keep any local records that Firebase doesn't have (saved while offline)
                   var fbIdsSet = new Set(records.map(function(r) { return r.id; }));
-                  ncRecords.forEach(function(lr) { if (lr && lr.id && !fbIdsSet.has(lr.id)) records.push(lr); });
+                  var hadLocalOnlyRel = false;
+                  ncRecords.forEach(function(lr) { if (lr && lr.id && !fbIdsSet.has(lr.id)) { records.push(lr); hadLocalOnlyRel = true; } });
                   ncRecords = records;
                   try { localStorage.setItem('spi_nc_records_' + currentTenant, JSON.stringify(ncRecords)); } catch(e) {}
                   renderNcCards();
                   if (typeof renderNcCharts === 'function') renderNcCharts();
                   if (typeof renderNcCustomCharts === 'function') renderNcCustomCharts();
+                  // Push any locally-saved records that didn't reach Firebase back up
+                  if (hadLocalOnlyRel && typeof saveNcRecords === 'function') saveNcRecords();
                 }
               }
             }).catch(function(e) { console.warn('NC Firebase reload error:', e); });
@@ -2003,13 +2011,16 @@ document.addEventListener("DOMContentLoaded", function() {
             : records;
           // Keep any in-memory records not yet in Firebase (saved while connection was down)
           var fbSnapshotIdsSet = new Set(records.map(function(r) { return r.id; }));
-          ncRecords.forEach(function(lr) { if (lr && lr.id && !fbSnapshotIdsSet.has(lr.id)) records.push(lr); });
+          var hadLocalOnlySnap = false;
+          ncRecords.forEach(function(lr) { if (lr && lr.id && !fbSnapshotIdsSet.has(lr.id)) { records.push(lr); hadLocalOnlySnap = true; } });
           ncRecords = records;
           try { localStorage.setItem('spi_nc_records_' + tenantId, JSON.stringify(ncRecords)); } catch(e) {}
           if (typeof setNcSyncBadge === 'function') setNcSyncBadge('synced', '✓ Atualizado em tempo real');
           if (typeof renderNcCards === 'function')  renderNcCards();
           if (typeof renderNcCharts === 'function') renderNcCharts();
           if (typeof renderNcCustomCharts === 'function') renderNcCustomCharts();
+          // Push any locally-saved records that didn't reach Firebase back up
+          if (hadLocalOnlySnap && typeof saveNcRecords === 'function') saveNcRecords();
         }, function(e) { console.warn('NC onSnapshot error:', e); });
     } catch(e) { console.warn('NC onSnapshot setup error:', e); }
 
@@ -4080,6 +4091,12 @@ document.addEventListener("DOMContentLoaded", function() {
     delete r.photo;
     delete r.alertFile;
     delete r.d8File;
+    // Strip PDF base64 data; keep only name + Storage URL (if present)
+    if (Array.isArray(r.pdfs)) {
+      r.pdfs = r.pdfs.map(function(p) {
+        return p.url ? { name: p.name, url: p.url } : { name: p.name };
+      });
+    }
     return r;
   }
 
@@ -4210,6 +4227,20 @@ document.addEventListener("DOMContentLoaded", function() {
       delete r.d8File;
     }
 
+    // ── PDFs — upload each to Storage, strip base64 ───────────────────────────
+    if (Array.isArray(r.pdfs) && r.pdfs.length) {
+      r.pdfs = await Promise.all(r.pdfs.map(function(pdf, i) {
+        if (!pdf.data || !pdf.data.startsWith('data:')) {
+          // Already a URL or stripped — keep as-is (name + url only)
+          return Promise.resolve({ name: pdf.name, url: pdf.url || undefined });
+        }
+        return uploadFileToStorage(tenantId, r.id, pdf.data, 'pdf_' + i, pdf.name)
+          .then(function(url) {
+            return url ? { name: pdf.name, url: url } : { name: pdf.name };
+          });
+      }));
+    }
+
     return r;
   }
 
@@ -4255,6 +4286,28 @@ document.addEventListener("DOMContentLoaded", function() {
         });
       }
 
+      // Restore PDF base64 data from localStorage.
+      // Firestore stores PDFs as {name, url} (base64 stripped); localStorage keeps {name, data}.
+      // Merge: prefer Storage URL but attach local base64 so the viewer and edit modal work.
+      if (localRec && Array.isArray(localRec.pdfs) && localRec.pdfs.length) {
+        var localPdfs = localRec.pdfs;
+        if (!Array.isArray(out.pdfs) || !out.pdfs.length) {
+          // Firestore has no pdfs entry at all — use localStorage version intact
+          out = Object.assign({}, out, { pdfs: localPdfs });
+        } else {
+          // Firestore has pdfs (possibly with only name+url, no base64).
+          // Re-attach base64 data from localStorage for each matching entry.
+          var mergedPdfs = out.pdfs.map(function(fbPdf) {
+            var localMatch = localPdfs.find(function(lp) { return lp.name === fbPdf.name; });
+            if (localMatch && localMatch.data) {
+              return Object.assign({}, fbPdf, { data: localMatch.data });
+            }
+            return fbPdf;
+          });
+          out = Object.assign({}, out, { pdfs: mergedPdfs });
+        }
+      }
+
       return out;
     });
   }
@@ -4290,6 +4343,14 @@ document.addEventListener("DOMContentLoaded", function() {
             // 8D file URL
             if (prepRec.d8FileUrl && typeof prepRec.d8FileUrl === 'string' && prepRec.d8FileUrl.startsWith('https://')) {
               ncRecords[idx].d8FileUrl = prepRec.d8FileUrl;
+            }
+            // PDF Storage URLs — store alongside existing base64 data
+            if (Array.isArray(prepRec.pdfs) && prepRec.pdfs.length) {
+              var origPdfs = Array.isArray(ncRecords[idx].pdfs) ? ncRecords[idx].pdfs : [];
+              ncRecords[idx].pdfs = prepRec.pdfs.map(function(prepPdf, i) {
+                var orig = origPdfs.find(function(op) { return op.name === prepPdf.name; }) || origPdfs[i] || {};
+                return Object.assign({}, orig, prepPdf.url ? { url: prepPdf.url } : {});
+              });
             }
           });
           // Re-save localStorage with the updated Storage URLs
@@ -4341,13 +4402,16 @@ document.addEventListener("DOMContentLoaded", function() {
           records = mergePhotosFromLocal(records, localRecords);
           // Keep any local records that Firebase doesn't have (saved while offline)
           var fbIdsSet = new Set(records.map(function(r) { return r.id; }));
-          localRecords.forEach(function(lr) { if (lr && lr.id && !fbIdsSet.has(lr.id)) records.push(lr); });
+          var hadLocalOnly = false;
+          localRecords.forEach(function(lr) { if (lr && lr.id && !fbIdsSet.has(lr.id)) { records.push(lr); hadLocalOnly = true; } });
           // Keep localStorage in sync (with photos merged in)
           try { localStorage.setItem(key, JSON.stringify(records)); } catch(e) {}
-          if (needsSave) {
+          if (hadLocalOnly || needsSave) {
+            // Push local-only records (and/or migrated records) back to Firebase so
+            // other devices can see them.
             db.collection('nc_records_' + tenantId).doc('all')
               .set({ records: records.map(stripPhotos) })
-              .catch(function(e){ console.error('NC migrate save error:', e); setNcSyncBadge('offline', '⚠ Erro ao migrar dados no Firebase'); });
+              .catch(function(e){ console.error('NC offline-sync save error:', e); });
           }
           setNcSyncBadge('synced', '✓ Sincronizado');
           return records;
@@ -4425,10 +4489,13 @@ document.addEventListener("DOMContentLoaded", function() {
     // RNC Aberta and Alerta Emitido are the same concept (rncAberta flag)
     var statClosed  = ncRecords.filter(function(nc){ return nc.rncAberta && !nc.naoProcedente; }).length;
     var statEightD  = ncRecords.filter(function(nc){ return nc.d8Finalizado && !nc.naoProcedente; }).length;
+    var statQty     = ncRecords.reduce(function(sum, nc){ return sum + (parseInt(nc.qty, 10) || 0); }, 0);
     var elClosed  = document.getElementById('ncStatClosed');
     var elEightD  = document.getElementById('ncStatEightD');
+    var elQty     = document.getElementById('ncStatQty');
     if (elClosed)  elClosed.textContent  = statClosed;
     if (elEightD)  elEightD.textContent  = statEightD;
+    if (elQty)     elQty.textContent     = statQty;
 
     // Standard palette — navy blue as primary bar color, warm palette for doughnut
     var navyBlue     = _ncChartSettings.barColor     || '#1b4d8e';
@@ -5140,7 +5207,8 @@ document.addEventListener("DOMContentLoaded", function() {
           (nc.qty ? '<div class="nc-card-qty">📦 ' + nc.qty + ' peça' + (nc.qty !== 1 ? 's' : '') + '</div>' : '') +
           (Array.isArray(nc.pdfs) && nc.pdfs.length
             ? '<div class="nc-card-pdfs">' + nc.pdfs.map(function(p) {
-                return '<a href="' + p.data + '" download="' + escHtml(p.name) + '" title="' + escHtml(p.name) + '" target="_blank">📄 ' + escHtml(p.name) + '</a>';
+                var href = p.data || p.url || '#';
+                return '<a href="' + href + '" download="' + escHtml(p.name) + '" title="' + escHtml(p.name) + '" target="_blank">📄 ' + escHtml(p.name) + '</a>';
               }).join('') + '</div>'
             : '') +
         '</div>' +
@@ -5511,7 +5579,7 @@ document.addEventListener("DOMContentLoaded", function() {
           var rec = ncRecords.find(function(r){ return r.id === btn.dataset.openPdfId; });
           var idx = parseInt(btn.dataset.openPdfIdx, 10);
           if (rec && Array.isArray(rec.pdfs) && rec.pdfs[idx] && window._openAlertViewer) {
-            window._openAlertViewer(rec.pdfs[idx].data, rec.pdfs[idx].name);
+            window._openAlertViewer(rec.pdfs[idx].data || rec.pdfs[idx].url, rec.pdfs[idx].name);
           }
         });
       });
