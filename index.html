@@ -4485,11 +4485,11 @@ document.addEventListener("DOMContentLoaded", function() {
     var totalEl = document.getElementById('ncTotalCount');
     if (totalEl) totalEl.textContent = filteredRecords.length;
 
-    // Update stat balloons — always across all records (unfiltered)
+    // Update stat balloons — respect active filters (same as total count box)
     // RNC Aberta and Alerta Emitido are the same concept (rncAberta flag)
-    var statClosed  = ncRecords.filter(function(nc){ return nc.rncAberta && !nc.naoProcedente; }).length;
-    var statEightD  = ncRecords.filter(function(nc){ return nc.d8Finalizado && !nc.naoProcedente; }).length;
-    var statQty     = ncRecords.reduce(function(sum, nc){ return sum + (parseInt(nc.qty, 10) || 0); }, 0);
+    var statClosed  = filteredRecords.filter(function(nc){ return nc.rncAberta; }).length;
+    var statEightD  = filteredRecords.filter(function(nc){ return nc.d8Finalizado; }).length;
+    var statQty     = filteredRecords.reduce(function(sum, nc){ return sum + (parseInt(nc.qty, 10) || 0); }, 0);
     var elClosed  = document.getElementById('ncStatClosed');
     var elEightD  = document.getElementById('ncStatEightD');
     var elQty     = document.getElementById('ncStatQty');
