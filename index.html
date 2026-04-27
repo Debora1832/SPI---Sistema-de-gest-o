@@ -1960,12 +1960,15 @@ document.addEventListener("DOMContentLoaded", function() {
                     : records;
                   // Keep any local records that Firebase doesn't have (saved while offline)
                   var fbIdsSet = new Set(records.map(function(r) { return r.id; }));
-                  ncRecords.forEach(function(lr) { if (lr && lr.id && !fbIdsSet.has(lr.id)) records.push(lr); });
+                  var hadLocalOnlyRel = false;
+                  ncRecords.forEach(function(lr) { if (lr && lr.id && !fbIdsSet.has(lr.id)) { records.push(lr); hadLocalOnlyRel = true; } });
                   ncRecords = records;
                   try { localStorage.setItem('spi_nc_records_' + currentTenant, JSON.stringify(ncRecords)); } catch(e) {}
                   renderNcCards();
                   if (typeof renderNcCharts === 'function') renderNcCharts();
                   if (typeof renderNcCustomCharts === 'function') renderNcCustomCharts();
+                  // Push any locally-saved records that didn't reach Firebase back up
+                  if (hadLocalOnlyRel && typeof saveNcRecords === 'function') saveNcRecords();
                 }
               }
             }).catch(function(e) { console.warn('NC Firebase reload error:', e); });
@@ -2003,13 +2006,16 @@ document.addEventListener("DOMContentLoaded", function() {
             : records;
           // Keep any in-memory records not yet in Firebase (saved while connection was down)
           var fbSnapshotIdsSet = new Set(records.map(function(r) { return r.id; }));
-          ncRecords.forEach(function(lr) { if (lr && lr.id && !fbSnapshotIdsSet.has(lr.id)) records.push(lr); });
+          var hadLocalOnlySnap = false;
+          ncRecords.forEach(function(lr) { if (lr && lr.id && !fbSnapshotIdsSet.has(lr.id)) { records.push(lr); hadLocalOnlySnap = true; } });
           ncRecords = records;
           try { localStorage.setItem('spi_nc_records_' + tenantId, JSON.stringify(ncRecords)); } catch(e) {}
           if (typeof setNcSyncBadge === 'function') setNcSyncBadge('synced', '✓ Atualizado em tempo real');
           if (typeof renderNcCards === 'function')  renderNcCards();
           if (typeof renderNcCharts === 'function') renderNcCharts();
           if (typeof renderNcCustomCharts === 'function') renderNcCustomCharts();
+          // Push any locally-saved records that didn't reach Firebase back up
+          if (hadLocalOnlySnap && typeof saveNcRecords === 'function') saveNcRecords();
         }, function(e) { console.warn('NC onSnapshot error:', e); });
     } catch(e) { console.warn('NC onSnapshot setup error:', e); }
 
@@ -4391,13 +4397,16 @@ document.addEventListener("DOMContentLoaded", function() {
           records = mergePhotosFromLocal(records, localRecords);
           // Keep any local records that Firebase doesn't have (saved while offline)
           var fbIdsSet = new Set(records.map(function(r) { return r.id; }));
-          localRecords.forEach(function(lr) { if (lr && lr.id && !fbIdsSet.has(lr.id)) records.push(lr); });
+          var hadLocalOnly = false;
+          localRecords.forEach(function(lr) { if (lr && lr.id && !fbIdsSet.has(lr.id)) { records.push(lr); hadLocalOnly = true; } });
           // Keep localStorage in sync (with photos merged in)
           try { localStorage.setItem(key, JSON.stringify(records)); } catch(e) {}
-          if (needsSave) {
+          if (hadLocalOnly || needsSave) {
+            // Push local-only records (and/or migrated records) back to Firebase so
+            // other devices can see them.
             db.collection('nc_records_' + tenantId).doc('all')
               .set({ records: records.map(stripPhotos) })
-              .catch(function(e){ console.error('NC migrate save error:', e); setNcSyncBadge('offline', '⚠ Erro ao migrar dados no Firebase'); });
+              .catch(function(e){ console.error('NC offline-sync save error:', e); });
           }
           setNcSyncBadge('synced', '✓ Sincronizado');
           return records;
