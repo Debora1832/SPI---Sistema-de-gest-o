@@ -677,6 +677,7 @@
     .nc-stat-balloon.closed   { background:#dcfce7; border:2px solid #16a34a; color:#15803d; }
     .nc-stat-balloon.eightd   { background:#dbeafe; border:2px solid #2563eb; color:#1565C0; }
     .nc-stat-balloon.rnc      { background:#fff7ed; border:2px solid #f97316; color:#c2410c; }
+    .nc-stat-balloon.qty      { background:#f3e8ff; border:2px solid #9333ea; color:#7e22ce; }
     .nc-charts-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:0; }
     @media (max-width:600px) { .nc-charts-row { grid-template-columns:1fr; } }
     .nc-chart-card {
@@ -1353,6 +1354,10 @@
           <div class="nc-stat-balloon eightd">
             <div class="nc-stat-balloon-value" id="ncStatEightD">0</div>
             <div class="nc-stat-balloon-label">8D Finalizado</div>
+          </div>
+          <div class="nc-stat-balloon qty">
+            <div class="nc-stat-balloon-value" id="ncStatQty">0</div>
+            <div class="nc-stat-balloon-label">Qtd. de<br>Peças</div>
           </div>
         </div>
       </div>
@@ -4484,10 +4489,13 @@ document.addEventListener("DOMContentLoaded", function() {
     // RNC Aberta and Alerta Emitido are the same concept (rncAberta flag)
     var statClosed  = ncRecords.filter(function(nc){ return nc.rncAberta && !nc.naoProcedente; }).length;
     var statEightD  = ncRecords.filter(function(nc){ return nc.d8Finalizado && !nc.naoProcedente; }).length;
+    var statQty     = ncRecords.reduce(function(sum, nc){ return sum + (parseInt(nc.qty, 10) || 0); }, 0);
     var elClosed  = document.getElementById('ncStatClosed');
     var elEightD  = document.getElementById('ncStatEightD');
+    var elQty     = document.getElementById('ncStatQty');
     if (elClosed)  elClosed.textContent  = statClosed;
     if (elEightD)  elEightD.textContent  = statEightD;
+    if (elQty)     elQty.textContent     = statQty;
 
     // Standard palette — navy blue as primary bar color, warm palette for doughnut
     var navyBlue     = _ncChartSettings.barColor     || '#1b4d8e';
