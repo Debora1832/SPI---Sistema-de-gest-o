@@ -1415,6 +1415,14 @@
             </select>
           </div>
           <div class="nc-cep-row">
+            <label>Cor da linha meta</label>
+            <input type="color" id="ncCepPieceMetaColor" value="#f97316" />
+          </div>
+          <div class="nc-cep-row">
+            <label>Valor da meta</label>
+            <input type="number" id="ncCepPieceMetaValue" value="0" min="0" step="1" />
+          </div>
+          <div class="nc-cep-row">
             <label>Mostrar rótulos</label>
             <input type="checkbox" id="ncCepPieceShowLabels" checked />
           </div>
@@ -1442,6 +1450,14 @@
               <option value="az">A → Z</option>
               <option value="za">Z → A</option>
             </select>
+          </div>
+          <div class="nc-cep-row">
+            <label>Cor da linha meta</label>
+            <input type="color" id="ncCepFailureMetaColor" value="#f97316" />
+          </div>
+          <div class="nc-cep-row">
+            <label>Valor da meta</label>
+            <input type="number" id="ncCepFailureMetaValue" value="0" min="0" step="1" />
           </div>
           <div class="nc-cep-row">
             <label>Mostrar rótulos</label>
@@ -4558,17 +4574,38 @@ document.addEventListener("DOMContentLoaded", function() {
         return pieceBarBlue;
       });
       var pieceLabels = _ncChartSettings.pieceShowLabels !== false;
+      var pieceMeta     = _ncChartSettings.pieceMetaValue != null ? Number(_ncChartSettings.pieceMetaValue) : 0;
+      var pieceMetaColor = _ncChartSettings.pieceMetaColor || '#f97316';
+      var pieceDatasets = [
+        {
+          type: 'bar',
+          data: pVals.length ? pVals : [0],
+          backgroundColor: pColors,
+          borderRadius: 4,
+          borderSkipped: false,
+          order: 2
+        }
+      ];
+      if (pKeys.length && pieceMeta > 0) {
+        pieceDatasets.push({
+          type: 'line',
+          label: 'Meta: ' + pieceMeta,
+          data: pKeys.map(function(){ return pieceMeta; }),
+          borderColor: pieceMetaColor,
+          borderWidth: 2,
+          borderDash: [6, 4],
+          pointRadius: 0,
+          fill: false,
+          tension: 0,
+          order: 1
+        });
+      }
       _ncChartPiece = new Chart(ctxP, {
         type: 'bar',
         plugins: [makeDataLabelsPlugin(pieceLabels)],
         data: {
           labels: pKeys.length ? pKeys : ['—'],
-          datasets: [{
-            data: pVals.length ? pVals : [0],
-            backgroundColor: pColors,
-            borderRadius: 4,
-            borderSkipped: false
-          }]
+          datasets: pieceDatasets
         },
         options: {
           indexAxis: 'y',
@@ -4585,8 +4622,12 @@ document.addEventListener("DOMContentLoaded", function() {
             if (window._applyNcSearch) window._applyNcSearch();
           },
           plugins: {
-            legend:{ display:false },
-            tooltip:{ callbacks:{ label: function(ctx){ return ' ' + ctx.parsed.x + ' NCs'; } } }
+            legend:{ display: pKeys.length > 0 && pieceMeta > 0, position:'top', align:'start',
+              labels:{ color:darkText, font:Object.assign({size:12},lightFont), usePointStyle:true, pointStyleWidth:8, padding:16,
+                filter: function(item) { return item.datasetIndex === 1; }
+              }
+            },
+            tooltip:{ callbacks:{ label: function(ctx){ return ctx.datasetIndex === 0 ? ' ' + ctx.parsed.x + ' NCs' : ' Meta: ' + ctx.parsed.x; } } }
           },
           scales: {
             x:{ ticks:{ color:darkText, font:Object.assign({size:12},lightFont), precision:0 }, grid:{ color:lightGrid }, border:{ display:false } },
@@ -4632,17 +4673,38 @@ document.addEventListener("DOMContentLoaded", function() {
           return failureBarColor;
         });
         var failureLabels = _ncChartSettings.failureShowLabels !== false;
+        var failureMeta      = _ncChartSettings.failureMetaValue != null ? Number(_ncChartSettings.failureMetaValue) : 0;
+        var failureMetaColor = _ncChartSettings.failureMetaColor || '#f97316';
+        var failureDatasets = [
+          {
+            type: 'bar',
+            data: fVals,
+            backgroundColor: fColors,
+            borderRadius: 4,
+            borderSkipped: false,
+            order: 2
+          }
+        ];
+        if (failureMeta > 0) {
+          failureDatasets.push({
+            type: 'line',
+            label: 'Meta: ' + failureMeta,
+            data: fKeys.map(function(){ return failureMeta; }),
+            borderColor: failureMetaColor,
+            borderWidth: 2,
+            borderDash: [6, 4],
+            pointRadius: 0,
+            fill: false,
+            tension: 0,
+            order: 1
+          });
+        }
         _ncChartFailure = new Chart(ctxF, {
           type: 'bar',
           plugins: [makeDataLabelsPlugin(failureLabels)],
           data: {
             labels: fKeys,
-            datasets: [{
-              data: fVals,
-              backgroundColor: fColors,
-              borderRadius: 4,
-              borderSkipped: false
-            }]
+            datasets: failureDatasets
           },
           options: {
             indexAxis: 'y',
@@ -4659,8 +4721,12 @@ document.addEventListener("DOMContentLoaded", function() {
               if (window._applyNcSearch) window._applyNcSearch();
             },
             plugins: {
-              legend:{ display:false },
-              tooltip:{ callbacks:{ label: function(ctx){ return ' ' + ctx.parsed.x + ' NCs'; } } }
+              legend:{ display: failureMeta > 0, position:'top', align:'start',
+                labels:{ color:darkText, font:Object.assign({size:12},lightFont), usePointStyle:true, pointStyleWidth:8, padding:16,
+                  filter: function(item) { return item.datasetIndex === 1; }
+                }
+              },
+              tooltip:{ callbacks:{ label: function(ctx){ return ctx.datasetIndex === 0 ? ' ' + ctx.parsed.x + ' NCs' : ' Meta: ' + ctx.parsed.x; } } }
             },
             scales: {
               x:{ ticks:{ color:darkText, font:Object.assign({size:12},lightFont), precision:0 }, grid:{ color:lightGrid }, border:{ display:false } },
@@ -4801,14 +4867,18 @@ document.addEventListener("DOMContentLoaded", function() {
       pieceTitleEl.textContent = _ncChartSettings.pieceTitle || 'NCs por Peça';
       if (pieceBtn) pieceTitleEl.appendChild(pieceBtn);
     }
-    var pieceTitleInput      = document.getElementById('ncCepPieceTitle');
-    var pieceBarInput        = document.getElementById('ncCepPieceBarColor');
-    var pieceSortInput       = document.getElementById('ncCepPieceSort');
-    var pieceShowLabelsInput = document.getElementById('ncCepPieceShowLabels');
-    if (pieceTitleInput)      pieceTitleInput.value       = _ncChartSettings.pieceTitle    || 'NCs por Peça';
-    if (pieceBarInput)        pieceBarInput.value         = _ncChartSettings.pieceBarColor || '#1b4d8e';
-    if (pieceSortInput)       pieceSortInput.value        = _ncChartSettings.pieceSort     || 'desc';
-    if (pieceShowLabelsInput) pieceShowLabelsInput.checked = _ncChartSettings.pieceShowLabels !== false;
+    var pieceTitleInput        = document.getElementById('ncCepPieceTitle');
+    var pieceBarInput          = document.getElementById('ncCepPieceBarColor');
+    var pieceSortInput         = document.getElementById('ncCepPieceSort');
+    var pieceShowLabelsInput   = document.getElementById('ncCepPieceShowLabels');
+    var pieceMetaColorInput    = document.getElementById('ncCepPieceMetaColor');
+    var pieceMetaValInput      = document.getElementById('ncCepPieceMetaValue');
+    if (pieceTitleInput)      pieceTitleInput.value        = _ncChartSettings.pieceTitle    || 'NCs por Peça';
+    if (pieceBarInput)        pieceBarInput.value          = _ncChartSettings.pieceBarColor || '#1b4d8e';
+    if (pieceSortInput)       pieceSortInput.value         = _ncChartSettings.pieceSort     || 'desc';
+    if (pieceShowLabelsInput) pieceShowLabelsInput.checked  = _ncChartSettings.pieceShowLabels !== false;
+    if (pieceMetaColorInput)  pieceMetaColorInput.value    = _ncChartSettings.pieceMetaColor || '#f97316';
+    if (pieceMetaValInput)    pieceMetaValInput.value      = _ncChartSettings.pieceMetaValue != null ? _ncChartSettings.pieceMetaValue : 0;
 
     // ── Sync failure chart title + popover fields ─────────────────────────────
     var failureTitleEl = document.getElementById('ncChartFailureTitle');
@@ -4817,14 +4887,18 @@ document.addEventListener("DOMContentLoaded", function() {
       failureTitleEl.textContent = _ncChartSettings.failureTitle || 'NCs por Modo de Falha';
       if (failureBtn) failureTitleEl.appendChild(failureBtn);
     }
-    var failureTitleInput      = document.getElementById('ncCepFailureTitle');
-    var failureBarInput        = document.getElementById('ncCepFailureBarColor');
-    var failureSortInput       = document.getElementById('ncCepFailureSort');
-    var failureShowLabelsInput = document.getElementById('ncCepFailureShowLabels');
-    if (failureTitleInput)      failureTitleInput.value       = _ncChartSettings.failureTitle    || 'NCs por Modo de Falha';
-    if (failureBarInput)        failureBarInput.value         = _ncChartSettings.failureBarColor || '#2563eb';
-    if (failureSortInput)       failureSortInput.value        = _ncChartSettings.failureSort     || 'desc';
-    if (failureShowLabelsInput) failureShowLabelsInput.checked = _ncChartSettings.failureShowLabels !== false;
+    var failureTitleInput        = document.getElementById('ncCepFailureTitle');
+    var failureBarInput          = document.getElementById('ncCepFailureBarColor');
+    var failureSortInput         = document.getElementById('ncCepFailureSort');
+    var failureShowLabelsInput   = document.getElementById('ncCepFailureShowLabels');
+    var failureMetaColorInput    = document.getElementById('ncCepFailureMetaColor');
+    var failureMetaValInput      = document.getElementById('ncCepFailureMetaValue');
+    if (failureTitleInput)      failureTitleInput.value        = _ncChartSettings.failureTitle    || 'NCs por Modo de Falha';
+    if (failureBarInput)        failureBarInput.value          = _ncChartSettings.failureBarColor || '#2563eb';
+    if (failureSortInput)       failureSortInput.value         = _ncChartSettings.failureSort     || 'desc';
+    if (failureShowLabelsInput) failureShowLabelsInput.checked  = _ncChartSettings.failureShowLabels !== false;
+    if (failureMetaColorInput)  failureMetaColorInput.value    = _ncChartSettings.failureMetaColor || '#f97316';
+    if (failureMetaValInput)    failureMetaValInput.value      = _ncChartSettings.failureMetaValue != null ? _ncChartSettings.failureMetaValue : 0;
 
   }
 
@@ -6375,15 +6449,19 @@ document.addEventListener("DOMContentLoaded", function() {
     }
     if (cepPieceApply) {
       cepPieceApply.addEventListener('click', function() {
-        var titleEl      = document.getElementById('ncCepPieceTitle');
-        var barEl        = document.getElementById('ncCepPieceBarColor');
-        var sortEl       = document.getElementById('ncCepPieceSort');
-        var showLabelsEl = document.getElementById('ncCepPieceShowLabels');
+        var titleEl         = document.getElementById('ncCepPieceTitle');
+        var barEl           = document.getElementById('ncCepPieceBarColor');
+        var sortEl          = document.getElementById('ncCepPieceSort');
+        var showLabelsEl    = document.getElementById('ncCepPieceShowLabels');
+        var metaColorEl     = document.getElementById('ncCepPieceMetaColor');
+        var metaValEl       = document.getElementById('ncCepPieceMetaValue');
         if (!titleEl || !barEl) return;
         _ncChartSettings.pieceTitle      = (titleEl.value || '').trim() || 'NCs por Peça';
         _ncChartSettings.pieceBarColor   = barEl.value;
         _ncChartSettings.pieceSort       = sortEl ? sortEl.value : 'desc';
         _ncChartSettings.pieceShowLabels = showLabelsEl ? showLabelsEl.checked : true;
+        _ncChartSettings.pieceMetaColor  = metaColorEl ? metaColorEl.value : '#f97316';
+        _ncChartSettings.pieceMetaValue  = metaValEl ? (isNaN(Number(metaValEl.value)) ? 0 : Number(metaValEl.value)) : 0;
         saveNcChartSettings();
         pieceEditPopover.classList.remove('open');
         renderNcCharts();
@@ -6403,15 +6481,19 @@ document.addEventListener("DOMContentLoaded", function() {
     }
     if (cepFailureApply) {
       cepFailureApply.addEventListener('click', function() {
-        var titleEl      = document.getElementById('ncCepFailureTitle');
-        var barEl        = document.getElementById('ncCepFailureBarColor');
-        var sortEl       = document.getElementById('ncCepFailureSort');
-        var showLabelsEl = document.getElementById('ncCepFailureShowLabels');
+        var titleEl         = document.getElementById('ncCepFailureTitle');
+        var barEl           = document.getElementById('ncCepFailureBarColor');
+        var sortEl          = document.getElementById('ncCepFailureSort');
+        var showLabelsEl    = document.getElementById('ncCepFailureShowLabels');
+        var metaColorEl     = document.getElementById('ncCepFailureMetaColor');
+        var metaValEl       = document.getElementById('ncCepFailureMetaValue');
         if (!titleEl) return;
         _ncChartSettings.failureTitle      = (titleEl.value || '').trim() || 'NCs por Modo de Falha';
         _ncChartSettings.failureBarColor   = barEl ? barEl.value : '#2563eb';
         _ncChartSettings.failureSort       = sortEl ? sortEl.value : 'desc';
         _ncChartSettings.failureShowLabels = showLabelsEl ? showLabelsEl.checked : true;
+        _ncChartSettings.failureMetaColor  = metaColorEl ? metaColorEl.value : '#f97316';
+        _ncChartSettings.failureMetaValue  = metaValEl ? (isNaN(Number(metaValEl.value)) ? 0 : Number(metaValEl.value)) : 0;
         saveNcChartSettings();
         failureEditPopover.classList.remove('open');
         renderNcCharts();
