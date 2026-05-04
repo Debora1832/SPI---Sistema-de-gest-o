@@ -394,6 +394,41 @@
     .btn-confirm-delete { background:#dc2626; color:#fff; border:none; border-radius:8px; padding:8px 22px; font-size:13px; font-weight:600; cursor:pointer; }
     .btn-confirm-delete:hover { background:#b91c1c; }
 
+    /* ===== GROUP DETAIL POPUP ===== */
+    .group-detail-backdrop {
+      display:none; position:fixed; inset:0; background:rgba(0,0,0,.50);
+      z-index:2500; align-items:center; justify-content:center; padding:20px;
+    }
+    .group-detail-backdrop.open { display:flex; }
+    .group-detail-modal {
+      background:#fff; border-radius:16px; width:min(720px,96vw); max-height:80vh;
+      display:flex; flex-direction:column;
+      box-shadow:0 10px 48px rgba(0,0,0,.25); border-top:4px solid #2d6a27;
+    }
+    .group-detail-header {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:18px 24px 14px; border-bottom:1px solid #e5e7eb; flex-shrink:0;
+    }
+    .group-detail-header h3 { font-size:16px; font-weight:700; color:#1E4D17; margin:0; }
+    .group-detail-close {
+      background:none; border:none; font-size:18px; color:#6b7280; cursor:pointer;
+      padding:4px 8px; border-radius:6px; line-height:1;
+    }
+    .group-detail-close:hover { background:#f3f4f6; color:#111; }
+    .group-detail-body { overflow-y:auto; padding:16px 24px 24px; flex:1; }
+    .group-detail-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .group-detail-table th {
+      text-align:left; padding:8px 10px; background:#1E4D17; color:#fff;
+      font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase;
+      position:sticky; top:0; z-index:1;
+    }
+    .group-detail-table td { padding:8px 10px; border-bottom:1px solid #f0f0f0; vertical-align:top; }
+    .group-detail-table tbody tr:hover td { background:#f7fdf6; }
+    .group-detail-table .badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
+    .group-detail-table .badge-complete  { background:#dcfce7; color:#15803d; }
+    .group-detail-table .badge-on_going  { background:#fef9c3; color:#b45309; }
+    .group-detail-table .badge-delayed   { background:#fee2e2; color:#b91c1c; }
+
     /* ===== EDIT/NEW ACTION MODAL ===== */
     .edit-modal-backdrop {
       display:none; position:fixed; inset:0; background:rgba(0,0,0,.45);
@@ -1746,6 +1781,30 @@
   </div>
 </div>
 
+<!-- GROUP DETAIL POPUP -->
+<div class="group-detail-backdrop" id="groupDetailBackdrop">
+  <div class="group-detail-modal" role="dialog" aria-modal="true" aria-labelledby="groupDetailTitle">
+    <div class="group-detail-header">
+      <h3 id="groupDetailTitle">Ações do grupo</h3>
+      <button class="group-detail-close" id="groupDetailClose" aria-label="Fechar">✕</button>
+    </div>
+    <div class="group-detail-body">
+      <table class="group-detail-table" id="groupDetailTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Descrição</th>
+            <th>Responsável</th>
+            <th>Status</th>
+            <th>Prazo</th>
+          </tr>
+        </thead>
+        <tbody id="groupDetailTbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <!-- FIREBASE CONFIG MODAL -->
 <div class="fb-modal-backdrop" id="fbModalBackdrop">
   <div class="fb-modal" role="dialog" aria-modal="true" aria-label="Configuração do Firebase">
@@ -2525,15 +2584,38 @@ document.addEventListener("DOMContentLoaded", function() {
       const go = items.filter(i=>resolveStatus(i)==="on_going").length;
       const gd = items.filter(i=>resolveStatus(i)==="delayed").length;
       const tr = document.createElement("tr");
+      tr.style.cursor = "pointer";
+      tr.title = "Clique para ver as ações deste grupo";
       tr.innerHTML = `
-        <td>${groupName}</td>
+        <td style="color:#1E4D17;font-weight:600;">${groupName}</td>
         <td>${items.length}</td>
         <td>${statusBadge(gc,"complete")}</td>
         <td>${statusBadge(go,"on_going")}</td>
         <td>${statusBadge(gd,"delayed")}</td>
       `;
+      tr.addEventListener("click", function() { openGroupDetailPopup(groupName, items); });
       tbody.appendChild(tr);
     });
+  }
+
+  function openGroupDetailPopup(groupName, items) {
+    document.getElementById("groupDetailTitle").textContent = "Ações — " + groupName;
+    var statusLabels = { complete: "Concluída", on_going: "Em andamento", delayed: "Atrasada", not_started: "Não iniciada" };
+    var statusClass  = { complete: "complete",  on_going: "on_going",     delayed: "delayed",  not_started: "on_going" };
+    var rows = items.map(function(a) {
+      var st   = resolveStatus(a);
+      var end  = a.reprazo || a.end || "";
+      var endFmt = end ? end.split("-").reverse().join("/") : "—";
+      return "<tr>" +
+        "<td>" + a.id + "</td>" +
+        "<td>" + escHtml(a.desc || "") + "</td>" +
+        "<td>" + escHtml(a.lead || a.team || "—") + "</td>" +
+        "<td><span class=\"badge badge-" + (statusClass[st] || "on_going") + "\">" + (statusLabels[st] || st) + "</span></td>" +
+        "<td>" + endFmt + "</td>" +
+      "</tr>";
+    }).join("");
+    document.getElementById("groupDetailTbody").innerHTML = rows || "<tr><td colspan=\"5\" style=\"text-align:center;color:#6b7280;\">Sem ações neste grupo.</td></tr>";
+    document.getElementById("groupDetailBackdrop").classList.add("open");
   }
 
   // ── Projects ──────────────────────────────────────────────────────────────
@@ -3195,6 +3277,20 @@ document.addEventListener("DOMContentLoaded", function() {
     renderBell();
     if(expandedGroup !== null) renderGantt();
   });
+
+  // ── Group detail popup ────────────────────────────────────────────────────
+  (function() {
+    function closeGroupDetail() {
+      document.getElementById("groupDetailBackdrop").classList.remove("open");
+    }
+    document.getElementById("groupDetailClose").addEventListener("click", closeGroupDetail);
+    document.getElementById("groupDetailBackdrop").addEventListener("click", function(e) {
+      if (e.target === this) closeGroupDetail();
+    });
+    document.addEventListener("keydown", function(e) {
+      if (e.key === "Escape") closeGroupDetail();
+    });
+  })();
 
   // ── Attachments (client-side, in-memory) ─────────────────────────────────
   // attachmentsMap is keyed by action id (number) or "__new__" for unsaved actions.
@@ -4271,6 +4367,11 @@ document.addEventListener("DOMContentLoaded", function() {
           r.d8Finalizado = r.status === '8d_finalizado';
           needsSave = true;
         }
+        // Ensure every record has a stable string id so delete/edit lookups work.
+        if (!r.id) {
+          r.id = 'nc_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
+          needsSave = true;
+        }
       });
       if (needsSave) {
         try { localStorage.setItem(ncStorageKey(), JSON.stringify(records)); } catch(e) {}
@@ -4593,6 +4694,11 @@ document.addEventListener("DOMContentLoaded", function() {
             if (typeof r.rncAberta === 'undefined') {
               r.rncAberta    = r.status === 'rnc_aberta';
               r.d8Finalizado = r.status === '8d_finalizado';
+              needsSave = true;
+            }
+            // Ensure every record has a stable string id so delete/edit lookups work.
+            if (!r.id) {
+              r.id = 'nc_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
               needsSave = true;
             }
           });
