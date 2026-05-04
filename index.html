@@ -288,6 +288,12 @@
     .gc-bar-delayed { background:rgba(220,38,38,.22);   border-left:3px solid #dc2626; }  /* red   – atrasado      */
     .gc-bar-action  { background:rgba(245,158,11,.28);  border-left:3px solid #F59E0B; }  /* amber – em andamento  */
     .gc-bar-complete{ background:rgba(22,163,74,.22);   border-left:3px solid #16a34a; }  /* green – concluído     */
+    /* NC Gantt specific bar colours */
+    .gc-bar-nc-open    { background:rgba(37,99,235,.25);  border-left:3px solid #2563eb; }  /* blue  – aberta         */
+    .gc-bar-nc-rnc     { background:rgba(234,88,12,.28);  border-left:3px solid #ea580c; }  /* orange – RNC Aberta    */
+    .gc-bar-nc-8d      { background:rgba(22,163,74,.28);  border-left:3px solid #16a34a; }  /* green – 8D Finalizado  */
+    .gc-bar-nc-overdue { background:rgba(220,38,38,.28);  border-left:3px solid #dc2626; }  /* red   – vencida        */
+    .gc-bar-nc-np      { background:rgba(107,114,128,.20);border-left:3px solid #6b7280; }  /* gray  – não procedente */
     .gc-row-group { cursor:pointer; }
     .gc-row-group .gc-label { font-weight:700; background:#eef5eb; justify-content:space-between; overflow:visible; }
     .gc-row-group:hover .gc-label { background:#e2f0db; }
@@ -1225,6 +1231,12 @@
       </span>
       <span class="nav-label">NC</span>
     </li>
+    <li data-page="ncGanttPage" data-tooltip="Cronograma NC">
+      <span class="nav-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path d="M3 4h14v2H3V4zm0 5h8v2H3V9zm0 5h5v2H3v-2z"/></svg>
+      </span>
+      <span class="nav-label">NC Gantt</span>
+    </li>
   </ul>
   <div class="tenant-switcher">
     <div class="tenant-label">Empresa</div>
@@ -1369,6 +1381,22 @@
       </div>
     </div>
     <div id="gantt"></div>
+  </div>
+
+  <!-- NC GANTT PAGE -->
+  <div id="ncGanttPage" class="page">
+    <div class="page-header">
+      <h1>Cronograma NC</h1>
+      <p>Linha do tempo das não conformidades por cliente. Clique no cliente para expandir.</p>
+    </div>
+    <div id="ncGanttLegend" style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:18px;font-size:12px;align-items:center;">
+      <span style="display:flex;align-items:center;gap:5px;"><span style="width:14px;height:14px;border-radius:3px;background:rgba(37,99,235,.28);border-left:3px solid #2563eb;display:inline-block;"></span>Em aberto</span>
+      <span style="display:flex;align-items:center;gap:5px;"><span style="width:14px;height:14px;border-radius:3px;background:rgba(234,88,12,.28);border-left:3px solid #ea580c;display:inline-block;"></span>RNC Aberta</span>
+      <span style="display:flex;align-items:center;gap:5px;"><span style="width:14px;height:14px;border-radius:3px;background:rgba(22,163,74,.28);border-left:3px solid #16a34a;display:inline-block;"></span>8D Finalizado</span>
+      <span style="display:flex;align-items:center;gap:5px;"><span style="width:14px;height:14px;border-radius:3px;background:rgba(220,38,38,.28);border-left:3px solid #dc2626;display:inline-block;"></span>Vencida (+30 dias)</span>
+      <span style="display:flex;align-items:center;gap:5px;"><span style="width:14px;height:14px;border-radius:3px;background:rgba(107,114,128,.20);border-left:3px solid #6b7280;display:inline-block;"></span>Não Procedente</span>
+    </div>
+    <div id="ncGantt"></div>
   </div>
 
   <!-- NC – Non-Conformance -->
@@ -2088,6 +2116,8 @@ document.addEventListener("DOMContentLoaded", function() {
     try {
       _ncListener = db.collection('nc_records_' + tenantId).doc('all')
         .onSnapshot(function(snap) {
+          // Guard: ignore late-firing callbacks from a previous tenant
+          if (tenantId !== currentTenant) return;
           if (!snap.exists) return;
           var records = snap.data().records;
           if (!Array.isArray(records)) return;
@@ -2111,6 +2141,8 @@ document.addEventListener("DOMContentLoaded", function() {
           if (typeof renderNcCards === 'function')  renderNcCards();
           if (typeof renderNcCharts === 'function') renderNcCharts();
           if (typeof renderNcCustomCharts === 'function') renderNcCustomCharts();
+          if (typeof renderNcGantt === 'function' && document.getElementById('ncGanttPage') &&
+              document.getElementById('ncGanttPage').classList.contains('active')) renderNcGantt();
           // Push any locally-saved records that didn't reach Firebase back up
           if (hadLocalOnlySnap && typeof saveNcRecords === 'function') saveNcRecords();
         }, function(e) { console.warn('NC onSnapshot error:', e); });
@@ -3624,6 +3656,144 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   }
 
+  // ── NC Gantt ─────────────────────────────────────────────────────────────
+
+  var _ncGanttExpandedGroup = null; // customer name currently expanded
+
+  function renderNcGantt() {
+    var container = document.getElementById('ncGantt');
+    if (!container) return;
+    container.innerHTML = '';
+
+    var recs = (Array.isArray(ncRecords) ? ncRecords : []);
+    if (!recs.length) {
+      container.innerHTML = '<p style="padding:20px;color:#6b7280">Nenhuma NC cadastrada.</p>';
+      return;
+    }
+
+    // Group NCs by customer
+    var byCustomer = {};
+    recs.forEach(function(nc) {
+      if (!nc.date) return;
+      var key = nc.customer || '(sem cliente)';
+      if (!byCustomer[key]) byCustomer[key] = [];
+      byCustomer[key].push(nc);
+    });
+    var customerNames = Object.keys(byCustomer);
+    if (!customerNames.length) {
+      container.innerHTML = '<p style="padding:20px;color:#6b7280">Nenhuma NC com data cadastrada.</p>';
+      return;
+    }
+
+    // Overall date range
+    var today = new Date(); today.setHours(0,0,0,0);
+    var allDates = recs.filter(function(nc) { return !!nc.date; }).map(function(nc) { return nc.date; });
+    allDates.sort();
+    var dMin = new Date(allDates[0]); dMin.setDate(1);
+    // End = max(nc.date + 30 days) or today+30, whichever is later
+    var dMaxCand = new Date(allDates[allDates.length - 1]);
+    dMaxCand.setDate(dMaxCand.getDate() + 35);
+    var dMaxRaw = dMaxCand > today ? dMaxCand : new Date(today.getFullYear(), today.getMonth() + 1, 15);
+    var dMax = new Date(dMaxRaw.getFullYear(), dMaxRaw.getMonth() + 1, 1);
+    var totalMs = dMax - dMin;
+
+    function pct(ds) { return ((new Date(ds) - dMin) / totalMs * 100).toFixed(2); }
+    function wid(s, e) { return ((new Date(e) - new Date(s)) / totalMs * 100).toFixed(2); }
+
+    // Month header
+    var months = [];
+    var d = new Date(dMin);
+    while (d < dMax) {
+      var nxt = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+      months.push({
+        left:  ((d - dMin) / totalMs * 100).toFixed(2),
+        width: ((Math.min(nxt, dMax) - d) / totalMs * 100).toFixed(2),
+        label: d.toLocaleString('pt-BR', { month:'short', year:'2-digit' }).toUpperCase()
+      });
+      d = nxt;
+    }
+    var monthHTML = months.map(function(m) {
+      return '<div class="gc-month" style="left:' + m.left + '%;width:' + m.width + '%">' + m.label + '</div>';
+    }).join('');
+
+    // NC bar class based on status
+    function ncBarClass(nc) {
+      if (nc.naoProcedente) return 'gc-bar-nc-np';
+      if (nc.d8Finalizado) return 'gc-bar-nc-8d';
+      if (nc.rncAberta) return 'gc-bar-nc-rnc';
+      // Check if overdue (> 30 days open)
+      var start = new Date(nc.date);
+      var diffDays = Math.floor((today - start) / 86400000);
+      return diffDays > 30 ? 'gc-bar-nc-overdue' : 'gc-bar-nc-open';
+    }
+
+    // NC bar end date: always nc.date + 30d to show the treatment window
+    function ncBarEnd(nc) {
+      return addDaysToDateStr(nc.date, 30);
+    }
+
+    // Rows HTML
+    var rowsHTML = '';
+    customerNames.forEach(function(customerName) {
+      var items = byCustomer[customerName];
+      var cStart = items.map(function(nc) { return nc.date; }).sort()[0];
+      var cEndCands = items.map(function(nc) { return ncBarEnd(nc); }).sort();
+      var cEnd = cEndCands[cEndCands.length - 1];
+      if (cEnd < cStart) cEnd = cStart;
+      var open = _ncGanttExpandedGroup === customerName;
+      var safeC = escHtml(customerName);
+      var total = items.length;
+      var done  = items.filter(function(nc) { return nc.d8Finalizado; }).length;
+      var rnc   = items.filter(function(nc) { return nc.rncAberta && !nc.d8Finalizado; }).length;
+      rowsHTML += '<div class="gc-row gc-row-group" data-nc-customer="' + safeC + '">' +
+        '<div class="gc-label"><span class="gc-label-text">' + (open ? '▼' : '►') + ' ' + safeC + '</span>' +
+        '<span class="gc-status-pills">' +
+          '<span class="gc-pill gc-pill-complete" title="8D Finalizado">' + done + '</span>' +
+          (rnc  ? '<span class="gc-pill gc-pill-on_going" title="RNC Aberta">' + rnc + '</span>' : '') +
+          '<span style="font-size:10px;color:#6b7280;font-weight:600;margin-left:4px;">/' + total + '</span>' +
+        '</span></div>' +
+        '<div class="gc-timeline"><div class="gc-bar gc-bar-group" style="left:' + pct(cStart) + '%;width:' + wid(cStart, cEnd) + '%"></div></div>' +
+      '</div>';
+
+      if (open) {
+        items.forEach(function(nc) {
+          var barCls = ncBarClass(nc);
+          var barEnd = ncBarEnd(nc);
+          var label  = escHtml((nc.ncNumber || 'NC') + ' – ' + (nc.piece || nc.description || nc.failureMode || ''));
+          rowsHTML += '<div class="gc-row gc-row-task" data-nc-id="' + escHtml(nc.id || '') + '">' +
+            '<div class="gc-label gc-label-task">↳ ' + label + '</div>' +
+            '<div class="gc-timeline"><div class="gc-bar ' + barCls + '" style="left:' + pct(nc.date) + '%;width:' + wid(nc.date, barEnd) + '%" title="' + escHtml(nc.ncNumber || '') + '"></div></div>' +
+          '</div>';
+        });
+      }
+    });
+
+    container.innerHTML = '<div class="gc-wrap">' +
+      '<div class="gc-header">' +
+        '<div class="gc-label gc-label-head">Cliente / NC<div class="gc-resize-handle" title="Arraste para redimensionar"></div></div>' +
+        '<div class="gc-timeline gc-timeline-head">' + monthHTML + '</div>' +
+      '</div>' +
+      '<div class="gc-body">' + rowsHTML + '</div>' +
+    '</div>';
+
+    initGanttResize(container.querySelector('.gc-wrap'));
+
+    container.querySelectorAll('.gc-row-group').forEach(function(row) {
+      row.addEventListener('click', function() {
+        var cust = row.dataset.ncCustomer;
+        _ncGanttExpandedGroup = _ncGanttExpandedGroup === cust ? null : cust;
+        renderNcGantt();
+      });
+    });
+    container.querySelectorAll('.gc-row-task').forEach(function(row) {
+      row.addEventListener('click', function() {
+        var ncId = row.dataset.ncId;
+        var nc = ncRecords.find(function(r) { return r.id === ncId; });
+        if (nc && window.openNcDetailModal) openNcDetailModal(nc);
+      });
+    });
+  }
+
   // ── Navigation ────────────────────────────────────────────────────────────
 
   document.querySelectorAll(".sidebar-nav li").forEach(item => {
@@ -3636,6 +3806,7 @@ document.addEventListener("DOMContentLoaded", function() {
       document.getElementById(pageId).classList.add("active");
 
       if(pageId === "ganttPage") { setTimeout(renderGantt, 100); renderGanttBell(); }
+      else if(pageId === "ncGanttPage") { setTimeout(renderNcGantt, 100); }
     });
   });
 
@@ -3679,6 +3850,9 @@ document.addEventListener("DOMContentLoaded", function() {
     // Persist attachments ref back before switching (actions are mutated in-place)
     TENANTS[currentTenant].attachments = attachmentsMap;
     currentTenant = key;
+    // Clear NC records immediately so stale previous-tenant data can't contaminate
+    // the new tenant's onSnapshot callbacks or syncNcsToGantt calls.
+    ncRecords = [];
     allActions    = TENANTS[key].actions;
     attachmentsMap = TENANTS[key].attachments;
     // Apply theme via body class + custom logo colors
@@ -3699,6 +3873,7 @@ document.addEventListener("DOMContentLoaded", function() {
     renderBell();
     // Close any open modal/gantt
     expandedGroup = null;
+    _ncGanttExpandedGroup = null;
     // Reload NC records for the newly selected company (Firebase-aware)
     loadNcRecordsAsync(key).then(function(records) {
       ncRecords = records;
@@ -3706,6 +3881,9 @@ document.addEventListener("DOMContentLoaded", function() {
       renderNcCards();
       renderNcCharts();
       renderNcCustomCharts();
+      if (document.getElementById('ncGanttPage') && document.getElementById('ncGanttPage').classList.contains('active')) {
+        renderNcGantt();
+      }
     });
     loadNcCustomCharts().then(function() { renderNcCustomCharts(); });
     updateNcVisibility();
@@ -3758,13 +3936,40 @@ document.addEventListener("DOMContentLoaded", function() {
   // ── NC visibility based on tenant type ────────────────────────────────────
 
   function updateNcVisibility() {
-    var isClient = TENANTS[currentTenant] ? TENANTS[currentTenant].isClient !== false : true;
-    var ncNavItem = document.querySelector('.sidebar-nav li[data-page="ncPage"]');
-    var ncPageEl  = document.getElementById('ncPage');
-    if (ncNavItem) ncNavItem.style.display = isClient ? '' : 'none';
-    if (ncPageEl)  ncPageEl.style.display  = isClient ? '' : 'none';
-    // If NC page is active but shouldn't be visible, redirect to dashboard
-    if (!isClient && ncNavItem && ncNavItem.classList.contains('active')) {
+    var tenant = TENANTS[currentTenant];
+    // "clienteOnly" tenants show only NC pages (no project management tabs).
+    // Built-in tenants (jd, cat, pessoal) and "initiative" tenants show project management.
+    var clienteOnly = tenant && tenant.clienteOnly === true;
+    var isClient = tenant ? tenant.isClient !== false : true;
+
+    // Project management tabs: Dashboard, Projetos, Cronograma (Gantt)
+    var showProjectMgmt = !clienteOnly;
+    ['dashboard', 'projects', 'ganttPage'].forEach(function(pageId) {
+      var navItem = document.querySelector('.sidebar-nav li[data-page="' + pageId + '"]');
+      var pageEl  = document.getElementById(pageId);
+      if (navItem) navItem.style.display = showProjectMgmt ? '' : 'none';
+      if (pageEl && !clienteOnly) pageEl.style.removeProperty('display');
+      else if (pageEl && clienteOnly) pageEl.style.display = 'none';
+    });
+
+    // NC pages: NC cards and NC Gantt
+    var showNcPages = clienteOnly || isClient;
+    var ncNavItem    = document.querySelector('.sidebar-nav li[data-page="ncPage"]');
+    var ncGanttNav   = document.querySelector('.sidebar-nav li[data-page="ncGanttPage"]');
+    var ncPageEl     = document.getElementById('ncPage');
+    var ncGanttPageEl= document.getElementById('ncGanttPage');
+    if (ncNavItem)    ncNavItem.style.display    = showNcPages ? '' : 'none';
+    if (ncGanttNav)   ncGanttNav.style.display   = showNcPages ? '' : 'none';
+    if (ncPageEl)     ncPageEl.style.display      = showNcPages ? '' : 'none';
+    if (ncGanttPageEl)ncGanttPageEl.style.display = showNcPages ? '' : 'none';
+
+    // Redirect active tab if it became hidden
+    var activeNavItem = document.querySelector('.sidebar-nav li.active');
+    var activePage    = activeNavItem ? activeNavItem.dataset.page : null;
+    if (clienteOnly && (activePage === 'dashboard' || activePage === 'projects' || activePage === 'ganttPage')) {
+      var ncNav = document.querySelector('.sidebar-nav li[data-page="ncPage"]');
+      if (ncNav) ncNav.click();
+    } else if (!showNcPages && (activePage === 'ncPage' || activePage === 'ncGanttPage')) {
       var dashNav = document.querySelector('.sidebar-nav li[data-page="dashboard"]');
       if (dashNav) dashNav.click();
     }
@@ -3845,7 +4050,8 @@ document.addEventListener("DOMContentLoaded", function() {
         accentBg:       TENANTS[key].accentBg  || '',
         accentText:     TENANTS[key].accentText || '',
         sidebarBg:      TENANTS[key].sidebarBg  || '',
-        isClient:       TENANTS[key].isClient !== false  // default true
+        isClient:       TENANTS[key].isClient !== false,  // default true
+        clienteOnly:    TENANTS[key].clienteOnly === true // default false
       };
     });
     try { localStorage.setItem('spi_all_tenants', JSON.stringify(all)); }
@@ -3924,6 +4130,7 @@ document.addEventListener("DOMContentLoaded", function() {
         TENANTS[key].accentText     = c.accentText  || TENANTS[key].accentText;
         TENANTS[key].sidebarBg      = c.sidebarBg   || TENANTS[key].sidebarBg;
         TENANTS[key].isClient       = c.isClient !== false;
+        TENANTS[key].clienteOnly    = c.clienteOnly === true;
       } else {
         TENANTS[key] = {
           label:          c.label,
@@ -3935,6 +4142,7 @@ document.addEventListener("DOMContentLoaded", function() {
           accentText:     c.accentText     || '#fff',
           sidebarBg:      c.sidebarBg      || '#1E4D17',
           isClient:       c.isClient !== false,
+          clienteOnly:    c.clienteOnly === true,
           actions:        [],
           attachments:    {}
         };
@@ -4119,7 +4327,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // Set type toggle
     var typeVal = 'client';
-    if (isEdit && TENANTS[editKey] && TENANTS[editKey].isClient === false) typeVal = 'initiative';
+    if (isEdit && TENANTS[editKey] && (TENANTS[editKey].isClient === false || TENANTS[editKey].clienteOnly === false)) typeVal = 'initiative';
+    if (isEdit && TENANTS[editKey] && TENANTS[editKey].clienteOnly === true) typeVal = 'client';
     setTenantTypeToggle(typeVal);
 
     if (isEdit) {
@@ -4170,6 +4379,7 @@ document.addEventListener("DOMContentLoaded", function() {
       TENANTS[editKey].accentText     = c.text;
       TENANTS[editKey].sidebarBg      = c.sidebar;
       TENANTS[editKey].isClient       = isClient;
+      TENANTS[editKey].clienteOnly    = isClient; // "cliente" type = simplified NC-only view
       saveAllTenants();
       closeTenantModal();
       // Refresh current view if we edited the active tenant
@@ -4199,6 +4409,7 @@ document.addEventListener("DOMContentLoaded", function() {
         accentText:     c.text,
         sidebarBg:      c.sidebar,
         isClient:       isClient,
+        clienteOnly:    isClient, // "cliente" type = simplified NC-only view
         actions:        [],
         attachments:    {}
       };
@@ -4376,6 +4587,13 @@ document.addEventListener("DOMContentLoaded", function() {
       if (needsSave) {
         try { localStorage.setItem(ncStorageKey(), JSON.stringify(records)); } catch(e) {}
       }
+      // Deduplicate by id (safety net against past cross-tenant contamination)
+      var seenIds = new Set();
+      records = records.filter(function(r) {
+        if (!r.id || seenIds.has(r.id)) return false;
+        seenIds.add(r.id);
+        return true;
+      });
       return records;
     } catch(e) { return []; }
   }
@@ -4709,6 +4927,13 @@ document.addEventListener("DOMContentLoaded", function() {
           var fbIdsSet = new Set(records.map(function(r) { return r.id; }));
           var hadLocalOnly = false;
           localRecords.forEach(function(lr) { if (lr && lr.id && !fbIdsSet.has(lr.id)) { records.push(lr); hadLocalOnly = true; } });
+          // Deduplicate by id (safety net against past cross-tenant contamination)
+          var seenIdsAsync = new Set();
+          records = records.filter(function(r) {
+            if (!r.id || seenIdsAsync.has(r.id)) return false;
+            seenIdsAsync.add(r.id);
+            return true;
+          });
           // Keep localStorage in sync (with photos merged in)
           try { localStorage.setItem(key, JSON.stringify(records)); } catch(e) {}
           if (hadLocalOnly || needsSave) {
