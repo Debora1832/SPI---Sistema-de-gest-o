@@ -813,7 +813,7 @@
     .nc-nao-proc-toggle-label small { display:block; font-weight:400; font-size:11px; color:#6b7280; margin-top:2px; }
     @keyframes nc-atencao-pulse { 0%,100%{ box-shadow:0 2px 8px rgba(249,115,22,.5); } 50%{ box-shadow:0 0 16px rgba(249,115,22,.8); } }
     .nc-card-photo { width:100%; height:150px; object-fit:cover; display:block; }
-    .nc-card-photo-placeholder { width:100%; height:150px; background:#2a2a2e; display:flex; align-items:center; justify-content:center; }
+    .nc-card-photo-placeholder { width:100%; height:150px; background:#111; display:flex; align-items:center; justify-content:center; }
     .nc-card-body { padding:14px 16px 8px; flex:1; cursor:pointer; background:rgba(0,0,0,.45); }
     .nc-card-body:hover { background:rgba(0,0,0,.55); }
     .nc-card-num { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:#FFDE00; margin-bottom:4px; }
@@ -865,8 +865,8 @@
     .nc-btn-pdf:hover { background:#C62828; color:#fff; }
 
     /* NC – card photo strip (multiple photos) */
-    .nc-card-photo-strip { position:relative; height:150px; overflow:hidden; }
-    .nc-card-photo-strip img { width:100%; height:150px; object-fit:cover; display:none; cursor:zoom-in; transition:opacity .15s; }
+    .nc-card-photo-strip { position:relative; height:150px; overflow:hidden; background:#111; }
+    .nc-card-photo-strip img { width:100%; height:150px; object-fit:contain; display:none; cursor:zoom-in; transition:opacity .15s; }
     .nc-card-photo-strip img:hover { opacity:.88; }
     .nc-card-photo-strip img.nc-active-photo { display:block; }
     .nc-photo-nav { position:absolute; bottom:6px; right:6px; display:flex; gap:4px; }
@@ -958,8 +958,8 @@
     .nc-detail-body { padding:0; }
 
     /* Photo strip */
-    .nc-detail-photo-strip { display:flex; gap:8px; padding:16px 24px 0; flex-wrap:wrap; }
-    .nc-detail-photo-strip img { width:130px; height:96px; object-fit:cover; border-radius:8px; border:2px solid #e5e7eb; cursor:pointer; transition:transform .15s, border-color .15s; }
+    .nc-detail-photo-strip { display:flex; gap:10px; padding:16px 24px 0; flex-wrap:wrap; }
+    .nc-detail-photo-strip img { width:180px; height:135px; object-fit:contain; background:#111; border-radius:8px; border:2px solid #e5e7eb; cursor:pointer; transition:transform .15s, border-color .15s; }
     .nc-detail-photo-strip img:hover { transform:scale(1.05); border-color:#1565C0; }
 
     /* Info sections */
@@ -5259,7 +5259,7 @@ document.addEventListener("DOMContentLoaded", function() {
           : '';
         photoHtml = '<div class="nc-card-photo-strip">' + imgs + nav + '</div>';
       } else {
-        photoHtml = '<div class="nc-card-photo-placeholder"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" stroke="#555" stroke-width="1" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path stroke-linecap="round" d="M21 15l-5-5L5 21"/></svg></div>';
+        photoHtml = '<div class="nc-card-photo-placeholder"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path stroke-linecap="round" d="M21 15l-5-5L5 21"/></svg></div>';
       }
       var rncActive = nc.rncAberta ? 'active' : '';
       var d8Active  = nc.d8Finalizado ? 'active' : '';
