@@ -4175,7 +4175,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const container = document.getElementById('tenantBtns');
     container.innerHTML = '';
     Object.keys(TENANTS).forEach(function(key) {
-      if (TENANTS[key].isProject === true) return; // projects go in the Projetos group
+      if (TENANTS[key].isProject === true || TENANTS[key].isClient === false) return; // projects go in the Projetos group
       const t = TENANTS[key];
       const isActive = key === currentTenant;
 
@@ -4235,7 +4235,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const container = document.getElementById('projectBtns');
     if (!container) return;
     container.innerHTML = '';
-    const projectKeys = Object.keys(TENANTS).filter(function(k) { return TENANTS[k].isProject === true; });
+    const projectKeys = Object.keys(TENANTS).filter(function(k) { return TENANTS[k].isProject === true || TENANTS[k].isClient === false; });
     if (projectKeys.length === 0) {
       container.innerHTML = '<div style="color:rgba(255,255,255,.4);font-size:11px;padding:4px 8px;">Nenhum projeto</div>';
       return;
@@ -4420,7 +4420,7 @@ document.addEventListener("DOMContentLoaded", function() {
         TENANTS[key].sidebarBg      = c.sidebarBg   || TENANTS[key].sidebarBg;
         TENANTS[key].isClient       = c.isClient !== false;
         TENANTS[key].clienteOnly    = c.clienteOnly === true;
-        TENANTS[key].isProject      = c.isProject === true;
+        TENANTS[key].isProject      = c.isProject === true || c.isClient === false; // auto-migrate Somente Iniciativas → Projetos
       } else {
         TENANTS[key] = {
           label:          c.label,
@@ -4433,7 +4433,7 @@ document.addEventListener("DOMContentLoaded", function() {
           sidebarBg:      c.sidebarBg      || '#1E4D17',
           isClient:       c.isClient !== false,
           clienteOnly:    c.clienteOnly === true,
-          isProject:      c.isProject === true,
+          isProject:      c.isProject === true || c.isClient === false, // auto-migrate Somente Iniciativas → Projetos
           actions:        [],
           attachments:    {}
         };
@@ -4616,7 +4616,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
   function openTenantModal(editKey, isProjectMode) {
     const isEdit = typeof editKey === 'string';
-    _pendingIsProject = isProjectMode === true || (typeof editKey === 'string' && TENANTS[editKey] && TENANTS[editKey].isProject === true);
+    _pendingIsProject = isProjectMode === true || (typeof editKey === 'string' && TENANTS[editKey] && (TENANTS[editKey].isProject === true || TENANTS[editKey].isClient === false));
     document.getElementById('nt-editing-key').value = isEdit ? editKey : '';
     document.getElementById('ntModalTitle').textContent = isEdit ? (_pendingIsProject ? 'Editar Projeto' : 'Editar Cliente') : (_pendingIsProject ? 'Novo Projeto' : 'Novo Cliente');
     document.getElementById('newTenantSave').textContent = isEdit ? 'Salvar alterações' : (_pendingIsProject ? 'Criar projeto' : 'Criar cliente');
@@ -4677,7 +4677,7 @@ document.addEventListener("DOMContentLoaded", function() {
       TENANTS[editKey].sidebarBg      = c.sidebar;
       TENANTS[editKey].isClient       = isClient;
       TENANTS[editKey].clienteOnly    = isClient; // "cliente" type = simplified NC-only view
-      TENANTS[editKey].isProject      = _pendingIsProject;
+      TENANTS[editKey].isProject      = _pendingIsProject || !isClient; // Somente Iniciativas always goes to Projetos group
       saveAllTenants();
       closeTenantModal();
       // Refresh current view if we edited the active tenant
@@ -4709,7 +4709,7 @@ document.addEventListener("DOMContentLoaded", function() {
         sidebarBg:      c.sidebar,
         isClient:       isClient,
         clienteOnly:    isClient, // "cliente" type = simplified NC-only view
-        isProject:      _pendingIsProject,
+        isProject:      _pendingIsProject || !isClient, // Somente Iniciativas always goes to Projetos group
         actions:        [],
         attachments:    {}
       };
