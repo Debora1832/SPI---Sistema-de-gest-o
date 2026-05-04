@@ -1207,23 +1207,17 @@
     </div>
   </div>
   <ul class="sidebar-nav">
-    <li data-page="dashboard" class="active" data-tooltip="Dashboard">
+    <li data-page="dashboard" class="active" data-tooltip="Dashboard &amp; Projetos">
       <span class="nav-icon">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path d="M2 11l8-8 8 8v7a1 1 0 01-1 1H3a1 1 0 01-1-1v-7z"/><path d="M7 18v-6h6v6"/></svg>
       </span>
-      <span class="nav-label">Dashboard</span>
+      <span class="nav-label">Dashboard &amp; Projetos</span>
     </li>
-    <li data-page="projects" data-tooltip="Projetos">
-      <span class="nav-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 0h8v12H6V4zm2 2h4v1H8V6zm0 3h4v1H8V9zm0 3h2v1H8v-1z" clip-rule="evenodd"/></svg>
-      </span>
-      <span class="nav-label">Projetos</span>
-    </li>
-    <li data-page="ganttPage" data-tooltip="Cronograma">
+    <li data-page="ganttPage" data-tooltip="Gantt Tratativas">
       <span class="nav-icon">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path d="M3 4h14v2H3V4zm0 5h10v2H3V9zm0 5h7v2H3v-2z"/></svg>
       </span>
-      <span class="nav-label">Cronograma</span>
+      <span class="nav-label">Gantt Tratativas</span>
     </li>
     <li data-page="ncPage" data-tooltip="NC">
       <span class="nav-icon">
@@ -1260,16 +1254,45 @@
 
   <!-- DASHBOARD -->
   <div id="dashboard" class="page active">
-    <div class="page-header">
-      <h1>Dashboard Operacional</h1>
-      <p>Visão geral de todas as ações do plano SIP</p>
+    <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+      <div>
+        <h1>Dashboard &amp; Projetos</h1>
+        <p>Visão executiva e lista detalhada de todas as ações do plano</p>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <button class="btn-primary" id="btnNewAction" style="margin-top:4px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/></svg>
+          Nova Ação
+        </button>
+        <button class="btn-primary btn-export" id="btnExport" style="margin-top:4px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+          Exportar Planilha
+        </button>
+        <div class="bell-wrap" id="bellWrap">
+          <button class="btn-bell" id="btnBell" title="Ações próximas ao vencimento" aria-label="Notificações">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22a2 2 0 01-2-2h4a2 2 0 01-2 2zm6-6H6l-2 2V9a8 8 0 1116 0v9l-2-2z"/></svg>
+            <span class="bell-badge" id="bellBadge" style="display:none">0</span>
+          </button>
+          <div class="bell-panel" id="bellPanel">
+            <div class="bell-panel-header">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22a2 2 0 01-2-2h4a2 2 0 01-2 2zm6-6H6l-2 2V9a8 8 0 1116 0v9l-2-2z"/></svg>
+              Ações próximas ao vencimento (próx. 14 dias)
+            </div>
+            <div class="bell-panel-body" id="bellPanelBody">
+              <div class="bell-empty">Nenhuma ação próxima ao vencimento.</div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
+    <!-- KPI row -->
     <div class="kpi-grid" id="kpiGridVolume"></div>
     <div class="kpi-section-title" id="kpiPerfTitle">KPIs de Performance</div>
     <div class="kpi-grid performance" id="kpiGridPerformance"></div>
 
-    <div class="card">
+    <!-- Group summary -->
+    <div class="card" style="margin-bottom:20px;">
       <h3>Resumo por grupo</h3>
       <table>
         <thead>
@@ -1284,41 +1307,11 @@
         <tbody id="groupSummaryTable"></tbody>
       </table>
     </div>
-  </div>
 
-  <!-- PROJECTS -->
-  <div id="projects" class="page">
-    <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-      <div>
-        <h1>Projetos &amp; Ações</h1>
-        <p>Lista detalhada de todas as ações cadastradas</p>
-      </div>
-      <button class="btn-primary" id="btnNewAction" style="margin-top:4px;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/></svg>
-        Nova Ação
-      </button>
-      <button class="btn-primary btn-export" id="btnExport" style="margin-top:4px;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
-        Exportar Planilha
-      </button>
-      <div class="bell-wrap" id="bellWrap">
-        <button class="btn-bell" id="btnBell" title="Ações próximas ao vencimento" aria-label="Notificações">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22a2 2 0 01-2-2h4a2 2 0 01-2 2zm6-6H6l-2 2V9a8 8 0 1116 0v9l-2-2z"/></svg>
-          <span class="bell-badge" id="bellBadge" style="display:none">0</span>
-        </button>
-        <div class="bell-panel" id="bellPanel">
-          <div class="bell-panel-header">
-            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22a2 2 0 01-2-2h4a2 2 0 01-2 2zm6-6H6l-2 2V9a8 8 0 1116 0v9l-2-2z"/></svg>
-            Ações próximas ao vencimento (próx. 14 dias)
-          </div>
-          <div class="bell-panel-body" id="bellPanelBody">
-            <div class="bell-empty">Nenhuma ação próxima ao vencimento.</div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <!-- Action table (previously Projetos page) -->
     <div class="card">
-      <div class="filter-row">
+      <div class="filter-row" style="margin-bottom:12px;">
+        <span style="font-size:13px;font-weight:700;color:#374151;margin-right:8px;">Ações</span>
         <label for="groupFilter">Grupo:</label>
         <select id="groupFilter">
           <option value="">Todos os grupos</option>
@@ -1357,12 +1350,12 @@
     </div>
   </div>
 
-  <!-- GANTT -->
+  <!-- GANTT TRATATIVAS -->
   <div id="ganttPage" class="page">
     <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
       <div>
-        <h1>Cronograma Gantt</h1>
-        <p>Clique em um grupo para expandir as ações individuais. Clique em uma ação para ver os detalhes.</p>
+        <h1>Gantt Tratativas</h1>
+        <p>Cronograma das ações e tratativas do plano (sem NCs — veja "NC Gantt" para as não conformidades). Clique no grupo para expandir.</p>
       </div>
       <div class="bell-wrap" id="ganttBellWrap">
         <button class="btn-bell" id="ganttBtnBell" title="Ações em atraso" aria-label="Ações em atraso">
@@ -2707,7 +2700,7 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     // update header indicators
-    document.querySelectorAll("#projects thead th[data-sort]").forEach(th => {
+    document.querySelectorAll("#dashboard thead th[data-sort]").forEach(th => {
       th.classList.remove("sort-asc", "sort-desc");
       if(th.dataset.sort === sortCol){
         th.classList.add(sortDir === "asc" ? "sort-asc" : "sort-desc");
@@ -2749,7 +2742,7 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   // ── Sortable headers ──────────────────────────────────────────────────────
-  document.querySelectorAll("#projects thead th[data-sort]").forEach(th => {
+  document.querySelectorAll("#dashboard thead th[data-sort]").forEach(th => {
     th.addEventListener("click", () => {
       const col = th.dataset.sort;
       if(sortCol === col){
@@ -2938,7 +2931,8 @@ document.addEventListener("DOMContentLoaded", function() {
   // ── Gantt page bell (overdue items) ─────────────────────────────────────────
 
   function renderGanttBell(){
-    const delayed = allActions.filter(function(a){ return resolveStatus(a) === "delayed"; });
+    // Exclude NC group — they have their own Gantt/bell
+    const delayed = allActions.filter(function(a){ return resolveStatus(a) === "delayed" && a.group !== 'NC – Não Conformidades'; });
     const badge = document.getElementById("ganttBellBadge");
     if(badge){
       if(delayed.length){
@@ -3558,11 +3552,14 @@ document.addEventListener("DOMContentLoaded", function() {
   function renderGantt(){
     const container = document.getElementById("gantt");
     container.innerHTML = "";
-    if(!allActions.length){ container.innerHTML = '<p style="padding:20px;color:#6b7280">Nenhuma ação cadastrada.</p>'; return; }
+    // Exclude NC rows — they have their own Gantt (NC Gantt page)
+    const nonNcActions = allActions.filter(function(a) { return a.group !== 'NC – Não Conformidades'; });
+    if(!nonNcActions.length){ container.innerHTML = '<p style="padding:20px;color:#6b7280">Nenhuma ação cadastrada.</p>'; return; }
 
     // Overall date range (skip items with no valid end date)
-    const allS = allActions.map(a=>a.start).filter(s=>s).sort();
-    const allE = allActions.map(a=>a.end).filter(e=>e && e !== '').sort();
+    const allS = nonNcActions.map(a=>a.start).filter(s=>s).sort();
+    const allE = nonNcActions.map(a=>a.end).filter(e=>e && e !== '').sort();
+    if(!allS.length || !allE.length){ container.innerHTML = '<p style="padding:20px;color:#6b7280">Nenhuma ação com datas cadastradas.</p>'; return; }
     const dMin = new Date(allS[0]); dMin.setDate(1);
     const dMaxRaw = new Date(allE[allE.length-1]);
     const dMax = new Date(dMaxRaw.getFullYear(), dMaxRaw.getMonth()+1, 1);
@@ -3587,8 +3584,12 @@ document.addEventListener("DOMContentLoaded", function() {
       `<div class="gc-month" style="left:${m.left}%;width:${m.width}%">${m.label}</div>`
     ).join('');
 
-    // Rows
-    const groups = getGroups();
+    // Rows — group non-NC actions
+    const groups = {};
+    nonNcActions.forEach(function(a) {
+      if(!groups[a.group]) groups[a.group] = [];
+      groups[a.group].push(a);
+    });
     let rowsHTML = '';
     Object.keys(groups).forEach(groupName=>{
       const items = groups[groupName];
@@ -3942,9 +3943,9 @@ document.addEventListener("DOMContentLoaded", function() {
     var clienteOnly = tenant && tenant.clienteOnly === true;
     var isClient = tenant ? tenant.isClient !== false : true;
 
-    // Project management tabs: Dashboard, Projetos, Cronograma (Gantt)
+    // Project management tabs: Dashboard (includes Projetos), Gantt Tratativas
     var showProjectMgmt = !clienteOnly;
-    ['dashboard', 'projects', 'ganttPage'].forEach(function(pageId) {
+    ['dashboard', 'ganttPage'].forEach(function(pageId) {
       var navItem = document.querySelector('.sidebar-nav li[data-page="' + pageId + '"]');
       var pageEl  = document.getElementById(pageId);
       if (navItem) navItem.style.display = showProjectMgmt ? '' : 'none';
@@ -3966,7 +3967,7 @@ document.addEventListener("DOMContentLoaded", function() {
     // Redirect active tab if it became hidden
     var activeNavItem = document.querySelector('.sidebar-nav li.active');
     var activePage    = activeNavItem ? activeNavItem.dataset.page : null;
-    if (clienteOnly && (activePage === 'dashboard' || activePage === 'projects' || activePage === 'ganttPage')) {
+    if (clienteOnly && (activePage === 'dashboard' || activePage === 'ganttPage')) {
       var ncNav = document.querySelector('.sidebar-nav li[data-page="ncPage"]');
       if (ncNav) ncNav.click();
     } else if (!showNcPages && (activePage === 'ncPage' || activePage === 'ncGanttPage')) {
@@ -4508,7 +4509,7 @@ document.addEventListener("DOMContentLoaded", function() {
     populateFilters();
     renderTable();
     renderBell();
-    initTableResize(document.querySelector('#projects table'));
+    initTableResize(document.querySelector('#dashboard .table-wrap table'));
     initNcPage();
     updateNcVisibility();
     // Set up real-time Firebase listeners if already connected (may have loaded from localStorage)
