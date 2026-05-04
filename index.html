@@ -2325,6 +2325,12 @@ document.addEventListener("DOMContentLoaded", function() {
     return d+"/"+m+"/"+y;
   }
 
+  function addDaysToDateStr(dateStr, days){
+    var parts = dateStr.split('-');
+    var d = new Date(parseInt(parts[0],10), parseInt(parts[1],10)-1, parseInt(parts[2],10)+days);
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  }
+
   function truncate(str, max){ if(!str) return ''; return str.length > max ? str.slice(0,max)+"…" : str; }
   function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
@@ -5440,6 +5446,21 @@ document.addEventListener("DOMContentLoaded", function() {
             ncRecords[idx].d8File     = _alertDataUrl;
             ncRecords[idx].d8FileName = _alertFileName || '';
           }
+          // ── Mark linked Gantt action as complete ──────────────────────
+          var ganttId = ncRecords[idx].ncGanttId;
+          if (ganttId != null) {
+            var aIdx = allActions.findIndex(function(a){ return a.id === ganttId; });
+            if (aIdx !== -1) {
+              var now = new Date();
+              var todayStr = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+              allActions[aIdx].completionDate = todayStr;
+              allActions[aIdx].status         = 'complete';
+              saveTenantActions(currentTenant, allActions);
+              var ganttEl = document.getElementById('ganttPage');
+              if (ganttEl && ganttEl.classList.contains('active')) renderGantt();
+            }
+          }
+          // ─────────────────────────────────────────────────────────────
         }
         saveNcRecords();
         renderNcCards();
@@ -6132,6 +6153,27 @@ document.addEventListener("DOMContentLoaded", function() {
           pdfs:        _ncPdfs.slice()
         };
         ncRecords.push(newNc);
+        // ── Auto-create Gantt item for this NC ────────────────────────────
+        if (newNc.date) {
+          var ncActionId = allActions.reduce(function(maxId, x){ return x.id > maxId ? x.id : maxId; }, 0) + 1;
+          var ncAction = {
+            id:             ncActionId,
+            group:          'NC – Não Conformidades',
+            desc:           newNc.ncNumber + ' – ' + (newNc.customer || newNc.description || ''),
+            team:           '',
+            lead:           '',
+            status:         'on_going',
+            start:          newNc.date,
+            end:            addDaysToDateStr(newNc.date, 30),
+            completionDate: '',
+            reprazo:        '',
+            comments:       ''
+          };
+          allActions.push(ncAction);
+          newNc.ncGanttId = ncActionId;
+          saveTenantActions(currentTenant, allActions);
+        }
+        // ──────────────────────────────────────────────────────────────────
         saveNcRecords();
         closeNcModal();
         renderNcCards();
