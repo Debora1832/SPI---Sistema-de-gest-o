@@ -6142,15 +6142,24 @@ document.addEventListener("DOMContentLoaded", function() {
             delete ncRecords[idx].d8FileUrl;
           }
           saveNcRecords();
-          // Sync linked Gantt action description (and annotate if não procedente)
+          // Sync linked Gantt action; remove it entirely if NC is não procedente
           var editedNc = ncRecords[idx];
           if (editedNc && editedNc.ncGanttId != null) {
-            var gIdx = allActions.findIndex(function(a){ return a.id === editedNc.ncGanttId; });
-            if (gIdx !== -1) {
-              allActions[gIdx].desc = editedNc.ncNumber + ' – ' + (editedNc.description || editedNc.customer || '');
+            if (editedNc.naoProcedente) {
+              // Remove the Gantt item — não procedente NCs don't belong in the schedule
+              var gRmIdx = allActions.findIndex(function(a){ return a.id === editedNc.ncGanttId; });
+              if (gRmIdx !== -1) allActions.splice(gRmIdx, 1);
+              ncRecords[idx].ncGanttId = null;
+              saveNcRecords();
               saveTenantActions(currentTenant, allActions);
+            } else {
+              // Update description to stay in sync
+              var gIdx = allActions.findIndex(function(a){ return a.id === editedNc.ncGanttId; });
+              if (gIdx !== -1) {
+                allActions[gIdx].desc = editedNc.ncNumber + ' – ' + (editedNc.description || editedNc.customer || '');
+                saveTenantActions(currentTenant, allActions);
+              }
             }
-            if (editedNc.naoProcedente) annotateGanttAction(editedNc.ncGanttId, 'Não Procedente');
           }
           closeNcModal();
           renderNcCards();
