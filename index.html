@@ -2326,8 +2326,9 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   function addDaysToDateStr(dateStr, days){
-    var d = new Date(dateStr); d.setDate(d.getDate() + days);
-    return d.toISOString().slice(0,10);
+    var parts = dateStr.split('-');
+    var d = new Date(parseInt(parts[0],10), parseInt(parts[1],10)-1, parseInt(parts[2],10)+days);
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   }
 
   function truncate(str, max){ if(!str) return ''; return str.length > max ? str.slice(0,max)+"…" : str; }
@@ -5450,7 +5451,8 @@ document.addEventListener("DOMContentLoaded", function() {
           if (ganttId != null) {
             var aIdx = allActions.findIndex(function(a){ return a.id === ganttId; });
             if (aIdx !== -1) {
-              var todayStr = new Date().toISOString().slice(0,10);
+              var now = new Date();
+              var todayStr = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
               allActions[aIdx].completionDate = todayStr;
               allActions[aIdx].status         = 'complete';
               saveTenantActions(currentTenant, allActions);
