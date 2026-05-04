@@ -1233,6 +1233,34 @@
     .bell-item-days.warning  { background:#fffbe6; color:#7a5c00; }
     .bell-empty { padding:24px 16px; text-align:center; color:#6b7280; font-size:13px; }
     .bell-wrap { position:relative; display:inline-block; }
+
+    /* ===== HOME NC GRID ===== */
+    .home-nc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:20px; }
+    .home-nc-card { background:#fff; border-radius:12px; padding:20px; box-shadow:0 1px 4px rgba(0,0,0,.08); border-left:4px solid var(--card-accent,#367C2B); }
+    .home-nc-card-header { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+    .home-nc-card-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+    .home-nc-card-name { font-size:14px; font-weight:700; color:#1f2937; flex:1; }
+    .home-nc-card-total { font-size:12px; font-weight:700; padding:2px 9px; border-radius:99px; color:#fff; }
+    .home-nc-card-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+    .home-nc-stat { display:flex; flex-direction:column; align-items:center; background:#f9fafb; border-radius:8px; padding:10px 6px; }
+    .home-nc-stat-num { font-size:22px; font-weight:800; color:#1e4d17; line-height:1; }
+    .home-nc-stat-label { font-size:10px; color:#6b7280; margin-top:4px; text-align:center; }
+
+    /* ===== INITIATIVE CARDS ===== */
+    .initiative-card { background:#fff; border-radius:12px; padding:20px; box-shadow:0 1px 4px rgba(0,0,0,.08); cursor:pointer; transition:box-shadow .15s, transform .15s; }
+    .initiative-card:hover { box-shadow:0 4px 14px rgba(0,0,0,.13); transform:translateY(-2px); }
+    .initiative-card-header { display:flex; align-items:center; gap:8px; margin-bottom:12px; }
+    .initiative-card-title { font-size:14px; font-weight:700; color:#1f2937; flex:1; }
+    .initiative-card-badge { font-size:11px; font-weight:700; padding:2px 8px; border-radius:99px; background:#e5e7eb; color:#374151; }
+    .initiative-progress { margin-bottom:12px; }
+    .initiative-progress-track { height:8px; background:#e5e7eb; border-radius:99px; overflow:hidden; }
+    .initiative-progress-fill { height:100%; background:#16a34a; border-radius:99px; transition:width .3s; }
+    .initiative-progress-label { font-size:11px; color:#6b7280; margin-top:4px; }
+    .initiative-card-stats { display:flex; gap:8px; flex-wrap:wrap; }
+    .initiative-stat { display:flex; align-items:center; gap:4px; font-size:12px; }
+    .initiative-stat-num { font-weight:700; }
+    .initiative-card-actions { display:flex; justify-content:flex-end; margin-top:14px; }
+    .btn-sm { padding:5px 12px; font-size:12px; border-radius:6px; }
   </style>
 </head>
 <body>
@@ -1259,6 +1287,13 @@
     </div>
   </div>
   <ul class="sidebar-nav">
+    <!-- HOME PAGE -->
+    <li data-page="homePage" class="active" data-tooltip="Início">
+      <span class="nav-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7A1 1 0 003 11h1v6a1 1 0 001 1h4a1 1 0 001-1v-4h2v4a1 1 0 001 1h4a1 1 0 001-1v-6h1a1 1 0 00.707-1.707l-7-7z"/></svg>
+      </span>
+      <span class="nav-label">Início</span>
+    </li>
     <!-- GROUP: PROJETOS (project management pages) -->
     <li class="nav-group open" id="navGroupTratativas">
       <div class="nav-group-header" data-tooltip="Projetos" id="navGroupTratativasHeader">
@@ -1269,11 +1304,11 @@
         <span class="nav-group-arrow">▶</span>
       </div>
       <ul class="nav-group-items">
-        <li data-page="dashboard" class="active" data-tooltip="Dashboard &amp; Projetos">
+        <li data-page="dashboard" data-tooltip="Iniciativas">
           <span class="nav-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path d="M2 11l8-8 8 8v7a1 1 0 01-1 1H3a1 1 0 01-1-1v-7z"/><path d="M7 18v-6h6v6"/></svg>
           </span>
-          <span class="nav-label">Dashboard &amp; Projetos</span>
+          <span class="nav-label">Iniciativas</span>
         </li>
         <li data-page="ganttPage" data-tooltip="Gantt Tratativas">
           <span class="nav-icon">
@@ -1337,12 +1372,18 @@
 
 <div class="main">
 
+  <!-- HOME PAGE -->
+  <div id="homePage" class="page active">
+    <div class="page-header"><h1>Visão Geral</h1><p>Indicadores de Não Conformidades por cliente</p></div>
+    <div id="homeNcGrid"></div>
+  </div>
+
   <!-- DASHBOARD -->
-  <div id="dashboard" class="page active">
+  <div id="dashboard" class="page">
     <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
       <div>
-        <h1>Dashboard &amp; Projetos</h1>
-        <p>Visão executiva e lista detalhada de todas as ações do plano</p>
+        <h1>Iniciativas</h1>
+        <p>Visão executiva das iniciativas do plano por grupo</p>
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
         <button class="btn-primary" id="btnNewAction" style="margin-top:4px;">
@@ -1376,61 +1417,37 @@
     <div class="kpi-section-title" id="kpiPerfTitle">KPIs de Performance</div>
     <div class="kpi-grid performance" id="kpiGridPerformance"></div>
 
-    <!-- Group summary -->
-    <div class="card" style="margin-bottom:20px;">
-      <h3>Resumo por grupo</h3>
-      <table>
-        <thead>
-          <tr>
-            <th>Grupo</th>
-            <th>Total</th>
-            <th>Concluídas</th>
-            <th>Em andamento</th>
-            <th>Atrasadas</th>
-          </tr>
-        </thead>
-        <tbody id="groupSummaryTable"></tbody>
-      </table>
-    </div>
-
-    <!-- Action table (previously Projetos page) -->
-    <div class="card">
-      <div class="filter-row" style="margin-bottom:12px;">
-        <span style="font-size:13px;font-weight:700;color:#374151;margin-right:8px;">Ações</span>
-        <label for="groupFilter">Grupo:</label>
-        <select id="groupFilter">
-          <option value="">Todos os grupos</option>
-        </select>
-        <label for="statusFilter">Status:</label>
-        <select id="statusFilter">
-          <option value="">Todos</option>
-          <option value="complete">Concluído</option>
-          <option value="on_going">Em andamento</option>
-          <option value="delayed">Atrasado</option>
-        </select>
-      </div>
-      <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th data-sort="id">#</th>
-            <th data-sort="group">Grupo</th>
-            <th data-sort="desc">Descrição</th>
-            <th data-sort="team">Equipe</th>
-            <th data-sort="lead">Responsável</th>
-            <th data-sort="status">Status</th>
-            <th>Aderência ao Prazo</th>
-            <th data-sort="start">Início</th>
-            <th data-sort="end">Prazo</th>
-            <th data-sort="reprazo">Prorrogação do Prazo</th>
-            <th data-sort="completionDate">Conclusão</th>
-            <th data-sort="delay">Atraso (dias)</th>
-            <th>Comentários</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody id="projectsTable"></tbody>
-      </table>
+    <!-- Initiative cards -->
+    <div id="initiativeCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;"></div>
+    <!-- Action table (shown when user clicks "Ver ações" on a card) -->
+    <div id="actionTableSection" style="display:none;margin-top:8px;">
+      <div class="card">
+        <div class="filter-row" style="margin-bottom:12px;align-items:center;">
+          <button class="btn-primary btn-sm" id="btnBackToInitiatives" style="margin-right:12px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/></svg>
+            Voltar às Iniciativas
+          </button>
+          <span id="actionTableGroupLabel" style="font-size:14px;font-weight:700;color:#374151;flex:1;"></span>
+          <label for="groupFilter">Grupo:</label>
+          <select id="groupFilter"><option value="">Todos os grupos</option></select>
+          <label for="statusFilter">Status:</label>
+          <select id="statusFilter">
+            <option value="">Todos</option>
+            <option value="complete">Concluído</option>
+            <option value="on_going">Em andamento</option>
+            <option value="delayed">Atrasado</option>
+          </select>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th data-sort="id">#</th><th data-sort="group">Grupo</th><th data-sort="desc">Descrição</th><th data-sort="team">Equipe</th><th data-sort="lead">Responsável</th><th data-sort="status">Status</th><th>Aderência ao Prazo</th><th data-sort="start">Início</th><th data-sort="end">Prazo</th><th data-sort="reprazo">Prorrogação do Prazo</th><th data-sort="completionDate">Conclusão</th><th data-sort="delay">Atraso (dias)</th><th>Comentários</th><th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="projectsTable"></tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
@@ -2685,26 +2702,62 @@ document.addEventListener("DOMContentLoaded", function() {
       </div>
     `;
 
+    renderInitiativeCards();
+  }
+
+  function renderInitiativeCards() {
+    const container = document.getElementById('initiativeCards');
+    if (!container) return;
     const groups = getGroups();
-    const tbody = document.getElementById("groupSummaryTable");
-    tbody.innerHTML = "";
-    Object.keys(groups).forEach(groupName => {
+    const keys = Object.keys(groups);
+    if (keys.length === 0) {
+      container.innerHTML = '<p style="color:#6b7280;font-size:14px;">Nenhuma ação cadastrada.</p>';
+      return;
+    }
+    container.innerHTML = '';
+    keys.forEach(function(groupName) {
       const items = groups[groupName];
-      const gc = items.filter(i=>resolveStatus(i)==="complete").length;
-      const go = items.filter(i=>resolveStatus(i)==="on_going").length;
-      const gd = items.filter(i=>resolveStatus(i)==="delayed").length;
-      const tr = document.createElement("tr");
-      tr.style.cursor = "pointer";
-      tr.title = "Clique para ver as ações deste grupo";
-      tr.innerHTML = `
-        <td style="color:#1E4D17;font-weight:600;">${groupName}</td>
-        <td>${items.length}</td>
-        <td>${statusBadge(gc,"complete")}</td>
-        <td>${statusBadge(go,"on_going")}</td>
-        <td>${statusBadge(gd,"delayed")}</td>
-      `;
-      tr.addEventListener("click", function() { openGroupDetailPopup(groupName, items); });
-      tbody.appendChild(tr);
+      const total    = items.length;
+      const complete = items.filter(function(a){ return resolveStatus(a) === 'complete'; }).length;
+      const on_going = items.filter(function(a){ return resolveStatus(a) === 'on_going'; }).length;
+      const delayed  = items.filter(function(a){ return resolveStatus(a) === 'delayed';  }).length;
+      const pct      = calcPercent(complete, total);
+
+      const card = document.createElement('div');
+      card.className = 'initiative-card';
+      card.innerHTML =
+        '<div class="initiative-card-header">' +
+          '<span class="initiative-card-title">' + escHtml(groupName) + '</span>' +
+          '<span class="initiative-card-badge">' + total + ' ações</span>' +
+        '</div>' +
+        '<div class="initiative-progress">' +
+          '<div class="initiative-progress-track"><div class="initiative-progress-fill" style="width:' + pct + '%"></div></div>' +
+          '<div class="initiative-progress-label">' + complete + ' de ' + total + ' concluídas (' + pct + '%)</div>' +
+        '</div>' +
+        '<div class="initiative-card-stats">' +
+          '<span class="initiative-stat"><span class="initiative-stat-num badge badge-complete">' + complete + '</span> Concluídas</span>' +
+          '<span class="initiative-stat"><span class="initiative-stat-num badge badge-on_going">' + on_going + '</span> Em andamento</span>' +
+          (delayed > 0 ? '<span class="initiative-stat"><span class="initiative-stat-num badge badge-delayed">' + delayed + '</span> Atrasadas</span>' : '') +
+        '</div>' +
+        '<div class="initiative-card-actions">' +
+          '<button class="btn-primary btn-sm" data-group="' + escHtml(groupName) + '">Ver ações</button>' +
+        '</div>';
+
+      function openGroup() {
+        document.getElementById('groupFilter').value = groupName;
+        renderTable();
+        document.getElementById('actionTableGroupLabel').textContent = groupName;
+        document.getElementById('initiativeCards').style.display = 'none';
+        document.getElementById('actionTableSection').style.display = '';
+      }
+
+      card.addEventListener('click', openGroup);
+      card.querySelector('.btn-primary').addEventListener('click', function(e) {
+        e.stopPropagation();
+        openGroup();
+      });
+
+      container.appendChild(card);
     });
   }
 
@@ -3893,7 +3946,13 @@ document.addEventListener("DOMContentLoaded", function() {
 
       if(pageId === "ganttPage") { setTimeout(renderGantt, 100); renderGanttBell(); }
       else if(pageId === "ncGanttPage") { setTimeout(renderNcGantt, 100); }
+      else if(pageId === "homePage") { renderHomePage(); }
     });
+  });
+
+  document.getElementById('btnBackToInitiatives').addEventListener('click', function() {
+    document.getElementById('actionTableSection').style.display = 'none';
+    document.getElementById('initiativeCards').style.display = 'grid';
   });
 
   // ── Nav group expand / collapse ───────────────────────────────────────────
@@ -4070,8 +4129,8 @@ document.addEventListener("DOMContentLoaded", function() {
       var ncNav = document.querySelector('.sidebar-nav li[data-page="ncPage"]');
       if (ncNav) ncNav.click();
     } else if (!showNcPages && (activePage === 'ncPage' || activePage === 'ncGanttPage')) {
-      var dashNav = document.querySelector('.sidebar-nav li[data-page="dashboard"]');
-      if (dashNav) dashNav.click();
+      var homeNav = document.querySelector('.sidebar-nav li[data-page="homePage"]');
+      if (homeNav) homeNav.click();
     }
   }
 
@@ -4136,6 +4195,45 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   }
 
+  function renderHomePage() {
+    const grid = document.getElementById('homeNcGrid');
+    if (!grid) return;
+    const keys = Object.keys(TENANTS);
+    if (keys.length === 0) {
+      grid.innerHTML = '<p style="color:#6b7280;font-size:14px;">Nenhum cliente cadastrado.</p>';
+      return;
+    }
+    grid.className = 'home-nc-grid';
+    grid.innerHTML = '';
+    keys.forEach(function(tenantId) {
+      const t = TENANTS[tenantId];
+      var records = [];
+      try {
+        var raw = localStorage.getItem('spi_nc_records_' + tenantId);
+        if (raw) records = JSON.parse(raw) || [];
+      } catch(e) { records = []; }
+      var total    = records.length;
+      var rncAberta = records.filter(function(r){ return r.rncAberta === true; }).length;
+      var d8Fin     = records.filter(function(r){ return r.d8Finalizado === true; }).length;
+      var qtyPecas  = records.reduce(function(sum, r){ return sum + (parseInt(r.qty) || 0); }, 0);
+      var accent    = t.accentBg || '#367C2B';
+      var card = document.createElement('div');
+      card.className = 'home-nc-card';
+      card.style.setProperty('--card-accent', accent);
+      card.innerHTML =
+        '<div class="home-nc-card-header">' +
+          '<span class="home-nc-card-dot" style="background:' + accent + '"></span>' +
+          '<span class="home-nc-card-name">' + escHtml(t.label) + '</span>' +
+          '<span class="home-nc-card-total" style="background:' + accent + ';color:' + (t.accentText || '#fff') + '">' + total + '</span>' +
+        '</div>' +
+        '<div class="home-nc-card-stats">' +
+          '<div class="home-nc-stat"><span class="home-nc-stat-num">' + rncAberta + '</span><span class="home-nc-stat-label">RNC Aberta</span></div>' +
+          '<div class="home-nc-stat"><span class="home-nc-stat-num">' + d8Fin + '</span><span class="home-nc-stat-label">8D Finalizado</span></div>' +
+          '<div class="home-nc-stat"><span class="home-nc-stat-num">' + qtyPecas + '</span><span class="home-nc-stat-label">Qty Peças</span></div>' +
+        '</div>';
+      grid.appendChild(card);
+    });
+  }
 
 
   function saveAllTenants() {
@@ -4608,9 +4706,10 @@ document.addEventListener("DOMContentLoaded", function() {
     populateFilters();
     renderTable();
     renderBell();
-    initTableResize(document.querySelector('#dashboard .table-wrap table'));
+    initTableResize(document.querySelector('#actionTableSection .table-wrap table'));
     initNcPage();
     updateNcVisibility();
+    renderHomePage();
     // Set up real-time Firebase listeners if already connected (may have loaded from localStorage)
     if (typeof setupFirebaseListeners === 'function' && firebaseConnected) {
       setupFirebaseListeners(currentTenant);
