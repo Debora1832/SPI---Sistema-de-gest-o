@@ -5342,7 +5342,16 @@ document.addEventListener("DOMContentLoaded", function() {
             if (window.openNcModalEdit) window.openNcModalEdit(ncRecords[idx]);
           } else if (action === 'delete') {
             if (!window.confirm('Excluir esta NC?')) return;
+            var deletedNc = ncRecords[idx];
             ncRecords.splice(idx, 1);
+            // Keep the linked Gantt action as a historical record — just annotate it
+            if (deletedNc && deletedNc.ncGanttId != null) {
+              var aIdx = allActions.findIndex(function(a){ return a.id === deletedNc.ncGanttId; });
+              if (aIdx !== -1) {
+                allActions[aIdx].comments = '[NC Excluída] ' + (allActions[aIdx].comments || '');
+                saveTenantActions(currentTenant, allActions);
+              }
+            }
             saveNcRecords();
             renderNcCards();
             renderNcCharts();
@@ -6127,6 +6136,18 @@ document.addEventListener("DOMContentLoaded", function() {
             delete ncRecords[idx].d8FileUrl;
           }
           saveNcRecords();
+          // Sync linked Gantt action description (and annotate if não procedente)
+          var editedNc = ncRecords[idx];
+          if (editedNc && editedNc.ncGanttId != null) {
+            var gIdx = allActions.findIndex(function(a){ return a.id === editedNc.ncGanttId; });
+            if (gIdx !== -1) {
+              allActions[gIdx].desc = editedNc.ncNumber + ' – ' + (editedNc.description || editedNc.customer || '');
+              if (editedNc.naoProcedente) {
+                allActions[gIdx].comments = '[Não Procedente] ' + (allActions[gIdx].comments || '').replace('[Não Procedente] ','');
+              }
+              saveTenantActions(currentTenant, allActions);
+            }
+          }
           closeNcModal();
           renderNcCards();
           renderNcCharts();
@@ -6159,7 +6180,7 @@ document.addEventListener("DOMContentLoaded", function() {
           var ncAction = {
             id:             ncActionId,
             group:          'NC – Não Conformidades',
-            desc:           newNc.ncNumber + ' – ' + (newNc.customer || newNc.description || ''),
+            desc:           newNc.ncNumber + ' – ' + (newNc.description || newNc.customer || ''),
             team:           '',
             lead:           '',
             status:         'on_going',
