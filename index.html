@@ -1296,11 +1296,11 @@
     </li>
     <!-- GROUP: PROJETOS (project management pages) -->
     <li class="nav-group open" id="navGroupTratativas">
-      <div class="nav-group-header" data-tooltip="Projetos" id="navGroupTratativasHeader">
+      <div class="nav-group-header" data-tooltip="Tratativas" id="navGroupTratativasHeader">
         <span class="nav-icon">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="15" height="15"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/></svg>
         </span>
-        <span class="nav-group-label">Projetos</span>
+        <span class="nav-group-label">Tratativas</span>
         <span class="nav-group-arrow">▶</span>
       </div>
       <ul class="nav-group-items">
@@ -1341,6 +1341,23 @@
           <span class="nav-label">NC Gantt</span>
         </li>
       </ul>
+    </li>
+    <!-- GROUP: PROJETOS (independent projects like SIP) -->
+    <li class="nav-group" id="navGroupProjetos">
+      <div class="nav-group-header" data-tooltip="Projetos" id="navGroupProjetosHeader">
+        <span class="nav-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="15" height="15"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.396 0 2.7.37 3.821 1.016A.75.75 0 0010 14.357V5.25a.75.75 0 00-.403-.666A8.059 8.059 0 009 4.804zM10.403 15.016A7.966 7.966 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.396 0-2.7.37-3.822 1.016A.75.75 0 0010 5.75v9.107a.75.75 0 00.403.659z"/></svg>
+        </span>
+        <span class="nav-group-label">Projetos</span>
+        <span class="nav-group-arrow">▶</span>
+      </div>
+      <div class="nav-group-items nav-group-items--raw">
+        <div class="tenant-list" id="projectBtns" role="listbox" aria-label="Selecionar projeto"></div>
+        <button class="btn-new-tenant" id="btnNewProject" title="Criar novo projeto">
+          <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 20 20" fill="currentColor"><path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/></svg>
+          Novo projeto
+        </button>
+      </div>
     </li>
     <!-- GROUP: CLIENTES -->
     <li class="nav-group" id="navGroupClientes">
@@ -3944,6 +3961,17 @@ document.addEventListener("DOMContentLoaded", function() {
       var pageId = item.dataset.page;
       document.getElementById(pageId).classList.add("active");
 
+      // When going home, collapse context-specific groups
+      var tratGrp = document.getElementById('navGroupTratativas');
+      var ncGrp   = document.getElementById('navGroupNc');
+      if (pageId === 'homePage') {
+        if (tratGrp) tratGrp.style.display = 'none';
+        if (ncGrp)   ncGrp.style.display   = 'none';
+      } else {
+        if (tratGrp) tratGrp.style.display = '';
+        if (ncGrp)   ncGrp.style.display   = '';
+      }
+
       if(pageId === "ganttPage") { setTimeout(renderGantt, 100); renderGanttBell(); }
       else if(pageId === "ncGanttPage") { setTimeout(renderNcGantt, 100); }
       else if(pageId === "homePage") { renderHomePage(); }
@@ -4002,6 +4030,11 @@ document.addEventListener("DOMContentLoaded", function() {
   // Tenant switching
   function switchTenant(key){
     if(key === currentTenant) return;
+    // Restore context-specific groups visibility (switching to a client/project)
+    var tratGrp = document.getElementById('navGroupTratativas');
+    var ncGrp   = document.getElementById('navGroupNc');
+    if (tratGrp) tratGrp.style.display = '';
+    if (ncGrp)   ncGrp.style.display   = '';
     // Persist attachments ref back before switching (actions are mutated in-place)
     TENANTS[currentTenant].attachments = attachmentsMap;
     currentTenant = key;
@@ -4019,6 +4052,7 @@ document.addEventListener("DOMContentLoaded", function() {
     document.title = 'SSQE - Gestão | ' + TENANTS[key].label;
     // Update tenant list active state
     renderTenantList();
+    renderProjectList();
     // Reset sort and group filter
     sortCol = null; sortDir = 'asc';
     // Re-render all views
@@ -4094,9 +4128,10 @@ document.addEventListener("DOMContentLoaded", function() {
     // "clienteOnly" tenants show only NC pages (no project management tabs).
     var clienteOnly = tenant && tenant.clienteOnly === true;
     var isClient = tenant ? tenant.isClient !== false : true;
+    var isProject = tenant && tenant.isProject === true;
 
     // Project management group (TRATATIVAS): show unless clienteOnly
-    var showProjectMgmt = !clienteOnly;
+    var showProjectMgmt = !clienteOnly || isProject;
     var tratativasGroup = document.getElementById('navGroupTratativas');
     if (tratativasGroup) tratativasGroup.style.display = showProjectMgmt ? '' : 'none';
     ['dashboard', 'ganttPage'].forEach(function(pageId) {
@@ -4106,7 +4141,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 
     // NC group: show when NC applies
-    var showNcPages = clienteOnly || isClient;
+    var showNcPages = !isProject && (clienteOnly || isClient);
     var ncGroup     = document.getElementById('navGroupNc');
     if (ncGroup) ncGroup.style.display = showNcPages ? '' : 'none';
     var ncPageEl      = document.getElementById('ncPage');
@@ -4140,6 +4175,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const container = document.getElementById('tenantBtns');
     container.innerHTML = '';
     Object.keys(TENANTS).forEach(function(key) {
+      if (TENANTS[key].isProject === true || TENANTS[key].isClient === false) return; // projects go in the Projetos group
       const t = TENANTS[key];
       const isActive = key === currentTenant;
 
@@ -4189,6 +4225,60 @@ document.addEventListener("DOMContentLoaded", function() {
       delBtn.addEventListener('click', function(e) { e.stopPropagation(); deleteTenant(key); });
       btns.appendChild(delBtn);
 
+      item.appendChild(btns);
+      item.addEventListener('click', function() { switchTenant(key); });
+      container.appendChild(item);
+    });
+  }
+
+  function renderProjectList() {
+    const container = document.getElementById('projectBtns');
+    if (!container) return;
+    container.innerHTML = '';
+    const projectKeys = Object.keys(TENANTS).filter(function(k) { return TENANTS[k].isProject === true || TENANTS[k].isClient === false; });
+    if (projectKeys.length === 0) {
+      container.innerHTML = '<div style="color:rgba(255,255,255,.4);font-size:11px;padding:4px 8px;">Nenhum projeto</div>';
+      return;
+    }
+    projectKeys.forEach(function(key) {
+      const t = TENANTS[key];
+      const isActive = key === currentTenant;
+      const item = document.createElement('div');
+      item.className = 'tenant-item' + (isActive ? ' active' : '');
+      item.dataset.tenant = key;
+      item.setAttribute('role', 'option');
+      item.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      const dot = document.createElement('span');
+      dot.className = 'tenant-item-dot';
+      dot.style.background = t.accentBg || '#367C2B';
+      item.appendChild(dot);
+      const nameEl = document.createElement('span');
+      nameEl.className = 'tenant-item-name';
+      nameEl.textContent = t.label;
+      item.appendChild(nameEl);
+      const btns = document.createElement('div');
+      btns.className = 'tenant-item-btns';
+      const editBtn = document.createElement('button');
+      editBtn.className = 'tenant-item-edit';
+      editBtn.title = 'Editar projeto';
+      editBtn.setAttribute('aria-label', 'Editar ' + t.label);
+      editBtn.textContent = '✎';
+      editBtn.addEventListener('click', function(e) { e.stopPropagation(); openTenantModal(key, true); });
+      btns.appendChild(editBtn);
+      const dupBtn = document.createElement('button');
+      dupBtn.className = 'tenant-item-dup';
+      dupBtn.title = 'Duplicar projeto';
+      dupBtn.setAttribute('aria-label', 'Duplicar ' + t.label);
+      dupBtn.textContent = '⧉';
+      dupBtn.addEventListener('click', function(e) { e.stopPropagation(); duplicateTenant(key); });
+      btns.appendChild(dupBtn);
+      const delBtn = document.createElement('button');
+      delBtn.className = 'tenant-item-del';
+      delBtn.title = 'Remover projeto';
+      delBtn.setAttribute('aria-label', 'Remover ' + t.label);
+      delBtn.textContent = '×';
+      delBtn.addEventListener('click', function(e) { e.stopPropagation(); deleteTenant(key); });
+      btns.appendChild(delBtn);
       item.appendChild(btns);
       item.addEventListener('click', function() { switchTenant(key); });
       container.appendChild(item);
@@ -4249,7 +4339,8 @@ document.addEventListener("DOMContentLoaded", function() {
         accentText:     TENANTS[key].accentText || '',
         sidebarBg:      TENANTS[key].sidebarBg  || '',
         isClient:       TENANTS[key].isClient !== false,  // default true
-        clienteOnly:    TENANTS[key].clienteOnly === true // default false
+        clienteOnly:    TENANTS[key].clienteOnly === true, // default false
+        isProject:      TENANTS[key].isProject === true    // default false
       };
     });
     try { localStorage.setItem('spi_all_tenants', JSON.stringify(all)); }
@@ -4329,6 +4420,7 @@ document.addEventListener("DOMContentLoaded", function() {
         TENANTS[key].sidebarBg      = c.sidebarBg   || TENANTS[key].sidebarBg;
         TENANTS[key].isClient       = c.isClient !== false;
         TENANTS[key].clienteOnly    = c.clienteOnly === true;
+        TENANTS[key].isProject      = c.isProject === true || c.isClient === false; // auto-migrate Somente Iniciativas → Projetos
       } else {
         TENANTS[key] = {
           label:          c.label,
@@ -4341,6 +4433,7 @@ document.addEventListener("DOMContentLoaded", function() {
           sidebarBg:      c.sidebarBg      || '#1E4D17',
           isClient:       c.isClient !== false,
           clienteOnly:    c.clienteOnly === true,
+          isProject:      c.isProject === true || c.isClient === false, // auto-migrate Somente Iniciativas → Projetos
           actions:        [],
           attachments:    {}
         };
@@ -4384,6 +4477,7 @@ document.addEventListener("DOMContentLoaded", function() {
       expandedGroup = null;
     }
     renderTenantList();
+    renderProjectList();
   }
 
   // ── Duplicate tenant ──────────────────────────────────────────────────────
@@ -4407,12 +4501,14 @@ document.addEventListener("DOMContentLoaded", function() {
       accentBg:       t.accentBg  || '#367C2B',
       accentText:     t.accentText || '#fff',
       sidebarBg:      t.sidebarBg  || '#1E4D17',
+      isProject:      t.isProject === true,
       actions:        copiedActions,
       attachments:    {}
     };
     saveAllTenants();
     saveTenantActions(newKey, copiedActions);
     renderTenantList();
+    renderProjectList();
   }
 
 
@@ -4516,11 +4612,14 @@ document.addEventListener("DOMContentLoaded", function() {
 
   // ── Client modal (create + edit) ───────────────────────────────────────────
 
-  function openTenantModal(editKey) {
+  var _pendingIsProject = false;
+
+  function openTenantModal(editKey, isProjectMode) {
     const isEdit = typeof editKey === 'string';
+    _pendingIsProject = isProjectMode === true || (typeof editKey === 'string' && TENANTS[editKey] && (TENANTS[editKey].isProject === true || TENANTS[editKey].isClient === false));
     document.getElementById('nt-editing-key').value = isEdit ? editKey : '';
-    document.getElementById('ntModalTitle').textContent = isEdit ? 'Editar Cliente' : 'Novo Cliente';
-    document.getElementById('newTenantSave').textContent = isEdit ? 'Salvar alterações' : 'Criar cliente';
+    document.getElementById('ntModalTitle').textContent = isEdit ? (_pendingIsProject ? 'Editar Projeto' : 'Editar Cliente') : (_pendingIsProject ? 'Novo Projeto' : 'Novo Cliente');
+    document.getElementById('newTenantSave').textContent = isEdit ? 'Salvar alterações' : (_pendingIsProject ? 'Criar projeto' : 'Criar cliente');
     document.getElementById('newTenantError').style.display = 'none';
 
     // Set type toggle
@@ -4562,7 +4661,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const isClient = document.getElementById('nt-type').value !== 'initiative';
 
     if (!label || !initials) {
-      errEl.textContent = 'Preencha o nome do cliente e a sigla.';
+      errEl.textContent = _pendingIsProject ? 'Preencha o nome do projeto e a sigla.' : 'Preencha o nome do cliente e a sigla.';
       errEl.style.display = 'block';
       return;
     }
@@ -4578,6 +4677,7 @@ document.addEventListener("DOMContentLoaded", function() {
       TENANTS[editKey].sidebarBg      = c.sidebar;
       TENANTS[editKey].isClient       = isClient;
       TENANTS[editKey].clienteOnly    = isClient; // "cliente" type = simplified NC-only view
+      TENANTS[editKey].isProject      = _pendingIsProject || !isClient; // Somente Iniciativas always goes to Projetos group
       saveAllTenants();
       closeTenantModal();
       // Refresh current view if we edited the active tenant
@@ -4589,6 +4689,7 @@ document.addEventListener("DOMContentLoaded", function() {
         document.title = 'SSQE - Gestão | ' + label;
       }
       renderTenantList();
+      renderProjectList();
       if (editKey === currentTenant) updateNcVisibility();
     } else {
       // Create mode
@@ -4608,6 +4709,7 @@ document.addEventListener("DOMContentLoaded", function() {
         sidebarBg:      c.sidebar,
         isClient:       isClient,
         clienteOnly:    isClient, // "cliente" type = simplified NC-only view
+        isProject:      _pendingIsProject || !isClient, // Somente Iniciativas always goes to Projetos group
         actions:        [],
         attachments:    {}
       };
@@ -4615,6 +4717,7 @@ document.addEventListener("DOMContentLoaded", function() {
       saveTenantActions(key, []);
       closeTenantModal();
       renderTenantList();
+      renderProjectList();
       switchTenant(key);
     }
   }
@@ -4630,6 +4733,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
   // Wire up modal events
   document.getElementById('btnNewTenant').addEventListener('click', function() { openTenantModal(); });
+  document.getElementById('btnNewProject').addEventListener('click', function() { openTenantModal(undefined, true); });
   document.getElementById('newTenantClose').addEventListener('click', closeTenantModal);
   document.getElementById('newTenantCancel').addEventListener('click', closeTenantModal);
   document.getElementById('newTenantSave').addEventListener('click', saveTenantModal);
@@ -4702,6 +4806,7 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById('sidebarTitle').textContent    = TENANTS[currentTenant].sidebarTitle;
     document.getElementById('sidebarSubtitle').textContent = TENANTS[currentTenant].sidebarSubtitle;
     renderTenantList();
+    renderProjectList();
     renderDashboard();
     populateFilters();
     renderTable();
@@ -4710,6 +4815,11 @@ document.addEventListener("DOMContentLoaded", function() {
     initNcPage();
     updateNcVisibility();
     renderHomePage();
+    // Start on home page — hide context-specific groups
+    var tratGrp = document.getElementById('navGroupTratativas');
+    var ncGrp   = document.getElementById('navGroupNc');
+    if (tratGrp) tratGrp.style.display = 'none';
+    if (ncGrp)   ncGrp.style.display   = 'none';
     // Set up real-time Firebase listeners if already connected (may have loaded from localStorage)
     if (typeof setupFirebaseListeners === 'function' && firebaseConnected) {
       setupFirebaseListeners(currentTenant);
