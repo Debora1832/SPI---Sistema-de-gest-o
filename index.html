@@ -2002,7 +2002,6 @@ document.addEventListener("DOMContentLoaded", function() {
                   ncRecords.forEach(function(lr) { if (lr && lr.id && !fbIdsSet.has(lr.id)) { records.push(lr); hadLocalOnlyRel = true; } });
                   ncRecords = records;
                   try { localStorage.setItem('spi_nc_records_' + currentTenant, JSON.stringify(ncRecords)); } catch(e) {}
-                  if (typeof syncNcsToGantt === 'function') syncNcsToGantt();
                   renderNcCards();
                   if (typeof renderNcCharts === 'function') renderNcCharts();
                   if (typeof renderNcCustomCharts === 'function') renderNcCustomCharts();
@@ -2049,7 +2048,6 @@ document.addEventListener("DOMContentLoaded", function() {
           ncRecords.forEach(function(lr) { if (lr && lr.id && !fbSnapshotIdsSet.has(lr.id)) { records.push(lr); hadLocalOnlySnap = true; } });
           ncRecords = records;
           try { localStorage.setItem('spi_nc_records_' + tenantId, JSON.stringify(ncRecords)); } catch(e) {}
-          if (typeof syncNcsToGantt === 'function') syncNcsToGantt();
           if (typeof setNcSyncBadge === 'function') setNcSyncBadge('synced', '✓ Atualizado em tempo real');
           if (typeof renderNcCards === 'function')  renderNcCards();
           if (typeof renderNcCharts === 'function') renderNcCharts();
@@ -2361,12 +2359,65 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   // Ensures every NC that lacks a Gantt entry gets one created automatically.
-  // Safe to call multiple times – NCs already linked are skipped.
+  // Also cleans up duplicate Gantt entries that may have been created by race conditions.
+  // Safe to call multiple times.
   function syncNcsToGantt() {
     if (!Array.isArray(ncRecords) || !ncRecords.length) return;
     var changed = false;
+
+    // Step 1: Remove duplicate NC Gantt entries in allActions.
+    // For each NC number that appears more than once in the 'NC – Não Conformidades' group,
+    // keep the entry referenced by nc.ncGanttId (or the last one), remove the rest.
+    var ncEntryMap = {}; // ncNumber -> [action, ...]
+    allActions.forEach(function(a) {
+      if (a.group !== 'NC – Não Conformidades') return;
+      var ncNum = (a.desc || '').split(' –')[0].trim();
+      if (!ncNum) return;
+      if (!ncEntryMap[ncNum]) ncEntryMap[ncNum] = [];
+      ncEntryMap[ncNum].push(a);
+    });
+
+    var keepIds = new Set();
     ncRecords.forEach(function(nc) {
-      if (nc.naoProcedente || nc.ncGanttId != null || !nc.date) return;
+      if (!nc.ncNumber) return;
+      var entries = ncEntryMap[nc.ncNumber] || [];
+      if (!entries.length) return;
+      // Prefer the entry referenced by ncGanttId; otherwise use the last one
+      var preferred = entries.find(function(a) { return a.id === nc.ncGanttId; }) || entries[entries.length - 1];
+      keepIds.add(preferred.id);
+      if (nc.ncGanttId !== preferred.id) { nc.ncGanttId = preferred.id; changed = true; }
+    });
+
+    var prevLen = allActions.length;
+    allActions = allActions.filter(function(a) {
+      if (a.group !== 'NC – Não Conformidades') return true;
+      var ncNum = (a.desc || '').split(' –')[0].trim();
+      if (!ncNum) return true;
+      var entries = ncEntryMap[ncNum] || [];
+      if (entries.length <= 1) return true; // no duplicates
+      return keepIds.has(a.id);
+    });
+    if (allActions.length !== prevLen) {
+      if (TENANTS[currentTenant]) TENANTS[currentTenant].actions = allActions;
+      changed = true;
+    }
+
+    // Step 2: Create or link Gantt entries for NCs that still don't have a valid one.
+    ncRecords.forEach(function(nc) {
+      if (nc.naoProcedente || !nc.date) return;
+      // Skip if ncGanttId is valid (points to an existing action)
+      if (nc.ncGanttId != null && allActions.some(function(a){ return a.id === nc.ncGanttId; })) return;
+      // Try to find an existing orphaned entry by NC number prefix
+      var existingEntry = nc.ncNumber ? allActions.find(function(a) {
+        return a.group === 'NC – Não Conformidades' &&
+               a.desc && a.desc.startsWith(nc.ncNumber + ' –');
+      }) : null;
+      if (existingEntry) {
+        nc.ncGanttId = existingEntry.id;
+        changed = true;
+        return;
+      }
+      // Create a new Gantt entry
       var ncActionId = allActions.reduce(function(mx, x){ return x.id > mx ? x.id : mx; }, 0) + 1;
       allActions.push({
         id:             ncActionId,
@@ -2384,7 +2435,9 @@ document.addEventListener("DOMContentLoaded", function() {
       nc.ncGanttId = ncActionId;
       changed = true;
     });
+
     if (changed) {
+      if (TENANTS[currentTenant]) TENANTS[currentTenant].actions = allActions;
       saveTenantActions(currentTenant, allActions);
       saveNcRecords();
     }
