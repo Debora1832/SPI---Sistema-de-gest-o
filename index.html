@@ -525,6 +525,9 @@
     .btn-save { background:var(--tenant-sidebar-bg,#1E4D17); color:#fff; border:none; border-radius:8px; padding:8px 22px; font-size:13px; font-weight:600; cursor:pointer; }
     .btn-save:hover { background:var(--tenant-sidebar-hover,#163d10); }
 
+    /* ===== HOME-page separator between Projetos and Clientes groups ===== */
+    #navGroupProjetos.open + #navGroupClientes { border-top:1px solid rgba(255,255,255,.15); margin-top:4px; padding-top:4px; }
+
     /* ===== TENANT SWITCHER (list, now inside nav-group) ===== */
     .tenant-switcher { padding-top:0; border-top:none; }
     .tenant-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:rgba(255,255,255,.4); margin-bottom:6px; padding:0 4px; }
@@ -2484,6 +2487,28 @@ document.addEventListener("DOMContentLoaded", function() {
   };
   let currentTenant = 'jd';
   let allActions    = TENANTS.jd.actions;
+  var isHome = true; // true when on the home page (no tenant selected)
+
+  // Branding applied to the sidebar when no tenant is selected (home page).
+  var HOME_BRANDING = { initials:'SPI', title:'SPI', subtitle:'Sistema de Gestão',
+    accentBg:'#FFDE00', accentText:'#0A2008', sidebarBg:'#1E4D17' };
+
+  function applyHomeBranding() {
+    document.body.className = '';
+    var sidebar = document.querySelector('.sidebar');
+    var logoIcon = document.querySelector('.sidebar-logo .logo-icon');
+    var logoInits = document.getElementById('logoInitials');
+    if (sidebar) sidebar.style.background = HOME_BRANDING.sidebarBg;
+    if (logoIcon) logoIcon.style.background = HOME_BRANDING.accentBg;
+    if (logoInits) { logoInits.style.color = HOME_BRANDING.accentText; logoInits.style.fontSize = '22px'; logoInits.textContent = HOME_BRANDING.initials; }
+    document.getElementById('sidebarTitle').textContent = HOME_BRANDING.title;
+    document.getElementById('sidebarSubtitle').textContent = HOME_BRANDING.subtitle;
+    document.title = 'SSQE - Gestão';
+    document.documentElement.style.setProperty('--tenant-sidebar-bg',    HOME_BRANDING.sidebarBg);
+    document.documentElement.style.setProperty('--tenant-sidebar-hover', '#163d10');
+    document.documentElement.style.setProperty('--tenant-nav-active-bg',   HOME_BRANDING.accentBg);
+    document.documentElement.style.setProperty('--tenant-nav-active-text', HOME_BRANDING.accentText);
+  }
 
   const STATUS_LABEL = { complete:"Concluído", on_going:"Em andamento", delayed:"Atrasado" };
 
@@ -3961,12 +3986,22 @@ document.addEventListener("DOMContentLoaded", function() {
       var pageId = item.dataset.page;
       document.getElementById(pageId).classList.add("active");
 
-      // When going home, collapse context-specific groups
-      var tratGrp = document.getElementById('navGroupTratativas');
-      var ncGrp   = document.getElementById('navGroupNc');
+      // When going home, collapse context-specific groups and reset state
+      var tratGrp    = document.getElementById('navGroupTratativas');
+      var ncGrp      = document.getElementById('navGroupNc');
+      var projGrp    = document.getElementById('navGroupProjetos');
+      var clientGrp  = document.getElementById('navGroupClientes');
       if (pageId === 'homePage') {
-        if (tratGrp) tratGrp.style.display = 'none';
-        if (ncGrp)   ncGrp.style.display   = 'none';
+        isHome = true;
+        if (tratGrp)   tratGrp.style.display = 'none';
+        if (ncGrp)     ncGrp.style.display   = 'none';
+        // Show both tenant groups, but collapse their inner lists
+        if (projGrp)   { projGrp.style.display = ''; projGrp.classList.remove('open'); }
+        if (clientGrp) { clientGrp.style.display = ''; clientGrp.classList.remove('open'); }
+        // Remove active state from all tenant items
+        document.querySelectorAll('.tenant-item').forEach(function(el) { el.classList.remove('active'); });
+        // Reset sidebar to home branding
+        applyHomeBranding();
       } else {
         if (tratGrp) tratGrp.style.display = '';
         if (ncGrp)   ncGrp.style.display   = '';
@@ -4029,12 +4064,19 @@ document.addEventListener("DOMContentLoaded", function() {
 
   // Tenant switching
   function switchTenant(key){
-    if(key === currentTenant) return;
+    if(key === currentTenant && !isHome) return;
+    isHome = false;
     // Restore context-specific groups visibility (switching to a client/project)
-    var tratGrp = document.getElementById('navGroupTratativas');
-    var ncGrp   = document.getElementById('navGroupNc');
+    var tratGrp   = document.getElementById('navGroupTratativas');
+    var ncGrp     = document.getElementById('navGroupNc');
+    var projGrp   = document.getElementById('navGroupProjetos');
+    var clientGrp = document.getElementById('navGroupClientes');
     if (tratGrp) tratGrp.style.display = '';
     if (ncGrp)   ncGrp.style.display   = '';
+    // Mutual exclusivity: only show the group relevant to the selected tenant
+    var isProject = TENANTS[key] && (TENANTS[key].isProject === true || TENANTS[key].isClient === false);
+    if (projGrp)   projGrp.style.display   = isProject ? '' : 'none';
+    if (clientGrp) clientGrp.style.display = isProject ? 'none' : '';
     // Persist attachments ref back before switching (actions are mutated in-place)
     TENANTS[currentTenant].attachments = attachmentsMap;
     currentTenant = key;
@@ -4815,11 +4857,16 @@ document.addEventListener("DOMContentLoaded", function() {
     initNcPage();
     updateNcVisibility();
     renderHomePage();
-    // Start on home page — hide context-specific groups
-    var tratGrp = document.getElementById('navGroupTratativas');
-    var ncGrp   = document.getElementById('navGroupNc');
+    // Start on home page — hide context-specific groups, show home branding
+    var tratGrp  = document.getElementById('navGroupTratativas');
+    var ncGrp    = document.getElementById('navGroupNc');
+    var projGrp  = document.getElementById('navGroupProjetos');
+    var cliGrp   = document.getElementById('navGroupClientes');
     if (tratGrp) tratGrp.style.display = 'none';
     if (ncGrp)   ncGrp.style.display   = 'none';
+    if (projGrp)  { projGrp.style.display = ''; projGrp.classList.remove('open'); }
+    if (cliGrp)   { cliGrp.style.display  = ''; cliGrp.classList.remove('open'); }
+    applyHomeBranding();
     // Set up real-time Firebase listeners if already connected (may have loaded from localStorage)
     if (typeof setupFirebaseListeners === 'function' && firebaseConnected) {
       setupFirebaseListeners(currentTenant);
