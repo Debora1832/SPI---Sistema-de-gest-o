@@ -2331,6 +2331,16 @@ document.addEventListener("DOMContentLoaded", function() {
     return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   }
 
+  // Annotates a Gantt action (by ID) with a prefix tag and persists the change.
+  function annotateGanttAction(ganttId, tag) {
+    var aIdx = allActions.findIndex(function(a){ return a.id === ganttId; });
+    if (aIdx === -1) return;
+    // Remove any existing occurrence of this tag, then prepend it
+    var cleaned = (allActions[aIdx].comments || '').replace(new RegExp('\\[' + tag + '\\] ', 'g'), '');
+    allActions[aIdx].comments = '[' + tag + '] ' + cleaned;
+    saveTenantActions(currentTenant, allActions);
+  }
+
   function truncate(str, max){ if(!str) return ''; return str.length > max ? str.slice(0,max)+"…" : str; }
   function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
@@ -5346,11 +5356,7 @@ document.addEventListener("DOMContentLoaded", function() {
             ncRecords.splice(idx, 1);
             // Keep the linked Gantt action as a historical record — just annotate it
             if (deletedNc && deletedNc.ncGanttId != null) {
-              var aIdx = allActions.findIndex(function(a){ return a.id === deletedNc.ncGanttId; });
-              if (aIdx !== -1) {
-                allActions[aIdx].comments = '[NC Excluída] ' + (allActions[aIdx].comments || '');
-                saveTenantActions(currentTenant, allActions);
-              }
+              annotateGanttAction(deletedNc.ncGanttId, 'NC Excluída');
             }
             saveNcRecords();
             renderNcCards();
@@ -6142,11 +6148,9 @@ document.addEventListener("DOMContentLoaded", function() {
             var gIdx = allActions.findIndex(function(a){ return a.id === editedNc.ncGanttId; });
             if (gIdx !== -1) {
               allActions[gIdx].desc = editedNc.ncNumber + ' – ' + (editedNc.description || editedNc.customer || '');
-              if (editedNc.naoProcedente) {
-                allActions[gIdx].comments = '[Não Procedente] ' + (allActions[gIdx].comments || '').replace('[Não Procedente] ','');
-              }
               saveTenantActions(currentTenant, allActions);
             }
+            if (editedNc.naoProcedente) annotateGanttAction(editedNc.ncGanttId, 'Não Procedente');
           }
           closeNcModal();
           renderNcCards();
