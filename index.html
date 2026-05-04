@@ -78,6 +78,18 @@
     /* sub-items are slightly smaller */
     .nav-group-items li[data-page] { font-size:13px; }
 
+    /* Clientes / Projetos raw-content groups have no extra indent */
+    .nav-group-items.nav-group-items--raw { padding-left:2px; }
+    /* Sidebar project item (for Projetos group) */
+    .sidebar-project-item {
+      display:flex; align-items:center; gap:7px; padding:5px 8px;
+      border-radius:6px; cursor:pointer; font-size:11px; font-weight:600;
+      color:rgba(255,255,255,.7); transition:background .12s; white-space:nowrap; overflow:hidden;
+    }
+    .sidebar-project-item:hover { background:rgba(255,255,255,.08); color:#fff; }
+    .sidebar-project-item.active { background:rgba(255,255,255,.14); color:#fff; }
+    .sidebar-project-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; background:rgba(255,255,255,.35); }
+
     /* Collapsed sidebar: show group header icon only, hide sub-items */
     .sidebar.collapsed .nav-group-header { padding:10px; justify-content:center; gap:0; }
     .sidebar.collapsed .nav-group-header .nav-group-label,
@@ -132,7 +144,6 @@
       z-index:200;
     }
     .sidebar.collapsed .sidebar-nav li[data-page]:hover::after { opacity:1; }
-    .sidebar.collapsed .tenant-switcher { display:none; }
     .sidebar.collapsed .sidebar-footer { padding-top:12px; }
     .sidebar.collapsed .sidebar-footer .firebase-status-btn { padding:7px; justify-content:center; }
     .sidebar.collapsed .sidebar-footer .firebase-status-btn > span:last-of-type,
@@ -514,8 +525,8 @@
     .btn-save { background:var(--tenant-sidebar-bg,#1E4D17); color:#fff; border:none; border-radius:8px; padding:8px 22px; font-size:13px; font-weight:600; cursor:pointer; }
     .btn-save:hover { background:var(--tenant-sidebar-hover,#163d10); }
 
-    /* ===== TENANT SWITCHER (list) ===== */
-    .tenant-switcher { padding-top:12px; border-top:1px solid rgba(255,255,255,.12); }
+    /* ===== TENANT SWITCHER (list, now inside nav-group) ===== */
+    .tenant-switcher { padding-top:0; border-top:none; }
     .tenant-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:rgba(255,255,255,.4); margin-bottom:6px; padding:0 4px; }
     .tenant-list { display:flex; flex-direction:column; gap:1px; }
     .tenant-item {
@@ -1296,15 +1307,35 @@
         </li>
       </ul>
     </li>
+    <!-- GROUP: CLIENTES -->
+    <li class="nav-group open" id="navGroupClientes">
+      <div class="nav-group-header" data-tooltip="Clientes" id="navGroupClientesHeader">
+        <span class="nav-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="15" height="15"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM2 8a2 2 0 114 0A2 2 0 012 8zM14.348 17.516A6.001 6.001 0 006 12H3.6A6.001 6.001 0 006 17.516M16 14a4 4 0 01-8 0h8z"/></svg>
+        </span>
+        <span class="nav-group-label">Clientes</span>
+        <span class="nav-group-arrow">▶</span>
+      </div>
+      <div class="nav-group-items nav-group-items--raw">
+        <div class="tenant-list" id="tenantBtns" role="listbox" aria-label="Selecionar empresa"></div>
+        <button class="btn-new-tenant" id="btnNewTenant" title="Criar nova página de cliente">
+          <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 20 20" fill="currentColor"><path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/></svg>
+          Novo cliente
+        </button>
+      </div>
+    </li>
+    <!-- GROUP: PROJETOS -->
+    <li class="nav-group" id="navGroupProjetos">
+      <div class="nav-group-header" data-tooltip="Projetos" id="navGroupProjetosHeader">
+        <span class="nav-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="15" height="15"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/></svg>
+        </span>
+        <span class="nav-group-label">Projetos</span>
+        <span class="nav-group-arrow">▶</span>
+      </div>
+      <div class="nav-group-items nav-group-items--raw" id="sidebarProjetos"></div>
+    </li>
   </ul>
-  <div class="tenant-switcher">
-    <div class="tenant-label">Empresa</div>
-    <div class="tenant-list" id="tenantBtns" role="listbox" aria-label="Selecionar empresa"></div>
-    <button class="btn-new-tenant" id="btnNewTenant" title="Criar nova página de cliente">
-      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 20 20" fill="currentColor"><path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/></svg>
-      Novo cliente
-    </button>
-  </div>
   <div class="sidebar-footer">
     <button class="firebase-status-btn" id="btnFirebaseStatus" title="Configurar sincronização Firebase">
       <span class="firebase-status-dot" id="firebaseStatusDot"></span>
@@ -2128,6 +2159,7 @@ document.addEventListener("DOMContentLoaded", function() {
         allActions = (TENANTS[currentTenant] && TENANTS[currentTenant].actions) || [];
         renderDashboard();
         renderTable();
+        renderSidebarProjects();
         renderBell();
         if (typeof expandedGroup !== "undefined" && expandedGroup !== null) renderGantt();
         // Also reload NC records for the current tenant
@@ -2219,9 +2251,10 @@ document.addEventListener("DOMContentLoaded", function() {
           if (TENANTS[tenantId]) TENANTS[tenantId].actions = saved;
           if (tenantId === currentTenant) {
             allActions = saved;
-            if (typeof renderDashboard === 'function') renderDashboard();
-            if (typeof renderTable    === 'function') renderTable();
-            if (typeof renderBell     === 'function') renderBell();
+            if (typeof renderDashboard        === 'function') renderDashboard();
+            if (typeof renderTable            === 'function') renderTable();
+            if (typeof renderSidebarProjects  === 'function') renderSidebarProjects();
+            if (typeof renderBell             === 'function') renderBell();
           }
         }, function(e) { console.warn('Actions onSnapshot error:', e); });
     } catch(e) { console.warn('Actions onSnapshot setup error:', e); }
@@ -2887,6 +2920,7 @@ document.addEventListener("DOMContentLoaded", function() {
     saveTenantActions(currentTenant, allActions);
     renderDashboard();
     renderTable();
+    renderSidebarProjects();
     renderBell();
     if(expandedGroup !== null) renderGantt();
   }
@@ -3365,6 +3399,7 @@ document.addEventListener("DOMContentLoaded", function() {
     closeConfirmModal();
     renderDashboard();
     renderTable();
+    renderSidebarProjects();
     renderBell();
     if(expandedGroup !== null) renderGantt();
   });
@@ -3946,8 +3981,8 @@ document.addEventListener("DOMContentLoaded", function() {
     renderDashboard();
     populateFilters();
     renderTable();
+    renderSidebarProjects();
     renderBell();
-    // Close any open modal/gantt
     expandedGroup = null;
     _ncGanttExpandedGroup = null;
     // Reload NC records for the newly selected company (Firebase-aware)
@@ -4044,6 +4079,10 @@ document.addEventListener("DOMContentLoaded", function() {
       ncGroup.classList.add('open');
     }
 
+    // Projetos group: only visible when not clienteOnly
+    var projetosGroup = document.getElementById('navGroupProjetos');
+    if (projetosGroup) projetosGroup.style.display = showProjectMgmt ? '' : 'none';
+
     // Redirect active tab if it became hidden
     var activeNavItem = document.querySelector('.sidebar-nav li[data-page].active');
     var activePage    = activeNavItem ? activeNavItem.dataset.page : null;
@@ -4117,7 +4156,76 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   }
 
-  // ── Persist ALL tenants ────────────────────────────────────────────────────
+  // ── Sidebar projects list ──────────────────────────────────────────────────
+
+  function renderSidebarProjects() {
+    var container = document.getElementById('sidebarProjetos');
+    if (!container) return;
+    container.innerHTML = '';
+
+    // Get unique non-NC groups from current tenant's actions
+    var activeGroupFilter = document.getElementById('groupFilter');
+    var currentFilter = activeGroupFilter ? activeGroupFilter.value : '';
+
+    var groups = Object.keys(getGroups()).filter(function(g) {
+      return g !== 'NC – Não Conformidades';
+    });
+
+    if (groups.length === 0) {
+      var empty = document.createElement('div');
+      empty.style.cssText = 'font-size:11px;color:rgba(255,255,255,.3);padding:4px 8px;';
+      empty.textContent = 'Nenhum projeto';
+      container.appendChild(empty);
+      return;
+    }
+
+    // "Todos" item to clear filter
+    var allItem = document.createElement('div');
+    allItem.className = 'sidebar-project-item' + (!currentFilter ? ' active' : '');
+    allItem.innerHTML = '<span class="sidebar-project-dot" style="background:rgba(255,255,255,.5)"></span>Todos';
+    allItem.addEventListener('click', function() {
+      if (activeGroupFilter) { activeGroupFilter.value = ''; }
+      container.querySelectorAll('.sidebar-project-item').forEach(function(el) { el.classList.remove('active'); });
+      allItem.classList.add('active');
+      // Navigate to dashboard if needed
+      var dashNav = document.querySelector('.sidebar-nav li[data-page="dashboard"]');
+      if (dashNav && !dashNav.classList.contains('active')) dashNav.click();
+      renderTable();
+    });
+    container.appendChild(allItem);
+
+    // One item per group
+    groups.forEach(function(g) {
+      var item = document.createElement('div');
+      item.className = 'sidebar-project-item' + (currentFilter === g ? ' active' : '');
+      // Derive a color hint from the group name (simple hash)
+      var hue = 0;
+      for (var i = 0; i < g.length; i++) hue = (hue + g.charCodeAt(i) * 3) % 360;
+      var dotColor = 'hsl(' + hue + ',55%,58%)';
+      var dotEl = document.createElement('span');
+      dotEl.className = 'sidebar-project-dot';
+      dotEl.style.background = dotColor;
+      var nameEl = document.createElement('span');
+      nameEl.textContent = g;
+      nameEl.style.cssText = 'flex:1;overflow:hidden;text-overflow:ellipsis;';
+      item.appendChild(dotEl);
+      item.appendChild(nameEl);
+      item.title = g;
+      item.addEventListener('click', (function(grp, el) {
+        return function() {
+          if (activeGroupFilter) { activeGroupFilter.value = grp; }
+          container.querySelectorAll('.sidebar-project-item').forEach(function(x) { x.classList.remove('active'); });
+          el.classList.add('active');
+          // Navigate to dashboard if needed
+          var dashNav = document.querySelector('.sidebar-nav li[data-page="dashboard"]');
+          if (dashNav && !dashNav.classList.contains('active')) dashNav.click();
+          renderTable();
+        };
+      })(g, item));
+      container.appendChild(item);
+    });
+  }
+
 
   function saveAllTenants() {
     const all = {};
@@ -4588,6 +4696,7 @@ document.addEventListener("DOMContentLoaded", function() {
     renderDashboard();
     populateFilters();
     renderTable();
+    renderSidebarProjects();
     renderBell();
     initTableResize(document.querySelector('#dashboard .table-wrap table'));
     initNcPage();
