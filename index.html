@@ -1247,21 +1247,17 @@
 
     /* Hero banner */
     .home-hero {
-      display:flex; align-items:center; gap:20px;
+      display:flex; align-items:center; gap:12px;
       background:linear-gradient(135deg,#0D2461 0%,#1a3a7a 60%,#163060 100%);
-      border-radius:16px; padding:28px 32px; margin-bottom:28px;
-      box-shadow:0 4px 20px rgba(13,36,97,.3);
+      border-radius:10px; padding:10px 20px; margin-bottom:18px;
+      box-shadow:0 2px 10px rgba(13,36,97,.25);
     }
-    .home-hero-logo {
-      flex-shrink:0; width:64px; height:64px;
-      background:rgba(255,255,255,.08); border-radius:14px;
-      display:flex; align-items:center; justify-content:center;
-    }
+    .home-hero-logo { display:none; }
     .home-hero-title {
-      font-size:22px; font-weight:800; color:#fff; margin:0 0 4px;
-      letter-spacing:-.3px;
+      font-size:15px; font-weight:800; color:#fff; margin:0;
+      letter-spacing:-.2px;
     }
-    .home-hero-sub { font-size:13px; color:rgba(255,222,0,.85); margin:0; font-weight:600; letter-spacing:.06em; }
+    .home-hero-sub { display:none; }
 
     /* Section headers */
     .home-section { margin-bottom:28px; }
@@ -1274,7 +1270,13 @@
     .home-section-header--cli  { background:#1E4D17; color:#FFDE00; }
 
     /* NC GRID */
-    .home-nc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px; }
+    /* Projetos + Clientes two-column layout */
+    .home-proj-cli-row {
+      display:grid; grid-template-columns:1fr 1fr; gap:20px;
+      align-items:start; margin-bottom:20px;
+    }
+    @media(max-width:700px) { .home-proj-cli-row { grid-template-columns:1fr; } .home-kpi-row { grid-template-columns:1fr; } .home-kpi-divider { display:none; } }
+    .home-nc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; }
     .home-nc-card {
       background:#fff; border-radius:12px; padding:20px;
       box-shadow:0 1px 6px rgba(0,0,0,.08); border-left:4px solid var(--card-accent,#367C2B);
@@ -1300,7 +1302,7 @@
     }
     .home-kpi-section-header--cli  { background:#1E4D17; color:#FFDE00; }
     .home-kpi-section-header--proj { background:#0D2461; color:#FFDE00; }
-    .home-kpi-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px; }
+    .home-kpi-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:10px; }
     .home-kpi-tile {
       background:#fff; border-radius:12px; padding:14px 16px;
       box-shadow:0 1px 6px rgba(0,0,0,.08); border-top:3px solid var(--kpi-accent,#0D2461);
@@ -1310,6 +1312,15 @@
     .home-kpi-value { font-size:26px; font-weight:800; color:var(--kpi-accent,#0D2461); line-height:1.1; }
     .home-kpi-label { font-size:11px; color:#6b7280; font-weight:600; text-transform:uppercase; letter-spacing:.07em; }
     .home-kpi-sub { font-size:11px; color:#9ca3af; margin-top:2px; }
+
+    /* KPI two-column layout */
+    .home-kpi-row {
+      display:grid; grid-template-columns:1fr 1px 1fr; gap:0 18px;
+      align-items:start; margin-bottom:20px;
+    }
+    .home-kpi-divider {
+      background:rgba(13,36,97,.18); align-self:stretch; border-radius:2px;
+    }
 
     /* ===== HOME ALERT CARDS ===== */
     .home-alert-card {
@@ -1483,50 +1494,53 @@
       </div>
       <div id="homeHeroDate" style="color:rgba(255,222,0,.75);font-size:12px;font-weight:600;white-space:nowrap;align-self:flex-end;letter-spacing:.03em;"></div>
     </div>
-    <!-- KPI de Clientes -->
-    <div id="homeKpiCliSection" class="home-kpi-section" style="display:none;margin-bottom:20px;">
-      <div class="home-kpi-section-header home-kpi-section-header--cli">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM2 8a2 2 0 114 0A2 2 0 012 8z"/></svg>
-        <span>Indicadores de Clientes (NCs)</span>
+    <!-- KPI de Clientes + Projetos side by side -->
+    <div class="home-kpi-row">
+      <div id="homeKpiCliSection" class="home-kpi-section" style="display:none;">
+        <div class="home-kpi-section-header home-kpi-section-header--cli">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM2 8a2 2 0 114 0A2 2 0 012 8z"/></svg>
+          <span>Indicadores de Clientes (NCs)</span>
+        </div>
+        <div id="homeKpiCliRow" class="home-kpi-grid"></div>
       </div>
-      <div id="homeKpiCliRow" class="home-kpi-grid"></div>
-    </div>
-    <!-- KPI de Projetos -->
-    <div id="homeKpiProjSection" class="home-kpi-section" style="display:none;margin-bottom:20px;">
-      <div class="home-kpi-section-header home-kpi-section-header--proj">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.396 0 2.7.37 3.821 1.016A.75.75 0 0010 14.357V5.25a.75.75 0 00-.403-.666A8.059 8.059 0 009 4.804zM10.403 15.016A7.966 7.966 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.396 0-2.7.37-3.822 1.016A.75.75 0 0010 5.75v9.107a.75.75 0 00.403.659z"/></svg>
-        <span>Indicadores de Projetos (Ações)</span>
+      <div class="home-kpi-divider" id="homeKpiDivider" style="display:none;"></div>
+      <div id="homeKpiProjSection" class="home-kpi-section" style="display:none;">
+        <div class="home-kpi-section-header home-kpi-section-header--proj">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.396 0 2.7.37 3.821 1.016A.75.75 0 0010 14.357V5.25a.75.75 0 00-.403-.666A8.059 8.059 0 009 4.804zM10.403 15.016A7.966 7.966 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.396 0-2.7.37-3.822 1.016A.75.75 0 0010 5.75v9.107a.75.75 0 00.403.659z"/></svg>
+          <span>Indicadores de Projetos (Ações)</span>
+        </div>
+        <div id="homeKpiProjRow" class="home-kpi-grid"></div>
       </div>
-      <div id="homeKpiProjRow" class="home-kpi-grid"></div>
     </div>
-    <!-- Alertas de prioridade -->
+    <!-- Projetos + Clientes side by side -->
+    <div class="home-proj-cli-row">
+      <!-- Projetos section -->
+      <div class="home-section" id="homeSectionProjetos">
+        <div class="home-section-header home-section-header--proj">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.396 0 2.7.37 3.821 1.016A.75.75 0 0010 14.357V5.25a.75.75 0 00-.403-.666A8.059 8.059 0 009 4.804zM10.403 15.016A7.966 7.966 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.396 0-2.7.37-3.822 1.016A.75.75 0 0010 5.75v9.107a.75.75 0 00.403.659z"/></svg>
+          <span>Projetos</span>
+        </div>
+        <div class="home-nc-grid" id="homeGridProjetos"></div>
+      </div>
+      <!-- Clientes section -->
+      <div class="home-section" id="homeSectionClientes">
+        <div class="home-section-header home-section-header--cli">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14.348 17.516A6.001 6.001 0 006 12H3.6A6.001 6.001 0 006 17.516M16 14a4 4 0 01-8 0h8z"/></svg>
+          <span>Clientes</span>
+        </div>
+        <div class="home-nc-grid" id="homeGridClientes"></div>
+      </div>
+    </div>
+    <!-- Alertas de prioridade — last -->
     <div id="homeAlertsSection" class="home-section" style="display:none;">
       <div class="home-section-header" style="background:#7f1d1d;color:#fef2f2;">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
         <span>Atenção Imediata</span>
       </div>
-      <div id="homeAlertsList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;"></div>
+      <div id="homeAlertsList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;"></div>
     </div>
     <!-- Hidden global KPI row (kept for compat but replaced by split sections above) -->
     <div id="homeKpiRow" style="display:none;"></div>
-    <!-- Projetos section -->
-    <div class="home-section" id="homeSectionProjetos">
-      <div class="home-section-header home-section-header--proj">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.396 0 2.7.37 3.821 1.016A.75.75 0 0010 14.357V5.25a.75.75 0 00-.403-.666A8.059 8.059 0 009 4.804zM10.403 15.016A7.966 7.966 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.396 0-2.7.37-3.822 1.016A.75.75 0 0010 5.75v9.107a.75.75 0 00.403.659z"/></svg>
-        <span>Projetos</span>
-      </div>
-      <div class="home-nc-grid" id="homeGridProjetos"></div>
-    </div>
-    <!-- Clientes section -->
-    <div class="home-section" id="homeSectionClientes">
-      <div class="home-section-header home-section-header--cli">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14.348 17.516A6.001 6.001 0 006 12H3.6A6.001 6.001 0 006 17.516M16 14a4 4 0 01-8 0h8z"/></svg>
-        <span>Clientes</span>
-      </div>
-      <div class="home-nc-grid" id="homeGridClientes"></div>
-    </div>
-    <!-- Kept for backward-compat (empty) -->
-    <div id="homeNcGrid" style="display:none"></div>
   </div>
 
   <!-- DASHBOARD -->
@@ -4827,8 +4841,12 @@ document.addEventListener("DOMContentLoaded", function() {
       kpiProjRow.appendChild(kpiTile(pct + '%',   'Conclusão Geral',   'Meta de entrega',               '#7c3aed',
         function(){ openKpiDetailPopup('Conclusão Geral — todas as ações', '#7c3aed', false, allProjActsTagged); }));
       if (kpiProjSec) kpiProjSec.style.display = '';
+      var kpiDiv = document.getElementById('homeKpiDivider');
+      if (kpiDiv) kpiDiv.style.display = '';
     } else if (kpiProjSec) {
       kpiProjSec.style.display = 'none';
+      var kpiDiv = document.getElementById('homeKpiDivider');
+      if (kpiDiv) kpiDiv.style.display = 'none';
     }
 
     // ── Alertas de atenção imediata ─────────────────────────────────────────
