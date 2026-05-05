@@ -81,8 +81,8 @@
     /* Clientes / Projetos raw-content groups have no extra indent */
     .nav-group-items.nav-group-items--raw { padding-left:2px; }
 
-    /* Divider lines between nav groups */
-    .sidebar-nav > ul > li.nav-group + li.nav-group {
+    /* Divider lines between ALL sidebar nav items (Início, Tratativas, NC, Projetos, Clientes) */
+    .sidebar-nav > li + li {
       border-top:1px solid rgba(255,255,255,.12);
       margin-top:6px; padding-top:6px;
     }
@@ -530,9 +530,6 @@
     .btn-cancel:hover { background:#e5e7eb; }
     .btn-save { background:var(--tenant-sidebar-bg,#1E4D17); color:#fff; border:none; border-radius:8px; padding:8px 22px; font-size:13px; font-weight:600; cursor:pointer; }
     .btn-save:hover { background:var(--tenant-sidebar-hover,#163d10); }
-
-    /* ===== HOME-page separator between Projetos and Clientes groups ===== */
-    #navGroupProjetos.open + #navGroupClientes { border-top:1px solid rgba(255,255,255,.15); margin-top:4px; padding-top:4px; }
 
     /* ===== TENANT SWITCHER (list, now inside nav-group) ===== */
     .tenant-switcher { padding-top:0; border-top:none; }
@@ -1292,6 +1289,16 @@
     .home-nc-stat-label { font-size:10px; color:#6b7280; margin-top:4px; text-align:center; }
     .home-empty-msg { color:#94a3b8; font-size:13px; padding:10px 4px; }
 
+    /* ===== HOME KPI TILES ===== */
+    .home-kpi-tile {
+      background:#fff; border-radius:12px; padding:16px 18px;
+      box-shadow:0 1px 6px rgba(0,0,0,.08); border-top:3px solid var(--kpi-accent,#0D2461);
+      display:flex; flex-direction:column; gap:4px;
+    }
+    .home-kpi-value { font-size:28px; font-weight:800; color:var(--kpi-accent,#0D2461); line-height:1.1; }
+    .home-kpi-label { font-size:11px; color:#6b7280; font-weight:600; text-transform:uppercase; letter-spacing:.07em; }
+    .home-kpi-sub { font-size:11px; color:#9ca3af; margin-top:2px; }
+
     /* ===== INITIATIVE CARDS ===== */
     .initiative-card { background:#fff; border-radius:12px; padding:20px; box-shadow:0 1px 4px rgba(0,0,0,.08); cursor:pointer; transition:box-shadow .15s, transform .15s; }
     .initiative-card:hover { box-shadow:0 4px 14px rgba(0,0,0,.13); transform:translateY(-2px); }
@@ -1446,11 +1453,14 @@
           <path d="M24 8v3M24 37v3M8 24h3M37 24h3" stroke="rgba(255,222,0,.45)" stroke-width="2" stroke-linecap="round"/>
         </svg>
       </div>
-      <div class="home-hero-text">
+      <div class="home-hero-text" style="flex:1;">
         <h1 class="home-hero-title">Sistema de Gestão de Qualidade</h1>
         <p class="home-hero-sub">SSQE · Visão Geral dos Indicadores</p>
       </div>
+      <div id="homeHeroDate" style="color:rgba(255,222,0,.75);font-size:12px;font-weight:600;white-space:nowrap;align-self:flex-end;letter-spacing:.03em;"></div>
     </div>
+    <!-- Global KPI summary row -->
+    <div id="homeKpiRow" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:24px;"></div>
     <!-- Projetos section -->
     <div class="home-section" id="homeSectionProjetos">
       <div class="home-section-header home-section-header--proj">
@@ -1462,7 +1472,7 @@
     <!-- Clientes section -->
     <div class="home-section" id="homeSectionClientes">
       <div class="home-section-header home-section-header--cli">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM2 8a2 2 0 114 0A2 2 0 012 8zM14.348 17.516A6.001 6.001 0 006 12H3.6A6.001 6.001 0 006 17.516M16 14a4 4 0 01-8 0h8z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14.348 17.516A6.001 6.001 0 006 12H3.6A6.001 6.001 0 006 17.516M16 14a4 4 0 01-8 0h8z"/></svg>
         <span>Clientes</span>
       </div>
       <div class="home-nc-grid" id="homeGridClientes"></div>
@@ -4077,7 +4087,8 @@ document.addEventListener("DOMContentLoaded", function() {
         applyHomeBranding();
       } else {
         if (tratGrp) tratGrp.style.display = '';
-        if (ncGrp)   ncGrp.style.display   = '';
+        // Re-apply NC visibility so project tenants never see the NC group
+        updateNcVisibility();
       }
 
       if(pageId === "ganttPage") { setTimeout(renderGantt, 100); renderGanttBell(); }
@@ -4440,6 +4451,40 @@ document.addEventListener("DOMContentLoaded", function() {
       titleEl.textContent = title;
       var headerColor = accent || '#0D2461';
 
+      // ── sort helper ──────────────────────────────────────────────────────
+      var _sortCol = -1, _sortAsc = true;
+      function applySort(rows, col, asc) {
+        rows.sort(function(a, b) {
+          var av = a.children[col] ? a.children[col].textContent.trim() : '';
+          var bv = b.children[col] ? b.children[col].textContent.trim() : '';
+          // numeric compare if both look like numbers
+          var an = parseFloat(av.replace(/[^\d.]/g, '')), bn = parseFloat(bv.replace(/[^\d.]/g, ''));
+          if (!isNaN(an) && !isNaN(bn)) return asc ? an - bn : bn - an;
+          return asc ? av.localeCompare(bv, 'pt') : bv.localeCompare(av, 'pt');
+        });
+        while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
+        rows.forEach(function(r) { tbody.appendChild(r); });
+      }
+      function makeHeadersSortable() {
+        if (!thead) return;
+        Array.prototype.forEach.call(thead.querySelectorAll('th'), function(th, i) {
+          if (i === 0) return; // skip # column
+          th.style.cursor = 'pointer';
+          th.style.userSelect = 'none';
+          th.title = 'Clique para ordenar';
+          th.addEventListener('click', function() {
+            if (_sortCol === i) { _sortAsc = !_sortAsc; } else { _sortCol = i; _sortAsc = true; }
+            // update arrow indicator
+            Array.prototype.forEach.call(thead.querySelectorAll('th'), function(h) {
+              h.textContent = h.textContent.replace(/ [▲▼]$/, '');
+            });
+            th.textContent = th.textContent + ' ' + (_sortAsc ? '▲' : '▼');
+            var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+            applySort(rows, i, _sortAsc);
+          });
+        });
+      }
+
       if (isProject) {
         // Show initiative (action) list
         var actions = loadProjectActions(tenantId);
@@ -4482,6 +4527,7 @@ document.addEventListener("DOMContentLoaded", function() {
           : '<tr><td colspan="5" style="text-align:center;color:#6b7280;">Nenhuma NC cadastrada.</td></tr>';
       }
 
+      makeHeadersSortable();
       document.getElementById('groupDetailBackdrop').classList.add('open');
     }
 
@@ -4556,6 +4602,52 @@ document.addEventListener("DOMContentLoaded", function() {
     // Show/hide sections
     if (projSec) projSec.style.display = projKeys.length > 0 ? '' : 'none';
     if (cliSec)  cliSec.style.display  = cliKeys.length  > 0 ? '' : 'none';
+
+    // ── Global KPI summary row ──────────────────────────────────────────────
+    var kpiRow = document.getElementById('homeKpiRow');
+    if (kpiRow) {
+      // aggregate across all clients
+      var allCliRecs = cliKeys.reduce(function(acc, k) { return acc.concat(loadNcRecords(k)); }, []);
+      var totalNc     = allCliRecs.length;
+      var totalRnc    = allCliRecs.filter(function(r) { return r.rncAberta === true; }).length;
+      var total8d     = allCliRecs.filter(function(r) { return r.d8Finalizado === true; }).length;
+      var totalPecas  = allCliRecs.reduce(function(s, r) { return s + (parseInt(r.qty) || 0); }, 0);
+      // aggregate across all projects
+      var allProjActs = projKeys.reduce(function(acc, k) { return acc.concat(loadProjectActions(k)); }, []);
+      var totalActs   = allProjActs.length;
+      var doneActs    = allProjActs.filter(function(a) { return resolveStatus(a) === 'complete'; }).length;
+      var lateActs    = allProjActs.filter(function(a) { return resolveStatus(a) === 'delayed'; }).length;
+      var pct = totalActs > 0 ? Math.round(doneActs / totalActs * 100) : 0;
+
+      function kpiTile(value, label, sub, accent) {
+        var d = document.createElement('div');
+        d.className = 'home-kpi-tile';
+        d.style.setProperty('--kpi-accent', accent);
+        d.innerHTML =
+          '<span class="home-kpi-value">' + value + '</span>' +
+          '<span class="home-kpi-label">' + label + '</span>' +
+          (sub ? '<span class="home-kpi-sub">' + sub + '</span>' : '');
+        return d;
+      }
+
+      kpiRow.innerHTML = '';
+      kpiRow.appendChild(kpiTile(totalNc,    'Total NCs',           cliKeys.length + ' cliente(s)', '#0D2461'));
+      kpiRow.appendChild(kpiTile(totalRnc,   'RNC Aberta',          'NCs sem 8D finalizado',        '#dc2626'));
+      kpiRow.appendChild(kpiTile(total8d,    '8D Finalizado',       'NCs encerradas com 8D',        '#16a34a'));
+      kpiRow.appendChild(kpiTile(totalPecas, 'Qty Peças',           'Peças com não-conformidade',   '#d97706'));
+      if (projKeys.length > 0) {
+        kpiRow.appendChild(kpiTile(totalActs,  'Total Ações',         projKeys.length + ' projeto(s)', '#1d4ed8'));
+        kpiRow.appendChild(kpiTile(pct + '%',  'Conclusão Projetos',  doneActs + '/' + totalActs + ' concluídas', '#059669'));
+        kpiRow.appendChild(kpiTile(lateActs,   'Ações em Atraso',     'Projetos com prazo vencido',   '#b91c1c'));
+      }
+    }
+
+    // ── Date stamp in hero ─────────────────────────────────────────────────
+    var heroDate = document.getElementById('homeHeroDate');
+    if (heroDate) {
+      var now = new Date();
+      heroDate.textContent = now.toLocaleDateString('pt-BR', { weekday:'short', day:'2-digit', month:'short', year:'numeric' });
+    }
   }
 
 
