@@ -1273,7 +1273,7 @@
     .home-nc-card {
       background:#fff; border-radius:12px; padding:20px;
       box-shadow:0 1px 6px rgba(0,0,0,.08); border-left:4px solid var(--card-accent,#367C2B);
-      transition:box-shadow .15s, transform .15s;
+      transition:box-shadow .15s, transform .15s; cursor:pointer;
     }
     .home-nc-card:hover { box-shadow:0 4px 16px rgba(0,0,0,.13); transform:translateY(-2px); }
     .home-nc-card-header { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
@@ -2557,7 +2557,7 @@ document.addEventListener("DOMContentLoaded", function() {
   var isHome = true; // true when on the home page (no tenant selected)
 
   // Branding applied to the sidebar when no tenant is selected (home page).
-  var HOME_BRANDING = { initials:'SPI', title:'SPI', subtitle:'Sistema de Gestão',
+  var HOME_BRANDING = { initials:'SGQ', title:'SGQ', subtitle:'Sistema de Gestão',
     accentBg:'#FFDE00', accentText:'#0A2008', sidebarBg:'#0D2461' };
 
   function applyHomeBranding() {
@@ -4258,13 +4258,7 @@ document.addEventListener("DOMContentLoaded", function() {
     if (ncPageEl)      ncPageEl.style.display      = showNcPages ? '' : 'none';
     if (ncGanttPageEl) ncGanttPageEl.style.display = showNcPages ? '' : 'none';
 
-    // Auto-expand the visible group(s)
-    if (showProjectMgmt && tratativasGroup && !tratativasGroup.classList.contains('open')) {
-      tratativasGroup.classList.add('open');
-    }
-    if (showNcPages && ncGroup && !ncGroup.classList.contains('open')) {
-      ncGroup.classList.add('open');
-    }
+    // Do not auto-expand groups; let the user choose when to expand them
 
     // Redirect active tab if it became hidden
     var activeNavItem = document.querySelector('.sidebar-nav li[data-page].active');
@@ -4401,21 +4395,113 @@ document.addEventListener("DOMContentLoaded", function() {
     var cliSec   = document.getElementById('homeSectionClientes');
     if (!projGrid || !cliGrid) return;
 
-    function buildCard(tenantId) {
-      var t = TENANTS[tenantId];
-      var records = [];
+    // ── helpers ──────────────────────────────────────────────────────────────
+    function loadProjectActions(tenantId) {
+      var acts = [];
+      try {
+        var raw = localStorage.getItem('spi_actions_' + tenantId);
+        if (raw) acts = JSON.parse(raw) || [];
+      } catch(e) { acts = []; }
+      // fall back to in-memory if available (current tenant)
+      if (!acts.length && TENANTS[tenantId] && Array.isArray(TENANTS[tenantId].actions)) {
+        acts = TENANTS[tenantId].actions;
+      }
+      return acts;
+    }
+
+    function loadNcRecords(tenantId) {
+      var recs = [];
       try {
         var raw = localStorage.getItem('spi_nc_records_' + tenantId);
-        if (raw) records = JSON.parse(raw) || [];
-      } catch(e) { records = []; }
-      var total     = records.length;
-      var rncAberta = records.filter(function(r){ return r.rncAberta === true; }).length;
-      var d8Fin     = records.filter(function(r){ return r.d8Finalizado === true; }).length;
-      var qtyPecas  = records.reduce(function(sum, r){ return sum + (parseInt(r.qty) || 0); }, 0);
-      var accent    = t.accentBg || '#367C2B';
+        if (raw) recs = JSON.parse(raw) || [];
+      } catch(e) { recs = []; }
+      return recs;
+    }
+
+    function openHomeCardPopup(title, accent, isProject, tenantId) {
+      var titleEl = document.getElementById('groupDetailTitle');
+      var tbody   = document.getElementById('groupDetailTbody');
+      var thead   = document.querySelector('#groupDetailTable thead tr');
+      if (!titleEl || !tbody) return;
+
+      titleEl.textContent = title;
+      var headerColor = accent || '#0D2461';
+
+      if (isProject) {
+        // Show initiative (action) list
+        var actions = loadProjectActions(tenantId);
+        if (thead) thead.innerHTML =
+          '<th>#</th><th>Descrição</th><th>Grupo</th><th>Responsável</th><th>Status</th><th>Prazo</th>';
+        var statusLabels = { complete: 'Concluída', on_going: 'Em andamento', delayed: 'Atrasada' };
+        var statusClass  = { complete: 'complete',  on_going: 'on_going',     delayed: 'delayed' };
+        tbody.innerHTML = actions.length
+          ? actions.map(function(a) {
+              var st     = resolveStatus(a);
+              var endFmt = (a.reprazo || a.end || '').split('-').reverse().join('/') || '—';
+              return '<tr>' +
+                '<td>' + a.id + '</td>' +
+                '<td>' + escHtml(a.desc || '') + '</td>' +
+                '<td>' + escHtml(a.group || '') + '</td>' +
+                '<td>' + escHtml(a.lead || a.team || '—') + '</td>' +
+                '<td><span class="badge badge-' + (statusClass[st] || 'on_going') + '">' + (statusLabels[st] || st) + '</span></td>' +
+                '<td>' + endFmt + '</td>' +
+              '</tr>';
+            }).join('')
+          : '<tr><td colspan="6" style="text-align:center;color:#6b7280;">Nenhuma ação cadastrada.</td></tr>';
+      } else {
+        // Show NC list
+        var records = loadNcRecords(tenantId);
+        if (thead) thead.innerHTML =
+          '<th>#</th><th>NC</th><th>Descrição</th><th>Status</th>';
+        tbody.innerHTML = records.length
+          ? records.map(function(r, i) {
+              var statusLabel = r.d8Finalizado ? '8D Finalizado' : r.rncAberta ? 'RNC Aberta' : 'Aberta';
+              var statusCls   = r.d8Finalizado ? 'complete' : r.rncAberta ? 'on_going' : 'delayed';
+              return '<tr>' +
+                '<td>' + (i + 1) + '</td>' +
+                '<td>' + escHtml(r.ncNumber || r.id || '') + '</td>' +
+                '<td>' + escHtml(r.description || r.piece || r.failureMode || '—') + '</td>' +
+                '<td><span class="badge badge-' + statusCls + '">' + statusLabel + '</span></td>' +
+              '</tr>';
+            }).join('')
+          : '<tr><td colspan="4" style="text-align:center;color:#6b7280;">Nenhuma NC cadastrada.</td></tr>';
+      }
+
+      document.getElementById('groupDetailBackdrop').classList.add('open');
+    }
+
+    function buildCard(tenantId) {
+      var t = TENANTS[tenantId];
+      var isProj = t.isProject === true || t.isClient === false;
+      var accent = t.accentBg || '#367C2B';
       var card = document.createElement('div');
       card.className = 'home-nc-card';
       card.style.setProperty('--card-accent', accent);
+      card.style.cursor = 'pointer';
+      card.title = 'Clique para ver detalhes';
+
+      var total, stat1, stat2, stat3, lbl1, lbl2, lbl3;
+
+      if (isProj) {
+        var actions  = loadProjectActions(tenantId);
+        total = actions.length;
+        stat1 = total;
+        stat2 = actions.filter(function(a){ return resolveStatus(a) === 'complete'; }).length;
+        stat3 = actions.filter(function(a){ return resolveStatus(a) === 'delayed'; }).length;
+        lbl1  = 'Total Ações';
+        lbl2  = 'Concluídas';
+        lbl3  = 'Em Atraso';
+      } else {
+        var records  = loadNcRecords(tenantId);
+        total = records.length;
+        stat1 = records.filter(function(r){ return r.rncAberta === true; }).length;
+        stat2 = records.filter(function(r){ return r.d8Finalizado === true; }).length;
+        stat3 = records.reduce(function(sum, r){ return sum + (parseInt(r.qty) || 0); }, 0);
+        lbl1  = 'RNC Aberta';
+        lbl2  = '8D Finalizado';
+        lbl3  = 'Qty Peças';
+      }
+
       card.innerHTML =
         '<div class="home-nc-card-header">' +
           '<span class="home-nc-card-dot" style="background:' + accent + '"></span>' +
@@ -4423,10 +4509,15 @@ document.addEventListener("DOMContentLoaded", function() {
           '<span class="home-nc-card-total" style="background:' + accent + ';color:' + (t.accentText || '#fff') + '">' + total + '</span>' +
         '</div>' +
         '<div class="home-nc-card-stats">' +
-          '<div class="home-nc-stat"><span class="home-nc-stat-num">' + rncAberta + '</span><span class="home-nc-stat-label">RNC Aberta</span></div>' +
-          '<div class="home-nc-stat"><span class="home-nc-stat-num">' + d8Fin + '</span><span class="home-nc-stat-label">8D Finalizado</span></div>' +
-          '<div class="home-nc-stat"><span class="home-nc-stat-num">' + qtyPecas + '</span><span class="home-nc-stat-label">Qty Peças</span></div>' +
+          '<div class="home-nc-stat"><span class="home-nc-stat-num">' + stat1 + '</span><span class="home-nc-stat-label">' + lbl1 + '</span></div>' +
+          '<div class="home-nc-stat"><span class="home-nc-stat-num">' + stat2 + '</span><span class="home-nc-stat-label">' + lbl2 + '</span></div>' +
+          '<div class="home-nc-stat"><span class="home-nc-stat-num">' + stat3 + '</span><span class="home-nc-stat-label">' + lbl3 + '</span></div>' +
         '</div>';
+
+      card.addEventListener('click', function() {
+        openHomeCardPopup(t.label, accent, isProj, tenantId);
+      });
+
       return card;
     }
 
