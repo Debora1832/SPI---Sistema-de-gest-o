@@ -1237,17 +1237,54 @@
     .bell-empty { padding:24px 16px; text-align:center; color:#6b7280; font-size:13px; }
     .bell-wrap { position:relative; display:inline-block; }
 
-    /* ===== HOME NC GRID ===== */
-    .home-nc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:20px; }
-    .home-nc-card { background:#fff; border-radius:12px; padding:20px; box-shadow:0 1px 4px rgba(0,0,0,.08); border-left:4px solid var(--card-accent,#367C2B); }
+    /* ===== HOME PAGE – HERO + SECTIONS ===== */
+    #homePage { background:#f0f4f9; }
+
+    /* Hero banner */
+    .home-hero {
+      display:flex; align-items:center; gap:20px;
+      background:linear-gradient(135deg,#0D2461 0%,#1a3a7a 60%,#163060 100%);
+      border-radius:16px; padding:28px 32px; margin-bottom:28px;
+      box-shadow:0 4px 20px rgba(13,36,97,.3);
+    }
+    .home-hero-logo {
+      flex-shrink:0; width:64px; height:64px;
+      background:rgba(255,255,255,.08); border-radius:14px;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .home-hero-title {
+      font-size:22px; font-weight:800; color:#fff; margin:0 0 4px;
+      letter-spacing:-.3px;
+    }
+    .home-hero-sub { font-size:13px; color:rgba(255,222,0,.85); margin:0; font-weight:600; letter-spacing:.06em; }
+
+    /* Section headers */
+    .home-section { margin-bottom:28px; }
+    .home-section-header {
+      display:flex; align-items:center; gap:8px;
+      font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.1em;
+      padding:8px 14px; border-radius:8px; margin-bottom:14px;
+    }
+    .home-section-header--proj { background:#0D2461; color:#FFDE00; }
+    .home-section-header--cli  { background:#1E4D17; color:#FFDE00; }
+
+    /* NC GRID */
+    .home-nc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px; }
+    .home-nc-card {
+      background:#fff; border-radius:12px; padding:20px;
+      box-shadow:0 1px 6px rgba(0,0,0,.08); border-left:4px solid var(--card-accent,#367C2B);
+      transition:box-shadow .15s, transform .15s;
+    }
+    .home-nc-card:hover { box-shadow:0 4px 16px rgba(0,0,0,.13); transform:translateY(-2px); }
     .home-nc-card-header { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
     .home-nc-card-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
     .home-nc-card-name { font-size:14px; font-weight:700; color:#1f2937; flex:1; }
     .home-nc-card-total { font-size:12px; font-weight:700; padding:2px 9px; border-radius:99px; color:#fff; }
     .home-nc-card-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
-    .home-nc-stat { display:flex; flex-direction:column; align-items:center; background:#f9fafb; border-radius:8px; padding:10px 6px; }
-    .home-nc-stat-num { font-size:22px; font-weight:800; color:#1e4d17; line-height:1; }
+    .home-nc-stat { display:flex; flex-direction:column; align-items:center; background:#f1f5f9; border-radius:8px; padding:10px 6px; }
+    .home-nc-stat-num { font-size:22px; font-weight:800; color:#0D2461; line-height:1; }
     .home-nc-stat-label { font-size:10px; color:#6b7280; margin-top:4px; text-align:center; }
+    .home-empty-msg { color:#94a3b8; font-size:13px; padding:10px 4px; }
 
     /* ===== INITIATIVE CARDS ===== */
     .initiative-card { background:#fff; border-radius:12px; padding:20px; box-shadow:0 1px 4px rgba(0,0,0,.08); cursor:pointer; transition:box-shadow .15s, transform .15s; }
@@ -1394,8 +1431,38 @@
 
   <!-- HOME PAGE -->
   <div id="homePage" class="page active">
-    <div class="page-header"><h1>Visão Geral</h1><p>Indicadores de Não Conformidades por cliente</p></div>
-    <div id="homeNcGrid"></div>
+    <!-- Hero banner -->
+    <div class="home-hero">
+      <div class="home-hero-logo">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none" width="54" height="54">
+          <circle cx="24" cy="24" r="22" stroke="#FFDE00" stroke-width="3" fill="#0D2461"/>
+          <path d="M14 24l7 7 13-14" stroke="#FFDE00" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M24 8v3M24 37v3M8 24h3M37 24h3" stroke="rgba(255,222,0,.45)" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="home-hero-text">
+        <h1 class="home-hero-title">Sistema de Gestão de Qualidade</h1>
+        <p class="home-hero-sub">SSQE · Visão Geral dos Indicadores</p>
+      </div>
+    </div>
+    <!-- Projetos section -->
+    <div class="home-section" id="homeSectionProjetos">
+      <div class="home-section-header home-section-header--proj">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.396 0 2.7.37 3.821 1.016A.75.75 0 0010 14.357V5.25a.75.75 0 00-.403-.666A8.059 8.059 0 009 4.804zM10.403 15.016A7.966 7.966 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.396 0-2.7.37-3.822 1.016A.75.75 0 0010 5.75v9.107a.75.75 0 00.403.659z"/></svg>
+        <span>Projetos</span>
+      </div>
+      <div class="home-nc-grid" id="homeGridProjetos"></div>
+    </div>
+    <!-- Clientes section -->
+    <div class="home-section" id="homeSectionClientes">
+      <div class="home-section-header home-section-header--cli">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM2 8a2 2 0 114 0A2 2 0 012 8zM14.348 17.516A6.001 6.001 0 006 12H3.6A6.001 6.001 0 006 17.516M16 14a4 4 0 01-8 0h8z"/></svg>
+        <span>Clientes</span>
+      </div>
+      <div class="home-nc-grid" id="homeGridClientes"></div>
+    </div>
+    <!-- Kept for backward-compat (empty) -->
+    <div id="homeNcGrid" style="display:none"></div>
   </div>
 
   <!-- DASHBOARD -->
@@ -2491,7 +2558,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
   // Branding applied to the sidebar when no tenant is selected (home page).
   var HOME_BRANDING = { initials:'SPI', title:'SPI', subtitle:'Sistema de Gestão',
-    accentBg:'#FFDE00', accentText:'#0A2008', sidebarBg:'#1E4D17' };
+    accentBg:'#FFDE00', accentText:'#0A2008', sidebarBg:'#0D2461' };
 
   function applyHomeBranding() {
     document.body.className = '';
@@ -2505,7 +2572,7 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById('sidebarSubtitle').textContent = HOME_BRANDING.subtitle;
     document.title = 'SSQE - Gestão';
     document.documentElement.style.setProperty('--tenant-sidebar-bg',    HOME_BRANDING.sidebarBg);
-    document.documentElement.style.setProperty('--tenant-sidebar-hover', '#163d10');
+    document.documentElement.style.setProperty('--tenant-sidebar-hover', '#091a4a');
     document.documentElement.style.setProperty('--tenant-nav-active-bg',   HOME_BRANDING.accentBg);
     document.documentElement.style.setProperty('--tenant-nav-active-text', HOME_BRANDING.accentText);
   }
@@ -4328,23 +4395,20 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   function renderHomePage() {
-    const grid = document.getElementById('homeNcGrid');
-    if (!grid) return;
-    const keys = Object.keys(TENANTS);
-    if (keys.length === 0) {
-      grid.innerHTML = '<p style="color:#6b7280;font-size:14px;">Nenhum cliente cadastrado.</p>';
-      return;
-    }
-    grid.className = 'home-nc-grid';
-    grid.innerHTML = '';
-    keys.forEach(function(tenantId) {
-      const t = TENANTS[tenantId];
+    var projGrid = document.getElementById('homeGridProjetos');
+    var cliGrid  = document.getElementById('homeGridClientes');
+    var projSec  = document.getElementById('homeSectionProjetos');
+    var cliSec   = document.getElementById('homeSectionClientes');
+    if (!projGrid || !cliGrid) return;
+
+    function buildCard(tenantId) {
+      var t = TENANTS[tenantId];
       var records = [];
       try {
         var raw = localStorage.getItem('spi_nc_records_' + tenantId);
         if (raw) records = JSON.parse(raw) || [];
       } catch(e) { records = []; }
-      var total    = records.length;
+      var total     = records.length;
       var rncAberta = records.filter(function(r){ return r.rncAberta === true; }).length;
       var d8Fin     = records.filter(function(r){ return r.d8Finalizado === true; }).length;
       var qtyPecas  = records.reduce(function(sum, r){ return sum + (parseInt(r.qty) || 0); }, 0);
@@ -4363,8 +4427,29 @@ document.addEventListener("DOMContentLoaded", function() {
           '<div class="home-nc-stat"><span class="home-nc-stat-num">' + d8Fin + '</span><span class="home-nc-stat-label">8D Finalizado</span></div>' +
           '<div class="home-nc-stat"><span class="home-nc-stat-num">' + qtyPecas + '</span><span class="home-nc-stat-label">Qty Peças</span></div>' +
         '</div>';
-      grid.appendChild(card);
-    });
+      return card;
+    }
+
+    projGrid.innerHTML = '';
+    cliGrid.innerHTML  = '';
+    var keys = Object.keys(TENANTS);
+    var projKeys = keys.filter(function(k){ return TENANTS[k].isProject === true || TENANTS[k].isClient === false; });
+    var cliKeys  = keys.filter(function(k){ return TENANTS[k].isProject !== true && TENANTS[k].isClient !== false; });
+
+    if (projKeys.length === 0) {
+      projGrid.innerHTML = '<p class="home-empty-msg">Nenhum projeto cadastrado.</p>';
+    } else {
+      projKeys.forEach(function(k){ projGrid.appendChild(buildCard(k)); });
+    }
+    if (cliKeys.length === 0) {
+      cliGrid.innerHTML = '<p class="home-empty-msg">Nenhum cliente cadastrado.</p>';
+    } else {
+      cliKeys.forEach(function(k){ cliGrid.appendChild(buildCard(k)); });
+    }
+
+    // Show/hide sections
+    if (projSec) projSec.style.display = projKeys.length > 0 ? '' : 'none';
+    if (cliSec)  cliSec.style.display  = cliKeys.length  > 0 ? '' : 'none';
   }
 
 
