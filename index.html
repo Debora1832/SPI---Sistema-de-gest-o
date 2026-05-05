@@ -465,7 +465,7 @@
     }
     .group-detail-backdrop.open { display:flex; }
     .group-detail-modal {
-      background:#fff; border-radius:16px; width:min(720px,96vw); max-height:80vh;
+      background:#fff; border-radius:16px; width:min(1100px,96vw); max-height:88vh;
       display:flex; flex-direction:column;
       box-shadow:0 10px 48px rgba(0,0,0,.25); border-top:4px solid #2d6a27;
     }
@@ -479,7 +479,7 @@
       padding:4px 8px; border-radius:6px; line-height:1;
     }
     .group-detail-close:hover { background:#f3f4f6; color:#111; }
-    .group-detail-body { overflow-y:auto; padding:16px 24px 24px; flex:1; }
+    .group-detail-body { overflow-y:auto; overflow-x:auto; padding:16px 24px 24px; flex:1; }
     .group-detail-table { width:100%; border-collapse:collapse; font-size:13px; }
     .group-detail-table th {
       text-align:left; padding:8px 10px; background:#1E4D17; color:#fff;
@@ -1316,7 +1316,9 @@
       background:#fff; border-radius:10px; padding:12px 14px;
       box-shadow:0 1px 5px rgba(0,0,0,.08); border-left:4px solid var(--alert-accent,#dc2626);
       display:flex; flex-direction:column; gap:3px;
+      cursor:pointer; transition:box-shadow .15s, transform .15s;
     }
+    .home-alert-card:hover { box-shadow:0 4px 14px rgba(0,0,0,.13); transform:translateY(-2px); }
     .home-alert-card-tag { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--alert-accent,#dc2626); }
     .home-alert-card-title { font-size:13px; font-weight:700; color:#111827; }
     .home-alert-card-sub { font-size:11px; color:#6b7280; }
@@ -4841,15 +4843,15 @@ document.addEventListener("DOMContentLoaded", function() {
         var recs = loadNcRecords(k);
         var openRnc = recs.filter(function(r) { return r.rncAberta === true; }).length;
         var venc    = recs.filter(function(r) { return !r.rncAberta && !r.d8Finalizado; }).length;
-        if (openRnc > 0) alertItems.push({ accent:'#dc2626', tag:'RNC Aberta', title: TENANTS[k].label, sub: openRnc + ' registro(s) com RNC aberta' });
-        if (venc    > 0) alertItems.push({ accent:'#b45309', tag:'NC Vencida', title: TENANTS[k].label, sub: venc    + ' NC(s) vencida(s) sem tratativa' });
+        if (openRnc > 0) alertItems.push({ accent:'#dc2626', tag:'RNC Aberta', title: TENANTS[k].label, sub: openRnc + ' registro(s) com RNC aberta',    tenantId: k, type:'rnc' });
+        if (venc    > 0) alertItems.push({ accent:'#b45309', tag:'NC Vencida', title: TENANTS[k].label, sub: venc    + ' NC(s) vencida(s) sem tratativa', tenantId: k, type:'venc' });
       });
 
       // Projetos com ações atrasadas
       projKeys.forEach(function(k) {
         var acts = loadProjectActions(k);
         var late = acts.filter(function(a) { return resolveStatus(a) === 'delayed'; }).length;
-        if (late > 0) alertItems.push({ accent:'#b91c1c', tag:'Ação em Atraso', title: TENANTS[k].label, sub: late + ' ação(ões) com prazo vencido' });
+        if (late > 0) alertItems.push({ accent:'#b91c1c', tag:'Ação em Atraso', title: TENANTS[k].label, sub: late + ' ação(ões) com prazo vencido', tenantId: k, type:'late' });
       });
 
       if (alertItems.length > 0) {
@@ -4857,10 +4859,33 @@ document.addEventListener("DOMContentLoaded", function() {
           var card = document.createElement('div');
           card.className = 'home-alert-card';
           card.style.setProperty('--alert-accent', item.accent);
+          card.title = 'Clique para ver detalhes';
           card.innerHTML =
             '<span class="home-alert-card-tag">' + item.tag + '</span>' +
             '<span class="home-alert-card-title">' + escHtml(item.title) + '</span>' +
             '<span class="home-alert-card-sub">' + escHtml(item.sub) + '</span>';
+          // click → open filtered popup
+          (function(it) {
+            card.addEventListener('click', function() {
+              var tenantLabel = TENANTS[it.tenantId] ? TENANTS[it.tenantId].label : it.tenantId;
+              if (it.type === 'rnc') {
+                var recs = loadNcRecords(it.tenantId)
+                  .filter(function(r) { return r.rncAberta === true; })
+                  .map(function(r) { r = Object.assign({}, r); r._clientLabel = tenantLabel; return r; });
+                openKpiDetailPopup('RNC Aberta — ' + tenantLabel, it.accent, true, recs);
+              } else if (it.type === 'venc') {
+                var recs = loadNcRecords(it.tenantId)
+                  .filter(function(r) { return !r.rncAberta && !r.d8Finalizado; })
+                  .map(function(r) { r = Object.assign({}, r); r._clientLabel = tenantLabel; return r; });
+                openKpiDetailPopup('NCs Vencidas — ' + tenantLabel, it.accent, true, recs);
+              } else if (it.type === 'late') {
+                var acts = loadProjectActions(it.tenantId)
+                  .filter(function(a) { return resolveStatus(a) === 'delayed'; })
+                  .map(function(a) { a = Object.assign({}, a); a._projLabel = tenantLabel; return a; });
+                openKpiDetailPopup('Ações em Atraso — ' + tenantLabel, it.accent, false, acts);
+              }
+            });
+          }(item));
           alertsList.appendChild(card);
         });
         if (alertsSec) alertsSec.style.display = '';
