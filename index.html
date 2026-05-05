@@ -4121,10 +4121,12 @@ document.addEventListener("DOMContentLoaded", function() {
       });
     });
     container.querySelectorAll('.gc-row-task').forEach(function(row) {
-      row.addEventListener('click', function() {
+      row.style.cursor = 'pointer';
+      row.addEventListener('click', function(e) {
+        e.stopPropagation();
         var ncId = row.dataset.ncId;
         var nc = ncRecords.find(function(r) { return r.id === ncId; });
-        if (nc && window.openNcDetailModal) openNcDetailModal(nc);
+        if (nc) openNcDetailModal(nc);
       });
     });
   }
