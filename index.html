@@ -80,6 +80,12 @@
 
     /* Clientes / Projetos raw-content groups have no extra indent */
     .nav-group-items.nav-group-items--raw { padding-left:2px; }
+
+    /* Divider lines between nav groups */
+    .sidebar-nav > ul > li.nav-group + li.nav-group {
+      border-top:1px solid rgba(255,255,255,.12);
+      margin-top:6px; padding-top:6px;
+    }
     /* Sidebar project item (for Projetos group) */
     .sidebar-project-item {
       display:flex; align-items:center; gap:7px; padding:5px 8px;
@@ -4144,6 +4150,9 @@ document.addEventListener("DOMContentLoaded", function() {
     var isProject = TENANTS[key] && (TENANTS[key].isProject === true || TENANTS[key].isClient === false);
     if (projGrp)   projGrp.style.display   = isProject ? '' : 'none';
     if (clientGrp) clientGrp.style.display = isProject ? 'none' : '';
+    // Collapse Projetos/Clientes groups so user chooses when to re-expand
+    if (projGrp)   projGrp.classList.remove('open');
+    if (clientGrp) clientGrp.classList.remove('open');
     // Persist attachments ref back before switching (actions are mutated in-place)
     TENANTS[currentTenant].attachments = attachmentsMap;
     currentTenant = key;
@@ -4186,6 +4195,10 @@ document.addEventListener("DOMContentLoaded", function() {
     updateNcVisibility();
     // Switch real-time listeners to the new tenant
     if (typeof setupFirebaseListeners === 'function') setupFirebaseListeners(key);
+    // Auto-navigate: clients → NC page, projects → Dashboard
+    var targetPageId = isProject ? 'dashboard' : 'ncPage';
+    var targetNav = document.querySelector('.sidebar-nav li[data-page="' + targetPageId + '"]');
+    if (targetNav) targetNav.click();
   }
 
   // ── Theme helpers ──────────────────────────────────────────────────────────
@@ -4452,19 +4465,21 @@ document.addEventListener("DOMContentLoaded", function() {
         // Show NC list
         var records = loadNcRecords(tenantId);
         if (thead) thead.innerHTML =
-          '<th>#</th><th>NC</th><th>Descrição</th><th>Status</th>';
+          '<th>#</th><th>NC</th><th>Descrição</th><th>Data Abertura</th><th>Status</th>';
         tbody.innerHTML = records.length
           ? records.map(function(r, i) {
-              var statusLabel = r.d8Finalizado ? '8D Finalizado' : r.rncAberta ? 'RNC Aberta' : 'Aberta';
+              var statusLabel = r.d8Finalizado ? '8D Finalizado' : r.rncAberta ? 'RNC Aberta' : 'Vencida';
               var statusCls   = r.d8Finalizado ? 'complete' : r.rncAberta ? 'on_going' : 'delayed';
+              var dateFmt = r.date ? r.date.split('-').reverse().join('/') : '—';
               return '<tr>' +
                 '<td>' + (i + 1) + '</td>' +
                 '<td>' + escHtml(r.ncNumber || r.id || '') + '</td>' +
                 '<td>' + escHtml(r.description || r.piece || r.failureMode || '—') + '</td>' +
+                '<td>' + dateFmt + '</td>' +
                 '<td><span class="badge badge-' + statusCls + '">' + statusLabel + '</span></td>' +
               '</tr>';
             }).join('')
-          : '<tr><td colspan="4" style="text-align:center;color:#6b7280;">Nenhuma NC cadastrada.</td></tr>';
+          : '<tr><td colspan="5" style="text-align:center;color:#6b7280;">Nenhuma NC cadastrada.</td></tr>';
       }
 
       document.getElementById('groupDetailBackdrop').classList.add('open');
