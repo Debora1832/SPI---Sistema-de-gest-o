@@ -1304,8 +1304,9 @@
     .home-kpi-tile {
       background:#fff; border-radius:12px; padding:14px 16px;
       box-shadow:0 1px 6px rgba(0,0,0,.08); border-top:3px solid var(--kpi-accent,#0D2461);
-      display:flex; flex-direction:column; gap:4px;
+      display:flex; flex-direction:column; gap:4px; transition:box-shadow .15s, transform .15s;
     }
+    .home-kpi-tile[style*="cursor"]:hover { box-shadow:0 4px 16px rgba(0,0,0,.14); transform:translateY(-2px); }
     .home-kpi-value { font-size:26px; font-weight:800; color:var(--kpi-accent,#0D2461); line-height:1.1; }
     .home-kpi-label { font-size:11px; color:#6b7280; font-weight:600; text-transform:uppercase; letter-spacing:.07em; }
     .home-kpi-sub { font-size:11px; color:#9ca3af; margin-top:2px; }
@@ -4663,7 +4664,7 @@ document.addEventListener("DOMContentLoaded", function() {
     var ongoingActs = allProjActs.filter(function(a) { return resolveStatus(a) === 'on_going'; }).length;
     var pct = totalActs > 0 ? Math.round(doneActs / totalActs * 100) : 0;
 
-    function kpiTile(value, label, sub, accent) {
+    function kpiTile(value, label, sub, accent, onClick) {
       var d = document.createElement('div');
       d.className = 'home-kpi-tile';
       d.style.setProperty('--kpi-accent', accent);
@@ -4671,19 +4672,128 @@ document.addEventListener("DOMContentLoaded", function() {
         '<span class="home-kpi-value">' + value + '</span>' +
         '<span class="home-kpi-label">' + label + '</span>' +
         (sub ? '<span class="home-kpi-sub">' + sub + '</span>' : '');
+      if (onClick) {
+        d.style.cursor = 'pointer';
+        d.title = 'Clique para ver detalhes';
+        d.addEventListener('click', onClick);
+      }
       return d;
+    }
+
+    // ── KPI detail popup (reuses groupDetailBackdrop) ───────────────────────
+    function openKpiDetailPopup(title, accent, isNc, filteredRecs) {
+      var titleEl = document.getElementById('groupDetailTitle');
+      var tbody   = document.getElementById('groupDetailTbody');
+      var thead   = document.querySelector('#groupDetailTable thead tr');
+      if (!titleEl || !tbody) return;
+
+      titleEl.textContent = title;
+
+      var _sortCol = -1, _sortAsc = true;
+      function applySort(rows, col, asc) {
+        rows.sort(function(a, b) {
+          var av = a.children[col] ? a.children[col].textContent.trim() : '';
+          var bv = b.children[col] ? b.children[col].textContent.trim() : '';
+          var an = parseFloat(av.replace(/[^\d.]/g, '')), bn = parseFloat(bv.replace(/[^\d.]/g, ''));
+          if (!isNaN(an) && !isNaN(bn)) return asc ? an - bn : bn - an;
+          return asc ? av.localeCompare(bv, 'pt') : bv.localeCompare(av, 'pt');
+        });
+        while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
+        rows.forEach(function(r) { tbody.appendChild(r); });
+      }
+      function makeKpiHeadersSortable() {
+        if (!thead) return;
+        Array.prototype.forEach.call(thead.querySelectorAll('th'), function(th, i) {
+          if (i === 0) return;
+          th.style.cursor = 'pointer';
+          th.style.userSelect = 'none';
+          th.title = 'Clique para ordenar';
+          th.addEventListener('click', function() {
+            if (_sortCol === i) { _sortAsc = !_sortAsc; } else { _sortCol = i; _sortAsc = true; }
+            Array.prototype.forEach.call(thead.querySelectorAll('th'), function(h) {
+              h.textContent = h.textContent.replace(/ [▲▼]$/, '');
+            });
+            th.textContent = th.textContent + ' ' + (_sortAsc ? '▲' : '▼');
+            applySort(Array.prototype.slice.call(tbody.querySelectorAll('tr')), i, _sortAsc);
+          });
+        });
+      }
+
+      if (isNc) {
+        // NC records table: # | Cliente | NC | Descrição | Data | Qty | Status
+        if (thead) thead.innerHTML =
+          '<th>#</th><th>Cliente</th><th>NC</th><th>Descrição</th><th>Data</th><th>Qty</th><th>Status</th>';
+        tbody.innerHTML = filteredRecs.length
+          ? filteredRecs.map(function(r, i) {
+              var statusLabel = r.d8Finalizado ? '8D Finalizado' : r.rncAberta ? 'RNC Aberta' : 'Vencida';
+              var statusCls   = r.d8Finalizado ? 'complete' : r.rncAberta ? 'on_going' : 'delayed';
+              var dateFmt = r.date ? r.date.split('-').reverse().join('/') : '—';
+              var clientLabel = r._clientLabel || '—';
+              return '<tr>' +
+                '<td>' + (i + 1) + '</td>' +
+                '<td>' + escHtml(clientLabel) + '</td>' +
+                '<td>' + escHtml(r.ncNumber || r.id || '') + '</td>' +
+                '<td>' + escHtml(r.description || r.piece || r.failureMode || '—') + '</td>' +
+                '<td>' + dateFmt + '</td>' +
+                '<td>' + (r.qty || '—') + '</td>' +
+                '<td><span class="badge badge-' + statusCls + '">' + statusLabel + '</span></td>' +
+              '</tr>';
+            }).join('')
+          : '<tr><td colspan="7" style="text-align:center;color:#6b7280;">Nenhum registro encontrado.</td></tr>';
+      } else {
+        // Actions table: # | Projeto | Descrição | Grupo | Responsável | Status | Prazo | Atraso
+        if (thead) thead.innerHTML =
+          '<th>#</th><th>Projeto</th><th>Descrição</th><th>Responsável</th><th>Status</th><th>Prazo</th><th>Atraso (d)</th>';
+        var statusLabels = { complete: 'Concluída', on_going: 'Em andamento', delayed: 'Atrasada' };
+        tbody.innerHTML = filteredRecs.length
+          ? filteredRecs.map(function(a, i) {
+              var st     = resolveStatus(a);
+              var endFmt = (a.reprazo || a.end || '').split('-').reverse().join('/') || '—';
+              var delay  = calculateDelay(a.reprazo || a.end, st);
+              var projLabel = a._projLabel || '—';
+              return '<tr>' +
+                '<td>' + (i + 1) + '</td>' +
+                '<td>' + escHtml(projLabel) + '</td>' +
+                '<td>' + escHtml(a.desc || '') + '</td>' +
+                '<td>' + escHtml(a.lead || a.team || '—') + '</td>' +
+                '<td><span class="badge badge-' + (st || 'on_going') + '">' + (statusLabels[st] || st) + '</span></td>' +
+                '<td>' + endFmt + '</td>' +
+                '<td>' + (delay > 0 ? delay : '—') + '</td>' +
+              '</tr>';
+            }).join('')
+          : '<tr><td colspan="7" style="text-align:center;color:#6b7280;">Nenhuma ação encontrada.</td></tr>';
+      }
+
+      makeKpiHeadersSortable();
+      document.getElementById('groupDetailBackdrop').classList.add('open');
     }
 
     // ── KPI Clientes ────────────────────────────────────────────────────────
     var kpiCliSec = document.getElementById('homeKpiCliSection');
     var kpiCliRow = document.getElementById('homeKpiCliRow');
     if (kpiCliRow && cliKeys.length > 0) {
+      // annotate each NC record with its client label
+      var allCliRecsTagged = cliKeys.reduce(function(acc, k) {
+        return acc.concat(loadNcRecords(k).map(function(r) {
+          r = Object.assign({}, r); r._clientLabel = TENANTS[k] ? TENANTS[k].label : k; return r;
+        }));
+      }, []);
+      var rncRecs  = allCliRecsTagged.filter(function(r) { return r.rncAberta === true; });
+      var d8Recs   = allCliRecsTagged.filter(function(r) { return r.d8Finalizado === true; });
+      var vencRecs = allCliRecsTagged.filter(function(r) { return !r.rncAberta && !r.d8Finalizado; });
+      var pecaRecs = allCliRecsTagged.slice().sort(function(a,b){ return (parseInt(b.qty)||0)-(parseInt(a.qty)||0); });
+
       kpiCliRow.innerHTML = '';
-      kpiCliRow.appendChild(kpiTile(totalNc,     'Total NCs',      cliKeys.length + ' cliente(s)', '#0D2461'));
-      kpiCliRow.appendChild(kpiTile(totalRnc,    'RNC Aberta',     'Sem 8D finalizado',            '#dc2626'));
-      kpiCliRow.appendChild(kpiTile(total8d,     '8D Finalizado',  'NCs encerradas',               '#16a34a'));
-      kpiCliRow.appendChild(kpiTile(vencidasNc,  'Vencidas',       'Sem status ativo',             '#b45309'));
-      kpiCliRow.appendChild(kpiTile(totalPecas,  'Qty Peças',      'Total peças não-conformes',    '#7c3aed'));
+      kpiCliRow.appendChild(kpiTile(totalNc,    'Total NCs',      cliKeys.length + ' cliente(s)', '#0D2461',
+        function(){ openKpiDetailPopup('Total NCs — todos os clientes', '#0D2461', true, allCliRecsTagged); }));
+      kpiCliRow.appendChild(kpiTile(totalRnc,   'RNC Aberta',     'Sem 8D finalizado',            '#dc2626',
+        function(){ openKpiDetailPopup('RNC Aberta — sem 8D finalizado', '#dc2626', true, rncRecs); }));
+      kpiCliRow.appendChild(kpiTile(total8d,    '8D Finalizado',  'NCs encerradas',               '#16a34a',
+        function(){ openKpiDetailPopup('8D Finalizado — NCs encerradas', '#16a34a', true, d8Recs); }));
+      kpiCliRow.appendChild(kpiTile(vencidasNc, 'Vencidas',       'Sem status ativo',             '#b45309',
+        function(){ openKpiDetailPopup('NCs Vencidas — sem tratativa ativa', '#b45309', true, vencRecs); }));
+      kpiCliRow.appendChild(kpiTile(totalPecas, 'Qty Peças',      'Total peças não-conformes',    '#7c3aed',
+        function(){ openKpiDetailPopup('Qty Peças — maior para menor', '#7c3aed', true, pecaRecs); }));
       if (kpiCliSec) kpiCliSec.style.display = '';
     } else if (kpiCliSec) {
       kpiCliSec.style.display = 'none';
@@ -4693,12 +4803,27 @@ document.addEventListener("DOMContentLoaded", function() {
     var kpiProjSec = document.getElementById('homeKpiProjSection');
     var kpiProjRow = document.getElementById('homeKpiProjRow');
     if (kpiProjRow && projKeys.length > 0) {
+      // annotate each action with its project label
+      var allProjActsTagged = projKeys.reduce(function(acc, k) {
+        return acc.concat(loadProjectActions(k).map(function(a) {
+          a = Object.assign({}, a); a._projLabel = TENANTS[k] ? TENANTS[k].label : k; return a;
+        }));
+      }, []);
+      var doneActsArr    = allProjActsTagged.filter(function(a) { return resolveStatus(a) === 'complete'; });
+      var ongoingActsArr = allProjActsTagged.filter(function(a) { return resolveStatus(a) === 'on_going'; });
+      var lateActsArr    = allProjActsTagged.filter(function(a) { return resolveStatus(a) === 'delayed'; });
+
       kpiProjRow.innerHTML = '';
-      kpiProjRow.appendChild(kpiTile(totalActs,   'Total Ações',       projKeys.length + ' projeto(s)', '#1d4ed8'));
-      kpiProjRow.appendChild(kpiTile(doneActs,    'Concluídas',        doneActs + '/' + totalActs,      '#059669'));
-      kpiProjRow.appendChild(kpiTile(ongoingActs, 'Em Andamento',      'Ações em progresso',            '#0891b2'));
-      kpiProjRow.appendChild(kpiTile(lateActs,    'Em Atraso',         'Prazo vencido',                 '#b91c1c'));
-      kpiProjRow.appendChild(kpiTile(pct + '%',   'Conclusão Geral',   'Meta de entrega',               '#7c3aed'));
+      kpiProjRow.appendChild(kpiTile(totalActs,   'Total Ações',       projKeys.length + ' projeto(s)', '#1d4ed8',
+        function(){ openKpiDetailPopup('Total Ações — todos os projetos', '#1d4ed8', false, allProjActsTagged); }));
+      kpiProjRow.appendChild(kpiTile(doneActs,    'Concluídas',        doneActs + '/' + totalActs,      '#059669',
+        function(){ openKpiDetailPopup('Ações Concluídas', '#059669', false, doneActsArr); }));
+      kpiProjRow.appendChild(kpiTile(ongoingActs, 'Em Andamento',      'Ações em progresso',            '#0891b2',
+        function(){ openKpiDetailPopup('Ações em Andamento', '#0891b2', false, ongoingActsArr); }));
+      kpiProjRow.appendChild(kpiTile(lateActs,    'Em Atraso',         'Prazo vencido',                 '#b91c1c',
+        function(){ openKpiDetailPopup('Ações em Atraso — prazo vencido', '#b91c1c', false, lateActsArr); }));
+      kpiProjRow.appendChild(kpiTile(pct + '%',   'Conclusão Geral',   'Meta de entrega',               '#7c3aed',
+        function(){ openKpiDetailPopup('Conclusão Geral — todas as ações', '#7c3aed', false, allProjActsTagged); }));
       if (kpiProjSec) kpiProjSec.style.display = '';
     } else if (kpiProjSec) {
       kpiProjSec.style.display = 'none';
