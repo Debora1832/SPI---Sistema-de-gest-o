@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8" />
-  <title>SGQ - Gestão SIP | John Deere</title>
+  <title>SSQE - Gestão SIP | John Deere</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -1243,14 +1243,14 @@
     .bell-wrap { position:relative; display:inline-block; }
 
     /* ===== HOME PAGE – HERO + SECTIONS ===== */
-    #homePage { background:#f0f4f9; }
+    #homePage { background:#23272f; }
 
     /* Hero banner */
     .home-hero {
       display:flex; align-items:center; gap:12px;
       background:linear-gradient(135deg,#0D2461 0%,#1a3a7a 60%,#163060 100%);
       border-radius:10px; padding:10px 20px; margin-bottom:18px;
-      box-shadow:0 2px 10px rgba(13,36,97,.25);
+      box-shadow:0 2px 10px rgba(0,0,0,.4);
     }
     .home-hero-logo { display:none; }
     .home-hero-title {
@@ -1279,20 +1279,20 @@
     @media(max-width:700px) { .home-main-row { grid-template-columns:1fr; } .home-main-divider { display:none !important; } .home-kpi-row { grid-template-columns:1fr; } .home-kpi-divider { display:none; } }
     .home-nc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; }
     .home-nc-card {
-      background:#fff; border-radius:12px; padding:20px;
-      box-shadow:0 1px 6px rgba(0,0,0,.08); border-left:4px solid var(--card-accent,#367C2B);
+      background:#2d3340; border-radius:12px; padding:20px;
+      box-shadow:0 1px 8px rgba(0,0,0,.3); border-left:4px solid var(--card-accent,#367C2B);
       transition:box-shadow .15s, transform .15s; cursor:pointer;
     }
-    .home-nc-card:hover { box-shadow:0 4px 16px rgba(0,0,0,.13); transform:translateY(-2px); }
+    .home-nc-card:hover { box-shadow:0 4px 20px rgba(0,0,0,.45); transform:translateY(-2px); }
     .home-nc-card-header { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
     .home-nc-card-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
-    .home-nc-card-name { font-size:14px; font-weight:700; color:#1f2937; flex:1; }
+    .home-nc-card-name { font-size:14px; font-weight:700; color:#e5e7eb; flex:1; }
     .home-nc-card-total { font-size:12px; font-weight:700; padding:2px 9px; border-radius:99px; color:#fff; }
     .home-nc-card-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
-    .home-nc-stat { display:flex; flex-direction:column; align-items:center; background:#f1f5f9; border-radius:8px; padding:10px 6px; }
-    .home-nc-stat-num { font-size:22px; font-weight:800; color:#0D2461; line-height:1; }
-    .home-nc-stat-label { font-size:10px; color:#6b7280; margin-top:4px; text-align:center; }
-    .home-empty-msg { color:#94a3b8; font-size:13px; padding:10px 4px; }
+    .home-nc-stat { display:flex; flex-direction:column; align-items:center; background:#363c4a; border-radius:8px; padding:10px 6px; }
+    .home-nc-stat-num { font-size:22px; font-weight:800; color:#FFDE00; line-height:1; }
+    .home-nc-stat-label { font-size:10px; color:#9ca3af; margin-top:4px; text-align:center; }
+    .home-empty-msg { color:#6b7280; font-size:13px; padding:10px 4px; }
 
     /* ===== HOME KPI TILES ===== */
     .home-kpi-section { margin-bottom:4px; }
@@ -1305,14 +1305,14 @@
     .home-kpi-section-header--proj { background:#0D2461; color:#FFDE00; }
     .home-kpi-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:10px; }
     .home-kpi-tile {
-      background:#fff; border-radius:12px; padding:14px 16px;
-      box-shadow:0 1px 6px rgba(0,0,0,.08); border-top:3px solid var(--kpi-accent,#0D2461);
+      background:#2d3340; border-radius:12px; padding:14px 16px;
+      box-shadow:0 1px 8px rgba(0,0,0,.3); border-top:3px solid var(--kpi-accent,#FFDE00);
       display:flex; flex-direction:column; gap:4px; transition:box-shadow .15s, transform .15s;
     }
-    .home-kpi-tile[style*="cursor"]:hover { box-shadow:0 4px 16px rgba(0,0,0,.14); transform:translateY(-2px); }
-    .home-kpi-value { font-size:26px; font-weight:800; color:var(--kpi-accent,#0D2461); line-height:1.1; }
-    .home-kpi-label { font-size:11px; color:#6b7280; font-weight:600; text-transform:uppercase; letter-spacing:.07em; }
-    .home-kpi-sub { font-size:11px; color:#9ca3af; margin-top:2px; }
+    .home-kpi-tile[style*="cursor"]:hover { box-shadow:0 4px 20px rgba(0,0,0,.45); transform:translateY(-2px); }
+    .home-kpi-value { font-size:26px; font-weight:800; color:#FFDE00; line-height:1.1; }
+    .home-kpi-label { font-size:11px; color:#9ca3af; font-weight:600; text-transform:uppercase; letter-spacing:.07em; }
+    .home-kpi-sub { font-size:11px; color:#6b7280; margin-top:2px; }
 
     /* KPI two-column layout */
     .home-kpi-row {
@@ -1320,10 +1320,10 @@
       align-items:start; margin-bottom:20px;
     }
     .home-kpi-divider {
-      background:rgba(13,36,97,.18); align-self:stretch; border-radius:2px;
+      background:rgba(255,255,255,.1); align-self:stretch; border-radius:2px;
     }
     .home-main-divider {
-      background:rgba(13,36,97,.18); align-self:stretch; border-radius:2px; min-height:100%;
+      background:rgba(255,255,255,.1); align-self:stretch; border-radius:2px; min-height:100%;
     }
 
     /* KPI two-column layout (kept for compat, unused now) */
@@ -1331,15 +1331,15 @@
 
     /* ===== HOME ALERT CARDS ===== */
     .home-alert-card {
-      background:#fff; border-radius:10px; padding:12px 14px;
-      box-shadow:0 1px 5px rgba(0,0,0,.08); border-left:4px solid var(--alert-accent,#dc2626);
+      background:#2d3340; border-radius:10px; padding:12px 14px;
+      box-shadow:0 1px 8px rgba(0,0,0,.3); border-left:4px solid var(--alert-accent,#dc2626);
       display:flex; flex-direction:column; gap:3px;
       cursor:pointer; transition:box-shadow .15s, transform .15s;
     }
-    .home-alert-card:hover { box-shadow:0 4px 14px rgba(0,0,0,.13); transform:translateY(-2px); }
+    .home-alert-card:hover { box-shadow:0 4px 20px rgba(0,0,0,.45); transform:translateY(-2px); }
     .home-alert-card-tag { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--alert-accent,#dc2626); }
-    .home-alert-card-title { font-size:13px; font-weight:700; color:#111827; }
-    .home-alert-card-sub { font-size:11px; color:#6b7280; }
+    .home-alert-card-title { font-size:13px; font-weight:700; color:#e5e7eb; }
+    .home-alert-card-sub { font-size:11px; color:#9ca3af; }
 
     /* ===== INITIATIVE CARDS ===== */
     .initiative-card { background:#fff; border-radius:12px; padding:20px; box-shadow:0 1px 4px rgba(0,0,0,.08); cursor:pointer; transition:box-shadow .15s, transform .15s; }
@@ -1356,6 +1356,25 @@
     .initiative-stat-num { font-weight:700; }
     .initiative-card-actions { display:flex; justify-content:flex-end; margin-top:14px; }
     .btn-sm { padding:5px 12px; font-size:12px; border-radius:6px; }
+    /* Dark theme overrides for initiative cards inside home page */
+    #homePage .initiative-card { background:#2d3340; box-shadow:0 1px 8px rgba(0,0,0,.3); }
+    #homePage .initiative-card:hover { box-shadow:0 4px 20px rgba(0,0,0,.45); }
+    #homePage .initiative-card-title { color:#e5e7eb; }
+    #homePage .initiative-card-badge { background:#363c4a; color:#d1d5db; }
+    #homePage .initiative-progress-track { background:#363c4a; }
+    #homePage .initiative-progress-label { color:#9ca3af; }
+    /* Dark theme overrides for kpi-card and generic card inside home page */
+    #homePage .kpi-card { background:#2d3340; box-shadow:0 1px 8px rgba(0,0,0,.3); }
+    #homePage .kpi-card .kpi-label { color:#9ca3af; }
+    #homePage .kpi-card .kpi-value { color:#FFDE00; }
+    #homePage .kpi-card .kpi-sub { color:#6b7280; }
+    #homePage .kpi-section-title { color:#9ca3af; }
+    #homePage .card { background:#2d3340; box-shadow:0 1px 8px rgba(0,0,0,.3); }
+    #homePage .card h3 { color:#e5e7eb; }
+    #homePage .progress-section { background:#2d3340; box-shadow:0 1px 8px rgba(0,0,0,.3); }
+    #homePage .progress-section h3 { color:#e5e7eb; }
+    #homePage .progress-bar-wrap { background:#363c4a; }
+    #homePage .progress-labels { color:#9ca3af; }
   </style>
 </head>
 <body>
