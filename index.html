@@ -4512,6 +4512,18 @@ document.addEventListener("DOMContentLoaded", function() {
         var raw = localStorage.getItem('spi_nc_records_' + tenantId);
         if (raw) recs = JSON.parse(raw) || [];
       } catch(e) { recs = []; }
+      // Migrate old single-string `status` field to independent booleans (same as loadNcRecordsLocal).
+      var needsSave = false;
+      recs.forEach(function(r) {
+        if (typeof r.rncAberta === 'undefined') {
+          r.rncAberta    = r.status === 'rnc_aberta';
+          r.d8Finalizado = r.status === '8d_finalizado';
+          needsSave = true;
+        }
+      });
+      if (needsSave) {
+        try { localStorage.setItem('spi_nc_records_' + tenantId, JSON.stringify(recs)); } catch(e) {}
+      }
       return recs;
     }
 
