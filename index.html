@@ -4628,7 +4628,7 @@ document.addEventListener("DOMContentLoaded", function() {
       } else {
         var records  = loadNcRecords(tenantId);
         total = records.length;
-        stat1 = records.filter(function(r){ return r.rncAberta === true; }).length;
+        stat1 = records.filter(function(r){ return r.rncAberta === true && !r.d8Finalizado; }).length;
         stat2 = records.filter(function(r){ return r.d8Finalizado === true; }).length;
         stat3 = records.reduce(function(sum, r){ return sum + (parseInt(r.qty) || 0); }, 0);
         lbl1  = 'RNC Aberta';
@@ -4679,7 +4679,7 @@ document.addEventListener("DOMContentLoaded", function() {
     // ── Aggregate data ──────────────────────────────────────────────────────
     var allCliRecs  = cliKeys.reduce(function(acc, k) { return acc.concat(loadNcRecords(k)); }, []);
     var totalNc     = allCliRecs.length;
-    var totalRnc    = allCliRecs.filter(function(r) { return r.rncAberta === true; }).length;
+    var totalRnc    = allCliRecs.filter(function(r) { return r.rncAberta === true && !r.d8Finalizado; }).length;
     var total8d     = allCliRecs.filter(function(r) { return r.d8Finalizado === true; }).length;
     var totalPecas  = allCliRecs.reduce(function(s, r) { return s + (parseInt(r.qty) || 0); }, 0);
     var vencidasNc  = allCliRecs.filter(function(r) { return !r.rncAberta && !r.d8Finalizado; }).length;
@@ -4805,7 +4805,7 @@ document.addEventListener("DOMContentLoaded", function() {
           r = Object.assign({}, r); r._clientLabel = TENANTS[k] ? TENANTS[k].label : k; return r;
         }));
       }, []);
-      var rncRecs  = allCliRecsTagged.filter(function(r) { return r.rncAberta === true; });
+      var rncRecs  = allCliRecsTagged.filter(function(r) { return r.rncAberta === true && !r.d8Finalizado; });
       var d8Recs   = allCliRecsTagged.filter(function(r) { return r.d8Finalizado === true; });
       var vencRecs = allCliRecsTagged.filter(function(r) { return !r.rncAberta && !r.d8Finalizado; });
       var pecaRecs = allCliRecsTagged.slice().sort(function(a,b){ return (parseInt(b.qty)||0)-(parseInt(a.qty)||0); });
@@ -4870,7 +4870,7 @@ document.addEventListener("DOMContentLoaded", function() {
       // Clientes com mais RNC abertas
       cliKeys.forEach(function(k) {
         var recs = loadNcRecords(k);
-        var openRnc = recs.filter(function(r) { return r.rncAberta === true; }).length;
+        var openRnc = recs.filter(function(r) { return r.rncAberta === true && !r.d8Finalizado; }).length;
         var venc    = recs.filter(function(r) { return !r.rncAberta && !r.d8Finalizado; }).length;
         if (openRnc > 0) alertItems.push({ accent:'#dc2626', tag:'RNC Aberta', title: TENANTS[k].label, sub: openRnc + ' registro(s) com RNC aberta',    tenantId: k, type:'rnc' });
         if (venc    > 0) alertItems.push({ accent:'#b45309', tag:'NC Vencida', title: TENANTS[k].label, sub: venc    + ' NC(s) vencida(s) sem tratativa', tenantId: k, type:'venc' });
@@ -4899,7 +4899,7 @@ document.addEventListener("DOMContentLoaded", function() {
               var tenantLabel = TENANTS[it.tenantId] ? TENANTS[it.tenantId].label : it.tenantId;
               if (it.type === 'rnc') {
                 var recs = loadNcRecords(it.tenantId)
-                  .filter(function(r) { return r.rncAberta === true; })
+                  .filter(function(r) { return r.rncAberta === true && !r.d8Finalizado; })
                   .map(function(r) { r = Object.assign({}, r); r._clientLabel = tenantLabel; return r; });
                 openKpiDetailPopup('RNC Aberta — ' + tenantLabel, it.accent, true, recs);
               } else if (it.type === 'venc') {
