@@ -5014,7 +5014,7 @@ document.addEventListener("DOMContentLoaded", function() {
     savedKeys.forEach(function(key) {
       const c = all[key];
       if (!c || typeof c.label !== 'string' || typeof c.initials !== 'string') return;
-      var inferredClientOnly = typeof c.clienteOnly === 'boolean' ? c.clienteOnly : (c.isClient !== false);
+      const inferredClientOnly = typeof c.clienteOnly === 'boolean' ? c.clienteOnly : (c.isClient !== false);
       if (TENANTS[key]) {
         // Update editable metadata; keep actions/attachments
         TENANTS[key].label          = c.label;
@@ -5230,7 +5230,7 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById('newTenantError').style.display = 'none';
 
     // Set type toggle based on tenant being edited (fallback to pending mode in create flow)
-    var toggleIsProject = _pendingIsProject;
+    let toggleIsProject = _pendingIsProject;
     if (isEdit && TENANTS[editKey]) {
       toggleIsProject = TENANTS[editKey].isProject === true || TENANTS[editKey].isClient === false;
     }
