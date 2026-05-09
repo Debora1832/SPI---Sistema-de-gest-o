@@ -5060,31 +5060,31 @@ document.addEventListener("DOMContentLoaded", function() {
     if (!TENANTS[currentTenant]) currentTenant = Object.keys(TENANTS)[0];
   }
 
-  // Recover tenants that were accidentally reclassified as project:
+  // Recover tenants that were accidentally reclassified as projects:
   // if a "project" has no project actions but does have NC records, treat it as client.
   async function recoverMisclassifiedClientsFromData() {
-    var changed = false;
-    var keys = Object.keys(TENANTS);
+    let changed = false;
+    const keys = Object.keys(TENANTS);
     for (const key of keys) {
-      var t = TENANTS[key];
+      const t = TENANTS[key];
       if (!t) continue;
-      var isProject = t.isProject === true || t.isClient === false;
+      const isProject = t.isProject === true || t.isClient === false;
       if (!isProject) continue;
-      if (Array.isArray(t.actions) && t.actions.length > 0) continue; // likely a real project
+      if (Array.isArray(t.actions) && t.actions.length > 0) continue; // projects usually have action plans
 
-      var hasNcRecords = false;
+      let hasNcRecords = false;
       try {
-        var raw = localStorage.getItem('spi_nc_records_' + key);
+        const raw = localStorage.getItem('spi_nc_records_' + key);
         if (raw) {
-          var localRecs = JSON.parse(raw);
+          const localRecs = JSON.parse(raw);
           hasNcRecords = Array.isArray(localRecs) && localRecs.length > 0;
         }
       } catch(e) { hasNcRecords = false; }
 
       if (!hasNcRecords && db && firebaseConnected) {
         try {
-          var snap = await db.collection('nc_records_' + key).doc('all').get();
-          var remoteRecs = snap.exists ? snap.data().records : null;
+          const snap = await db.collection('nc_records_' + key).doc('all').get();
+          const remoteRecs = snap.exists ? snap.data().records : null;
           hasNcRecords = Array.isArray(remoteRecs) && remoteRecs.length > 0;
         } catch(e) { /* keep fallback state */ }
       }
@@ -5092,7 +5092,7 @@ document.addEventListener("DOMContentLoaded", function() {
       if (!hasNcRecords) continue;
 
       t.isClient = true;
-      t.clienteOnly = true;
+      t.clienteOnly = true; // recovered entries are treated as client-only NC flow
       t.isProject = false;
       changed = true;
     }
