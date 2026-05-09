@@ -5087,6 +5087,8 @@ document.addEventListener("DOMContentLoaded", function() {
       // Note: we intentionally do NOT skip tenants that have project actions.
       // A tenant with NC records is a client, even if it also accumulated
       // actions while it was mis-classified as a project.
+      // The actions array is preserved in memory and Firebase so no data is lost;
+      // they just won't be shown in the client (NC-only) view.
 
       let hasNcRecords = false;
       try {
@@ -5108,7 +5110,9 @@ document.addEventListener("DOMContentLoaded", function() {
       if (!hasNcRecords) continue;
 
       t.isClient = true;
-      // Client tenants should show NC pages and hide project management tabs.
+      // Client tenants show only NC pages (clienteOnly=true hides project management tabs).
+      // If a tenant legitimately needs both NC and project views, the user can
+      // explicitly re-open the edit modal and adjust the type there.
       t.clienteOnly = true;
       t.isProject = false;
       changed = true;
