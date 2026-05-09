@@ -2336,10 +2336,16 @@ document.addEventListener("DOMContentLoaded", function() {
           }
         }).catch(function(e) { console.warn("Firebase reload error for " + key + ":", e); });
       })).then(function() {
+        return recoverMisclassifiedClientsFromData();
+      }).then(function() {
         allActions = (TENANTS[currentTenant] && TENANTS[currentTenant].actions) || [];
+        renderTenantList();
+        renderProjectList();
         renderDashboard();
         renderTable();
         renderBell();
+        updateNcVisibility();
+        renderHomePage();
         if (typeof expandedGroup !== "undefined" && expandedGroup !== null) renderGantt();
         // Also reload NC records for the current tenant
         if (typeof ncRecords !== 'undefined' && typeof renderNcCards === 'function') {
@@ -5054,6 +5060,46 @@ document.addEventListener("DOMContentLoaded", function() {
     if (!TENANTS[currentTenant]) currentTenant = Object.keys(TENANTS)[0];
   }
 
+  // Recover tenants that were accidentally reclassified as project:
+  // if a "project" has no project actions but does have NC records, treat it as client.
+  async function recoverMisclassifiedClientsFromData() {
+    var changed = false;
+    var keys = Object.keys(TENANTS);
+    for (const key of keys) {
+      var t = TENANTS[key];
+      if (!t) continue;
+      var isProject = t.isProject === true || t.isClient === false;
+      if (!isProject) continue;
+      if (Array.isArray(t.actions) && t.actions.length > 0) continue; // likely a real project
+
+      var hasNcRecords = false;
+      try {
+        var raw = localStorage.getItem('spi_nc_records_' + key);
+        if (raw) {
+          var localRecs = JSON.parse(raw);
+          hasNcRecords = Array.isArray(localRecs) && localRecs.length > 0;
+        }
+      } catch(e) { hasNcRecords = false; }
+
+      if (!hasNcRecords && db && firebaseConnected) {
+        try {
+          var snap = await db.collection('nc_records_' + key).doc('all').get();
+          var remoteRecs = snap.exists ? snap.data().records : null;
+          hasNcRecords = Array.isArray(remoteRecs) && remoteRecs.length > 0;
+        } catch(e) { /* keep fallback state */ }
+      }
+
+      if (!hasNcRecords) continue;
+
+      t.isClient = true;
+      t.clienteOnly = true;
+      t.isProject = false;
+      changed = true;
+    }
+    if (changed) saveAllTenants();
+    return changed;
+  }
+
   // ── Delete tenant ──────────────────────────────────────────────────────────
 
   function deleteTenant(key) {
@@ -5223,7 +5269,9 @@ document.addEventListener("DOMContentLoaded", function() {
 
   function openTenantModal(editKey, isProjectMode) {
     const isEdit = typeof editKey === 'string';
-    _pendingIsProject = isProjectMode === true || (typeof editKey === 'string' && TENANTS[editKey] && (TENANTS[editKey].isProject === true || TENANTS[editKey].isClient === false));
+    _pendingIsProject = isEdit
+      ? !!(TENANTS[editKey] && (TENANTS[editKey].isProject === true || TENANTS[editKey].isClient === false))
+      : (isProjectMode === true);
     document.getElementById('nt-editing-key').value = isEdit ? editKey : '';
     document.getElementById('ntModalTitle').textContent = isEdit ? (_pendingIsProject ? 'Editar Projeto' : 'Editar Cliente') : (_pendingIsProject ? 'Novo Projeto' : 'Novo Cliente');
     document.getElementById('newTenantSave').textContent = isEdit ? 'Salvar alterações' : (_pendingIsProject ? 'Criar projeto' : 'Criar cliente');
@@ -5285,7 +5333,7 @@ document.addEventListener("DOMContentLoaded", function() {
       TENANTS[editKey].sidebarBg      = c.sidebar;
       TENANTS[editKey].isClient       = isClient;
       TENANTS[editKey].clienteOnly    = isClient; // "cliente" type = simplified NC-only view
-      TENANTS[editKey].isProject      = _pendingIsProject || !isClient; // Somente Iniciativas always goes to Projetos group
+      TENANTS[editKey].isProject      = !isClient;
       saveAllTenants();
       closeTenantModal();
       // Refresh current view if we edited the active tenant
@@ -5317,7 +5365,7 @@ document.addEventListener("DOMContentLoaded", function() {
         sidebarBg:      c.sidebar,
         isClient:       isClient,
         clienteOnly:    isClient, // "cliente" type = simplified NC-only view
-        isProject:      _pendingIsProject || !isClient, // Somente Iniciativas always goes to Projetos group
+        isProject:      !isClient,
         actions:        [],
         attachments:    {}
       };
@@ -5406,6 +5454,7 @@ document.addEventListener("DOMContentLoaded", function() {
         saveTenantActions('jd', JD_ACTIONS);
       }
     }
+    await recoverMisclassifiedClientsFromData();
     // Ensure currentTenant is valid
     if (!TENANTS[currentTenant]) currentTenant = Object.keys(TENANTS)[0];
     allActions = TENANTS[currentTenant].actions;
