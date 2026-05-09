@@ -2336,7 +2336,7 @@ document.addEventListener("DOMContentLoaded", function() {
           }
         }).catch(function(e) { console.warn("Firebase reload error for " + key + ":", e); });
       })).then(function() {
-        return recoverMisclassifiedClientsFromData();
+        return recoverMisclassifiedClientsFromData(true); // force re-run now that Firebase data is loaded
       }).then(function() {
         allActions = (TENANTS[currentTenant] && TENANTS[currentTenant].actions) || [];
         renderTenantList();
@@ -5084,7 +5084,9 @@ document.addEventListener("DOMContentLoaded", function() {
       if (!t) continue;
       const isProject = t.isProject === true || t.isClient === false;
       if (!isProject) continue;
-      if (Array.isArray(t.actions) && t.actions.length > 0) continue; // keep explicit project/action setups untouched
+      // Note: we intentionally do NOT skip tenants that have project actions.
+      // A tenant with NC records is a client, even if it also accumulated
+      // actions while it was mis-classified as a project.
 
       let hasNcRecords = false;
       try {
@@ -5106,8 +5108,8 @@ document.addEventListener("DOMContentLoaded", function() {
       if (!hasNcRecords) continue;
 
       t.isClient = true;
-      // Keep the same fallback used in loadAllTenants when clienteOnly is absent.
-      if (typeof t.clienteOnly !== 'boolean') t.clienteOnly = false;
+      // Client tenants should show NC pages and hide project management tabs.
+      t.clienteOnly = true;
       t.isProject = false;
       changed = true;
     }
