@@ -5020,7 +5020,15 @@ document.addEventListener("DOMContentLoaded", function() {
     savedKeys.forEach(function(key) {
       const c = all[key];
       if (!c || typeof c.label !== 'string' || typeof c.initials !== 'string') return;
-      const effectiveClientOnly = typeof c.clienteOnly === 'boolean' ? c.clienteOnly : (c.isClient !== false);
+      // Normalize legacy/inconsistent payloads:
+      // - if isClient is explicit, it wins (source of truth)
+      // - otherwise derive from isProject legacy flag
+      const resolvedIsClient = (typeof c.isClient === 'boolean')
+        ? c.isClient
+        : !(c.isProject === true);
+      const resolvedIsProject = !resolvedIsClient;
+      // Legacy default is false when clienteOnly was not stored.
+      const effectiveClientOnly = typeof c.clienteOnly === 'boolean' ? c.clienteOnly : false;
       if (TENANTS[key]) {
         // Update editable metadata; keep actions/attachments
         TENANTS[key].label          = c.label;
@@ -5031,9 +5039,9 @@ document.addEventListener("DOMContentLoaded", function() {
         TENANTS[key].accentBg       = c.accentBg   || TENANTS[key].accentBg;
         TENANTS[key].accentText     = c.accentText  || TENANTS[key].accentText;
         TENANTS[key].sidebarBg      = c.sidebarBg   || TENANTS[key].sidebarBg;
-        TENANTS[key].isClient       = c.isClient !== false;
+        TENANTS[key].isClient       = resolvedIsClient;
         TENANTS[key].clienteOnly    = effectiveClientOnly;
-        TENANTS[key].isProject      = c.isProject === true || c.isClient === false; // auto-migrate Somente Iniciativas → Projetos
+        TENANTS[key].isProject      = resolvedIsProject;
       } else {
         TENANTS[key] = {
           label:          c.label,
@@ -5044,9 +5052,9 @@ document.addEventListener("DOMContentLoaded", function() {
           accentBg:       c.accentBg       || '#367C2B',
           accentText:     c.accentText     || '#fff',
           sidebarBg:      c.sidebarBg      || '#1E4D17',
-          isClient:       c.isClient !== false,
+          isClient:       resolvedIsClient,
           clienteOnly:    effectiveClientOnly,
-          isProject:      c.isProject === true || c.isClient === false, // auto-migrate Somente Iniciativas → Projetos
+          isProject:      resolvedIsProject,
           actions:        [],
           attachments:    {}
         };
@@ -5096,7 +5104,7 @@ document.addEventListener("DOMContentLoaded", function() {
       if (!hasNcRecords) continue;
 
       t.isClient = true;
-      if (typeof t.clienteOnly !== 'boolean') t.clienteOnly = true;
+      if (typeof t.clienteOnly !== 'boolean') t.clienteOnly = false;
       t.isProject = false;
       changed = true;
     }
