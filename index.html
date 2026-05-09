@@ -5023,6 +5023,7 @@ document.addEventListener("DOMContentLoaded", function() {
       // Normalize legacy/inconsistent payloads:
       // - if isClient is explicit, it wins (source of truth)
       // - otherwise derive from isProject legacy flag
+      // - if both are missing, default to client for backward compatibility
       const resolvedIsClient = (typeof c.isClient === 'boolean')
         ? c.isClient
         : !(c.isProject === true);
@@ -5105,7 +5106,7 @@ document.addEventListener("DOMContentLoaded", function() {
       if (!hasNcRecords) continue;
 
       t.isClient = true;
-      // Preserve broad access for recovered legacy tenants unless client-only was explicit.
+      // Keep the same fallback used in loadAllTenants when clienteOnly is absent.
       if (typeof t.clienteOnly !== 'boolean') t.clienteOnly = false;
       t.isProject = false;
       changed = true;
