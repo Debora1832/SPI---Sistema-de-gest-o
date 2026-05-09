@@ -5014,6 +5014,7 @@ document.addEventListener("DOMContentLoaded", function() {
     savedKeys.forEach(function(key) {
       const c = all[key];
       if (!c || typeof c.label !== 'string' || typeof c.initials !== 'string') return;
+      var inferredClienteOnly = typeof c.clienteOnly === 'boolean' ? c.clienteOnly : (c.isClient !== false);
       if (TENANTS[key]) {
         // Update editable metadata; keep actions/attachments
         TENANTS[key].label          = c.label;
@@ -5025,7 +5026,7 @@ document.addEventListener("DOMContentLoaded", function() {
         TENANTS[key].accentText     = c.accentText  || TENANTS[key].accentText;
         TENANTS[key].sidebarBg      = c.sidebarBg   || TENANTS[key].sidebarBg;
         TENANTS[key].isClient       = c.isClient !== false;
-        TENANTS[key].clienteOnly    = typeof c.clienteOnly === 'boolean' ? c.clienteOnly : (c.isClient !== false);
+        TENANTS[key].clienteOnly    = inferredClienteOnly;
         TENANTS[key].isProject      = c.isProject === true || c.isClient === false; // auto-migrate Somente Iniciativas → Projetos
       } else {
         TENANTS[key] = {
@@ -5038,7 +5039,7 @@ document.addEventListener("DOMContentLoaded", function() {
           accentText:     c.accentText     || '#fff',
           sidebarBg:      c.sidebarBg      || '#1E4D17',
           isClient:       c.isClient !== false,
-          clienteOnly:    typeof c.clienteOnly === 'boolean' ? c.clienteOnly : (c.isClient !== false),
+          clienteOnly:    inferredClienteOnly,
           isProject:      c.isProject === true || c.isClient === false, // auto-migrate Somente Iniciativas → Projetos
           actions:        [],
           attachments:    {}
@@ -5228,8 +5229,12 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById('newTenantSave').textContent = isEdit ? 'Salvar alterações' : (_pendingIsProject ? 'Criar projeto' : 'Criar cliente');
     document.getElementById('newTenantError').style.display = 'none';
 
-    // Set type toggle based on actual tenant grouping
-    setTenantTypeToggle(_pendingIsProject ? 'initiative' : 'client');
+    // Set type toggle based on tenant being edited (fallback to pending mode in create flow)
+    var toggleIsProject = _pendingIsProject;
+    if (isEdit && TENANTS[editKey]) {
+      toggleIsProject = TENANTS[editKey].isProject === true || TENANTS[editKey].isClient === false;
+    }
+    setTenantTypeToggle(toggleIsProject ? 'initiative' : 'client');
 
     if (isEdit) {
       const t = TENANTS[editKey];
