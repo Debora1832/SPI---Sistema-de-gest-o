@@ -5027,7 +5027,8 @@ document.addEventListener("DOMContentLoaded", function() {
         ? c.isClient
         : !(c.isProject === true);
       const resolvedIsProject = !resolvedIsClient;
-      // Legacy default is false when clienteOnly was not stored.
+      // Keep legacy tenants in full mode unless explicitly marked as client-only.
+      // This avoids hiding project/NC navigation unexpectedly after metadata sync.
       const effectiveClientOnly = typeof c.clienteOnly === 'boolean' ? c.clienteOnly : false;
       if (TENANTS[key]) {
         // Update editable metadata; keep actions/attachments
@@ -5104,6 +5105,7 @@ document.addEventListener("DOMContentLoaded", function() {
       if (!hasNcRecords) continue;
 
       t.isClient = true;
+      // Preserve broad access for recovered legacy tenants unless client-only was explicit.
       if (typeof t.clienteOnly !== 'boolean') t.clienteOnly = false;
       t.isProject = false;
       changed = true;
