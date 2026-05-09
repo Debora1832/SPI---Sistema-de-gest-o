@@ -5020,7 +5020,7 @@ document.addEventListener("DOMContentLoaded", function() {
     savedKeys.forEach(function(key) {
       const c = all[key];
       if (!c || typeof c.label !== 'string' || typeof c.initials !== 'string') return;
-      const inferredClientOnly = typeof c.clienteOnly === 'boolean' ? c.clienteOnly : (c.isClient !== false);
+      const effectiveClientOnly = typeof c.clienteOnly === 'boolean' ? c.clienteOnly : (c.isClient !== false);
       if (TENANTS[key]) {
         // Update editable metadata; keep actions/attachments
         TENANTS[key].label          = c.label;
@@ -5032,7 +5032,7 @@ document.addEventListener("DOMContentLoaded", function() {
         TENANTS[key].accentText     = c.accentText  || TENANTS[key].accentText;
         TENANTS[key].sidebarBg      = c.sidebarBg   || TENANTS[key].sidebarBg;
         TENANTS[key].isClient       = c.isClient !== false;
-        TENANTS[key].clienteOnly    = inferredClientOnly;
+        TENANTS[key].clienteOnly    = effectiveClientOnly;
         TENANTS[key].isProject      = c.isProject === true || c.isClient === false; // auto-migrate Somente Iniciativas → Projetos
       } else {
         TENANTS[key] = {
@@ -5045,7 +5045,7 @@ document.addEventListener("DOMContentLoaded", function() {
           accentText:     c.accentText     || '#fff',
           sidebarBg:      c.sidebarBg      || '#1E4D17',
           isClient:       c.isClient !== false,
-          clienteOnly:    inferredClientOnly,
+          clienteOnly:    effectiveClientOnly,
           isProject:      c.isProject === true || c.isClient === false, // auto-migrate Somente Iniciativas → Projetos
           actions:        [],
           attachments:    {}
@@ -5060,9 +5060,13 @@ document.addEventListener("DOMContentLoaded", function() {
     if (!TENANTS[currentTenant]) currentTenant = Object.keys(TENANTS)[0];
   }
 
-  // Recover tenants that were accidentally reclassified as projects:
-  // if a "project" has no project actions but does have NC records, treat it as client.
-  async function recoverMisclassifiedClientsFromData() {
+  // One-time safeguard for legacy data where a client was accidentally saved as project.
+  // Recovery rule: tenant currently classified as project + no project actions + has NC
+  // records (localStorage or Firebase) => reclassify as client and persist metadata.
+  var _tenantRecoveryRan = false;
+  async function recoverMisclassifiedClientsFromData(forceRun) {
+    if (_tenantRecoveryRan && forceRun !== true) return false;
+    _tenantRecoveryRan = true;
     let changed = false;
     const keys = Object.keys(TENANTS);
     for (const key of keys) {
@@ -5070,7 +5074,7 @@ document.addEventListener("DOMContentLoaded", function() {
       if (!t) continue;
       const isProject = t.isProject === true || t.isClient === false;
       if (!isProject) continue;
-      if (Array.isArray(t.actions) && t.actions.length > 0) continue; // projects usually have action plans
+      if (Array.isArray(t.actions) && t.actions.length > 0) continue; // keep explicit project/action setups untouched
 
       let hasNcRecords = false;
       try {
@@ -5092,7 +5096,7 @@ document.addEventListener("DOMContentLoaded", function() {
       if (!hasNcRecords) continue;
 
       t.isClient = true;
-      t.clienteOnly = true; // recovered entries are treated as client-only NC flow
+      if (typeof t.clienteOnly !== 'boolean') t.clienteOnly = true;
       t.isProject = false;
       changed = true;
     }
