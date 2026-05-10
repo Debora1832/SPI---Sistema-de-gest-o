@@ -260,7 +260,8 @@
     .page.active { display:block; }
 
     /* ===== KPI CARDS ===== */
-    .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:16px; margin-bottom:12px; }
+    .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr)); gap:12px; margin-bottom:16px; }
+    .kpi-grid.kpi-grid-unified { grid-template-columns:repeat(7,1fr); }
     .kpi-section-title {
       font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.07em;
       color:#6b7280; margin:8px 0 10px; padding-left:2px;
@@ -1448,9 +1449,13 @@
       #dashboard, #ganttPage { padding:12px; border-radius:12px; }
       #dashboard .page-header, #ganttPage .page-header { padding:12px; }
       #actionTableSection .filter-row { padding:10px; }
+      #dashboard .kpi-grid.kpi-grid-unified { grid-template-columns:repeat(4,1fr); }
+    }
+    @media (max-width:600px) {
+      #dashboard .kpi-grid.kpi-grid-unified { grid-template-columns:repeat(2,1fr); }
     }
     @media (max-width:680px) {
-      #dashboard .kpi-grid { grid-template-columns:1fr; }
+      #dashboard .kpi-grid:not(.kpi-grid-unified) { grid-template-columns:1fr; }
       #initiativeCards { grid-template-columns:1fr !important; }
       #actionTableSection .filter-row { align-items:stretch; }
       #actionTableSection .filter-row select,
@@ -1686,10 +1691,8 @@
       </div>
     </div>
 
-    <!-- KPI row -->
-    <div class="kpi-grid" id="kpiGridVolume"></div>
-    <div class="kpi-section-title" id="kpiPerfTitle">KPIs de Performance</div>
-    <div class="kpi-grid performance" id="kpiGridPerformance"></div>
+    <!-- KPI row (all 7 cards in one unified row) -->
+    <div class="kpi-grid kpi-grid-unified" id="kpiGridVolume"></div>
 
     <!-- Initiative cards -->
     <div id="initiativeCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;"></div>
@@ -2961,7 +2964,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const adherenceDenom = onTime + lateComplete;
     const adherencePct   = adherenceDenom > 0 ? Math.round((onTime/adherenceDenom)*100) : 0;
 
-    // ── Volume KPIs (top row) ──────────────────────────────────────────────
+    // ── All 7 KPIs in one unified row ─────────────────────────────────────
     document.getElementById("kpiGridVolume").innerHTML = `
       <div class="kpi-card total">
         <div class="kpi-label">Total de Ações</div>
@@ -2983,10 +2986,6 @@ document.addEventListener("DOMContentLoaded", function() {
         <div class="kpi-value">${delayed}</div>
         <div class="kpi-sub">${calcPercent(delayed,total)}% do total</div>
       </div>
-    `;
-
-    // ── Performance / Adherence KPIs (bottom row) ──────────────────────────
-    document.getElementById("kpiGridPerformance").innerHTML = `
       <div class="kpi-card on_time">
         <div class="kpi-label">Concluídas no prazo</div>
         <div class="kpi-value">${onTime}</div>
