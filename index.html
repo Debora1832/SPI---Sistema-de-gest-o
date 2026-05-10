@@ -260,7 +260,8 @@
     .page.active { display:block; }
 
     /* ===== KPI CARDS ===== */
-    .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:16px; margin-bottom:12px; }
+    .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr)); gap:12px; margin-bottom:16px; }
+    .kpi-grid.kpi-grid-unified { grid-template-columns:repeat(7,1fr); }
     .kpi-section-title {
       font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.07em;
       color:#6b7280; margin:8px 0 10px; padding-left:2px;
@@ -1351,11 +1352,114 @@
     .initiative-progress-track { height:8px; background:#e5e7eb; border-radius:99px; overflow:hidden; }
     .initiative-progress-fill { height:100%; background:#16a34a; border-radius:99px; transition:width .3s; }
     .initiative-progress-label { font-size:11px; color:#6b7280; margin-top:4px; }
-    .initiative-card-stats { display:flex; gap:8px; flex-wrap:wrap; }
-    .initiative-stat { display:flex; align-items:center; gap:4px; font-size:12px; }
+    .initiative-card-stats { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+    .initiative-stat { display:flex; align-items:center; gap:3px; font-size:12px; white-space:nowrap; line-height:1.25; }
     .initiative-stat-num { font-weight:700; }
+    .initiative-card-stats .initiative-stat-num.badge { padding:1px 6px; font-size:11px; min-width:18px; text-align:center; }
     .initiative-card-actions { display:flex; justify-content:flex-end; margin-top:14px; }
     .btn-sm { padding:5px 12px; font-size:12px; border-radius:6px; }
+
+    /* ===== TRATATIVAS (dashboard + gantt) VISUAL POLISH ===== */
+    #dashboard, #ganttPage {
+      background:linear-gradient(180deg,#f8fafc 0%, #f2f6fb 100%);
+      border-radius:14px;
+      padding:16px 16px 20px;
+      border:1px solid #e2e8f0;
+      box-shadow:0 8px 28px rgba(15,23,42,.06);
+    }
+    #dashboard .page-header,
+    #ganttPage .page-header {
+      margin-bottom:16px;
+      border-left:none;
+      padding:14px 16px;
+      border-radius:12px;
+      background:#fff;
+      border:1px solid #dbe7f5;
+      box-shadow:0 2px 10px rgba(15,23,42,.05);
+    }
+    #dashboard .kpi-section-title {
+      margin:10px 0 12px;
+      color:#475569;
+      font-size:11px;
+      letter-spacing:.09em;
+    }
+    #dashboard .kpi-grid { gap:12px; margin-bottom:14px; }
+    #dashboard .kpi-card {
+      border-radius:14px;
+      border:1px solid #e7eef8;
+      box-shadow:0 2px 12px rgba(15,23,42,.05);
+      padding:16px 18px;
+    }
+    #dashboard .kpi-card .kpi-value { font-size:28px; }
+    #initiativeCards {
+      margin-top:4px;
+      gap:14px !important;
+    }
+    .initiative-card {
+      border:1px solid #e6edf7;
+      border-radius:14px;
+      box-shadow:0 2px 12px rgba(15,23,42,.06);
+      padding:16px;
+    }
+    .initiative-card:hover {
+      box-shadow:0 10px 24px rgba(15,23,42,.12);
+      transform:translateY(-2px);
+    }
+    .initiative-card-badge {
+      background:#eff6ff;
+      color:#1e3a8a;
+      border:1px solid #bfdbfe;
+    }
+    .initiative-progress-track { height:9px; background:#e2e8f0; }
+    .initiative-progress-fill { background:linear-gradient(90deg,#16a34a,#22c55e); }
+    #actionTableSection { margin-top:12px !important; }
+    #actionTableSection .card {
+      border:1px solid #dbe7f5;
+      border-radius:14px;
+      box-shadow:0 4px 18px rgba(15,23,42,.06);
+      padding:16px;
+      background:#fff;
+    }
+    #actionTableSection .filter-row {
+      background:#f8fbff;
+      border:1px solid #e2e8f0;
+      border-radius:10px;
+      padding:10px 12px;
+      margin-bottom:12px;
+      gap:10px;
+    }
+    #actionTableSection .table-wrap {
+      border:1px solid #e2e8f0;
+      border-radius:10px;
+      background:#fff;
+    }
+    #actionTableSection thead th {
+      position:sticky;
+      top:0;
+      z-index:2;
+    }
+    #ganttPage #gantt {
+      border:1px solid #dbe7f5;
+      border-radius:14px;
+      box-shadow:0 4px 16px rgba(15,23,42,.06);
+      background:#fff;
+      padding:16px;
+    }
+    @media (max-width:900px) {
+      #dashboard, #ganttPage { padding:12px; border-radius:12px; }
+      #dashboard .page-header, #ganttPage .page-header { padding:12px; }
+      #actionTableSection .filter-row { padding:10px; }
+      #dashboard .kpi-grid.kpi-grid-unified { grid-template-columns:repeat(4,1fr); }
+    }
+    @media (max-width:600px) {
+      #dashboard .kpi-grid.kpi-grid-unified { grid-template-columns:repeat(2,1fr); }
+    }
+    @media (max-width:680px) {
+      #initiativeCards { grid-template-columns:1fr !important; }
+      #actionTableSection .filter-row { align-items:stretch; }
+      #actionTableSection .filter-row select,
+      #actionTableSection .filter-row .btn-sm { width:100%; }
+    }
   </style>
 </head>
 <body>
@@ -1586,10 +1690,8 @@
       </div>
     </div>
 
-    <!-- KPI row -->
-    <div class="kpi-grid" id="kpiGridVolume"></div>
-    <div class="kpi-section-title" id="kpiPerfTitle">KPIs de Performance</div>
-    <div class="kpi-grid performance" id="kpiGridPerformance"></div>
+    <!-- KPI row (all 7 cards in one unified row) -->
+    <div class="kpi-grid kpi-grid-unified" id="kpiGridVolume"></div>
 
     <!-- Initiative cards -->
     <div id="initiativeCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;"></div>
@@ -2861,7 +2963,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const adherenceDenom = onTime + lateComplete;
     const adherencePct   = adherenceDenom > 0 ? Math.round((onTime/adherenceDenom)*100) : 0;
 
-    // ── Volume KPIs (top row) ──────────────────────────────────────────────
+    // ── All 7 KPIs in one unified row ─────────────────────────────────────
     document.getElementById("kpiGridVolume").innerHTML = `
       <div class="kpi-card total">
         <div class="kpi-label">Total de Ações</div>
@@ -2883,10 +2985,6 @@ document.addEventListener("DOMContentLoaded", function() {
         <div class="kpi-value">${delayed}</div>
         <div class="kpi-sub">${calcPercent(delayed,total)}% do total</div>
       </div>
-    `;
-
-    // ── Performance / Adherence KPIs (bottom row) ──────────────────────────
-    document.getElementById("kpiGridPerformance").innerHTML = `
       <div class="kpi-card on_time">
         <div class="kpi-label">Concluídas no prazo</div>
         <div class="kpi-value">${onTime}</div>
