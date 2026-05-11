@@ -2461,6 +2461,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     records = (typeof mergePhotosFromLocal === 'function')
                       ? mergePhotosFromLocal(records, localRecords)
                       : records;
+                    records = records.map(normalizeNcRecordAttachments);
                     // Keep any local records that Firebase doesn't have (saved while offline)
                     var fbIdsSet = new Set(records.map(function(r) { return r.id; }));
                     var hadLocalOnlyRel = false;
@@ -2468,6 +2469,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     ncRecords = records;
                     saveNcLocalSnapshot(ncRecords, currentTenant);
                     renderNcCards();
+                    renderHomePage();
                     if (typeof renderNcCharts === 'function') renderNcCharts();
                     if (typeof renderNcCustomCharts === 'function') renderNcCustomCharts();
                     // Push any locally-saved records that didn't reach Firebase back up
@@ -2510,6 +2512,7 @@ document.addEventListener("DOMContentLoaded", function() {
           records = (typeof mergePhotosFromLocal === 'function')
             ? mergePhotosFromLocal(records, ncRecords)
             : records;
+          records = records.map(normalizeNcRecordAttachments);
           // Keep any in-memory records not yet in Firebase (saved while connection was down)
           var fbSnapshotIdsSet = new Set(records.map(function(r) { return r.id; }));
           var hadLocalOnlySnap = false;
@@ -2518,6 +2521,7 @@ document.addEventListener("DOMContentLoaded", function() {
           saveNcLocalSnapshot(ncRecords, tenantId);
           if (typeof setNcSyncBadge === 'function') setNcSyncBadge('synced', '✓ Atualizado em tempo real');
           if (typeof renderNcCards === 'function')  renderNcCards();
+          if (typeof renderHomePage === 'function') renderHomePage();
           if (typeof renderNcCharts === 'function') renderNcCharts();
           if (typeof renderNcCustomCharts === 'function') renderNcCustomCharts();
           if (typeof renderNcGantt === 'function' && document.getElementById('ncGanttPage') &&
@@ -4377,6 +4381,7 @@ document.addEventListener("DOMContentLoaded", function() {
       renderNcCards();
       renderNcCharts();
       renderNcCustomCharts();
+      renderHomePage();
       if (document.getElementById('ncGanttPage') && document.getElementById('ncGanttPage').classList.contains('active')) {
         renderNcGantt();
       }
@@ -5643,6 +5648,44 @@ document.addEventListener("DOMContentLoaded", function() {
     return 'spi_nc_records_' + (tenantId || currentTenant);
   }
 
+  function isUsableAttachmentSrc(value) {
+    return typeof value === 'string' && !!value.trim() && /^(data:|blob:|https?:\/\/)/i.test(value);
+  }
+
+  function normalizeNcRecordAttachments(nc) {
+    var r = Object.assign({}, nc);
+    var photoList = Array.isArray(r.photos) ? r.photos.slice() : (r.photo ? [r.photo] : []);
+    photoList = photoList.filter(isUsableAttachmentSrc);
+    if (photoList.length) {
+      r.photos = photoList;
+      delete r.photo;
+    } else {
+      delete r.photos;
+      delete r.photo;
+    }
+
+    if (Array.isArray(r.pdfs)) {
+      r.pdfs = r.pdfs.map(function(pdf) {
+        if (!pdf) return null;
+        var data = isUsableAttachmentSrc(pdf.data) ? pdf.data : '';
+        var url  = isUsableAttachmentSrc(pdf.url) ? pdf.url : '';
+        if (!data && !url) return null;
+        return {
+          name: pdf.name || 'documento.pdf',
+          data: data || undefined,
+          url: url || undefined
+        };
+      }).filter(Boolean);
+      if (!r.pdfs.length) delete r.pdfs;
+    }
+
+    if (!isUsableAttachmentSrc(r.alertFile)) delete r.alertFile;
+    if (!isUsableAttachmentSrc(r.alertFileUrl)) delete r.alertFileUrl;
+    if (!isUsableAttachmentSrc(r.d8File)) delete r.d8File;
+    if (!isUsableAttachmentSrc(r.d8FileUrl)) delete r.d8FileUrl;
+    return r;
+  }
+
   var _ncBinaryDbPromise = null;
 
   function canUseNcBinaryCache() {
@@ -5787,7 +5830,7 @@ document.addEventListener("DOMContentLoaded", function() {
         seenIds.add(r.id);
         return true;
       });
-      return records;
+      return records.map(normalizeNcRecordAttachments);
     } catch(e) { return []; }
   }
 
@@ -5798,11 +5841,11 @@ document.addEventListener("DOMContentLoaded", function() {
     if (!canUseNcBinaryCache()) return records;
     var fullRecords = await loadNcBinaryCache(tenantId);
     if (!Array.isArray(fullRecords) || !fullRecords.length) return records;
-    if (!records.length) return fullRecords;
+    if (!records.length) return fullRecords.map(normalizeNcRecordAttachments);
     if (typeof mergePhotosFromLocal !== 'function') return records;
     // Merge slim metadata from localStorage with the full binary payloads from IndexedDB.
     // URLs already saved in metadata are preserved; missing binaries are restored from cache.
-    return mergePhotosFromLocal(records, fullRecords);
+    return mergePhotosFromLocal(records, fullRecords).map(normalizeNcRecordAttachments);
   }
 
   // Return a copy of an NC record without base64 binary data.
@@ -6033,7 +6076,7 @@ document.addEventListener("DOMContentLoaded", function() {
         }
       }
 
-      return out;
+      return normalizeNcRecordAttachments(out);
     });
   }
 
@@ -6128,7 +6171,7 @@ document.addEventListener("DOMContentLoaded", function() {
           });
           // Restore attachments from the local cache (Firestore records don't carry binaries)
           var localRecords = await loadNcRecordsLocalAsync(tenantId);
-          records = mergePhotosFromLocal(records, localRecords);
+          records = mergePhotosFromLocal(records, localRecords).map(normalizeNcRecordAttachments);
           // Keep any local records that Firebase doesn't have (saved while offline)
           var fbIdsSet = new Set(records.map(function(r) { return r.id; }));
           var hadLocalOnly = false;
@@ -6967,8 +7010,9 @@ document.addEventListener("DOMContentLoaded", function() {
     else if (_ncCardsSort === 'dateAsc')  { sorted.sort(function(a,b){ return (a.date||'').localeCompare(b.date||''); }); }
     else if (_ncCardsSort === 'dateDesc') { sorted.sort(function(a,b){ return (b.date||'').localeCompare(a.date||''); }); }
     grid.innerHTML = sorted.map(function(nc) {
+      var cleanNc = normalizeNcRecordAttachments(nc);
       // Support both old `photo` (string) and new `photos` (array)
-      var photos = (nc.photos && nc.photos.length) ? nc.photos : (nc.photo ? [nc.photo] : []);
+      var photos = cleanNc.photos || [];
       var photoHtml;
       if (photos.length) {
         var imgs = photos.map(function(src, i) {
@@ -6999,8 +7043,8 @@ document.addEventListener("DOMContentLoaded", function() {
           (nc.description ? '<div class="nc-card-desc" title="' + escHtml(nc.description) + '">' + escHtml(nc.description) + '</div>' : '') +
           '<div class="nc-card-date">📅 ' + dateStr + '</div>' +
           (nc.qty ? '<div class="nc-card-qty">📦 ' + nc.qty + ' peça' + (nc.qty !== 1 ? 's' : '') + '</div>' : '') +
-          (Array.isArray(nc.pdfs) && nc.pdfs.length
-            ? '<div class="nc-card-pdfs">' + nc.pdfs.map(function(p) {
+          (Array.isArray(cleanNc.pdfs) && cleanNc.pdfs.length
+            ? '<div class="nc-card-pdfs">' + cleanNc.pdfs.map(function(p) {
                 var href = p.data || p.url || '#';
                 return '<a href="' + href + '" download="' + escHtml(p.name) + '" title="' + escHtml(p.name) + '" target="_blank">📄 ' + escHtml(p.name) + '</a>';
               }).join('') + '</div>'
@@ -7044,7 +7088,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
       // Action buttons — stop propagation so card-body click doesn't also fire
       card.querySelectorAll('button[data-action]').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
+        btn.addEventListener('click', async function(e) {
           e.stopPropagation();
           var action = btn.dataset.action;
           var idx = ncRecords.findIndex(function(r){ return r.id === id; });
@@ -7062,10 +7106,11 @@ document.addEventListener("DOMContentLoaded", function() {
             if (deletedNc && deletedNc.ncGanttId != null) {
               annotateGanttAction(deletedNc.ncGanttId, 'NC Excluída');
             }
-            saveNcRecords();
+            await saveNcRecords();
             renderNcCards();
             renderNcCharts();
             renderNcCustomCharts();
+            renderHomePage();
           } else if (action === 'rnc_aberta') {
             // Once RNC Aberta is confirmed it is permanent and cannot be deactivated
             if (ncRecords[idx].rncAberta) {
@@ -7081,10 +7126,11 @@ document.addEventListener("DOMContentLoaded", function() {
                 return;
               }
               ncRecords[idx].d8Finalizado = false;
-              saveNcRecords();
+              await saveNcRecords();
               renderNcCards();
               renderNcCharts();
               renderNcCustomCharts();
+              renderHomePage();
             } else {
               openNcStatusModal(id, '8d_finalizado');
             }
@@ -7145,7 +7191,7 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById('ncStatusModalCancel').addEventListener('click', closeStatusModal);
     backdrop.addEventListener('click', function(e) { if (e.target === backdrop) closeStatusModal(); });
 
-    document.getElementById('ncStatusModalSave').addEventListener('click', function() {
+    document.getElementById('ncStatusModalSave').addEventListener('click', async function() {
       if (!_ncStatusPending) { closeStatusModal(); return; }
       var idx = ncRecords.findIndex(function(r){ return r.id === _ncStatusPending.id; });
       if (idx !== -1) {
@@ -7181,10 +7227,11 @@ document.addEventListener("DOMContentLoaded", function() {
           }
           // ─────────────────────────────────────────────────────────────
         }
-        saveNcRecords();
+        await saveNcRecords();
         renderNcCards();
         renderNcCharts();
         if (typeof renderNcCustomCharts === 'function') renderNcCustomCharts();
+        renderHomePage();
       }
       closeStatusModal();
     });
@@ -7233,6 +7280,12 @@ document.addEventListener("DOMContentLoaded", function() {
       if (e.target === vBackdrop) { vBackdrop.classList.remove('open'); vContent.innerHTML = ''; }
     });
     window._openAlertViewer = function(dataUrl, fileName) {
+      if (!isUsableAttachmentSrc(dataUrl)) {
+        vTitle.textContent = fileName || 'Arquivo';
+        vContent.innerHTML = '<div style="padding:18px;color:#6b7280;font-size:13px;text-align:center;">Arquivo indisponível para visualização.</div>';
+        vBackdrop.classList.add('open');
+        return;
+      }
       vTitle.textContent = fileName || 'Alerta';
       vContent.innerHTML = '';
       var isImage = dataUrl.startsWith('data:image/') ||
@@ -7271,6 +7324,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
     window._openNcDetailModalFn = function(nc) {
       _ncDetailCurrent = nc;
+      nc = normalizeNcRecordAttachments(nc);
       var photos = (nc.photos && nc.photos.length) ? nc.photos : (nc.photo ? [nc.photo] : []);
       var dateStr = ncFmtDate(nc.date);
 
@@ -7536,6 +7590,7 @@ document.addEventListener("DOMContentLoaded", function() {
       syncNcsToGantt();
       renderNcCards();
       renderNcCharts();
+      renderHomePage();
     });
 
     // Load and render custom charts
@@ -7808,7 +7863,7 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     // ── Form submit ───────────────────────────────────────────────────────
-    document.getElementById('ncBtnSubmit').addEventListener('click', function() {
+    document.getElementById('ncBtnSubmit').addEventListener('click', async function() {
       var piece       = document.getElementById('ncPiece').value.trim();
       var failureMode = document.getElementById('ncFailureMode').value;
       var date        = document.getElementById('ncDate').value;
@@ -7846,7 +7901,6 @@ document.addEventListener("DOMContentLoaded", function() {
             ncRecords[idx].d8FileName = _editD8FileName || '';
             delete ncRecords[idx].d8FileUrl;
           }
-          saveNcRecords();
           // Sync linked Gantt action; remove it entirely if NC is não procedente
           var editedNc = ncRecords[idx];
           if (editedNc && editedNc.ncGanttId != null) {
@@ -7855,7 +7909,6 @@ document.addEventListener("DOMContentLoaded", function() {
               var gRmIdx = allActions.findIndex(function(a){ return a.id === editedNc.ncGanttId; });
               if (gRmIdx !== -1) allActions.splice(gRmIdx, 1);
               ncRecords[idx].ncGanttId = null;
-              saveNcRecords();
               saveTenantActions(currentTenant, allActions);
             } else {
               // Update description to stay in sync
@@ -7866,10 +7919,12 @@ document.addEventListener("DOMContentLoaded", function() {
               }
             }
           }
+          await saveNcRecords();
           closeNcModal();
           renderNcCards();
           renderNcCharts();
           renderNcCustomCharts();
+          renderHomePage();
         } else {
           alert('Não foi possível encontrar a NC para editar. Por favor, tente novamente.');
         }
@@ -7913,11 +7968,12 @@ document.addEventListener("DOMContentLoaded", function() {
           saveTenantActions(currentTenant, allActions);
         }
         // ──────────────────────────────────────────────────────────────────
-        saveNcRecords();
+        await saveNcRecords();
         closeNcModal();
         renderNcCards();
         renderNcCharts();
         renderNcCustomCharts();
+        renderHomePage();
       }
     });
 
