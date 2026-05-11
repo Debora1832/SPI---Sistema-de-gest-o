@@ -6073,11 +6073,29 @@ document.addEventListener("DOMContentLoaded", function() {
       var out = fbRec;
 
       if (Array.isArray(fbRec.photos) && fbRec.photos.length) {
-        // Firestore has a photos array (may contain Storage URLs or nulls).
-        // Keep Storage URLs; fill null slots with the localStorage version.
+        // Firestore has a photos array (Storage URLs and/or empty slots).
+        // Fill empty slots from localStorage and then append any extra local
+        // photos that are not yet in Firestore so cards keep all photos.
+        function normalizePhotoValue(p) {
+          if (!(p && typeof p === 'string')) return null;
+          var trimmed = p.trim();
+          return trimmed ? trimmed : null;
+        }
+
         var merged = fbRec.photos.map(function(p, i) {
-          return (p && typeof p === 'string' && p.startsWith('https://')) ? p : (localPhotos[i] || null);
-        }).filter(Boolean); // remove still-null slots (upload truly failed and no local backup)
+          var fbPhoto = normalizePhotoValue(p);
+          return fbPhoto || normalizePhotoValue(localPhotos[i]) || null;
+        }).filter(Boolean);
+        var mergedSet = new Set(merged);
+
+        // Concatenate remaining local photos not present in Firebase payload.
+        localPhotos.forEach(function(lp) {
+          var localPhoto = normalizePhotoValue(lp);
+          if (!localPhoto || mergedSet.has(localPhoto)) return;
+          merged.push(localPhoto);
+          mergedSet.add(localPhoto);
+        });
+
         if (merged.length) {
           out = Object.assign({}, fbRec, { photos: merged });
         }
