@@ -2456,7 +2456,7 @@ document.addEventListener("DOMContentLoaded", function() {
               if (snap.exists) {
                 var records = snap.data().records;
                 if (Array.isArray(records)) {
-                  return loadNcRecordsLocalAsync(currentTenant).then(function(localRecords) {
+                  loadNcRecordsLocalAsync(currentTenant).then(function(localRecords) {
                     // Restore photos from the local cache (not stored in Firestore)
                     records = (typeof mergePhotosFromLocal === 'function')
                       ? mergePhotosFromLocal(records, localRecords)
@@ -2472,7 +2472,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     if (typeof renderNcCustomCharts === 'function') renderNcCustomCharts();
                     // Push any locally-saved records that didn't reach Firebase back up
                     if (hadLocalOnlyRel && typeof saveNcRecords === 'function') saveNcRecords();
-                  });
+                  }).catch(function(e) { console.warn('NC local cache merge error:', e); });
                 }
               }
             }).catch(function(e) { console.warn('NC Firebase reload error:', e); });
