@@ -5799,6 +5799,7 @@ document.addEventListener("DOMContentLoaded", function() {
     var fullRecords = await loadNcBinaryCache(tenantId);
     if (!Array.isArray(fullRecords) || !fullRecords.length) return records;
     if (!records.length) return fullRecords;
+    if (typeof mergePhotosFromLocal !== 'function') return records;
     // Merge slim metadata from localStorage with the full binary payloads from IndexedDB.
     // URLs already saved in metadata are preserved; missing binaries are restored from cache.
     return mergePhotosFromLocal(records, fullRecords);
