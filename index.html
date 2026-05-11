@@ -2306,6 +2306,24 @@ document.addEventListener("DOMContentLoaded", function() {
   let storage = null;
   let firebaseConnected = false;
 
+  // Resolves when the startup Firebase connection test finishes (success or failure).
+  // Awaited by init() so that firebaseConnected is set before any data is loaded.
+  var _firebaseReadyResolve = null;
+  var _firebaseReadyPromise = null;
+  // True once init() has finished its first full data load.
+  // _testFirestoreWrite only calls reloadFromFirebase() after init is done
+  // (i.e. when the user re-connects via the modal, not during the initial load).
+  var _initDone = false;
+
+  // Safely resolves _firebaseReadyPromise once, called from every code path in
+  // _testFirestoreWrite so init() never hangs waiting for the connection test.
+  function _resolveFirebaseReady() {
+    if (_firebaseReadyResolve) {
+      _firebaseReadyResolve();
+      _firebaseReadyResolve = null;
+    }
+  }
+
   function loadFirebaseCfgFromStorage() {
     try {
       const raw = localStorage.getItem("spi_firebase_cfg");
@@ -2378,7 +2396,11 @@ document.addEventListener("DOMContentLoaded", function() {
         db.collection(testCol).doc(testDoc).delete().catch(function() {});
         firebaseConnected = true;
         setFirebaseStatus("connected", "Firebase: conectado ✓");
-        reloadFromFirebase();
+        // Resolve the startup promise so init() can proceed with data loading.
+        // reloadFromFirebase() is only called after init() has finished its first
+        // load (i.e. when the user re-connects via the modal at runtime).
+        _resolveFirebaseReady();
+        if (_initDone) reloadFromFirebase();
         if (typeof onFirebaseConnected === "function") onFirebaseConnected(true);
       })
       .catch(function(e) {
@@ -2388,6 +2410,7 @@ document.addEventListener("DOMContentLoaded", function() {
           setFirebaseStatus("error", "Firebase: sem permissão de escrita — abra as Configurações do Firebase para corrigir");
           window._fbPermErrorPending = true;
           var msg = "As regras do Firestore bloqueiam escritas. Abra o Firebase Console → Firestore → Regras e configure: allow read, write: if true;";
+          _resolveFirebaseReady();
           if (typeof onFirebaseConnected === "function") onFirebaseConnected(false, { message: msg, code: e.code });
           // Show rules guide in the modal if it's already open
           var guide = document.getElementById("fbRulesGuide");
@@ -2398,7 +2421,8 @@ document.addEventListener("DOMContentLoaded", function() {
             .then(function() {
               firebaseConnected = true;
               setFirebaseStatus("connected", "Firebase: conectado ✓ (escrita não testada)");
-              reloadFromFirebase();
+              _resolveFirebaseReady();
+              if (_initDone) reloadFromFirebase();
               if (typeof onFirebaseConnected === "function") onFirebaseConnected(true);
             })
             .catch(function(e2) {
@@ -2406,11 +2430,13 @@ document.addEventListener("DOMContentLoaded", function() {
                 // Firestore is reachable even though reads are locked
                 firebaseConnected = true;
                 setFirebaseStatus("connected", "Firebase: conectado ✓");
-                reloadFromFirebase();
+                _resolveFirebaseReady();
+                if (_initDone) reloadFromFirebase();
                 if (typeof onFirebaseConnected === "function") onFirebaseConnected(true);
               } else {
                 firebaseConnected = false;
                 setFirebaseStatus("error", "Firebase: erro de conexão — " + (e2.message || e2.code || "verifique a rede"));
+                _resolveFirebaseReady();
                 if (typeof onFirebaseConnected === "function") onFirebaseConnected(false, e2);
               }
             });
@@ -5568,7 +5594,27 @@ document.addEventListener("DOMContentLoaded", function() {
     const cfgToUse = (storedCfg && storedCfg.apiKey && storedCfg.projectId)
       ? storedCfg
       : DEFAULT_FIREBASE_CFG;
+
+    // Create the ready-promise before starting the connection test so that
+    // _resolveFirebaseReady() (called inside _testFirestoreWrite) always has a
+    // resolve function to call.
+    _firebaseReadyPromise = new Promise(function(r) { _firebaseReadyResolve = r; });
+
     initFirebaseFromCfg(cfgToUse);
+
+    // Wait for the Firebase connection test to finish (up to 8 s) before loading
+    // data. This guarantees that firebaseConnected is set to its definitive value
+    // before loadAllTenants / loadNcRecordsAsync / saveNcRecords are called,
+    // eliminating the race condition where those functions would fall back to
+    // localStorage (returning stale or empty data) simply because the async write
+    // test had not yet completed.
+    // 8 s covers slow connections; if exceeded the app loads from localStorage
+    // and then syncs with Firebase when reloadFromFirebase() fires later.
+    var FIREBASE_CONNECT_TIMEOUT_MS = 8000;
+    await Promise.race([
+      _firebaseReadyPromise,
+      new Promise(function(r) { setTimeout(r, FIREBASE_CONNECT_TIMEOUT_MS); })
+    ]);
 
     await loadAllTenants();
     const tenantIds = Object.keys(TENANTS);
@@ -5612,6 +5658,9 @@ document.addEventListener("DOMContentLoaded", function() {
     if (typeof setupFirebaseListeners === 'function' && firebaseConnected) {
       setupFirebaseListeners(currentTenant);
     }
+    // Mark init as complete so that subsequent _testFirestoreWrite calls (triggered
+    // when the user re-connects via the modal) correctly call reloadFromFirebase().
+    _initDone = true;
   })();
 
   // ── NC (Non-Conformance) Page ────────────────────────────────────────────
