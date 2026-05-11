@@ -2456,21 +2456,23 @@ document.addEventListener("DOMContentLoaded", function() {
               if (snap.exists) {
                 var records = snap.data().records;
                 if (Array.isArray(records)) {
-                  // Restore photos from in-memory / localStorage (not stored in Firestore)
-                  records = (typeof mergePhotosFromLocal === 'function')
-                    ? mergePhotosFromLocal(records, ncRecords)
-                    : records;
-                  // Keep any local records that Firebase doesn't have (saved while offline)
-                  var fbIdsSet = new Set(records.map(function(r) { return r.id; }));
-                  var hadLocalOnlyRel = false;
-                  ncRecords.forEach(function(lr) { if (lr && lr.id && !fbIdsSet.has(lr.id)) { records.push(lr); hadLocalOnlyRel = true; } });
-                  ncRecords = records;
-                  try { localStorage.setItem('spi_nc_records_' + currentTenant, JSON.stringify(ncRecords)); } catch(e) {}
-                  renderNcCards();
-                  if (typeof renderNcCharts === 'function') renderNcCharts();
-                  if (typeof renderNcCustomCharts === 'function') renderNcCustomCharts();
-                  // Push any locally-saved records that didn't reach Firebase back up
-                  if (hadLocalOnlyRel && typeof saveNcRecords === 'function') saveNcRecords();
+                  loadNcRecordsLocalAsync(currentTenant).then(function(localRecords) {
+                    // Restore photos from the local cache (not stored in Firestore)
+                    records = (typeof mergePhotosFromLocal === 'function')
+                      ? mergePhotosFromLocal(records, localRecords)
+                      : records;
+                    // Keep any local records that Firebase doesn't have (saved while offline)
+                    var fbIdsSet = new Set(records.map(function(r) { return r.id; }));
+                    var hadLocalOnlyRel = false;
+                    localRecords.forEach(function(lr) { if (lr && lr.id && !fbIdsSet.has(lr.id)) { records.push(lr); hadLocalOnlyRel = true; } });
+                    ncRecords = records;
+                    saveNcLocalSnapshot(ncRecords, currentTenant);
+                    renderNcCards();
+                    if (typeof renderNcCharts === 'function') renderNcCharts();
+                    if (typeof renderNcCustomCharts === 'function') renderNcCustomCharts();
+                    // Push any locally-saved records that didn't reach Firebase back up
+                    if (hadLocalOnlyRel && typeof saveNcRecords === 'function') saveNcRecords();
+                  }).catch(function(e) { console.warn('NC local cache merge error:', e); });
                 }
               }
             }).catch(function(e) { console.warn('NC Firebase reload error:', e); });
@@ -2513,7 +2515,7 @@ document.addEventListener("DOMContentLoaded", function() {
           var hadLocalOnlySnap = false;
           ncRecords.forEach(function(lr) { if (lr && lr.id && !fbSnapshotIdsSet.has(lr.id)) { records.push(lr); hadLocalOnlySnap = true; } });
           ncRecords = records;
-          try { localStorage.setItem('spi_nc_records_' + tenantId, JSON.stringify(ncRecords)); } catch(e) {}
+          saveNcLocalSnapshot(ncRecords, tenantId);
           if (typeof setNcSyncBadge === 'function') setNcSyncBadge('synced', '✓ Atualizado em tempo real');
           if (typeof renderNcCards === 'function')  renderNcCards();
           if (typeof renderNcCharts === 'function') renderNcCharts();
@@ -5637,8 +5639,108 @@ document.addEventListener("DOMContentLoaded", function() {
   var _ncDetailCurrent = null; // nc record shown in detail popup
 
   // ── Per-tenant NC storage key ──────────────────────────────────────────────
-  function ncStorageKey() {
-    return 'spi_nc_records_' + currentTenant;
+  function ncStorageKey(tenantId) {
+    return 'spi_nc_records_' + (tenantId || currentTenant);
+  }
+
+  var _ncBinaryDbPromise = null;
+
+  function canUseNcBinaryCache() {
+    return typeof indexedDB !== 'undefined';
+  }
+
+  function openNcBinaryCacheDb() {
+    if (!canUseNcBinaryCache()) return Promise.resolve(null);
+    if (_ncBinaryDbPromise) return _ncBinaryDbPromise;
+    _ncBinaryDbPromise = new Promise(function(resolve) {
+      try {
+        var req = indexedDB.open('spi_nc_binary_cache', 1);
+        req.onupgradeneeded = function() {
+          var idb = req.result;
+          if (!idb.objectStoreNames.contains('tenant_records')) {
+            idb.createObjectStore('tenant_records', { keyPath: 'tenantId' });
+          }
+        };
+        req.onsuccess = function() { resolve(req.result); };
+        req.onerror = function() {
+          console.warn('IndexedDB init error for NC cache:', req.error);
+          resolve(null);
+        };
+      } catch(e) {
+        console.warn('IndexedDB unavailable for NC cache:', e);
+        resolve(null);
+      }
+    });
+    return _ncBinaryDbPromise;
+  }
+
+  function loadNcBinaryCache(tenantId) {
+    return openNcBinaryCacheDb().then(function(idb) {
+      if (!idb) return [];
+      return new Promise(function(resolve) {
+        try {
+          var tx = idb.transaction('tenant_records', 'readonly');
+          var store = tx.objectStore('tenant_records');
+          var req = store.get(tenantId);
+          req.onsuccess = function() {
+            var cached = req.result;
+            resolve(cached && Array.isArray(cached.records) ? cached.records : []);
+          };
+          req.onerror = function() {
+            console.warn('IndexedDB read error for NC cache:', req.error);
+            resolve([]);
+          };
+        } catch(e) {
+          console.warn('IndexedDB transaction error for NC cache read:', e);
+          resolve([]);
+        }
+      });
+    });
+  }
+
+  // Persist the local NC snapshot in two layers:
+  // 1) localStorage gets a slim metadata-only copy to avoid quota overflow;
+  // 2) IndexedDB keeps the full array with images/PDFs for post-refresh rehydration.
+  // If IndexedDB is unavailable, fall back to the legacy localStorage-only behavior.
+  async function saveNcLocalSnapshot(records, tenantId) {
+    var activeTenant = tenantId || currentTenant;
+    var key = ncStorageKey(activeTenant);
+    if (canUseNcBinaryCache()) {
+      var idb = await openNcBinaryCacheDb();
+      if (idb) {
+        try {
+          localStorage.setItem(key, JSON.stringify(records.map(stripPhotos)));
+        } catch(e) {
+          console.warn('localStorage error saving slim NC snapshot:', e);
+        }
+        await new Promise(function(resolve) {
+          try {
+            var tx = idb.transaction('tenant_records', 'readwrite');
+            tx.oncomplete = function() { resolve(); };
+            tx.onerror = function() {
+              console.warn('IndexedDB write error for NC cache:', tx.error);
+              resolve();
+            };
+            var putReq = tx.objectStore('tenant_records').put({
+              tenantId: activeTenant,
+              records: records
+            });
+            putReq.onerror = function() {
+              console.warn('IndexedDB put error for NC cache:', putReq.error);
+            };
+          } catch(e) {
+            console.warn('IndexedDB transaction error for NC cache write:', e);
+            resolve();
+          }
+        });
+        return;
+      }
+    }
+    try {
+      localStorage.setItem(key, JSON.stringify(records));
+    } catch(e) {
+      console.warn('localStorage error saving full NC snapshot:', e);
+    }
   }
 
   // ── Shared date formatter (ISO → DD/MM/YYYY) ───────────────────────────────
@@ -5647,14 +5749,15 @@ document.addEventListener("DOMContentLoaded", function() {
     var p = isoStr.split('-');
     return p[2] + '/' + p[1] + '/' + p[0];
   }
-  function loadNcRecordsLocal() {
+  function loadNcRecordsLocal(tenantId) {
     try {
-      var raw = localStorage.getItem(ncStorageKey());
+      var activeTenant = tenantId || currentTenant;
+      var raw = localStorage.getItem(ncStorageKey(activeTenant));
       // One-time migration from the old shared key `spi_nc_records` (used before per-company
       // storage was introduced). Only the 'jd' (John Deere) tenant ever had data in that key
       // because it was the only company supported at the time. All other tenants are new and
       // have no legacy data to migrate.
-      if (!raw && currentTenant === 'jd') {
+      if (!raw && activeTenant === 'jd') {
         var legacy = localStorage.getItem('spi_nc_records');
         if (legacy) raw = legacy;
       }
@@ -5675,7 +5778,7 @@ document.addEventListener("DOMContentLoaded", function() {
         }
       });
       if (needsSave) {
-        try { localStorage.setItem(ncStorageKey(), JSON.stringify(records)); } catch(e) {}
+        try { localStorage.setItem(ncStorageKey(activeTenant), JSON.stringify(records)); } catch(e) {}
       }
       // Deduplicate by id (safety net against past cross-tenant contamination)
       var seenIds = new Set();
@@ -5688,11 +5791,25 @@ document.addEventListener("DOMContentLoaded", function() {
     } catch(e) { return []; }
   }
 
+  // Load the tenant's local snapshot and, when IndexedDB binary cache exists,
+  // reattach photos/files onto the slim metadata stored in localStorage.
+  async function loadNcRecordsLocalAsync(tenantId) {
+    var records = loadNcRecordsLocal(tenantId);
+    if (!canUseNcBinaryCache()) return records;
+    var fullRecords = await loadNcBinaryCache(tenantId);
+    if (!Array.isArray(fullRecords) || !fullRecords.length) return records;
+    if (!records.length) return fullRecords;
+    if (typeof mergePhotosFromLocal !== 'function') return records;
+    // Merge slim metadata from localStorage with the full binary payloads from IndexedDB.
+    // URLs already saved in metadata are preserved; missing binaries are restored from cache.
+    return mergePhotosFromLocal(records, fullRecords);
+  }
+
   // Return a copy of an NC record without base64 binary data.
   // Photos and file attachments (alertFile, d8File) are large base64 blobs and
   // would quickly push the Firestore document past its 1 MB limit.
-  // Full data is always preserved in localStorage; we restore it after loading
-  // from Firebase (see mergePhotosFromLocal).
+  // Full data is preserved in the local cache and restored after loading from
+  // Firebase (see mergePhotosFromLocal).
   function stripPhotos(nc) {
     var r = Object.assign({}, nc);
     delete r.photos;
@@ -5921,8 +6038,8 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   async function saveNcRecords() {
-    // Always save the full record (with photos) to localStorage so they survive a refresh.
-    try { localStorage.setItem(ncStorageKey(), JSON.stringify(ncRecords)); } catch(e) {}
+    // Always save the full record to the local cache first so attachments survive a refresh.
+    await saveNcLocalSnapshot(ncRecords, currentTenant);
     if (db && firebaseConnected) {
       setNcSyncBadge('syncing', (storage && !_storageCorsFailed) ? '↻ Enviando arquivos…' : '↻ Salvando no Firebase…');
       try {
@@ -5961,8 +6078,8 @@ document.addEventListener("DOMContentLoaded", function() {
               });
             }
           });
-          // Re-save localStorage with the updated Storage URLs
-          try { localStorage.setItem(ncStorageKey(), JSON.stringify(ncRecords)); } catch(e) {}
+          // Re-save local cache with the updated Storage URLs
+          await saveNcLocalSnapshot(ncRecords, currentTenant);
         } else {
           slim = ncRecords.map(stripPhotos);
         }
@@ -5988,7 +6105,6 @@ document.addEventListener("DOMContentLoaded", function() {
 
   // Async loader: Firebase first, localStorage fallback
   async function loadNcRecordsAsync(tenantId) {
-    var key = 'spi_nc_records_' + tenantId;
     setNcSyncBadge('syncing', '↻ Sincronizando…');
     if (db && firebaseConnected) {
       try {
@@ -6010,8 +6126,8 @@ document.addEventListener("DOMContentLoaded", function() {
               needsSave = true;
             }
           });
-          // Restore photos from localStorage (Firestore records don't carry photos)
-          var localRecords = loadNcRecordsLocal();
+          // Restore attachments from the local cache (Firestore records don't carry binaries)
+          var localRecords = await loadNcRecordsLocalAsync(tenantId);
           records = mergePhotosFromLocal(records, localRecords);
           // Keep any local records that Firebase doesn't have (saved while offline)
           var fbIdsSet = new Set(records.map(function(r) { return r.id; }));
@@ -6025,7 +6141,7 @@ document.addEventListener("DOMContentLoaded", function() {
             return true;
           });
           // Keep localStorage in sync (with photos merged in)
-          try { localStorage.setItem(key, JSON.stringify(records)); } catch(e) {}
+          await saveNcLocalSnapshot(records, tenantId);
           if (hadLocalOnly || needsSave) {
             // Push local-only records (and/or migrated records) back to Firebase so
             // other devices can see them.
@@ -6045,7 +6161,7 @@ document.addEventListener("DOMContentLoaded", function() {
       setNcSyncBadge('offline', '⚠ Sem Firebase');
     }
     // Fallback: localStorage
-    return loadNcRecordsLocal();
+    return loadNcRecordsLocalAsync(tenantId);
   }
 
   var _ncSyncHideTimer = null;
