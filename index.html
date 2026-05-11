@@ -5698,6 +5698,10 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   }
 
+  // Persiste o snapshot local das NCs em dois níveis:
+  // 1) localStorage recebe uma versão "slim" sem binários para evitar estouro de quota;
+  // 2) IndexedDB guarda o array completo com imagens/PDFs para reidratação após refresh.
+  // Se IndexedDB não estiver disponível, faz fallback para o comportamento antigo via localStorage.
   async function saveNcLocalSnapshot(records, tenantId) {
     var activeTenant = tenantId || currentTenant;
     var key = ncStorageKey(activeTenant);
@@ -5784,6 +5788,8 @@ document.addEventListener("DOMContentLoaded", function() {
     } catch(e) { return []; }
   }
 
+  // Carrega o snapshot local da tenant e, quando existir cache binário no IndexedDB,
+  // reanexa fotos/arquivos ao metadata salvo no localStorage.
   async function loadNcRecordsLocalAsync(tenantId) {
     if (!canUseNcBinaryCache()) return loadNcRecordsLocal(tenantId);
     var loaded = await Promise.all([
