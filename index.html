@@ -5698,19 +5698,18 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   }
 
-  function saveNcLocalSnapshot(records, tenantId) {
+  async function saveNcLocalSnapshot(records, tenantId) {
     var activeTenant = tenantId || currentTenant;
     var key = ncStorageKey(activeTenant);
     if (canUseNcBinaryCache()) {
-      try { localStorage.setItem(key, JSON.stringify(records.map(stripPhotos))); }
-      catch(e) { console.warn('localStorage error saving slim NC snapshot:', e); }
-      return openNcBinaryCacheDb().then(function(idb) {
-        if (!idb) {
-          try { localStorage.setItem(key, JSON.stringify(records)); }
-          catch(e) { console.warn('localStorage fallback error saving full NC snapshot:', e); }
-          return;
+      var idb = await openNcBinaryCacheDb();
+      if (idb) {
+        try {
+          localStorage.setItem(key, JSON.stringify(records.map(stripPhotos)));
+        } catch(e) {
+          console.warn('localStorage error saving slim NC snapshot:', e);
         }
-        return new Promise(function(resolve) {
+        await new Promise(function(resolve) {
           try {
             var tx = idb.transaction('tenant_records', 'readwrite');
             tx.oncomplete = function() { resolve(); };
@@ -5727,11 +5726,14 @@ document.addEventListener("DOMContentLoaded", function() {
             resolve();
           }
         });
-      });
+        return;
+      }
     }
-    try { localStorage.setItem(key, JSON.stringify(records)); }
-    catch(e) { console.warn('localStorage error saving full NC snapshot:', e); }
-    return Promise.resolve();
+    try {
+      localStorage.setItem(key, JSON.stringify(records));
+    } catch(e) {
+      console.warn('localStorage error saving full NC snapshot:', e);
+    }
   }
 
   // ── Shared date formatter (ISO → DD/MM/YYYY) ───────────────────────────────
@@ -5783,9 +5785,13 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   async function loadNcRecordsLocalAsync(tenantId) {
-    var records = loadNcRecordsLocal(tenantId);
-    if (!canUseNcBinaryCache()) return records;
-    var fullRecords = await loadNcBinaryCache(tenantId);
+    if (!canUseNcBinaryCache()) return loadNcRecordsLocal(tenantId);
+    var loaded = await Promise.all([
+      Promise.resolve().then(function() { return loadNcRecordsLocal(tenantId); }),
+      loadNcBinaryCache(tenantId)
+    ]);
+    var records = loaded[0];
+    var fullRecords = loaded[1];
     if (!Array.isArray(fullRecords) || !fullRecords.length) return records;
     if (!records.length) return fullRecords;
     return mergePhotosFromLocal(records, fullRecords);
