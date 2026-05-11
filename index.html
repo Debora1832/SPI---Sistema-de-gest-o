@@ -5794,11 +5794,13 @@ document.addEventListener("DOMContentLoaded", function() {
   // Load the tenant's local snapshot and, when IndexedDB binary cache exists,
   // reattach photos/files onto the slim metadata stored in localStorage.
   async function loadNcRecordsLocalAsync(tenantId) {
-    if (!canUseNcBinaryCache()) return loadNcRecordsLocal(tenantId);
     var records = loadNcRecordsLocal(tenantId);
+    if (!canUseNcBinaryCache()) return records;
     var fullRecords = await loadNcBinaryCache(tenantId);
     if (!Array.isArray(fullRecords) || !fullRecords.length) return records;
     if (!records.length) return fullRecords;
+    // Merge slim metadata from localStorage with the full binary payloads from IndexedDB.
+    // URLs already saved in metadata are preserved; missing binaries are restored from cache.
     return mergePhotosFromLocal(records, fullRecords);
   }
 
