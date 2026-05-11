@@ -5698,10 +5698,10 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   }
 
-  // Persiste o snapshot local das NCs em dois níveis:
-  // 1) localStorage recebe uma versão "slim" sem binários para evitar estouro de quota;
-  // 2) IndexedDB guarda o array completo com imagens/PDFs para reidratação após refresh.
-  // Se IndexedDB não estiver disponível, faz fallback para o comportamento antigo via localStorage.
+  // Persist the local NC snapshot in two layers:
+  // 1) localStorage gets a slim metadata-only copy to avoid quota overflow;
+  // 2) IndexedDB keeps the full array with images/PDFs for post-refresh rehydration.
+  // If IndexedDB is unavailable, fall back to the legacy localStorage-only behavior.
   async function saveNcLocalSnapshot(records, tenantId) {
     var activeTenant = tenantId || currentTenant;
     var key = ncStorageKey(activeTenant);
@@ -5721,10 +5721,13 @@ document.addEventListener("DOMContentLoaded", function() {
               console.warn('IndexedDB write error for NC cache:', tx.error);
               resolve();
             };
-            tx.objectStore('tenant_records').put({
+            var putReq = tx.objectStore('tenant_records').put({
               tenantId: activeTenant,
               records: records
             });
+            putReq.onerror = function() {
+              console.warn('IndexedDB put error for NC cache:', putReq.error);
+            };
           } catch(e) {
             console.warn('IndexedDB transaction error for NC cache write:', e);
             resolve();
@@ -5788,16 +5791,12 @@ document.addEventListener("DOMContentLoaded", function() {
     } catch(e) { return []; }
   }
 
-  // Carrega o snapshot local da tenant e, quando existir cache binário no IndexedDB,
-  // reanexa fotos/arquivos ao metadata salvo no localStorage.
+  // Load the tenant's local snapshot and, when IndexedDB binary cache exists,
+  // reattach photos/files onto the slim metadata stored in localStorage.
   async function loadNcRecordsLocalAsync(tenantId) {
     if (!canUseNcBinaryCache()) return loadNcRecordsLocal(tenantId);
-    var loaded = await Promise.all([
-      Promise.resolve().then(function() { return loadNcRecordsLocal(tenantId); }),
-      loadNcBinaryCache(tenantId)
-    ]);
-    var records = loaded[0];
-    var fullRecords = loaded[1];
+    var records = loadNcRecordsLocal(tenantId);
+    var fullRecords = await loadNcBinaryCache(tenantId);
     if (!Array.isArray(fullRecords) || !fullRecords.length) return records;
     if (!records.length) return fullRecords;
     return mergePhotosFromLocal(records, fullRecords);
