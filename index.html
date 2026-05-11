@@ -5671,7 +5671,6 @@ document.addEventListener("DOMContentLoaded", function() {
   var _ncPieceFilter   = null; // active piece name filter, or null
   var _ncFailureFilter = null; // active failure mode filter, or null
   var _ncCustomFilter  = { field: null, key: null, chartId: null }; // active custom chart filter
-  var _ncCardsSort     = 'recent'; // 'recent'|'oldest'|'ncAsc'|'ncDesc'|'dateAsc'|'dateDesc'
   var _ncAlertFilter   = false;   // show only cards with atencao flag
   // Chart settings (bar color, meta color, meta value, title) — persisted to localStorage
   var _ncChartSettings = (function() {
@@ -5697,14 +5696,54 @@ document.addEventListener("DOMContentLoaded", function() {
     return 'spi_nc_records_' + (tenantId || currentTenant);
   }
 
+  function normalizeAttachmentSrc(value) {
+    if (typeof value !== 'string') return '';
+    var normalized = value.trim();
+    if (!normalized) return '';
+    if (normalized.startsWith('//')) {
+      var protocol = (typeof window !== 'undefined' && window.location && window.location.protocol === 'http:')
+        ? 'http:'
+        : 'https:';
+      normalized = protocol + normalized;
+    }
+    return normalized;
+  }
+
   function isUsableAttachmentSrc(value) {
-    return typeof value === 'string' && !!value.trim() && /^(data:|blob:|https?:\/\/)/i.test(value);
+    var normalized = normalizeAttachmentSrc(value);
+    return !!normalized && /^(data:|blob:|https?:\/\/)/i.test(normalized);
+  }
+
+  function extractNcPhotoSrc(value) {
+    var direct = normalizeAttachmentSrc(value);
+    if (isUsableAttachmentSrc(direct)) return direct;
+
+    if (value && typeof value === 'object') {
+      var candidates = [
+        value.url,
+        value.src,
+        value.data,
+        value.downloadURL,
+        value.downloadUrl,
+        value.photo,
+        value.photoUrl
+      ];
+      for (var i = 0; i < candidates.length; i++) {
+        var candidate = normalizeAttachmentSrc(candidates[i]);
+        if (isUsableAttachmentSrc(candidate)) return candidate;
+      }
+    }
+    return '';
   }
 
   function normalizeNcRecordAttachments(nc) {
     var r = Object.assign({}, nc);
-    var photoList = Array.isArray(r.photos) ? r.photos.slice() : (r.photo ? [r.photo] : []);
-    photoList = photoList.filter(isUsableAttachmentSrc);
+    var photoList = [];
+    if (Array.isArray(r.photos)) photoList = photoList.concat(r.photos);
+    if (Array.isArray(r.photoUrls)) photoList = photoList.concat(r.photoUrls);
+    if (r.photo) photoList.push(r.photo);
+    photoList = photoList.map(extractNcPhotoSrc).filter(Boolean);
+    if (photoList.length > 1) photoList = Array.from(new Set(photoList));
     if (photoList.length) {
       r.photos = photoList;
       delete r.photo;
@@ -6067,7 +6106,12 @@ document.addEventListener("DOMContentLoaded", function() {
     return fbRecords.map(function(fbRec) {
       var localRec = localRecords.find(function(lr) { return lr.id === fbRec.id; });
       var localPhotos = localRec
-        ? (Array.isArray(localRec.photos) ? localRec.photos : (localRec.photo ? [localRec.photo] : []))
+        ? []
+            .concat(Array.isArray(localRec.photos) ? localRec.photos : [])
+            .concat(Array.isArray(localRec.photoUrls) ? localRec.photoUrls : [])
+            .concat(localRec.photo ? [localRec.photo] : [])
+            .map(extractNcPhotoSrc)
+            .filter(Boolean)
         : [];
 
       var out = fbRec;
@@ -6076,21 +6120,26 @@ document.addEventListener("DOMContentLoaded", function() {
         // Firestore has a photos array (Storage URLs and/or empty slots).
         // Fill empty slots from localStorage and then append any extra local
         // photos that are not yet in Firestore so cards keep all photos.
-        function normalizePhotoValue(p) {
-          if (!(p && typeof p === 'string')) return null;
-          var trimmed = p.trim();
-          return trimmed ? trimmed : null;
-        }
-
         var merged = fbRec.photos.map(function(p, i) {
-          var fbPhoto = normalizePhotoValue(p);
-          return fbPhoto || normalizePhotoValue(localPhotos[i]) || null;
+          var fbPhoto = extractNcPhotoSrc(p);
+          return fbPhoto || extractNcPhotoSrc(localPhotos[i]) || null;
         }).filter(Boolean);
         var mergedSet = new Set(merged);
 
+        // Include legacy single/photoUrls fields from Firestore payload.
+        []
+          .concat(Array.isArray(fbRec.photoUrls) ? fbRec.photoUrls : [])
+          .concat(fbRec.photo ? [fbRec.photo] : [])
+          .forEach(function(fp) {
+            var firebasePhoto = extractNcPhotoSrc(fp);
+            if (!firebasePhoto || mergedSet.has(firebasePhoto)) return;
+            merged.push(firebasePhoto);
+            mergedSet.add(firebasePhoto);
+          });
+
         // Concatenate remaining local photos not present in Firebase payload.
         localPhotos.forEach(function(lp) {
-          var localPhoto = normalizePhotoValue(lp);
+          var localPhoto = extractNcPhotoSrc(lp);
           if (!localPhoto || mergedSet.has(localPhoto)) return;
           merged.push(localPhoto);
           mergedSet.add(localPhoto);
@@ -6098,12 +6147,22 @@ document.addEventListener("DOMContentLoaded", function() {
 
         if (merged.length) {
           out = Object.assign({}, fbRec, { photos: merged });
+          delete out.photo;
+          delete out.photoUrls;
         }
-      } else if (localPhotos.length) {
-        // No Storage photos in Firestore — fall back entirely to localStorage
-        out = Object.assign({}, fbRec, { photos: localPhotos });
-      } else if (localRec && localRec.photo) {
-        out = Object.assign({}, fbRec, { photo: localRec.photo });
+      } else {
+        var fallbackPhotos = []
+          .concat(Array.isArray(fbRec.photoUrls) ? fbRec.photoUrls : [])
+          .concat(fbRec.photo ? [fbRec.photo] : [])
+          .concat(localPhotos)
+          .map(extractNcPhotoSrc)
+          .filter(Boolean);
+        if (fallbackPhotos.length) {
+          if (fallbackPhotos.length > 1) fallbackPhotos = Array.from(new Set(fallbackPhotos));
+          out = Object.assign({}, fbRec, { photos: fallbackPhotos });
+          delete out.photo;
+          delete out.photoUrls;
+        }
       }
 
       // Restore alertFile from localStorage when Firebase only has a URL or nothing
@@ -7062,6 +7121,18 @@ document.addEventListener("DOMContentLoaded", function() {
     }
   }
 
+  function normalizeNcDateValue(value) {
+    if (typeof value !== 'string') return '';
+    var dateStr = value.trim().slice(0, 10);
+    if (!dateStr) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+    var brMatch = dateStr.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (brMatch) return brMatch[3] + '-' + brMatch[2] + '-' + brMatch[1];
+    var parsed = new Date(dateStr);
+    if (!isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+    return '';
+  }
+
   function renderNcCards() {
     var grid = document.getElementById('ncCardsGrid');
     if (!grid) return;
@@ -7070,12 +7141,13 @@ document.addEventListener("DOMContentLoaded", function() {
       return;
     }
     var sorted = ncRecords.slice();
-    if (_ncCardsSort === 'recent')   { sorted.reverse(); }
-    else if (_ncCardsSort === 'oldest') { /* already chronological */ }
-    else if (_ncCardsSort === 'ncAsc')  { sorted.sort(function(a,b){ return (a.ncNumber||'').localeCompare(b.ncNumber||'', undefined, {numeric:true}); }); }
-    else if (_ncCardsSort === 'ncDesc') { sorted.sort(function(a,b){ return (b.ncNumber||'').localeCompare(a.ncNumber||'', undefined, {numeric:true}); }); }
-    else if (_ncCardsSort === 'dateAsc')  { sorted.sort(function(a,b){ return (a.date||'').localeCompare(b.date||''); }); }
-    else if (_ncCardsSort === 'dateDesc') { sorted.sort(function(a,b){ return (b.date||'').localeCompare(a.date||''); }); }
+    // Always keep cards by date descending (most recent first).
+    sorted.sort(function(a, b) {
+      var ad = normalizeNcDateValue(a.date);
+      var bd = normalizeNcDateValue(b.date);
+      if (ad !== bd) return bd.localeCompare(ad);
+      return (b.ncNumber || '').localeCompare(a.ncNumber || '', undefined, { numeric: true });
+    });
     grid.innerHTML = sorted.map(function(nc) {
       var cleanNc = normalizeNcRecordAttachments(nc);
       // Support both old `photo` (string) and new `photos` (array)
@@ -8182,11 +8254,10 @@ document.addEventListener("DOMContentLoaded", function() {
     // ── Cards sort select ─────────────────────────────────────────────────
     var cardsSortSelect = document.getElementById('ncCardsSortSelect');
     if (cardsSortSelect) {
-      cardsSortSelect.addEventListener('change', function() {
-        _ncCardsSort = cardsSortSelect.value;
-        renderNcCards();
-        if (window._applyNcSearch) window._applyNcSearch();
-      });
+      cardsSortSelect.value = 'dateDesc';
+      cardsSortSelect.disabled = true;
+      cardsSortSelect.title = 'Ordenação fixa por data (mais recente para mais antigo)';
+      cardsSortSelect.setAttribute('aria-label', 'Ordenação fixa por data (mais recente para mais antigo)');
     }
 
     // ── Alert filter button ───────────────────────────────────────────────
