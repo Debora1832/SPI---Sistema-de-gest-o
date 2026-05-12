@@ -5217,7 +5217,7 @@ document.addEventListener("DOMContentLoaded", function() {
     for (const key of keys) {
       const t = TENANTS[key];
       if (!t) continue;
-      if (t.typeManuallySet === true) continue;
+      if (t.typeManuallySet) continue;
       const isProject = t.isProject === true || t.isClient === false;
       if (!isProject) continue;
       // Note: we intentionally do NOT skip tenants that have project actions.
@@ -5294,6 +5294,9 @@ document.addEventListener("DOMContentLoaded", function() {
 
   function duplicateTenant(key) {
     const t = TENANTS[key];
+    const duplicatedIsClient = (typeof t.isClient === 'boolean') ? t.isClient : !(t.isProject === true);
+    const duplicatedIsProject = !duplicatedIsClient;
+    const duplicatedClienteOnly = (typeof t.clienteOnly === 'boolean') ? t.clienteOnly : duplicatedIsClient;
     // Generate a unique key
     let newKey = key + '_copy';
     let copyNum = 2;
@@ -5311,9 +5314,9 @@ document.addEventListener("DOMContentLoaded", function() {
       accentBg:       t.accentBg  || '#367C2B',
       accentText:     t.accentText || '#fff',
       sidebarBg:      t.sidebarBg  || '#1E4D17',
-      isClient:       t.isClient !== false,
-      clienteOnly:    t.clienteOnly === true,
-      isProject:      t.isProject === true,
+      isClient:       duplicatedIsClient,
+      clienteOnly:    duplicatedClienteOnly,
+      isProject:      duplicatedIsProject,
       typeManuallySet: t.typeManuallySet === true,
       actions:        copiedActions,
       attachments:    {}
