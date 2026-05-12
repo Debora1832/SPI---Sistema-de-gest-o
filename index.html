@@ -5083,7 +5083,8 @@ document.addEventListener("DOMContentLoaded", function() {
         sidebarBg:      TENANTS[key].sidebarBg  || '',
         isClient:       TENANTS[key].isClient !== false,  // default true
         clienteOnly:    TENANTS[key].clienteOnly === true, // default false
-        isProject:      TENANTS[key].isProject === true    // default false
+        isProject:      TENANTS[key].isProject === true,    // default false
+        typeManuallySet: TENANTS[key].typeManuallySet === true
       };
     });
     try { localStorage.setItem('spi_all_tenants', JSON.stringify(all)); }
@@ -5162,6 +5163,7 @@ document.addEventListener("DOMContentLoaded", function() {
       // Keep legacy tenants in full mode unless explicitly marked as client-only.
       // This avoids hiding project/NC navigation unexpectedly after metadata sync.
       const effectiveClientOnly = typeof c.clienteOnly === 'boolean' ? c.clienteOnly : false;
+      const effectiveTypeManuallySet = c.typeManuallySet === true;
       if (TENANTS[key]) {
         // Update editable metadata; keep actions/attachments
         TENANTS[key].label          = c.label;
@@ -5175,6 +5177,7 @@ document.addEventListener("DOMContentLoaded", function() {
         TENANTS[key].isClient       = resolvedIsClient;
         TENANTS[key].clienteOnly    = effectiveClientOnly;
         TENANTS[key].isProject      = resolvedIsProject;
+        TENANTS[key].typeManuallySet = effectiveTypeManuallySet;
       } else {
         TENANTS[key] = {
           label:          c.label,
@@ -5188,6 +5191,7 @@ document.addEventListener("DOMContentLoaded", function() {
           isClient:       resolvedIsClient,
           clienteOnly:    effectiveClientOnly,
           isProject:      resolvedIsProject,
+          typeManuallySet: effectiveTypeManuallySet,
           actions:        [],
           attachments:    {}
         };
@@ -5213,6 +5217,8 @@ document.addEventListener("DOMContentLoaded", function() {
     for (const key of keys) {
       const t = TENANTS[key];
       if (!t) continue;
+      // Respect explicit user choice from the tenant modal; don't auto-reclassify it.
+      if (t.typeManuallySet) continue;
       const isProject = t.isProject === true || t.isClient === false;
       if (!isProject) continue;
       // Note: we intentionally do NOT skip tenants that have project actions.
@@ -5289,6 +5295,9 @@ document.addEventListener("DOMContentLoaded", function() {
 
   function duplicateTenant(key) {
     const t = TENANTS[key];
+    const duplicatedIsClient = (typeof t.isClient === 'boolean') ? t.isClient : !(t.isProject === true);
+    const duplicatedIsProject = !duplicatedIsClient;
+    const duplicatedClienteOnly = (typeof t.clienteOnly === 'boolean') ? t.clienteOnly : duplicatedIsClient;
     // Generate a unique key
     let newKey = key + '_copy';
     let copyNum = 2;
@@ -5306,7 +5315,10 @@ document.addEventListener("DOMContentLoaded", function() {
       accentBg:       t.accentBg  || '#367C2B',
       accentText:     t.accentText || '#fff',
       sidebarBg:      t.sidebarBg  || '#1E4D17',
-      isProject:      t.isProject === true,
+      isClient:       duplicatedIsClient,
+      clienteOnly:    duplicatedClienteOnly,
+      isProject:      duplicatedIsProject,
+      typeManuallySet: t.typeManuallySet === true,
       actions:        copiedActions,
       attachments:    {}
     };
@@ -5486,6 +5498,7 @@ document.addEventListener("DOMContentLoaded", function() {
       TENANTS[editKey].isClient       = isClient;
       TENANTS[editKey].clienteOnly    = isClient; // "cliente" type = simplified NC-only view
       TENANTS[editKey].isProject      = !isClient;
+      TENANTS[editKey].typeManuallySet= true;
       saveAllTenants();
       closeTenantModal();
       // Refresh current view if we edited the active tenant
@@ -5518,6 +5531,7 @@ document.addEventListener("DOMContentLoaded", function() {
         isClient:       isClient,
         clienteOnly:    isClient, // "cliente" type = simplified NC-only view
         isProject:      !isClient,
+        typeManuallySet: true,
         actions:        [],
         attachments:    {}
       };
