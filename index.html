@@ -5217,6 +5217,7 @@ document.addEventListener("DOMContentLoaded", function() {
     for (const key of keys) {
       const t = TENANTS[key];
       if (!t) continue;
+      // Respect explicit user choice from the tenant modal; don't auto-reclassify it.
       if (t.typeManuallySet) continue;
       const isProject = t.isProject === true || t.isClient === false;
       if (!isProject) continue;
