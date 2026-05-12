@@ -904,7 +904,9 @@
     /* Atenção badge — shown on NC card when attention flag is set */
     .nc-card-atencao-badge { position:absolute; top:8px; right:8px; background:#f97316; color:#fff; border-radius:20px; font-size:11px; font-weight:800; padding:3px 8px; display:flex; align-items:center; gap:4px; box-shadow:0 2px 8px rgba(249,115,22,.5); z-index:10; letter-spacing:.04em; pointer-events:none; animation:nc-atencao-pulse 2s infinite; }
     /* Evidências de contenção badge — shown on NC card when contencaoEnviada flag is set */
-    .nc-card-contencao-badge { position:absolute; top:44px; right:8px; background:#1d4ed8; color:#fff; border-radius:20px; font-size:11px; font-weight:800; padding:3px 8px; display:flex; align-items:center; gap:4px; box-shadow:0 2px 8px rgba(29,78,216,.45); z-index:10; letter-spacing:.04em; pointer-events:none; }
+    .nc-card-contencao-badge { position:absolute; top:8px; right:8px; background:#1d4ed8; color:#fff; border-radius:20px; font-size:11px; font-weight:800; padding:3px 8px; display:flex; align-items:center; gap:4px; box-shadow:0 2px 8px rgba(29,78,216,.45); z-index:10; letter-spacing:.04em; pointer-events:none; }
+    /* When both Atenção and Contenção badges are present, stack Contenção below */
+    .nc-card-atencao-badge ~ .nc-card-contencao-badge { top:44px; }
     /* Não Procedente – card style */
     .nc-card.nc-nao-procedente { opacity:.55; filter:grayscale(1); }
     .nc-card.nc-nao-procedente .nc-card-body, .nc-card.nc-nao-procedente .nc-card-actions { pointer-events:auto; }
@@ -4668,8 +4670,10 @@ document.addEventListener("DOMContentLoaded", function() {
       return Math.max(0, Math.floor((today - start) / 86400000));
     }
 
+    var NC_OVERDUE_THRESHOLD_DAYS = 30;
+
     function isNcOverdue(rec) {
-      return !rec.rncAberta && !rec.d8Finalizado && getNcOpenDays(rec) > 30;
+      return !rec.rncAberta && !rec.d8Finalizado && getNcOpenDays(rec) > NC_OVERDUE_THRESHOLD_DAYS;
     }
 
     function getNcStatusBadge(rec) {
@@ -7696,7 +7700,15 @@ document.addEventListener("DOMContentLoaded", function() {
                 var badge = document.createElement('div');
                 badge.className = 'nc-card-contencao-badge';
                 badge.innerHTML = '📋 Contenção Enviada';
-                card.insertBefore(badge, card.firstChild);
+                // Insert after the atenção badge (so CSS sibling selector stacks it below)
+                var atBadge = card.querySelector('.nc-card-atencao-badge');
+                if (atBadge && atBadge.nextSibling) {
+                  card.insertBefore(badge, atBadge.nextSibling);
+                } else if (atBadge) {
+                  atBadge.parentNode.appendChild(badge);
+                } else {
+                  card.insertBefore(badge, card.firstChild);
+                }
               } else if (!nc.contencaoEnviada && existing) {
                 existing.remove();
               }
