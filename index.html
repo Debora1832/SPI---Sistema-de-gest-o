@@ -5084,7 +5084,7 @@ document.addEventListener("DOMContentLoaded", function() {
         isClient:       TENANTS[key].isClient !== false,  // default true
         clienteOnly:    TENANTS[key].clienteOnly === true, // default false
         isProject:      TENANTS[key].isProject === true,    // default false
-        typeManuallySet:TENANTS[key].typeManuallySet === true
+        typeManuallySet: TENANTS[key].typeManuallySet === true
       };
     });
     try { localStorage.setItem('spi_all_tenants', JSON.stringify(all)); }
@@ -5177,7 +5177,7 @@ document.addEventListener("DOMContentLoaded", function() {
         TENANTS[key].isClient       = resolvedIsClient;
         TENANTS[key].clienteOnly    = effectiveClientOnly;
         TENANTS[key].isProject      = resolvedIsProject;
-        TENANTS[key].typeManuallySet= effectiveTypeManuallySet;
+        TENANTS[key].typeManuallySet = effectiveTypeManuallySet;
       } else {
         TENANTS[key] = {
           label:          c.label,
@@ -5191,7 +5191,7 @@ document.addEventListener("DOMContentLoaded", function() {
           isClient:       resolvedIsClient,
           clienteOnly:    effectiveClientOnly,
           isProject:      resolvedIsProject,
-          typeManuallySet:effectiveTypeManuallySet,
+          typeManuallySet: effectiveTypeManuallySet,
           actions:        [],
           attachments:    {}
         };
@@ -5314,7 +5314,7 @@ document.addEventListener("DOMContentLoaded", function() {
       isClient:       t.isClient !== false,
       clienteOnly:    t.clienteOnly === true,
       isProject:      t.isProject === true,
-      typeManuallySet:t.typeManuallySet === true,
+      typeManuallySet: t.typeManuallySet === true,
       actions:        copiedActions,
       attachments:    {}
     };
