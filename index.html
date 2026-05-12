@@ -4652,6 +4652,28 @@ document.addEventListener("DOMContentLoaded", function() {
       return recs;
     }
 
+    function getNcOpenDays(rec) {
+      if (!rec || !rec.date) return 0;
+      var start = new Date(rec.date);
+      if (isNaN(start.getTime())) return 0;
+      start.setHours(0, 0, 0, 0);
+      var today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return Math.max(0, Math.floor((today - start) / 86400000));
+    }
+
+    function isNcOverdue(rec) {
+      return !rec.rncAberta && !rec.d8Finalizado && getNcOpenDays(rec) > 30;
+    }
+
+    function getNcStatusBadge(rec) {
+      if (rec.d8Finalizado) return { label: '8D Finalizado', cls: 'complete' };
+      if (rec.rncAberta) return { label: 'RNC Aberta', cls: 'on_going' };
+      return isNcOverdue(rec)
+        ? { label: 'Vencida', cls: 'delayed' }
+        : { label: 'No prazo', cls: 'on_time' };
+    }
+
     function openHomeCardPopup(title, accent, isProject, tenantId) {
       var titleEl = document.getElementById('groupDetailTitle');
       var tbody   = document.getElementById('groupDetailTbody');
@@ -4723,15 +4745,14 @@ document.addEventListener("DOMContentLoaded", function() {
           '<th>#</th><th>NC</th><th>Descrição</th><th>Data Abertura</th><th>Status</th>';
         tbody.innerHTML = records.length
           ? records.map(function(r, i) {
-              var statusLabel = r.d8Finalizado ? '8D Finalizado' : r.rncAberta ? 'RNC Aberta' : 'Vencida';
-              var statusCls   = r.d8Finalizado ? 'complete' : r.rncAberta ? 'on_going' : 'delayed';
+              var ncStatus = getNcStatusBadge(r);
               var dateFmt = r.date ? r.date.split('-').reverse().join('/') : '—';
               return '<tr>' +
                 '<td>' + (i + 1) + '</td>' +
                 '<td>' + escHtml(r.ncNumber || r.id || '') + '</td>' +
                 '<td>' + escHtml(r.description || r.piece || r.failureMode || '—') + '</td>' +
                 '<td>' + dateFmt + '</td>' +
-                '<td><span class="badge badge-' + statusCls + '">' + statusLabel + '</span></td>' +
+                '<td><span class="badge badge-' + ncStatus.cls + '">' + ncStatus.label + '</span></td>' +
               '</tr>';
             }).join('')
           : '<tr><td colspan="5" style="text-align:center;color:#6b7280;">Nenhuma NC cadastrada.</td></tr>';
@@ -4819,7 +4840,7 @@ document.addEventListener("DOMContentLoaded", function() {
     var totalRnc    = allCliRecs.filter(function(r) { return r.rncAberta === true && !r.d8Finalizado; }).length;
     var total8d     = allCliRecs.filter(function(r) { return r.d8Finalizado === true; }).length;
     var totalPecas  = allCliRecs.reduce(function(s, r) { return s + (parseInt(r.qty) || 0); }, 0);
-    var vencidasNc  = allCliRecs.filter(function(r) { return !r.rncAberta && !r.d8Finalizado; }).length;
+    var vencidasNc  = allCliRecs.filter(function(r) { return isNcOverdue(r); }).length;
 
     var allProjActs = projKeys.reduce(function(acc, k) { return acc.concat(loadProjectActions(k).map(function(a){ a._tenant = k; return a; })); }, []);
     var totalActs   = allProjActs.length;
@@ -4889,8 +4910,7 @@ document.addEventListener("DOMContentLoaded", function() {
           '<th>#</th><th>Cliente</th><th>NC</th><th>Descrição</th><th>Data</th><th>Qty</th><th>Status</th>';
         tbody.innerHTML = filteredRecs.length
           ? filteredRecs.map(function(r, i) {
-              var statusLabel = r.d8Finalizado ? '8D Finalizado' : r.rncAberta ? 'RNC Aberta' : 'Vencida';
-              var statusCls   = r.d8Finalizado ? 'complete' : r.rncAberta ? 'on_going' : 'delayed';
+              var ncStatus = getNcStatusBadge(r);
               var dateFmt = r.date ? r.date.split('-').reverse().join('/') : '—';
               var clientLabel = r._clientLabel || '—';
               return '<tr>' +
@@ -4900,7 +4920,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 '<td>' + escHtml(r.description || r.piece || r.failureMode || '—') + '</td>' +
                 '<td>' + dateFmt + '</td>' +
                 '<td>' + (r.qty || '—') + '</td>' +
-                '<td><span class="badge badge-' + statusCls + '">' + statusLabel + '</span></td>' +
+                '<td><span class="badge badge-' + ncStatus.cls + '">' + ncStatus.label + '</span></td>' +
               '</tr>';
             }).join('')
           : '<tr><td colspan="7" style="text-align:center;color:#6b7280;">Nenhum registro encontrado.</td></tr>';
@@ -4944,7 +4964,7 @@ document.addEventListener("DOMContentLoaded", function() {
       }, []);
       var rncRecs  = allCliRecsTagged.filter(function(r) { return r.rncAberta === true && !r.d8Finalizado; });
       var d8Recs   = allCliRecsTagged.filter(function(r) { return r.d8Finalizado === true; });
-      var vencRecs = allCliRecsTagged.filter(function(r) { return !r.rncAberta && !r.d8Finalizado; });
+      var vencRecs = allCliRecsTagged.filter(function(r) { return isNcOverdue(r); });
       var pecaRecs = allCliRecsTagged.slice().sort(function(a,b){ return (parseInt(b.qty)||0)-(parseInt(a.qty)||0); });
 
       kpiCliRow.innerHTML = '';
@@ -4954,8 +4974,8 @@ document.addEventListener("DOMContentLoaded", function() {
         function(){ openKpiDetailPopup('RNC Aberta — sem 8D finalizado', '#dc2626', true, rncRecs); }));
       kpiCliRow.appendChild(kpiTile(total8d,    '8D Finalizado',  'NCs encerradas',               '#16a34a',
         function(){ openKpiDetailPopup('8D Finalizado — NCs encerradas', '#16a34a', true, d8Recs); }));
-      kpiCliRow.appendChild(kpiTile(vencidasNc, 'Vencidas',       'Sem status ativo',             '#b45309',
-        function(){ openKpiDetailPopup('NCs Vencidas — sem tratativa ativa', '#b45309', true, vencRecs); }));
+      kpiCliRow.appendChild(kpiTile(vencidasNc, 'Vencidas',       'Sem RNC/8D há +30 dias',       '#b45309',
+        function(){ openKpiDetailPopup('NCs Vencidas — sem tratativa há +30 dias', '#b45309', true, vencRecs); }));
       kpiCliRow.appendChild(kpiTile(totalPecas, 'Qty Peças',      'Total peças não-conformes',    '#7c3aed',
         function(){ openKpiDetailPopup('Qty Peças — maior para menor', '#7c3aed', true, pecaRecs); }));
       if (kpiCliSec) kpiCliSec.style.display = '';
@@ -5008,9 +5028,9 @@ document.addEventListener("DOMContentLoaded", function() {
       cliKeys.forEach(function(k) {
         var recs = loadNcRecords(k);
         var openRnc = recs.filter(function(r) { return r.rncAberta === true && !r.d8Finalizado; }).length;
-        var venc    = recs.filter(function(r) { return !r.rncAberta && !r.d8Finalizado; }).length;
+        var venc    = recs.filter(function(r) { return isNcOverdue(r); }).length;
         if (openRnc > 0) alertItems.push({ accent:'#dc2626', tag:'RNC Aberta', title: TENANTS[k].label, sub: openRnc + ' registro(s) com RNC aberta',    tenantId: k, type:'rnc' });
-        if (venc    > 0) alertItems.push({ accent:'#b45309', tag:'NC Vencida', title: TENANTS[k].label, sub: venc    + ' NC(s) vencida(s) sem tratativa', tenantId: k, type:'venc' });
+        if (venc    > 0) alertItems.push({ accent:'#b45309', tag:'NC Vencida', title: TENANTS[k].label, sub: venc    + ' NC(s) vencida(s) (+30 dias sem tratativa)', tenantId: k, type:'venc' });
       });
 
       // Projetos com ações atrasadas
@@ -5041,9 +5061,9 @@ document.addEventListener("DOMContentLoaded", function() {
                 openKpiDetailPopup('RNC Aberta — ' + tenantLabel, it.accent, true, recs);
               } else if (it.type === 'venc') {
                 var recs = loadNcRecords(it.tenantId)
-                  .filter(function(r) { return !r.rncAberta && !r.d8Finalizado; })
+                  .filter(function(r) { return isNcOverdue(r); })
                   .map(function(r) { r = Object.assign({}, r); r._clientLabel = tenantLabel; return r; });
-                openKpiDetailPopup('NCs Vencidas — ' + tenantLabel, it.accent, true, recs);
+                openKpiDetailPopup('NCs Vencidas (+30 dias) — ' + tenantLabel, it.accent, true, recs);
               } else if (it.type === 'late') {
                 var acts = loadProjectActions(it.tenantId)
                   .filter(function(a) { return resolveStatus(a) === 'delayed'; })
