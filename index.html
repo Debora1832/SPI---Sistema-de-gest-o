@@ -6120,7 +6120,16 @@ document.addEventListener("DOMContentLoaded", function() {
     if (!photos.length) {
       delete r.photos;
     } else if (!storage || _storageCorsFailed) {
-      delete r.photos;
+      // Storage indisponível: preserve URLs já enviadas para não "sumir" fotos
+      // em outros dispositivos quando o documento for salvo novamente.
+      var existingPhotoUrls = photos
+        .map(extractNcPhotoSrc)
+        .filter(function(src) { return /^https?:\/\//i.test(src); });
+      if (existingPhotoUrls.length) {
+        r.photos = existingPhotoUrls;
+      } else {
+        delete r.photos;
+      }
     } else {
       var urls = await Promise.all(photos.map(function(p, i) {
         return uploadPhotoToStorage(tenantId, r.id, p, i);
