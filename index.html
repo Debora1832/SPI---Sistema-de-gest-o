@@ -2363,7 +2363,8 @@ document.addEventListener("DOMContentLoaded", function() {
       cfg = Object.assign({}, cfg, {
         storageBucket: normalizeStorageBucket(cfg.projectId, cfg.storageBucket)
       });
-      try { localStorage.setItem("spi_firebase_cfg", JSON.stringify(cfg)); } catch(e) {}
+      try { localStorage.setItem("spi_firebase_cfg", JSON.stringify(cfg)); }
+      catch(e) { console.warn("localStorage error normalizing Firebase cfg:", e); }
       setFirebaseStatus("pending", "Firebase: conectando…");
       if (typeof firebase === "undefined") {
         setFirebaseStatus("error", "Firebase: SDK não carregado");
