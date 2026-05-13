@@ -2340,12 +2340,13 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   function normalizeStorageBucket(projectId, bucket) {
+    var safeProjectId = (projectId || '').trim();
     var normalized = (bucket || '').trim();
     if (normalized.indexOf('gs://') === 0) normalized = normalized.slice(5);
     normalized = normalized.replace(/\/+$/, '');
-    if (!normalized) return projectId + '.firebasestorage.app';
+    if (!normalized) return safeProjectId ? (safeProjectId + '.firebasestorage.app') : '';
     // Auto-migrate the legacy default to the new Firebase Storage domain.
-    if (normalized === projectId + '.appspot.com') return projectId + '.firebasestorage.app';
+    if (safeProjectId && normalized === safeProjectId + '.appspot.com') return safeProjectId + '.firebasestorage.app';
     return normalized;
   }
 
@@ -3602,7 +3603,7 @@ document.addEventListener("DOMContentLoaded", function() {
       apiKey,
       projectId,
       authDomain:        document.getElementById("fbAuthDomain").value.trim()    || projectId + ".firebaseapp.com",
-      storageBucket:     normalizeStorageBucket(projectId, document.getElementById("fbStorageBucket").value.trim() || projectId + ".firebasestorage.app"),
+      storageBucket:     normalizeStorageBucket(projectId, document.getElementById("fbStorageBucket").value.trim()),
       messagingSenderId: document.getElementById("fbSenderId").value.trim(),
       appId:             document.getElementById("fbAppId").value.trim()
     };
