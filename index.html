@@ -7212,7 +7212,7 @@ document.addEventListener("DOMContentLoaded", function() {
       var d8Active  = nc.d8Finalizado ? 'active' : '';
       var dateStr = ncFmtDate(nc.date);
       var atencaoBadge = nc.atencao ? '<div class="nc-card-atencao-badge">⚠ Atenção</div>' : '';
-      var contencaoBadge = nc.contencaoEnviada ? '<div class="nc-card-contencao-badge">📋 Contenção Enviada</div>' : '';
+      var contencaoBadge = nc.contencaoEnviada ? '<div class="nc-card-contencao-badge"> Contenção Enviada</div>' : '';
       var naoProcBadge = nc.naoProcedente ? '<div class="nc-nao-procedente-badge">✕ Não Procedente</div>' : '';
       var naoProcClass = nc.naoProcedente ? ' nc-nao-procedente' : '';
       return '<div class="nc-card' + naoProcClass + '" data-nc-id="' + nc.id + '">' +
