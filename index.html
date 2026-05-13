@@ -903,6 +903,10 @@
     .nc-card:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,.3); }
     /* Atenção badge — shown on NC card when attention flag is set */
     .nc-card-atencao-badge { position:absolute; top:8px; right:8px; background:#f97316; color:#fff; border-radius:20px; font-size:11px; font-weight:800; padding:3px 8px; display:flex; align-items:center; gap:4px; box-shadow:0 2px 8px rgba(249,115,22,.5); z-index:10; letter-spacing:.04em; pointer-events:none; animation:nc-atencao-pulse 2s infinite; }
+    /* Evidências de contenção badge — shown on NC card when contencaoEnviada flag is set */
+    .nc-card-contencao-badge { position:absolute; top:8px; right:8px; background:#1d4ed8; color:#fff; border-radius:20px; font-size:11px; font-weight:800; padding:3px 8px; display:flex; align-items:center; gap:4px; box-shadow:0 2px 8px rgba(29,78,216,.45); z-index:10; letter-spacing:.04em; pointer-events:none; }
+    /* When both Atenção and Contenção badges are present, stack Contenção below */
+    .nc-card-atencao-badge ~ .nc-card-contencao-badge { top:44px; }
     /* Não Procedente – card style */
     .nc-card.nc-nao-procedente { opacity:.55; filter:grayscale(1); }
     .nc-card.nc-nao-procedente .nc-card-body, .nc-card.nc-nao-procedente .nc-card-actions { pointer-events:auto; }
@@ -1104,6 +1108,10 @@
     .nc-detail-obs-atencao-btn.active { background:#f97316; color:#fff; box-shadow:0 2px 8px rgba(249,115,22,.4); }
     .nc-detail-obs-atencao-btn:hover { background:#fff7ed; }
     .nc-detail-obs-atencao-btn.active:hover { background:#ea6c0a; }
+    .nc-detail-obs-contencao-btn { flex-shrink:0; padding:9px 14px; border-radius:8px; border:2px solid #1d4ed8; background:transparent; color:#1d4ed8; font-size:12px; font-weight:800; cursor:pointer; transition:all .15s; white-space:nowrap; display:flex; align-items:center; gap:5px; }
+    .nc-detail-obs-contencao-btn.active { background:#1d4ed8; color:#fff; box-shadow:0 2px 8px rgba(29,78,216,.4); }
+    .nc-detail-obs-contencao-btn:hover { background:#eff6ff; }
+    .nc-detail-obs-contencao-btn.active:hover { background:#1e40af; }
 
 
     .nc-alert-viewer-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,.75); z-index:5000; align-items:center; justify-content:center; padding:20px; }
@@ -4652,6 +4660,30 @@ document.addEventListener("DOMContentLoaded", function() {
       return recs;
     }
 
+    function getNcOpenDays(rec) {
+      if (!rec || !rec.date) return 0;
+      var start = new Date(rec.date);
+      if (isNaN(start.getTime())) return 0;
+      start.setHours(0, 0, 0, 0);
+      var today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return Math.max(0, Math.floor((today - start) / 86400000));
+    }
+
+    var NC_OVERDUE_THRESHOLD_DAYS = 30;
+
+    function isNcOverdue(rec) {
+      return !rec.rncAberta && !rec.d8Finalizado && getNcOpenDays(rec) > NC_OVERDUE_THRESHOLD_DAYS;
+    }
+
+    function getNcStatusBadge(rec) {
+      if (rec.d8Finalizado) return { label: '8D Finalizado', cls: 'complete' };
+      if (rec.rncAberta) return { label: 'RNC Aberta', cls: 'on_going' };
+      return isNcOverdue(rec)
+        ? { label: 'Vencida', cls: 'delayed' }
+        : { label: 'No prazo', cls: 'on_time' };
+    }
+
     function openHomeCardPopup(title, accent, isProject, tenantId) {
       var titleEl = document.getElementById('groupDetailTitle');
       var tbody   = document.getElementById('groupDetailTbody');
@@ -4723,15 +4755,14 @@ document.addEventListener("DOMContentLoaded", function() {
           '<th>#</th><th>NC</th><th>Descrição</th><th>Data Abertura</th><th>Status</th>';
         tbody.innerHTML = records.length
           ? records.map(function(r, i) {
-              var statusLabel = r.d8Finalizado ? '8D Finalizado' : r.rncAberta ? 'RNC Aberta' : 'Vencida';
-              var statusCls   = r.d8Finalizado ? 'complete' : r.rncAberta ? 'on_going' : 'delayed';
+              var ncStatus = getNcStatusBadge(r);
               var dateFmt = r.date ? r.date.split('-').reverse().join('/') : '—';
               return '<tr>' +
                 '<td>' + (i + 1) + '</td>' +
                 '<td>' + escHtml(r.ncNumber || r.id || '') + '</td>' +
                 '<td>' + escHtml(r.description || r.piece || r.failureMode || '—') + '</td>' +
                 '<td>' + dateFmt + '</td>' +
-                '<td><span class="badge badge-' + statusCls + '">' + statusLabel + '</span></td>' +
+                '<td><span class="badge badge-' + ncStatus.cls + '">' + ncStatus.label + '</span></td>' +
               '</tr>';
             }).join('')
           : '<tr><td colspan="5" style="text-align:center;color:#6b7280;">Nenhuma NC cadastrada.</td></tr>';
@@ -4819,7 +4850,7 @@ document.addEventListener("DOMContentLoaded", function() {
     var totalRnc    = allCliRecs.filter(function(r) { return r.rncAberta === true && !r.d8Finalizado; }).length;
     var total8d     = allCliRecs.filter(function(r) { return r.d8Finalizado === true; }).length;
     var totalPecas  = allCliRecs.reduce(function(s, r) { return s + (parseInt(r.qty) || 0); }, 0);
-    var vencidasNc  = allCliRecs.filter(function(r) { return !r.rncAberta && !r.d8Finalizado; }).length;
+    var vencidasNc  = allCliRecs.filter(function(r) { return isNcOverdue(r); }).length;
 
     var allProjActs = projKeys.reduce(function(acc, k) { return acc.concat(loadProjectActions(k).map(function(a){ a._tenant = k; return a; })); }, []);
     var totalActs   = allProjActs.length;
@@ -4889,8 +4920,7 @@ document.addEventListener("DOMContentLoaded", function() {
           '<th>#</th><th>Cliente</th><th>NC</th><th>Descrição</th><th>Data</th><th>Qty</th><th>Status</th>';
         tbody.innerHTML = filteredRecs.length
           ? filteredRecs.map(function(r, i) {
-              var statusLabel = r.d8Finalizado ? '8D Finalizado' : r.rncAberta ? 'RNC Aberta' : 'Vencida';
-              var statusCls   = r.d8Finalizado ? 'complete' : r.rncAberta ? 'on_going' : 'delayed';
+              var ncStatus = getNcStatusBadge(r);
               var dateFmt = r.date ? r.date.split('-').reverse().join('/') : '—';
               var clientLabel = r._clientLabel || '—';
               return '<tr>' +
@@ -4900,7 +4930,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 '<td>' + escHtml(r.description || r.piece || r.failureMode || '—') + '</td>' +
                 '<td>' + dateFmt + '</td>' +
                 '<td>' + (r.qty || '—') + '</td>' +
-                '<td><span class="badge badge-' + statusCls + '">' + statusLabel + '</span></td>' +
+                '<td><span class="badge badge-' + ncStatus.cls + '">' + ncStatus.label + '</span></td>' +
               '</tr>';
             }).join('')
           : '<tr><td colspan="7" style="text-align:center;color:#6b7280;">Nenhum registro encontrado.</td></tr>';
@@ -4944,7 +4974,7 @@ document.addEventListener("DOMContentLoaded", function() {
       }, []);
       var rncRecs  = allCliRecsTagged.filter(function(r) { return r.rncAberta === true && !r.d8Finalizado; });
       var d8Recs   = allCliRecsTagged.filter(function(r) { return r.d8Finalizado === true; });
-      var vencRecs = allCliRecsTagged.filter(function(r) { return !r.rncAberta && !r.d8Finalizado; });
+      var vencRecs = allCliRecsTagged.filter(function(r) { return isNcOverdue(r); });
       var pecaRecs = allCliRecsTagged.slice().sort(function(a,b){ return (parseInt(b.qty)||0)-(parseInt(a.qty)||0); });
 
       kpiCliRow.innerHTML = '';
@@ -4954,8 +4984,8 @@ document.addEventListener("DOMContentLoaded", function() {
         function(){ openKpiDetailPopup('RNC Aberta — sem 8D finalizado', '#dc2626', true, rncRecs); }));
       kpiCliRow.appendChild(kpiTile(total8d,    '8D Finalizado',  'NCs encerradas',               '#16a34a',
         function(){ openKpiDetailPopup('8D Finalizado — NCs encerradas', '#16a34a', true, d8Recs); }));
-      kpiCliRow.appendChild(kpiTile(vencidasNc, 'Vencidas',       'Sem status ativo',             '#b45309',
-        function(){ openKpiDetailPopup('NCs Vencidas — sem tratativa ativa', '#b45309', true, vencRecs); }));
+      kpiCliRow.appendChild(kpiTile(vencidasNc, 'Vencidas',       'Sem RNC/8D há +30 dias',       '#b45309',
+        function(){ openKpiDetailPopup('NCs Vencidas — sem tratativa há +30 dias', '#b45309', true, vencRecs); }));
       kpiCliRow.appendChild(kpiTile(totalPecas, 'Qty Peças',      'Total peças não-conformes',    '#7c3aed',
         function(){ openKpiDetailPopup('Qty Peças — maior para menor', '#7c3aed', true, pecaRecs); }));
       if (kpiCliSec) kpiCliSec.style.display = '';
@@ -5008,9 +5038,9 @@ document.addEventListener("DOMContentLoaded", function() {
       cliKeys.forEach(function(k) {
         var recs = loadNcRecords(k);
         var openRnc = recs.filter(function(r) { return r.rncAberta === true && !r.d8Finalizado; }).length;
-        var venc    = recs.filter(function(r) { return !r.rncAberta && !r.d8Finalizado; }).length;
+        var venc    = recs.filter(function(r) { return isNcOverdue(r); }).length;
         if (openRnc > 0) alertItems.push({ accent:'#dc2626', tag:'RNC Aberta', title: TENANTS[k].label, sub: openRnc + ' registro(s) com RNC aberta',    tenantId: k, type:'rnc' });
-        if (venc    > 0) alertItems.push({ accent:'#b45309', tag:'NC Vencida', title: TENANTS[k].label, sub: venc    + ' NC(s) vencida(s) sem tratativa', tenantId: k, type:'venc' });
+        if (venc    > 0) alertItems.push({ accent:'#b45309', tag:'NC Vencida', title: TENANTS[k].label, sub: venc    + ' NC(s) vencida(s) (+30 dias sem tratativa)', tenantId: k, type:'venc' });
       });
 
       // Projetos com ações atrasadas
@@ -5041,9 +5071,9 @@ document.addEventListener("DOMContentLoaded", function() {
                 openKpiDetailPopup('RNC Aberta — ' + tenantLabel, it.accent, true, recs);
               } else if (it.type === 'venc') {
                 var recs = loadNcRecords(it.tenantId)
-                  .filter(function(r) { return !r.rncAberta && !r.d8Finalizado; })
+                  .filter(function(r) { return isNcOverdue(r); })
                   .map(function(r) { r = Object.assign({}, r); r._clientLabel = tenantLabel; return r; });
-                openKpiDetailPopup('NCs Vencidas — ' + tenantLabel, it.accent, true, recs);
+                openKpiDetailPopup('NCs Vencidas (+30 dias) — ' + tenantLabel, it.accent, true, recs);
               } else if (it.type === 'late') {
                 var acts = loadProjectActions(it.tenantId)
                   .filter(function(a) { return resolveStatus(a) === 'delayed'; })
@@ -7182,11 +7212,13 @@ document.addEventListener("DOMContentLoaded", function() {
       var d8Active  = nc.d8Finalizado ? 'active' : '';
       var dateStr = ncFmtDate(nc.date);
       var atencaoBadge = nc.atencao ? '<div class="nc-card-atencao-badge">⚠ Atenção</div>' : '';
+      var contencaoBadge = nc.contencaoEnviada ? '<div class="nc-card-contencao-badge">📋 Contenção Enviada</div>' : '';
       var naoProcBadge = nc.naoProcedente ? '<div class="nc-nao-procedente-badge">✕ Não Procedente</div>' : '';
       var naoProcClass = nc.naoProcedente ? ' nc-nao-procedente' : '';
       return '<div class="nc-card' + naoProcClass + '" data-nc-id="' + nc.id + '">' +
         naoProcBadge +
         atencaoBadge +
+        contencaoBadge +
         photoHtml +
         '<div class="nc-card-body">' +
           '<div class="nc-card-num">' + escHtml(nc.ncNumber || 'NC') + '</div>' +
@@ -7563,12 +7595,14 @@ document.addEventListener("DOMContentLoaded", function() {
       var bodyEl = document.getElementById('ncDetailBody');
 
       // Observations + Atenção section
-      var atencaoActive = nc.atencao ? ' active' : '';
+      var atencaoActive   = nc.atencao ? ' active' : '';
+      var contencaoActive = nc.contencaoEnviada ? ' active' : '';
       var obsHtml =
         '<div class="nc-detail-obs-section">' +
           '<div class="nc-detail-obs-row">' +
             '<textarea class="nc-detail-obs-textarea" id="ncDetailObsTextarea" placeholder="Observações…" rows="3">' + escHtml(nc.observacoes || '') + '</textarea>' +
             '<button class="nc-detail-obs-atencao-btn' + atencaoActive + '" id="ncDetailAtencaoBtn" title="Marcar atenção">⚠ Atenção</button>' +
+            '<button class="nc-detail-obs-contencao-btn' + contencaoActive + '" id="ncDetailContencaoBtn" title="Evidências de contenção enviadas">📋 Contenção Enviada</button>' +
           '</div>' +
         '</div>';
 
@@ -7641,6 +7675,41 @@ document.addEventListener("DOMContentLoaded", function() {
                 badge.innerHTML = '⚠ Atenção';
                 card.insertBefore(badge, card.firstChild);
               } else if (!nc.atencao && existing) {
+                existing.remove();
+              }
+            }
+          }
+        });
+      }
+
+      // Wire Contenção toggle button
+      var contencaoBtn = document.getElementById('ncDetailContencaoBtn');
+      if (contencaoBtn) {
+        contencaoBtn.addEventListener('click', function() {
+          var idx = ncRecords.findIndex(function(r){ return r.id === nc.id; });
+          if (idx !== -1) {
+            ncRecords[idx].contencaoEnviada = !ncRecords[idx].contencaoEnviada;
+            nc.contencaoEnviada = ncRecords[idx].contencaoEnviada;
+            contencaoBtn.classList.toggle('active', nc.contencaoEnviada);
+            saveNcRecords();
+            // Update the card badge without re-opening the modal
+            var card = document.querySelector('.nc-card[data-nc-id="' + nc.id + '"]');
+            if (card) {
+              var existing = card.querySelector('.nc-card-contencao-badge');
+              if (nc.contencaoEnviada && !existing) {
+                var badge = document.createElement('div');
+                badge.className = 'nc-card-contencao-badge';
+                badge.innerHTML = '📋 Contenção Enviada';
+                // Insert after the atenção badge (so CSS sibling selector stacks it below)
+                var atBadge = card.querySelector('.nc-card-atencao-badge');
+                if (atBadge && atBadge.nextSibling) {
+                  card.insertBefore(badge, atBadge.nextSibling);
+                } else if (atBadge) {
+                  atBadge.parentNode.appendChild(badge);
+                } else {
+                  card.insertBefore(badge, card.firstChild);
+                }
+              } else if (!nc.contencaoEnviada && existing) {
                 existing.remove();
               }
             }
@@ -8095,6 +8164,7 @@ document.addEventListener("DOMContentLoaded", function() {
           description: document.getElementById('ncDescription').value.trim(),
           rncAberta:    false,
           d8Finalizado: false,
+          contencaoEnviada: false,
           naoProcedente: document.getElementById('ncNaoProcedente').checked,
           photos:      _ncPhotos.slice(),
           pdfs:        _ncPdfs.slice()
