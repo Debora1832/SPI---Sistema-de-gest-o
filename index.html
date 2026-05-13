@@ -2344,7 +2344,7 @@ document.addEventListener("DOMContentLoaded", function() {
     var normalized = (bucket || '').trim();
     if (normalized.indexOf('gs://') === 0) normalized = normalized.slice(5);
     normalized = normalized.replace(/\/+$/, '');
-    if (!normalized) return safeProjectId ? (safeProjectId + '.firebasestorage.app') : normalized;
+    if (!normalized) return safeProjectId ? (safeProjectId + '.firebasestorage.app') : '';
     // Auto-migrate the legacy default to the new Firebase Storage domain.
     if (safeProjectId && normalized === safeProjectId + '.appspot.com') {
       console.info('Migrando storage bucket legado para firebasestorage.app:', normalized);
