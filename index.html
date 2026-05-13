@@ -6122,11 +6122,11 @@ document.addEventListener("DOMContentLoaded", function() {
     } else if (!storage || _storageCorsFailed) {
       // Storage indisponível: preserve URLs já enviadas para não "sumir" fotos
       // em outros dispositivos quando o documento for salvo novamente.
-      var existingPhotoUrls = photos
+      var preservedPhotoUrls = photos
         .map(extractNcPhotoSrc)
         .filter(function(src) { return /^https?:\/\//i.test(src); });
-      if (existingPhotoUrls.length) {
-        r.photos = existingPhotoUrls;
+      if (preservedPhotoUrls.length) {
+        r.photos = preservedPhotoUrls;
       } else {
         delete r.photos;
       }
