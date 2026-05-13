@@ -7602,7 +7602,7 @@ document.addEventListener("DOMContentLoaded", function() {
           '<div class="nc-detail-obs-row">' +
             '<textarea class="nc-detail-obs-textarea" id="ncDetailObsTextarea" placeholder="Observações…" rows="3">' + escHtml(nc.observacoes || '') + '</textarea>' +
             '<button class="nc-detail-obs-atencao-btn' + atencaoActive + '" id="ncDetailAtencaoBtn" title="Marcar atenção">⚠ Atenção</button>' +
-            '<button class="nc-detail-obs-contencao-btn' + contencaoActive + '" id="ncDetailContencaoBtn" title="Evidências de contenção enviadas">📋 Contenção Enviada</button>' +
+            '<button class="nc-detail-obs-contencao-btn' + contencaoActive + '" id="ncDetailContencaoBtn" title="Evidências de contenção enviadas"> Contenção Enviada</button>' +
           '</div>' +
         '</div>';
 
@@ -7699,7 +7699,7 @@ document.addEventListener("DOMContentLoaded", function() {
               if (nc.contencaoEnviada && !existing) {
                 var badge = document.createElement('div');
                 badge.className = 'nc-card-contencao-badge';
-                badge.innerHTML = '📋 Contenção Enviada';
+                badge.innerHTML = ' Contenção Enviada';
                 // Insert after the atenção badge (so CSS sibling selector stacks it below)
                 var atBadge = card.querySelector('.nc-card-atencao-badge');
                 if (atBadge && atBadge.nextSibling) {
