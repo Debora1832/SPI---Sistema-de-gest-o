@@ -6048,6 +6048,8 @@ document.addEventListener("DOMContentLoaded", function() {
   // Returns null on failure so the caller can fall back to localStorage storage.
   // A per-upload timeout of 8 s guards against the Firebase Storage SDK silently
   // retrying a CORS-blocked request and stalling the entire save operation.
+  var MAX_NC_PHOTO_PROBE_COUNT = 10;
+
   async function uploadPhotoToStorage(tenantId, ncId, dataUrl, index) {
     if (!storage || _storageCorsFailed) return null;
     if (typeof dataUrl === 'string' && dataUrl.startsWith('https://')) return dataUrl;
@@ -6092,13 +6094,17 @@ document.addEventListener("DOMContentLoaded", function() {
     if (!storage || _storageCorsFailed || !tenantId || !ncId) return [];
     var urls = [];
     var extensions = ['jpg', 'png'];
-    for (var i = 0; i < 10; i++) {
+    for (var i = 0; i < MAX_NC_PHOTO_PROBE_COUNT; i++) {
       var foundUrl = '';
       for (var j = 0; j < extensions.length; j++) {
         try {
           foundUrl = await storage.ref('nc_photos/' + tenantId + '/' + ncId + '/photo_' + i + '.' + extensions[j]).getDownloadURL();
           if (foundUrl) break;
-        } catch(e) {}
+        } catch(e) {
+          if (e && e.code !== 'storage/object-not-found') {
+            console.debug('NC photo recovery lookup failed:', tenantId, ncId, i, extensions[j], e);
+          }
+        }
       }
       if (!foundUrl) break;
       urls.push(foundUrl);
