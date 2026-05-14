@@ -2510,12 +2510,14 @@ document.addEventListener("DOMContentLoaded", function() {
               if (snap.exists) {
                 var records = snap.data().records;
                 if (Array.isArray(records)) {
-                  loadNcRecordsLocalAsync(currentTenant).then(function(localRecords) {
+                  loadNcRecordsLocalAsync(currentTenant).then(async function(localRecords) {
                     // Restore photos from the local cache (not stored in Firestore)
                     records = (typeof mergePhotosFromLocal === 'function')
                       ? mergePhotosFromLocal(records, localRecords)
                       : records;
                     records = records.map(normalizeNcRecordAttachments);
+                    var recoveredRel = await recoverMissingNcPhotosFromStorage(records, currentTenant);
+                    records = recoveredRel.records;
                     // Keep any local records that Firebase doesn't have (saved while offline)
                     var fbIdsSet = new Set(records.map(function(r) { return r.id; }));
                     var hadLocalOnlyRel = false;
@@ -2526,8 +2528,9 @@ document.addEventListener("DOMContentLoaded", function() {
                     renderHomePage();
                     if (typeof renderNcCharts === 'function') renderNcCharts();
                     if (typeof renderNcCustomCharts === 'function') renderNcCustomCharts();
-                    // Push any locally-saved records that didn't reach Firebase back up
-                    if (hadLocalOnlyRel && typeof saveNcRecords === 'function') saveNcRecords();
+                    // Push any locally-saved records that didn't reach Firebase back up,
+                    // and persist any photo URLs recovered from Storage.
+                    if ((hadLocalOnlyRel || recoveredRel.changed) && typeof saveNcRecords === 'function') saveNcRecords();
                   }).catch(function(e) { console.warn('NC local cache merge error:', e); });
                 }
               }
@@ -2550,7 +2553,7 @@ document.addEventListener("DOMContentLoaded", function() {
     // Real-time: NC records
     try {
       _ncListener = db.collection('nc_records_' + tenantId).doc('all')
-        .onSnapshot(function(snap) {
+        .onSnapshot(async function(snap) {
           // Guard: ignore late-firing callbacks from a previous tenant
           if (tenantId !== currentTenant) return;
           if (!snap.exists) return;
@@ -2567,6 +2570,8 @@ document.addEventListener("DOMContentLoaded", function() {
             ? mergePhotosFromLocal(records, ncRecords)
             : records;
           records = records.map(normalizeNcRecordAttachments);
+          var recoveredSnap = await recoverMissingNcPhotosFromStorage(records, tenantId);
+          records = recoveredSnap.records;
           // Keep any in-memory records not yet in Firebase (saved while connection was down)
           var fbSnapshotIdsSet = new Set(records.map(function(r) { return r.id; }));
           var hadLocalOnlySnap = false;
@@ -2580,8 +2585,9 @@ document.addEventListener("DOMContentLoaded", function() {
           if (typeof renderNcCustomCharts === 'function') renderNcCustomCharts();
           if (typeof renderNcGantt === 'function' && document.getElementById('ncGanttPage') &&
               document.getElementById('ncGanttPage').classList.contains('active')) renderNcGantt();
-          // Push any locally-saved records that didn't reach Firebase back up
-          if (hadLocalOnlySnap && typeof saveNcRecords === 'function') saveNcRecords();
+          // Push any locally-saved records that didn't reach Firebase back up,
+          // and persist any photo URLs recovered from Storage.
+          if ((hadLocalOnlySnap || recoveredSnap.changed) && typeof saveNcRecords === 'function') saveNcRecords();
         }, function(e) { console.warn('NC onSnapshot error:', e); });
     } catch(e) { console.warn('NC onSnapshot setup error:', e); }
 
@@ -6037,11 +6043,14 @@ document.addEventListener("DOMContentLoaded", function() {
   // upload attempts so they resolve immediately and don't block the Firestore save.
   var _storageCorsFailed = false;
 
+  var MAX_NC_PHOTO_PROBE_COUNT = 10;
+
   // Upload a single photo to Firebase Storage and return its download URL.
   // If the photo is already an HTTPS URL (already uploaded), returns it unchanged.
   // Returns null on failure so the caller can fall back to localStorage storage.
   // A per-upload timeout of 8 s guards against the Firebase Storage SDK silently
   // retrying a CORS-blocked request and stalling the entire save operation.
+
   async function uploadPhotoToStorage(tenantId, ncId, dataUrl, index) {
     if (!storage || _storageCorsFailed) return null;
     if (typeof dataUrl === 'string' && dataUrl.startsWith('https://')) return dataUrl;
@@ -6076,6 +6085,57 @@ document.addEventListener("DOMContentLoaded", function() {
       }
       return null;
     }
+  }
+
+  // Recover photo URLs directly from Firebase Storage when older Firestore
+  // records have already lost their `photos` metadata. Uploads use a stable
+  // path (`photo_<index>.jpg|png`), so we can probe those paths and rebuild
+  // the URLs without needing the original base64 payload.
+  async function findNcPhotoUrlsInStorage(tenantId, ncId) {
+    if (!storage || _storageCorsFailed || !tenantId || !ncId) return [];
+    var recoveredPhotoUrls = [];
+    var extensions = ['jpg', 'png'];
+    for (var photoIndex = 0; photoIndex < MAX_NC_PHOTO_PROBE_COUNT; photoIndex++) {
+      var foundUrl = null;
+      for (var extensionIndex = 0; extensionIndex < extensions.length; extensionIndex++) {
+        try {
+          foundUrl = await storage.ref('nc_photos/' + tenantId + '/' + ncId + '/photo_' + photoIndex + '.' + extensions[extensionIndex]).getDownloadURL();
+          if (foundUrl) break;
+        } catch(e) {
+          if (e && e.code !== 'storage/object-not-found') {
+            console.debug('NC photo recovery lookup failed:', tenantId, ncId, photoIndex, extensions[extensionIndex], e);
+          }
+        }
+      }
+      if (!foundUrl) break;
+      recoveredPhotoUrls.push(foundUrl);
+    }
+    return recoveredPhotoUrls;
+  }
+
+  async function recoverMissingNcPhotosFromStorage(records, tenantId) {
+    if (!Array.isArray(records) || !records.length || !storage || _storageCorsFailed) {
+      return { records: Array.isArray(records) ? records : [], changed: false };
+    }
+    // Callers pass normalized records; only probe Storage for records that still
+    // have no photo metadata but do have a stable id we can use in the path.
+    var changed = false;
+    var recoveredRecords = await Promise.all(records.map(async function(rec) {
+      var record = rec;
+      if (!record || !record.id || (Array.isArray(record.photos) && record.photos.length)) {
+        return record;
+      }
+      var recoveredPhotos = await findNcPhotoUrlsInStorage(tenantId, record.id);
+      if (!recoveredPhotos.length) return record;
+      changed = true;
+      // Collapse legacy single-photo fields into the canonical `photos` array so
+      // future saves and renders follow one consistent attachment shape.
+      var restored = Object.assign({}, record, { photos: recoveredPhotos });
+      delete restored.photo;
+      delete restored.photoUrls;
+      return restored;
+    }));
+    return { records: recoveredRecords, changed: changed };
   }
 
   // Upload a single file (any type: image, PDF…) to Firebase Storage and return
@@ -6384,6 +6444,8 @@ document.addEventListener("DOMContentLoaded", function() {
           // Restore attachments from the local cache (Firestore records don't carry binaries)
           var localRecords = await loadNcRecordsLocalAsync(tenantId);
           records = mergePhotosFromLocal(records, localRecords).map(normalizeNcRecordAttachments);
+          var recoveredAsync = await recoverMissingNcPhotosFromStorage(records, tenantId);
+          records = recoveredAsync.records;
           // Keep any local records that Firebase doesn't have (saved while offline)
           var fbIdsSet = new Set(records.map(function(r) { return r.id; }));
           var hadLocalOnly = false;
@@ -6397,7 +6459,7 @@ document.addEventListener("DOMContentLoaded", function() {
           });
           // Keep localStorage in sync (with photos merged in)
           await saveNcLocalSnapshot(records, tenantId);
-          if (hadLocalOnly || needsSave) {
+          if (hadLocalOnly || needsSave || recoveredAsync.changed) {
             // Push local-only records (and/or migrated records) back to Firebase so
             // other devices can see them.
             db.collection('nc_records_' + tenantId).doc('all')
