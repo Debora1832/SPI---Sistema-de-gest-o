@@ -2556,9 +2556,9 @@ document.addEventListener("DOMContentLoaded", function() {
           if (!snap.exists) return;
           var records = snap.data().records;
           if (!Array.isArray(records)) return;
-          // Firestore records don't carry photos (we strip them on write).
-          // Compare metadata only so a local photo addition doesn't look like a
-          // change coming from the server and trigger an unneeded re-render.
+          // Firestore records carry HTTPS photo URLs but not base64 blobs.
+          // Strip base64 from the local copy before comparing so that a locally
+          // added photo (not yet uploaded) doesn't look like a server change.
           var localMeta = JSON.stringify(ncRecords.map(stripPhotos));
           var fbMeta    = JSON.stringify(records);
           if (localMeta === fbMeta) return;
@@ -6001,13 +6001,26 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   // Return a copy of an NC record without base64 binary data.
-  // Photos and file attachments (alertFile, d8File) are large base64 blobs and
-  // would quickly push the Firestore document past its 1 MB limit.
-  // Full data is preserved in the local cache and restored after loading from
-  // Firebase (see mergePhotosFromLocal).
+  // base64/blob photo payloads are stripped to avoid bloating the Firestore document
+  // (1 MB limit). HTTP(S) Storage URLs are small strings and are preserved so that
+  // photos remain visible on other devices after a sync cycle.
+  // Full binary data is kept in the local cache (IndexedDB) and re-attached after
+  // loading from Firebase (see mergePhotosFromLocal).
   function stripPhotos(nc) {
     var r = Object.assign({}, nc);
-    delete r.photos;
+    // Collect every photo reference (photos array + legacy photo field).
+    // Keep only HTTP(S) URLs (already in Storage — small, safe to keep in Firestore).
+    // Discard base64 / blob payloads that would exceed the 1 MB document limit.
+    var allPhotos = (Array.isArray(r.photos) ? r.photos : [])
+      .concat(r.photo ? [r.photo] : []);
+    var httpsPhotos = allPhotos
+      .map(extractNcPhotoSrc)
+      .filter(function(src) { return /^https?:\/\//i.test(src); });
+    if (httpsPhotos.length) {
+      r.photos = httpsPhotos;
+    } else {
+      delete r.photos;
+    }
     delete r.photo;
     delete r.alertFile;
     delete r.d8File;
