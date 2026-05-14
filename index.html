@@ -6043,12 +6043,13 @@ document.addEventListener("DOMContentLoaded", function() {
   // upload attempts so they resolve immediately and don't block the Firestore save.
   var _storageCorsFailed = false;
 
+  var MAX_NC_PHOTO_PROBE_COUNT = 10;
+
   // Upload a single photo to Firebase Storage and return its download URL.
   // If the photo is already an HTTPS URL (already uploaded), returns it unchanged.
   // Returns null on failure so the caller can fall back to localStorage storage.
   // A per-upload timeout of 8 s guards against the Firebase Storage SDK silently
   // retrying a CORS-blocked request and stalling the entire save operation.
-  var MAX_NC_PHOTO_PROBE_COUNT = 10;
 
   async function uploadPhotoToStorage(tenantId, ncId, dataUrl, index) {
     if (!storage || _storageCorsFailed) return null;
@@ -6095,7 +6096,7 @@ document.addEventListener("DOMContentLoaded", function() {
     var urls = [];
     var extensions = ['jpg', 'png'];
     for (var i = 0; i < MAX_NC_PHOTO_PROBE_COUNT; i++) {
-      var foundUrl = '';
+      var foundUrl = null;
       for (var j = 0; j < extensions.length; j++) {
         try {
           foundUrl = await storage.ref('nc_photos/' + tenantId + '/' + ncId + '/photo_' + i + '.' + extensions[j]).getDownloadURL();
@@ -6116,9 +6117,11 @@ document.addEventListener("DOMContentLoaded", function() {
     if (!Array.isArray(records) || !records.length || !storage || _storageCorsFailed) {
       return { records: Array.isArray(records) ? records : [], changed: false };
     }
+    // Callers pass normalized records; only probe Storage for records that still
+    // have no photo metadata but do have a stable id we can use in the path.
     var changed = false;
     var recoveredRecords = await Promise.all(records.map(async function(rec) {
-      var normalized = normalizeNcRecordAttachments(rec);
+      var normalized = rec;
       if (!normalized || !normalized.id || (Array.isArray(normalized.photos) && normalized.photos.length)) {
         return normalized;
       }
