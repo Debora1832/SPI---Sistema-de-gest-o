@@ -6093,24 +6093,24 @@ document.addEventListener("DOMContentLoaded", function() {
   // the URLs without needing the original base64 payload.
   async function findNcPhotoUrlsInStorage(tenantId, ncId) {
     if (!storage || _storageCorsFailed || !tenantId || !ncId) return [];
-    var urls = [];
+    var recoveredPhotoUrls = [];
     var extensions = ['jpg', 'png'];
-    for (var i = 0; i < MAX_NC_PHOTO_PROBE_COUNT; i++) {
+    for (var photoIndex = 0; photoIndex < MAX_NC_PHOTO_PROBE_COUNT; photoIndex++) {
       var foundUrl = null;
-      for (var j = 0; j < extensions.length; j++) {
+      for (var extensionIndex = 0; extensionIndex < extensions.length; extensionIndex++) {
         try {
-          foundUrl = await storage.ref('nc_photos/' + tenantId + '/' + ncId + '/photo_' + i + '.' + extensions[j]).getDownloadURL();
+          foundUrl = await storage.ref('nc_photos/' + tenantId + '/' + ncId + '/photo_' + photoIndex + '.' + extensions[extensionIndex]).getDownloadURL();
           if (foundUrl) break;
         } catch(e) {
           if (e && e.code !== 'storage/object-not-found') {
-            console.debug('NC photo recovery lookup failed:', tenantId, ncId, i, extensions[j], e);
+            console.debug('NC photo recovery lookup failed:', tenantId, ncId, photoIndex, extensions[extensionIndex], e);
           }
         }
       }
       if (!foundUrl) break;
-      urls.push(foundUrl);
+      recoveredPhotoUrls.push(foundUrl);
     }
-    return urls;
+    return recoveredPhotoUrls;
   }
 
   async function recoverMissingNcPhotosFromStorage(records, tenantId) {
@@ -6121,14 +6121,16 @@ document.addEventListener("DOMContentLoaded", function() {
     // have no photo metadata but do have a stable id we can use in the path.
     var changed = false;
     var recoveredRecords = await Promise.all(records.map(async function(rec) {
-      var normalized = rec;
-      if (!normalized || !normalized.id || (Array.isArray(normalized.photos) && normalized.photos.length)) {
-        return normalized;
+      var record = rec;
+      if (!record || !record.id || (Array.isArray(record.photos) && record.photos.length)) {
+        return record;
       }
-      var recoveredPhotos = await findNcPhotoUrlsInStorage(tenantId, normalized.id);
-      if (!recoveredPhotos.length) return normalized;
+      var recoveredPhotos = await findNcPhotoUrlsInStorage(tenantId, record.id);
+      if (!recoveredPhotos.length) return record;
       changed = true;
-      var restored = Object.assign({}, normalized, { photos: recoveredPhotos });
+      // Collapse legacy single-photo fields into the canonical `photos` array so
+      // future saves and renders follow one consistent attachment shape.
+      var restored = Object.assign({}, record, { photos: recoveredPhotos });
       delete restored.photo;
       delete restored.photoUrls;
       return restored;
