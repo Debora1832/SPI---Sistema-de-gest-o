@@ -6002,18 +6002,18 @@ document.addEventListener("DOMContentLoaded", function() {
 
   // Return a copy of an NC record without base64 binary data.
   // base64/blob photo payloads are stripped to avoid bloating the Firestore document
-  // (1 MB limit). HTTPS Storage URLs are small strings and are preserved so that
+  // (1 MB limit). HTTP(S) Storage URLs are small strings and are preserved so that
   // photos remain visible on other devices after a sync cycle.
   // Full binary data is kept in the local cache (IndexedDB) and re-attached after
   // loading from Firebase (see mergePhotosFromLocal).
   function stripPhotos(nc) {
     var r = Object.assign({}, nc);
     // Collect every photo reference (photos array + legacy photo field).
-    // Keep only HTTPS URLs (already in Storage — small, safe to keep in Firestore).
+    // Keep only HTTP(S) URLs (already in Storage — small, safe to keep in Firestore).
     // Discard base64 / blob payloads that would exceed the 1 MB document limit.
-    var httpsPhotos = []
-      .concat(Array.isArray(r.photos) ? r.photos : [])
-      .concat(r.photo ? [r.photo] : [])
+    var allPhotos = (Array.isArray(r.photos) ? r.photos : [])
+      .concat(r.photo ? [r.photo] : []);
+    var httpsPhotos = allPhotos
       .map(extractNcPhotoSrc)
       .filter(function(src) { return /^https?:\/\//i.test(src); });
     if (httpsPhotos.length) {
