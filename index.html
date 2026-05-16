@@ -2496,7 +2496,8 @@ document.addEventListener("DOMContentLoaded", function() {
               } catch(e) { console.warn("localStorage parse error for " + key + ":", e); }
               if (localActions !== null) {
                 // Estado local continua autoritativo, mas sem escrever de volta
-                // automaticamente durante o reload para evitar loop com onSnapshot.
+                // automaticamente durante o reload, porque essas escritas
+                // realimentam os listeners onSnapshot depois da reconexão.
                 TENANTS[key].actions = localActions;
               } else {
                 TENANTS[key].actions = fbActions;
@@ -2630,7 +2631,8 @@ document.addEventListener("DOMContentLoaded", function() {
           var fbJson    = JSON.stringify(saved);
           if (localJson === fbJson) return;
           // Se Firebase trouxer itens ausentes localmente, ignoramos o snapshot
-          // para não restaurar itens deletados localmente nem entrar em loop.
+          // para não restaurar itens deletados localmente nem disparar escritas
+          // automáticas que realimentariam o loop de sync.
           var localIds = new Set(localActions.map(function(a){ return a && a.id; }));
           var fbHasDeleted = saved.some(function(a){ return a && a.id && !localIds.has(a.id); });
           if (fbHasDeleted) return;
@@ -2667,7 +2669,8 @@ document.addEventListener("DOMContentLoaded", function() {
   // Retorna Promise<array | null> (null = nenhum dado salvo).
   // O localStorage é tratado como fonte autoritativa para exclusões. Se ele
   // tiver dados, preferimos o estado local e evitamos reconciliações automáticas
-  // durante o carregamento para não criar loop de sync com o Firebase.
+  // durante o carregamento, porque escritas automáticas no Firebase disparam
+  // novos snapshots e podem prender a interface em ciclo de atualização.
   async function loadTenantActions(tenantId) {
     // Lê o estado local antes de tudo (salvo sincronicamente a cada alteração).
     let localActions = null;
