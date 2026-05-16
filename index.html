@@ -1787,6 +1787,12 @@
 
     <!-- Top action bar -->
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; flex-wrap:wrap; gap:12px;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <label for="ncYearFilterSelect" style="font-size:13px;font-weight:600;color:#374151;">Ano:</label>
+        <select id="ncYearFilterSelect" style="height:34px;min-width:140px;border:1px solid #d1d5db;border-radius:8px;padding:0 10px;background:#fff;color:#111827;font-size:13px;">
+          <option value="">Todos os anos</option>
+        </select>
+      </div>
       <button class="nc-new-btn" id="ncBtnNew">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/></svg>
         Nova NC
@@ -2517,14 +2523,19 @@ document.addEventListener("DOMContentLoaded", function() {
         updateNcVisibility();
         renderHomePage();
         if (typeof expandedGroup !== "undefined" && expandedGroup !== null) renderGantt();
-        // Also reload NC records for the current tenant
+        // Also reload NC records for the current tenant.
+        // Capture the tenant now so late-resolving promises don't contaminate another tenant.
         if (typeof ncRecords !== 'undefined' && typeof renderNcCards === 'function') {
-          db.collection('nc_records_' + currentTenant).doc('all').get()
+          var _reloadTenant = currentTenant;
+          db.collection('nc_records_' + _reloadTenant).doc('all').get()
             .then(function(snap) {
+              // Guard: if the user switched tenants while we were waiting, discard result.
+              if (_reloadTenant !== currentTenant) return;
               if (snap.exists) {
                 var records = snap.data().records;
                 if (Array.isArray(records)) {
-                  loadNcRecordsLocalAsync(currentTenant).then(async function(localRecords) {
+                  loadNcRecordsLocalAsync(_reloadTenant).then(async function(localRecords) {
+                    if (_reloadTenant !== currentTenant) return; // guard again after async gap
                     // Filtrar registros do Firebase deletados localmente.
                     if (localRecords.length > 0) {
                       var localRecordIds = new Set(localRecords.map(function(r) { return r && r.id; }));
@@ -2536,14 +2547,14 @@ document.addEventListener("DOMContentLoaded", function() {
                       ? mergePhotosFromLocal(records, localRecords)
                       : records;
                     records = records.map(normalizeNcRecordAttachments);
-                    var recoveredRel = await recoverMissingNcPhotosFromStorage(records, currentTenant);
+                    var recoveredRel = await recoverMissingNcPhotosFromStorage(records, _reloadTenant);
                     records = recoveredRel.records;
                     // Keep any local records that Firebase doesn't have (saved while offline)
                     var fbIdsSet = new Set(records.map(function(r) { return r.id; }));
                     var hadLocalOnlyRel = false;
                     localRecords.forEach(function(lr) { if (lr && lr.id && !fbIdsSet.has(lr.id)) { records.push(lr); hadLocalOnlyRel = true; } });
                     ncRecords = records;
-                    saveNcLocalSnapshot(ncRecords, currentTenant);
+                    saveNcLocalSnapshot(ncRecords, _reloadTenant);
                     renderNcCards();
                     renderHomePage();
                     if (typeof renderNcCharts === 'function') renderNcCharts();
@@ -2585,17 +2596,20 @@ document.addEventListener("DOMContentLoaded", function() {
           var localMeta = JSON.stringify(ncRecords.map(stripPhotos));
           var fbMeta    = JSON.stringify(records);
           if (localMeta === fbMeta) return;
-          // Filtrar registros do Firebase que foram deletados localmente:
-          // se o estado local tem registros, qualquer ID ausente foi excluído
-          // intencionalmente — não restaurar do Firebase.
-          if (ncRecords.length > 0) {
-            var localNcIds = new Set(ncRecords.map(function(r) { return r && r.id; }));
+          // Filtrar registros do Firebase que foram deletados localmente.
+          // Quando ncRecords ainda está vazio (carregando após troca de tenant),
+          // usa o localStorage como fonte autoritativa para não restaurar exclusões.
+          var _snapRefRecords = ncRecords.length > 0
+            ? ncRecords
+            : (typeof loadNcRecordsLocal === 'function' ? loadNcRecordsLocal(tenantId) : []);
+          if (_snapRefRecords.length > 0) {
+            var localNcIds = new Set(_snapRefRecords.map(function(r) { return r && r.id; }));
             var fbHasDeletedNc = records.some(function(r) { return r && r.id && !localNcIds.has(r.id); });
             if (fbHasDeletedNc) return;
           }
           // Restore photos from the current in-memory records before overwriting
           records = (typeof mergePhotosFromLocal === 'function')
-            ? mergePhotosFromLocal(records, ncRecords)
+            ? mergePhotosFromLocal(records, ncRecords.length > 0 ? ncRecords : _snapRefRecords)
             : records;
           records = records.map(normalizeNcRecordAttachments);
           var recoveredSnap = await recoverMissingNcPhotosFromStorage(records, tenantId);
@@ -5785,6 +5799,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
   var ncRecords = [];
   var _ncChartPiece = null, _ncChartFailure = null, _ncChartMonth = null;
+  var _ncYearFilter    = null; // active YYYY filter key, or null
   var _ncMonthFilter   = null; // active YYYY-MM filter key, or null
   var _ncPieceFilter   = null; // active piece name filter, or null
   var _ncFailureFilter = null; // active failure mode filter, or null
@@ -6401,52 +6416,78 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   async function saveNcRecords() {
+    // Capture tenant and records at call time: prevents cross-tenant contamination if the
+    // user switches tenants while an async upload (photo/PDF to Storage) is in progress.
+    var _saveTenant = currentTenant;
+    var _saveRecords = ncRecords.slice();
     // Always save the full record to the local cache first so attachments survive a refresh.
-    await saveNcLocalSnapshot(ncRecords, currentTenant);
+    await saveNcLocalSnapshot(_saveRecords, _saveTenant);
     if (db && firebaseConnected) {
       setNcSyncBadge('syncing', (storage && !_storageCorsFailed) ? '↻ Enviando arquivos…' : '↻ Salvando no Firebase…');
       try {
         var slim;
         if (storage) {
-          slim = await Promise.all(ncRecords.map(function(r) {
-            return prepareRecordForFirestore(r, currentTenant);
+          slim = await Promise.all(_saveRecords.map(function(r) {
+            return prepareRecordForFirestore(r, _saveTenant);
           }));
-          // Update in-memory records with Storage URLs so subsequent saves skip re-upload
-          slim.forEach(function(prepRec) {
-            var idx = ncRecords.findIndex(function(r) { return r.id === prepRec.id; });
-            if (idx === -1) return;
-            // Photos (index-aligned array)
-            if (Array.isArray(prepRec.photos) && prepRec.photos.length) {
-              var origPhotos = Array.isArray(ncRecords[idx].photos) ? ncRecords[idx].photos : [];
-              ncRecords[idx].photos = origPhotos.map(function(p, i) {
-                var storageUrl = prepRec.photos[i];
-                return (storageUrl && typeof storageUrl === 'string' && storageUrl.startsWith('https://'))
-                  ? storageUrl : p;
-              });
-            }
-            // Alert file URL
-            if (prepRec.alertFileUrl && typeof prepRec.alertFileUrl === 'string' && prepRec.alertFileUrl.startsWith('https://')) {
-              ncRecords[idx].alertFileUrl = prepRec.alertFileUrl;
-            }
-            // 8D file URL
-            if (prepRec.d8FileUrl && typeof prepRec.d8FileUrl === 'string' && prepRec.d8FileUrl.startsWith('https://')) {
-              ncRecords[idx].d8FileUrl = prepRec.d8FileUrl;
-            }
-            // PDF Storage URLs — store alongside existing base64 data
-            if (Array.isArray(prepRec.pdfs) && prepRec.pdfs.length) {
-              var origPdfs = Array.isArray(ncRecords[idx].pdfs) ? ncRecords[idx].pdfs : [];
-              ncRecords[idx].pdfs = prepRec.pdfs.map(function(prepPdf, i) {
-                var orig = origPdfs.find(function(op) { return op.name === prepPdf.name; }) || origPdfs[i] || {};
-                return Object.assign({}, orig, prepPdf.url ? { url: prepPdf.url } : {});
-              });
-            }
-          });
-          // Re-save local cache with the updated Storage URLs
-          await saveNcLocalSnapshot(ncRecords, currentTenant);
+          // Update in-memory records with Storage URLs so subsequent saves skip re-upload.
+          // Only apply to the current tenant (guard against late-arriving saves for a previous tenant).
+          if (currentTenant === _saveTenant) {
+            slim.forEach(function(prepRec) {
+              var idx = ncRecords.findIndex(function(r) { return r.id === prepRec.id; });
+              if (idx === -1) return;
+              // Photos (index-aligned array)
+              if (Array.isArray(prepRec.photos) && prepRec.photos.length) {
+                var origPhotos = Array.isArray(ncRecords[idx].photos) ? ncRecords[idx].photos : [];
+                ncRecords[idx].photos = origPhotos.map(function(p, i) {
+                  var storageUrl = prepRec.photos[i];
+                  return (storageUrl && typeof storageUrl === 'string' && storageUrl.startsWith('https://'))
+                    ? storageUrl : p;
+                });
+              }
+              // Alert file URL
+              if (prepRec.alertFileUrl && typeof prepRec.alertFileUrl === 'string' && prepRec.alertFileUrl.startsWith('https://')) {
+                ncRecords[idx].alertFileUrl = prepRec.alertFileUrl;
+              }
+              // 8D file URL
+              if (prepRec.d8FileUrl && typeof prepRec.d8FileUrl === 'string' && prepRec.d8FileUrl.startsWith('https://')) {
+                ncRecords[idx].d8FileUrl = prepRec.d8FileUrl;
+              }
+              // PDF Storage URLs — store alongside existing base64 data
+              if (Array.isArray(prepRec.pdfs) && prepRec.pdfs.length) {
+                var origPdfs = Array.isArray(ncRecords[idx].pdfs) ? ncRecords[idx].pdfs : [];
+                ncRecords[idx].pdfs = prepRec.pdfs.map(function(prepPdf, i) {
+                  var orig = origPdfs.find(function(op) { return op.name === prepPdf.name; }) || origPdfs[i] || {};
+                  return Object.assign({}, orig, prepPdf.url ? { url: prepPdf.url } : {});
+                });
+              }
+            });
+            // Re-save local cache with the updated Storage URLs
+            await saveNcLocalSnapshot(ncRecords, _saveTenant);
+          } else {
+            // Tenant switched during upload — persist the original snapshot (with URLs) for the
+            // correct tenant without touching the now-active tenant's in-memory data.
+            var _updatedSnapshot = _saveRecords.map(function(rec) {
+              var prepRec = slim.find(function(s) { return s.id === rec.id; });
+              if (!prepRec) return rec;
+              var updated = Object.assign({}, rec);
+              if (Array.isArray(prepRec.photos) && prepRec.photos.length) {
+                var origPhotos = Array.isArray(rec.photos) ? rec.photos : [];
+                updated.photos = origPhotos.map(function(p, i) {
+                  var url = prepRec.photos[i];
+                  return (url && typeof url === 'string' && url.startsWith('https://')) ? url : p;
+                });
+              }
+              if (prepRec.alertFileUrl) updated.alertFileUrl = prepRec.alertFileUrl;
+              if (prepRec.d8FileUrl)    updated.d8FileUrl    = prepRec.d8FileUrl;
+              return updated;
+            });
+            await saveNcLocalSnapshot(_updatedSnapshot, _saveTenant);
+          }
         } else {
-          slim = ncRecords.map(stripPhotos);
+          slim = _saveRecords.map(stripPhotos);
         }
-        await db.collection('nc_records_' + currentTenant).doc('all').set({ records: slim });
+        await db.collection('nc_records_' + _saveTenant).doc('all').set({ records: slim });
         setNcSyncBadge('synced', '✓ Salvo no Firebase');
       } catch(e) {
         console.error('NC Firebase save error:', e);
@@ -6556,27 +6597,38 @@ document.addEventListener("DOMContentLoaded", function() {
     if (typeof Chart === 'undefined') return;
 
     var pieceCount = {}, failureCount = {}, monthCount = {};
-    var now = new Date();
     var monthKeys = [];
-    for (var i = 11; i >= 0; i--) {
-      var d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      var k = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
-      monthCount[k] = 0;
-      monthKeys.push(k);
+    if (_ncYearFilter) {
+      for (var m = 1; m <= 12; m++) {
+        var km = _ncYearFilter + '-' + String(m).padStart(2,'0');
+        monthCount[km] = 0;
+        monthKeys.push(km);
+      }
+    } else {
+      var now = new Date();
+      for (var i = 11; i >= 0; i--) {
+        var d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        var k = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+        monthCount[k] = 0;
+        monthKeys.push(k);
+      }
     }
 
-    // pieceCount and failureCount only include filtered records when a filter is active
-    var filteredRecords = ncRecords.filter(function(nc) {
+    var yearScopedRecords = ncRecords.filter(function(nc) {
       if (nc.naoProcedente) return false;
+      return _recordMatchesNcYearFilter(nc);
+    });
+
+    // pieceCount and failureCount only include filtered records when a filter is active
+    var filteredRecords = yearScopedRecords.filter(function(nc) {
       if (_ncMonthFilter && (!nc.date || nc.date.slice(0,7) !== _ncMonthFilter)) return false;
       if (_ncPieceFilter && (nc.piece || '(sem nome)') !== _ncPieceFilter) return false;
       if (_ncFailureFilter && (nc.failureMode || 'Outro') !== _ncFailureFilter) return false;
       return true;
     });
 
-    ncRecords.forEach(function(nc) {
+    yearScopedRecords.forEach(function(nc) {
       // Monthly chart always shows all data (the bar highlight shows the selected month)
-      if (nc.naoProcedente) return;
       if (nc.date) {
         var mk = nc.date.slice(0,7);
         if (mk in monthCount) monthCount[mk]++;
@@ -7040,43 +7092,59 @@ document.addEventListener("DOMContentLoaded", function() {
   function _getCustomChartData(def) {
     var counts = {};
     var orderedKeys = null;
+    var filteredByYear = ncRecords.filter(function(nc) {
+      if (nc.naoProcedente) return false;
+      return _recordMatchesNcYearFilter(nc);
+    });
 
     if (def.field === 'month') {
-      var now = new Date();
       orderedKeys = [];
-      for (var i = 11; i >= 0; i--) {
-        var d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        var k = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
-        counts[k] = 0;
-        orderedKeys.push(k);
+      if (_ncYearFilter) {
+        for (var m = 1; m <= 12; m++) {
+          var ky = _ncYearFilter + '-' + String(m).padStart(2, '0');
+          counts[ky] = 0;
+          orderedKeys.push(ky);
+        }
+      } else {
+        var now = new Date();
+        for (var i = 11; i >= 0; i--) {
+          var d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          var k = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+          counts[k] = 0;
+          orderedKeys.push(k);
+        }
       }
-      ncRecords.forEach(function(nc) {
-        if (nc.naoProcedente) return;
+      filteredByYear.forEach(function(nc) {
         if (nc.date) { var mk = nc.date.slice(0, 7); if (mk in counts) counts[mk]++; }
       });
     } else if (def.field === 'qty_month') {
-      var now = new Date();
       orderedKeys = [];
-      for (var i = 11; i >= 0; i--) {
-        var d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        var k = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
-        counts[k] = 0;
-        orderedKeys.push(k);
+      if (_ncYearFilter) {
+        for (var monthNum = 1; monthNum <= 12; monthNum++) {
+          var monthKey = _ncYearFilter + '-' + String(monthNum).padStart(2, '0');
+          counts[monthKey] = 0;
+          orderedKeys.push(monthKey);
+        }
+      } else {
+        var nowDate = new Date();
+        for (var monthOffset = 11; monthOffset >= 0; monthOffset--) {
+          var monthDate = new Date(nowDate.getFullYear(), nowDate.getMonth() - monthOffset, 1);
+          var dateKey = monthDate.getFullYear() + '-' + String(monthDate.getMonth() + 1).padStart(2, '0');
+          counts[dateKey] = 0;
+          orderedKeys.push(dateKey);
+        }
       }
-      ncRecords.forEach(function(nc) {
-        if (nc.naoProcedente) return;
+      filteredByYear.forEach(function(nc) {
         if (nc.date && nc.qty) { var mk = nc.date.slice(0, 7); if (mk in counts) counts[mk] += (parseInt(nc.qty, 10) || 0); }
       });
     } else if (def.field === 'qty_piece') {
-      ncRecords.forEach(function(nc) {
-        if (nc.naoProcedente) return;
+      filteredByYear.forEach(function(nc) {
         var v = nc.piece || '(sem nome)';
         counts[v] = (counts[v] || 0) + (parseInt(nc.qty, 10) || 0);
       });
     } else if (def.field === 'status') {
       counts = { 'Em aberto': 0, 'RNC Aberta': 0, '8D Finalizado': 0 };
-      ncRecords.forEach(function(nc) {
-        if (nc.naoProcedente) return;
+      filteredByYear.forEach(function(nc) {
         if (nc.d8Finalizado)   counts['8D Finalizado']++;
         else if (nc.rncAberta) counts['RNC Aberta']++;
         else                   counts['Em aberto']++;
@@ -7084,8 +7152,7 @@ document.addEventListener("DOMContentLoaded", function() {
       orderedKeys = ['Em aberto', 'RNC Aberta', '8D Finalizado'];
     } else {
       var fallback = def.field === 'piece' ? '(sem nome)' : def.field === 'failureMode' ? 'Outro' : '(sem cliente)';
-      ncRecords.forEach(function(nc) {
-        if (nc.naoProcedente) return;
+      filteredByYear.forEach(function(nc) {
         var v = nc[def.field] || fallback;
         counts[v] = (counts[v] || 0) + 1;
       });
@@ -7337,9 +7404,42 @@ document.addEventListener("DOMContentLoaded", function() {
     return '';
   }
 
+  // normalizeNcDateValue sempre retorna YYYY-MM-DD para entradas válidas;
+  // por isso os primeiros 4 caracteres representam o ano.
+  function getNcRecordYear(nc) {
+    var normalized = normalizeNcDateValue(nc && nc.date);
+    return normalized ? normalized.slice(0, 4) : '';
+  }
+
+  function _recordMatchesNcYearFilter(nc) {
+    if (!_ncYearFilter) return true;
+    return getNcRecordYear(nc) === _ncYearFilter;
+  }
+
+  function refreshNcYearFilterOptions() {
+    var select = document.getElementById('ncYearFilterSelect');
+    if (!select) return;
+    var yearsSet = {};
+    ncRecords.forEach(function(nc) {
+      var y = getNcRecordYear(nc);
+      if (y) yearsSet[y] = true;
+    });
+    var years = Object.keys(yearsSet).sort(function(a, b) { return b.localeCompare(a); });
+    var previous = _ncYearFilter || '';
+    select.innerHTML = '<option value="">Todos os anos</option>' +
+      years.map(function(y) { return '<option value="' + y + '">' + y + '</option>'; }).join('');
+    if (previous && yearsSet[previous]) {
+      select.value = previous;
+    } else {
+      _ncYearFilter = null;
+      select.value = '';
+    }
+  }
+
   function renderNcCards() {
     var grid = document.getElementById('ncCardsGrid');
     if (!grid) return;
+    refreshNcYearFilterOptions();
     if (!ncRecords.length) {
       grid.innerHTML = '<div class="nc-empty">Nenhuma NC cadastrada ainda.</div>';
       return;
@@ -8378,6 +8478,7 @@ document.addEventListener("DOMContentLoaded", function() {
         var id = card.dataset.ncId;
         var nc = ncRecords.find(function(r){ return r.id === id; });
         if (!nc) { card.classList.add('nc-hidden'); return; }
+        if (!_recordMatchesNcYearFilter(nc)) { card.classList.add('nc-hidden'); return; }
         // Apply month filter
         if (_ncMonthFilter) {
           var ncMk = nc.date ? nc.date.slice(0,7) : '';
@@ -8421,9 +8522,10 @@ document.addEventListener("DOMContentLoaded", function() {
           card.classList.add('nc-hidden');
         }
       });
-      var activeFilters = q || _ncMonthFilter || _ncPieceFilter || _ncFailureFilter || _ncAlertFilter || _ncCustomFilter.key;
+      var activeFilters = q || _ncYearFilter || _ncMonthFilter || _ncPieceFilter || _ncFailureFilter || _ncAlertFilter || _ncCustomFilter.key;
       if (activeFilters) {
         var filterDesc = [];
+        if (_ncYearFilter) filterDesc.push('Ano: ' + _ncYearFilter);
         if (_ncMonthFilter) {
           var mp = _ncMonthFilter.split('-');
           filterDesc.push((PT_MONTHS_SHORT[parseInt(mp[1],10)-1] || mp[1]) + '/' + mp[0]);
@@ -8449,6 +8551,21 @@ document.addEventListener("DOMContentLoaded", function() {
       });
       // Expose so renderNcCards can re-apply after each render
       window._applyNcSearch = applyNcSearch;
+    }
+
+    // ── Year filter select ────────────────────────────────────────────────
+    var yearSelect = document.getElementById('ncYearFilterSelect');
+    if (yearSelect) {
+      yearSelect.addEventListener('change', function() {
+        _ncYearFilter = yearSelect.value || null;
+        if (_ncMonthFilter && _ncYearFilter && _ncMonthFilter.slice(0, 4) !== _ncYearFilter) {
+          _ncMonthFilter = null;
+          _updateMonthFilterChip();
+        }
+        renderNcCharts();
+        renderNcCustomCharts();
+        if (window._applyNcSearch) window._applyNcSearch();
+      });
     }
 
     // ── Month filter chip ─────────────────────────────────────────────────
