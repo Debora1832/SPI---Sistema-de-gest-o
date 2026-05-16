@@ -2486,9 +2486,25 @@ document.addEventListener("DOMContentLoaded", function() {
       Promise.all(keys.map(function(key) {
         return db.collection("tenants").doc(key).get().then(function(snap) {
           if (snap.exists) {
-            const saved = snap.data().actions;
-            if (Array.isArray(saved)) {
-              TENANTS[key].actions = saved;
+            const fbActions = snap.data().actions;
+            if (Array.isArray(fbActions)) {
+              // Verifica se o localStorage tem um estado mais recente (autoritativo).
+              let localActions = null;
+              try {
+                const raw = localStorage.getItem("spi_actions_" + key);
+                localActions = raw ? JSON.parse(raw) : null;
+              } catch(e) { console.warn("localStorage parse error for " + key + ":", e); }
+              if (localActions !== null) {
+                // Estado local é autoritativo para exclusões: reconcilia Firebase.
+                if (JSON.stringify(fbActions) !== JSON.stringify(localActions)) {
+                  db.collection("tenants").doc(key)
+                    .set({ actions: localActions }, { merge: true })
+                    .catch(function(e){ console.error("Firebase reconcile error:", e); });
+                }
+                TENANTS[key].actions = localActions;
+              } else {
+                TENANTS[key].actions = fbActions;
+              }
             }
           }
         }).catch(function(e) { console.warn("Firebase reload error for " + key + ":", e); });
@@ -2512,6 +2528,12 @@ document.addEventListener("DOMContentLoaded", function() {
                 var records = snap.data().records;
                 if (Array.isArray(records)) {
                   loadNcRecordsLocalAsync(currentTenant).then(async function(localRecords) {
+                    // Filtrar registros do Firebase deletados localmente.
+                    if (localRecords.length > 0) {
+                      var localRecordIds = new Set(localRecords.map(function(r) { return r && r.id; }));
+                      // Registros sem ID são mantidos: podem ser migrados/atribuídos abaixo.
+                      records = records.filter(function(r) { return !r.id || localRecordIds.has(r.id); });
+                    }
                     // Restore photos from the local cache (not stored in Firestore)
                     records = (typeof mergePhotosFromLocal === 'function')
                       ? mergePhotosFromLocal(records, localRecords)
@@ -2566,6 +2588,18 @@ document.addEventListener("DOMContentLoaded", function() {
           var localMeta = JSON.stringify(ncRecords.map(stripPhotos));
           var fbMeta    = JSON.stringify(records);
           if (localMeta === fbMeta) return;
+          // Filtrar registros do Firebase que foram deletados localmente:
+          // se o estado local tem registros, qualquer ID ausente foi excluído
+          // intencionalmente — não restaurar do Firebase.
+          if (ncRecords.length > 0) {
+            var localNcIds = new Set(ncRecords.map(function(r) { return r && r.id; }));
+            var fbHasDeletedNc = records.some(function(r) { return r && r.id && !localNcIds.has(r.id); });
+            if (fbHasDeletedNc) {
+              // Firebase tem NCs que foram deletadas localmente; reconciliar Firebase.
+              if (typeof saveNcRecords === 'function') saveNcRecords();
+              return;
+            }
+          }
           // Restore photos from the current in-memory records before overwriting
           records = (typeof mergePhotosFromLocal === 'function')
             ? mergePhotosFromLocal(records, ncRecords)
@@ -2599,9 +2633,21 @@ document.addEventListener("DOMContentLoaded", function() {
           if (!snap.exists) return;
           var saved = snap.data().actions;
           if (!Array.isArray(saved)) return;
-          var localJson = JSON.stringify(TENANTS[tenantId] ? TENANTS[tenantId].actions : []);
+          var localActions = TENANTS[tenantId] ? TENANTS[tenantId].actions : [];
+          var localJson = JSON.stringify(localActions);
           var fbJson    = JSON.stringify(saved);
           if (localJson === fbJson) return;
+          // Se Firebase tem ações que o local não tem, pode ser adição de outro
+          // dispositivo — aceitar. Se local tem menos itens (deleção local), não
+          // restaurar do Firebase; reconciliar Firebase com estado local.
+          var localIds = new Set(localActions.map(function(a){ return a && a.id; }));
+          var fbHasDeleted = saved.some(function(a){ return a && a.id && !localIds.has(a.id); });
+          if (fbHasDeleted) {
+            // Firebase tem itens que local não tem → local deletou; reconciliar Firebase.
+            saveTenantActions(tenantId, localActions);
+            return;
+          }
+          // Firebase tem versão diferente mas sem itens extras: aceitar update do Firebase.
           if (TENANTS[tenantId]) TENANTS[tenantId].actions = saved;
           if (tenantId === currentTenant) {
             allActions = saved;
@@ -2632,17 +2678,39 @@ document.addEventListener("DOMContentLoaded", function() {
 
   // Carrega ações de um tenant do Firestore ou, se falhar, do localStorage.
   // Retorna Promise<array | null> (null = nenhum dado salvo).
+  // O localStorage é tratado como fonte autoritativa para exclusões: se o
+  // localStorage tiver dados e diferir do Firebase, o Firebase é reconciliado
+  // com o estado local (evitando que dados antigos do Firebase restaurem itens
+  // excluídos quando a escrita anterior falhou silenciosamente).
   async function loadTenantActions(tenantId) {
+    // Lê o estado local antes de tudo (salvo sincronicamente a cada alteração).
+    let localActions = null;
+    try {
+      const raw = localStorage.getItem("spi_actions_" + tenantId);
+      localActions = raw ? JSON.parse(raw) : null;
+    } catch(e) { console.warn("localStorage load error:", e); }
+
     if (db && firebaseConnected) {
       try {
         const snap = await db.collection("tenants").doc(tenantId).get();
-        if (snap.exists) return snap.data().actions || [];
+        if (snap.exists) {
+          const fbActions = snap.data().actions || [];
+          if (localActions !== null) {
+            // Local é autoritativo: reconcilia Firebase se divergir.
+            // Isso garante que exclusões locais não sejam revertidas por
+            // escritas anteriores que falharam silenciosamente no Firebase.
+            if (JSON.stringify(fbActions) !== JSON.stringify(localActions)) {
+              db.collection("tenants").doc(tenantId)
+                .set({ actions: localActions }, { merge: true })
+                .catch(function(e){ console.error("Firebase reconcile error:", e); });
+            }
+            return localActions;
+          }
+          return fbActions;
+        }
       } catch(e) { console.error("Firebase load error:", e); }
     }
-    try {
-      const local = localStorage.getItem("spi_actions_" + tenantId);
-      return local ? JSON.parse(local) : null;
-    } catch(e) { console.warn("localStorage load error:", e); return null; }
+    return localActions;
   }
 
   const JD_ACTIONS = [
@@ -6444,6 +6512,14 @@ document.addEventListener("DOMContentLoaded", function() {
           });
           // Restore attachments from the local cache (Firestore records don't carry binaries)
           var localRecords = await loadNcRecordsLocalAsync(tenantId);
+          // Filtrar do Firebase os registros deletados localmente: se local tem
+          // dados e um ID do Firebase não consta no cache local, foi excluído
+          // intencionalmente — não restaurar.
+          // Registros sem ID são mantidos pois ainda serão normalizados abaixo.
+          if (localRecords.length > 0) {
+            var localIdsSet = new Set(localRecords.map(function(r) { return r && r.id; }));
+            records = records.filter(function(r) { return !r.id || localIdsSet.has(r.id); });
+          }
           records = mergePhotosFromLocal(records, localRecords).map(normalizeNcRecordAttachments);
           var recoveredAsync = await recoverMissingNcPhotosFromStorage(records, tenantId);
           records = recoveredAsync.records;
