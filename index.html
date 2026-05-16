@@ -2455,12 +2455,13 @@ document.addEventListener("DOMContentLoaded", function() {
             })
             .catch(function(e2) {
               if (e2.code === "permission-denied") {
-                // Firestore is reachable even though reads are locked
-                firebaseConnected = true;
-                setFirebaseStatus("connected", "Firebase: conectado ✓");
+                // Sem leitura/escrita válida: operar em modo local para evitar
+                // sobrescrever alterações com dados remotos desatualizados.
+                firebaseConnected = false;
+                setFirebaseStatus("error", "Firebase: sem permissão de acesso");
                 _resolveFirebaseReady();
                 if (_initDone) reloadFromFirebase();
-                if (typeof onFirebaseConnected === "function") onFirebaseConnected(true);
+                if (typeof onFirebaseConnected === "function") onFirebaseConnected(false, e2);
               } else {
                 firebaseConnected = false;
                 setFirebaseStatus("error", "Firebase: erro de conexão — " + (e2.message || e2.code || "verifique a rede"));
@@ -2623,7 +2624,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
     try { localStorage.setItem("spi_actions_" + tenantId, JSON.stringify(plain)); }
     catch(e) { console.warn("localStorage save error:", e); }
-    if (db) {
+    if (db && firebaseConnected) {
       db.collection("tenants").doc(tenantId).set({ actions: plain }, { merge: true })
         .catch(function(e){ console.error("Firebase save error:", e); });
     }
@@ -2632,7 +2633,7 @@ document.addEventListener("DOMContentLoaded", function() {
   // Carrega ações de um tenant do Firestore ou, se falhar, do localStorage.
   // Retorna Promise<array | null> (null = nenhum dado salvo).
   async function loadTenantActions(tenantId) {
-    if (db) {
+    if (db && firebaseConnected) {
       try {
         const snap = await db.collection("tenants").doc(tenantId).get();
         if (snap.exists) return snap.data().actions || [];
