@@ -2523,14 +2523,19 @@ document.addEventListener("DOMContentLoaded", function() {
         updateNcVisibility();
         renderHomePage();
         if (typeof expandedGroup !== "undefined" && expandedGroup !== null) renderGantt();
-        // Also reload NC records for the current tenant
+        // Also reload NC records for the current tenant.
+        // Capture the tenant now so late-resolving promises don't contaminate another tenant.
         if (typeof ncRecords !== 'undefined' && typeof renderNcCards === 'function') {
-          db.collection('nc_records_' + currentTenant).doc('all').get()
+          var _reloadTenant = currentTenant;
+          db.collection('nc_records_' + _reloadTenant).doc('all').get()
             .then(function(snap) {
+              // Guard: if the user switched tenants while we were waiting, discard result.
+              if (_reloadTenant !== currentTenant) return;
               if (snap.exists) {
                 var records = snap.data().records;
                 if (Array.isArray(records)) {
-                  loadNcRecordsLocalAsync(currentTenant).then(async function(localRecords) {
+                  loadNcRecordsLocalAsync(_reloadTenant).then(async function(localRecords) {
+                    if (_reloadTenant !== currentTenant) return; // guard again after async gap
                     // Filtrar registros do Firebase deletados localmente.
                     if (localRecords.length > 0) {
                       var localRecordIds = new Set(localRecords.map(function(r) { return r && r.id; }));
@@ -2542,14 +2547,14 @@ document.addEventListener("DOMContentLoaded", function() {
                       ? mergePhotosFromLocal(records, localRecords)
                       : records;
                     records = records.map(normalizeNcRecordAttachments);
-                    var recoveredRel = await recoverMissingNcPhotosFromStorage(records, currentTenant);
+                    var recoveredRel = await recoverMissingNcPhotosFromStorage(records, _reloadTenant);
                     records = recoveredRel.records;
                     // Keep any local records that Firebase doesn't have (saved while offline)
                     var fbIdsSet = new Set(records.map(function(r) { return r.id; }));
                     var hadLocalOnlyRel = false;
                     localRecords.forEach(function(lr) { if (lr && lr.id && !fbIdsSet.has(lr.id)) { records.push(lr); hadLocalOnlyRel = true; } });
                     ncRecords = records;
-                    saveNcLocalSnapshot(ncRecords, currentTenant);
+                    saveNcLocalSnapshot(ncRecords, _reloadTenant);
                     renderNcCards();
                     renderHomePage();
                     if (typeof renderNcCharts === 'function') renderNcCharts();
@@ -2591,17 +2596,20 @@ document.addEventListener("DOMContentLoaded", function() {
           var localMeta = JSON.stringify(ncRecords.map(stripPhotos));
           var fbMeta    = JSON.stringify(records);
           if (localMeta === fbMeta) return;
-          // Filtrar registros do Firebase que foram deletados localmente:
-          // se o estado local tem registros, qualquer ID ausente foi excluído
-          // intencionalmente — não restaurar do Firebase.
-          if (ncRecords.length > 0) {
-            var localNcIds = new Set(ncRecords.map(function(r) { return r && r.id; }));
+          // Filtrar registros do Firebase que foram deletados localmente.
+          // Quando ncRecords ainda está vazio (carregando após troca de tenant),
+          // usa o localStorage como fonte autoritativa para não restaurar exclusões.
+          var _snapRefRecords = ncRecords.length > 0
+            ? ncRecords
+            : (typeof loadNcRecordsLocal === 'function' ? loadNcRecordsLocal(tenantId) : []);
+          if (_snapRefRecords.length > 0) {
+            var localNcIds = new Set(_snapRefRecords.map(function(r) { return r && r.id; }));
             var fbHasDeletedNc = records.some(function(r) { return r && r.id && !localNcIds.has(r.id); });
             if (fbHasDeletedNc) return;
           }
           // Restore photos from the current in-memory records before overwriting
           records = (typeof mergePhotosFromLocal === 'function')
-            ? mergePhotosFromLocal(records, ncRecords)
+            ? mergePhotosFromLocal(records, ncRecords.length > 0 ? ncRecords : _snapRefRecords)
             : records;
           records = records.map(normalizeNcRecordAttachments);
           var recoveredSnap = await recoverMissingNcPhotosFromStorage(records, tenantId);
@@ -6408,52 +6416,78 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   async function saveNcRecords() {
+    // Capture tenant and records at call time: prevents cross-tenant contamination if the
+    // user switches tenants while an async upload (photo/PDF to Storage) is in progress.
+    var _saveTenant = currentTenant;
+    var _saveRecords = ncRecords.slice();
     // Always save the full record to the local cache first so attachments survive a refresh.
-    await saveNcLocalSnapshot(ncRecords, currentTenant);
+    await saveNcLocalSnapshot(_saveRecords, _saveTenant);
     if (db && firebaseConnected) {
       setNcSyncBadge('syncing', (storage && !_storageCorsFailed) ? '↻ Enviando arquivos…' : '↻ Salvando no Firebase…');
       try {
         var slim;
         if (storage) {
-          slim = await Promise.all(ncRecords.map(function(r) {
-            return prepareRecordForFirestore(r, currentTenant);
+          slim = await Promise.all(_saveRecords.map(function(r) {
+            return prepareRecordForFirestore(r, _saveTenant);
           }));
-          // Update in-memory records with Storage URLs so subsequent saves skip re-upload
-          slim.forEach(function(prepRec) {
-            var idx = ncRecords.findIndex(function(r) { return r.id === prepRec.id; });
-            if (idx === -1) return;
-            // Photos (index-aligned array)
-            if (Array.isArray(prepRec.photos) && prepRec.photos.length) {
-              var origPhotos = Array.isArray(ncRecords[idx].photos) ? ncRecords[idx].photos : [];
-              ncRecords[idx].photos = origPhotos.map(function(p, i) {
-                var storageUrl = prepRec.photos[i];
-                return (storageUrl && typeof storageUrl === 'string' && storageUrl.startsWith('https://'))
-                  ? storageUrl : p;
-              });
-            }
-            // Alert file URL
-            if (prepRec.alertFileUrl && typeof prepRec.alertFileUrl === 'string' && prepRec.alertFileUrl.startsWith('https://')) {
-              ncRecords[idx].alertFileUrl = prepRec.alertFileUrl;
-            }
-            // 8D file URL
-            if (prepRec.d8FileUrl && typeof prepRec.d8FileUrl === 'string' && prepRec.d8FileUrl.startsWith('https://')) {
-              ncRecords[idx].d8FileUrl = prepRec.d8FileUrl;
-            }
-            // PDF Storage URLs — store alongside existing base64 data
-            if (Array.isArray(prepRec.pdfs) && prepRec.pdfs.length) {
-              var origPdfs = Array.isArray(ncRecords[idx].pdfs) ? ncRecords[idx].pdfs : [];
-              ncRecords[idx].pdfs = prepRec.pdfs.map(function(prepPdf, i) {
-                var orig = origPdfs.find(function(op) { return op.name === prepPdf.name; }) || origPdfs[i] || {};
-                return Object.assign({}, orig, prepPdf.url ? { url: prepPdf.url } : {});
-              });
-            }
-          });
-          // Re-save local cache with the updated Storage URLs
-          await saveNcLocalSnapshot(ncRecords, currentTenant);
+          // Update in-memory records with Storage URLs so subsequent saves skip re-upload.
+          // Only apply to the current tenant (guard against late-arriving saves for a previous tenant).
+          if (currentTenant === _saveTenant) {
+            slim.forEach(function(prepRec) {
+              var idx = ncRecords.findIndex(function(r) { return r.id === prepRec.id; });
+              if (idx === -1) return;
+              // Photos (index-aligned array)
+              if (Array.isArray(prepRec.photos) && prepRec.photos.length) {
+                var origPhotos = Array.isArray(ncRecords[idx].photos) ? ncRecords[idx].photos : [];
+                ncRecords[idx].photos = origPhotos.map(function(p, i) {
+                  var storageUrl = prepRec.photos[i];
+                  return (storageUrl && typeof storageUrl === 'string' && storageUrl.startsWith('https://'))
+                    ? storageUrl : p;
+                });
+              }
+              // Alert file URL
+              if (prepRec.alertFileUrl && typeof prepRec.alertFileUrl === 'string' && prepRec.alertFileUrl.startsWith('https://')) {
+                ncRecords[idx].alertFileUrl = prepRec.alertFileUrl;
+              }
+              // 8D file URL
+              if (prepRec.d8FileUrl && typeof prepRec.d8FileUrl === 'string' && prepRec.d8FileUrl.startsWith('https://')) {
+                ncRecords[idx].d8FileUrl = prepRec.d8FileUrl;
+              }
+              // PDF Storage URLs — store alongside existing base64 data
+              if (Array.isArray(prepRec.pdfs) && prepRec.pdfs.length) {
+                var origPdfs = Array.isArray(ncRecords[idx].pdfs) ? ncRecords[idx].pdfs : [];
+                ncRecords[idx].pdfs = prepRec.pdfs.map(function(prepPdf, i) {
+                  var orig = origPdfs.find(function(op) { return op.name === prepPdf.name; }) || origPdfs[i] || {};
+                  return Object.assign({}, orig, prepPdf.url ? { url: prepPdf.url } : {});
+                });
+              }
+            });
+            // Re-save local cache with the updated Storage URLs
+            await saveNcLocalSnapshot(ncRecords, _saveTenant);
+          } else {
+            // Tenant switched during upload — persist the original snapshot (with URLs) for the
+            // correct tenant without touching the now-active tenant's in-memory data.
+            var _updatedSnapshot = _saveRecords.map(function(rec) {
+              var prepRec = slim.find(function(s) { return s.id === rec.id; });
+              if (!prepRec) return rec;
+              var updated = Object.assign({}, rec);
+              if (Array.isArray(prepRec.photos) && prepRec.photos.length) {
+                var origPhotos = Array.isArray(rec.photos) ? rec.photos : [];
+                updated.photos = origPhotos.map(function(p, i) {
+                  var url = prepRec.photos[i];
+                  return (url && typeof url === 'string' && url.startsWith('https://')) ? url : p;
+                });
+              }
+              if (prepRec.alertFileUrl) updated.alertFileUrl = prepRec.alertFileUrl;
+              if (prepRec.d8FileUrl)    updated.d8FileUrl    = prepRec.d8FileUrl;
+              return updated;
+            });
+            await saveNcLocalSnapshot(_updatedSnapshot, _saveTenant);
+          }
         } else {
-          slim = ncRecords.map(stripPhotos);
+          slim = _saveRecords.map(stripPhotos);
         }
-        await db.collection('nc_records_' + currentTenant).doc('all').set({ records: slim });
+        await db.collection('nc_records_' + _saveTenant).doc('all').set({ records: slim });
         setNcSyncBadge('synced', '✓ Salvo no Firebase');
       } catch(e) {
         console.error('NC Firebase save error:', e);
