@@ -1787,6 +1787,12 @@
 
     <!-- Top action bar -->
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; flex-wrap:wrap; gap:12px;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <label for="ncYearFilterSelect" style="font-size:13px;font-weight:600;color:#374151;">Ano:</label>
+        <select id="ncYearFilterSelect" style="height:34px;min-width:140px;border:1px solid #d1d5db;border-radius:8px;padding:0 10px;background:#fff;color:#111827;font-size:13px;">
+          <option value="">Todos os anos</option>
+        </select>
+      </div>
       <button class="nc-new-btn" id="ncBtnNew">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/></svg>
         Nova NC
@@ -5785,6 +5791,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
   var ncRecords = [];
   var _ncChartPiece = null, _ncChartFailure = null, _ncChartMonth = null;
+  var _ncYearFilter    = null; // active YYYY filter key, or null
   var _ncMonthFilter   = null; // active YYYY-MM filter key, or null
   var _ncPieceFilter   = null; // active piece name filter, or null
   var _ncFailureFilter = null; // active failure mode filter, or null
@@ -6556,27 +6563,38 @@ document.addEventListener("DOMContentLoaded", function() {
     if (typeof Chart === 'undefined') return;
 
     var pieceCount = {}, failureCount = {}, monthCount = {};
-    var now = new Date();
     var monthKeys = [];
-    for (var i = 11; i >= 0; i--) {
-      var d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      var k = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
-      monthCount[k] = 0;
-      monthKeys.push(k);
+    if (_ncYearFilter) {
+      for (var m = 1; m <= 12; m++) {
+        var km = _ncYearFilter + '-' + String(m).padStart(2,'0');
+        monthCount[km] = 0;
+        monthKeys.push(km);
+      }
+    } else {
+      var now = new Date();
+      for (var i = 11; i >= 0; i--) {
+        var d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        var k = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+        monthCount[k] = 0;
+        monthKeys.push(k);
+      }
     }
 
-    // pieceCount and failureCount only include filtered records when a filter is active
-    var filteredRecords = ncRecords.filter(function(nc) {
+    var yearScopedRecords = ncRecords.filter(function(nc) {
       if (nc.naoProcedente) return false;
+      return _recordMatchesNcYearFilter(nc);
+    });
+
+    // pieceCount and failureCount only include filtered records when a filter is active
+    var filteredRecords = yearScopedRecords.filter(function(nc) {
       if (_ncMonthFilter && (!nc.date || nc.date.slice(0,7) !== _ncMonthFilter)) return false;
       if (_ncPieceFilter && (nc.piece || '(sem nome)') !== _ncPieceFilter) return false;
       if (_ncFailureFilter && (nc.failureMode || 'Outro') !== _ncFailureFilter) return false;
       return true;
     });
 
-    ncRecords.forEach(function(nc) {
+    yearScopedRecords.forEach(function(nc) {
       // Monthly chart always shows all data (the bar highlight shows the selected month)
-      if (nc.naoProcedente) return;
       if (nc.date) {
         var mk = nc.date.slice(0,7);
         if (mk in monthCount) monthCount[mk]++;
@@ -7040,43 +7058,59 @@ document.addEventListener("DOMContentLoaded", function() {
   function _getCustomChartData(def) {
     var counts = {};
     var orderedKeys = null;
+    var filteredByYear = ncRecords.filter(function(nc) {
+      if (nc.naoProcedente) return false;
+      return _recordMatchesNcYearFilter(nc);
+    });
 
     if (def.field === 'month') {
-      var now = new Date();
       orderedKeys = [];
-      for (var i = 11; i >= 0; i--) {
-        var d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        var k = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
-        counts[k] = 0;
-        orderedKeys.push(k);
+      if (_ncYearFilter) {
+        for (var m = 1; m <= 12; m++) {
+          var ky = _ncYearFilter + '-' + String(m).padStart(2, '0');
+          counts[ky] = 0;
+          orderedKeys.push(ky);
+        }
+      } else {
+        var now = new Date();
+        for (var i = 11; i >= 0; i--) {
+          var d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          var k = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+          counts[k] = 0;
+          orderedKeys.push(k);
+        }
       }
-      ncRecords.forEach(function(nc) {
-        if (nc.naoProcedente) return;
+      filteredByYear.forEach(function(nc) {
         if (nc.date) { var mk = nc.date.slice(0, 7); if (mk in counts) counts[mk]++; }
       });
     } else if (def.field === 'qty_month') {
-      var now = new Date();
       orderedKeys = [];
-      for (var i = 11; i >= 0; i--) {
-        var d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        var k = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
-        counts[k] = 0;
-        orderedKeys.push(k);
+      if (_ncYearFilter) {
+        for (var m2 = 1; m2 <= 12; m2++) {
+          var ky2 = _ncYearFilter + '-' + String(m2).padStart(2, '0');
+          counts[ky2] = 0;
+          orderedKeys.push(ky2);
+        }
+      } else {
+        var now2 = new Date();
+        for (var i2 = 11; i2 >= 0; i2--) {
+          var d2 = new Date(now2.getFullYear(), now2.getMonth() - i2, 1);
+          var k2 = d2.getFullYear() + '-' + String(d2.getMonth() + 1).padStart(2, '0');
+          counts[k2] = 0;
+          orderedKeys.push(k2);
+        }
       }
-      ncRecords.forEach(function(nc) {
-        if (nc.naoProcedente) return;
+      filteredByYear.forEach(function(nc) {
         if (nc.date && nc.qty) { var mk = nc.date.slice(0, 7); if (mk in counts) counts[mk] += (parseInt(nc.qty, 10) || 0); }
       });
     } else if (def.field === 'qty_piece') {
-      ncRecords.forEach(function(nc) {
-        if (nc.naoProcedente) return;
+      filteredByYear.forEach(function(nc) {
         var v = nc.piece || '(sem nome)';
         counts[v] = (counts[v] || 0) + (parseInt(nc.qty, 10) || 0);
       });
     } else if (def.field === 'status') {
       counts = { 'Em aberto': 0, 'RNC Aberta': 0, '8D Finalizado': 0 };
-      ncRecords.forEach(function(nc) {
-        if (nc.naoProcedente) return;
+      filteredByYear.forEach(function(nc) {
         if (nc.d8Finalizado)   counts['8D Finalizado']++;
         else if (nc.rncAberta) counts['RNC Aberta']++;
         else                   counts['Em aberto']++;
@@ -7084,8 +7118,7 @@ document.addEventListener("DOMContentLoaded", function() {
       orderedKeys = ['Em aberto', 'RNC Aberta', '8D Finalizado'];
     } else {
       var fallback = def.field === 'piece' ? '(sem nome)' : def.field === 'failureMode' ? 'Outro' : '(sem cliente)';
-      ncRecords.forEach(function(nc) {
-        if (nc.naoProcedente) return;
+      filteredByYear.forEach(function(nc) {
         var v = nc[def.field] || fallback;
         counts[v] = (counts[v] || 0) + 1;
       });
@@ -7337,9 +7370,40 @@ document.addEventListener("DOMContentLoaded", function() {
     return '';
   }
 
+  function getNcRecordYear(nc) {
+    var normalized = normalizeNcDateValue(nc && nc.date);
+    return normalized ? normalized.slice(0, 4) : '';
+  }
+
+  function _recordMatchesNcYearFilter(nc) {
+    if (!_ncYearFilter) return true;
+    return getNcRecordYear(nc) === _ncYearFilter;
+  }
+
+  function refreshNcYearFilterOptions() {
+    var select = document.getElementById('ncYearFilterSelect');
+    if (!select) return;
+    var yearsSet = {};
+    ncRecords.forEach(function(nc) {
+      var y = getNcRecordYear(nc);
+      if (y) yearsSet[y] = true;
+    });
+    var years = Object.keys(yearsSet).sort(function(a, b) { return b.localeCompare(a); });
+    var previous = _ncYearFilter || '';
+    select.innerHTML = '<option value="">Todos os anos</option>' +
+      years.map(function(y) { return '<option value="' + y + '">' + y + '</option>'; }).join('');
+    if (previous && yearsSet[previous]) {
+      select.value = previous;
+    } else {
+      _ncYearFilter = null;
+      select.value = '';
+    }
+  }
+
   function renderNcCards() {
     var grid = document.getElementById('ncCardsGrid');
     if (!grid) return;
+    refreshNcYearFilterOptions();
     if (!ncRecords.length) {
       grid.innerHTML = '<div class="nc-empty">Nenhuma NC cadastrada ainda.</div>';
       return;
@@ -8378,6 +8442,7 @@ document.addEventListener("DOMContentLoaded", function() {
         var id = card.dataset.ncId;
         var nc = ncRecords.find(function(r){ return r.id === id; });
         if (!nc) { card.classList.add('nc-hidden'); return; }
+        if (!_recordMatchesNcYearFilter(nc)) { card.classList.add('nc-hidden'); return; }
         // Apply month filter
         if (_ncMonthFilter) {
           var ncMk = nc.date ? nc.date.slice(0,7) : '';
@@ -8421,9 +8486,10 @@ document.addEventListener("DOMContentLoaded", function() {
           card.classList.add('nc-hidden');
         }
       });
-      var activeFilters = q || _ncMonthFilter || _ncPieceFilter || _ncFailureFilter || _ncAlertFilter || _ncCustomFilter.key;
+      var activeFilters = q || _ncYearFilter || _ncMonthFilter || _ncPieceFilter || _ncFailureFilter || _ncAlertFilter || _ncCustomFilter.key;
       if (activeFilters) {
         var filterDesc = [];
+        if (_ncYearFilter) filterDesc.push('Ano: ' + _ncYearFilter);
         if (_ncMonthFilter) {
           var mp = _ncMonthFilter.split('-');
           filterDesc.push((PT_MONTHS_SHORT[parseInt(mp[1],10)-1] || mp[1]) + '/' + mp[0]);
@@ -8449,6 +8515,21 @@ document.addEventListener("DOMContentLoaded", function() {
       });
       // Expose so renderNcCards can re-apply after each render
       window._applyNcSearch = applyNcSearch;
+    }
+
+    // ── Year filter select ────────────────────────────────────────────────
+    var yearSelect = document.getElementById('ncYearFilterSelect');
+    if (yearSelect) {
+      yearSelect.addEventListener('change', function() {
+        _ncYearFilter = yearSelect.value || null;
+        if (_ncMonthFilter && _ncYearFilter && _ncMonthFilter.slice(0, 4) !== _ncYearFilter) {
+          _ncMonthFilter = null;
+          _updateMonthFilterChip();
+        }
+        renderNcCharts();
+        renderNcCustomCharts();
+        if (window._applyNcSearch) window._applyNcSearch();
+      });
     }
 
     // ── Month filter chip ─────────────────────────────────────────────────
