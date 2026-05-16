@@ -2493,7 +2493,7 @@ document.addEventListener("DOMContentLoaded", function() {
               try {
                 const raw = localStorage.getItem("spi_actions_" + key);
                 localActions = raw ? JSON.parse(raw) : null;
-              } catch(e) {}
+              } catch(e) { console.warn("localStorage parse error for " + key + ":", e); }
               if (localActions !== null) {
                 // Estado local é autoritativo para exclusões: reconcilia Firebase.
                 if (JSON.stringify(fbActions) !== JSON.stringify(localActions)) {
@@ -2530,8 +2530,9 @@ document.addEventListener("DOMContentLoaded", function() {
                   loadNcRecordsLocalAsync(currentTenant).then(async function(localRecords) {
                     // Filtrar registros do Firebase deletados localmente.
                     if (localRecords.length > 0) {
-                      var localIdsRel = new Set(localRecords.map(function(r) { return r && r.id; }));
-                      records = records.filter(function(r) { return !r.id || localIdsRel.has(r.id); });
+                      var localRecordIds = new Set(localRecords.map(function(r) { return r && r.id; }));
+                      // Registros sem ID são mantidos: podem ser migrados/atribuídos abaixo.
+                      records = records.filter(function(r) { return !r.id || localRecordIds.has(r.id); });
                     }
                     // Restore photos from the local cache (not stored in Firestore)
                     records = (typeof mergePhotosFromLocal === 'function')
@@ -6514,6 +6515,7 @@ document.addEventListener("DOMContentLoaded", function() {
           // Filtrar do Firebase os registros deletados localmente: se local tem
           // dados e um ID do Firebase não consta no cache local, foi excluído
           // intencionalmente — não restaurar.
+          // Registros sem ID são mantidos pois ainda serão normalizados abaixo.
           if (localRecords.length > 0) {
             var localIdsSet = new Set(localRecords.map(function(r) { return r && r.id; }));
             records = records.filter(function(r) { return !r.id || localIdsSet.has(r.id); });
