@@ -2486,7 +2486,7 @@ document.addEventListener("DOMContentLoaded", function() {
         return db.collection("tenants").doc(key).get().then(function(snap) {
           if (snap.exists) {
             const saved = snap.data().actions;
-            if (Array.isArray(saved) && saved.length) {
+            if (Array.isArray(saved)) {
               TENANTS[key].actions = saved;
             }
           }
@@ -2597,7 +2597,7 @@ document.addEventListener("DOMContentLoaded", function() {
         .onSnapshot(function(snap) {
           if (!snap.exists) return;
           var saved = snap.data().actions;
-          if (!Array.isArray(saved) || !saved.length) return;
+          if (!Array.isArray(saved)) return;
           var localJson = JSON.stringify(TENANTS[tenantId] ? TENANTS[tenantId].actions : []);
           var fbJson    = JSON.stringify(saved);
           if (localJson === fbJson) return;
