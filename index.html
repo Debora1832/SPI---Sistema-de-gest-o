@@ -2495,12 +2495,9 @@ document.addEventListener("DOMContentLoaded", function() {
                 localActions = raw ? JSON.parse(raw) : null;
               } catch(e) { console.warn("localStorage parse error for " + key + ":", e); }
               if (localActions !== null) {
-                // Estado local é autoritativo para exclusões: reconcilia Firebase.
-                if (JSON.stringify(fbActions) !== JSON.stringify(localActions)) {
-                  db.collection("tenants").doc(key)
-                    .set({ actions: localActions }, { merge: true })
-                    .catch(function(e){ console.error("Firebase reconcile error:", e); });
-                }
+                // Estado local continua autoritativo, mas sem escrever de volta
+                // automaticamente durante o reload, porque essas escritas
+                // realimentam os listeners onSnapshot depois da reconexão.
                 TENANTS[key].actions = localActions;
               } else {
                 TENANTS[key].actions = fbActions;
@@ -2594,11 +2591,7 @@ document.addEventListener("DOMContentLoaded", function() {
           if (ncRecords.length > 0) {
             var localNcIds = new Set(ncRecords.map(function(r) { return r && r.id; }));
             var fbHasDeletedNc = records.some(function(r) { return r && r.id && !localNcIds.has(r.id); });
-            if (fbHasDeletedNc) {
-              // Firebase tem NCs que foram deletadas localmente; reconciliar Firebase.
-              if (typeof saveNcRecords === 'function') saveNcRecords();
-              return;
-            }
+            if (fbHasDeletedNc) return;
           }
           // Restore photos from the current in-memory records before overwriting
           records = (typeof mergePhotosFromLocal === 'function')
@@ -2637,16 +2630,12 @@ document.addEventListener("DOMContentLoaded", function() {
           var localJson = JSON.stringify(localActions);
           var fbJson    = JSON.stringify(saved);
           if (localJson === fbJson) return;
-          // Se Firebase tem ações que o local não tem, pode ser adição de outro
-          // dispositivo — aceitar. Se local tem menos itens (deleção local), não
-          // restaurar do Firebase; reconciliar Firebase com estado local.
+          // Se Firebase trouxer itens ausentes localmente, ignoramos o snapshot
+          // para não restaurar itens deletados localmente nem disparar escritas
+          // automáticas que realimentariam o loop de sync.
           var localIds = new Set(localActions.map(function(a){ return a && a.id; }));
           var fbHasDeleted = saved.some(function(a){ return a && a.id && !localIds.has(a.id); });
-          if (fbHasDeleted) {
-            // Firebase tem itens que local não tem → local deletou; reconciliar Firebase.
-            saveTenantActions(tenantId, localActions);
-            return;
-          }
+          if (fbHasDeleted) return;
           // Firebase tem versão diferente mas sem itens extras: aceitar update do Firebase.
           if (TENANTS[tenantId]) TENANTS[tenantId].actions = saved;
           if (tenantId === currentTenant) {
@@ -2678,10 +2667,10 @@ document.addEventListener("DOMContentLoaded", function() {
 
   // Carrega ações de um tenant do Firestore ou, se falhar, do localStorage.
   // Retorna Promise<array | null> (null = nenhum dado salvo).
-  // O localStorage é tratado como fonte autoritativa para exclusões: se o
-  // localStorage tiver dados e diferir do Firebase, o Firebase é reconciliado
-  // com o estado local (evitando que dados antigos do Firebase restaurem itens
-  // excluídos quando a escrita anterior falhou silenciosamente).
+  // O localStorage é tratado como fonte autoritativa para exclusões. Se ele
+  // tiver dados, preferimos o estado local e evitamos reconciliações automáticas
+  // durante o carregamento, porque escritas automáticas no Firebase disparam
+  // novos snapshots e podem prender a interface em ciclo de atualização.
   async function loadTenantActions(tenantId) {
     // Lê o estado local antes de tudo (salvo sincronicamente a cada alteração).
     let localActions = null;
@@ -2695,17 +2684,7 @@ document.addEventListener("DOMContentLoaded", function() {
         const snap = await db.collection("tenants").doc(tenantId).get();
         if (snap.exists) {
           const fbActions = snap.data().actions || [];
-          if (localActions !== null) {
-            // Local é autoritativo: reconcilia Firebase se divergir.
-            // Isso garante que exclusões locais não sejam revertidas por
-            // escritas anteriores que falharam silenciosamente no Firebase.
-            if (JSON.stringify(fbActions) !== JSON.stringify(localActions)) {
-              db.collection("tenants").doc(tenantId)
-                .set({ actions: localActions }, { merge: true })
-                .catch(function(e){ console.error("Firebase reconcile error:", e); });
-            }
-            return localActions;
-          }
+          if (localActions !== null) return localActions;
           return fbActions;
         }
       } catch(e) { console.error("Firebase load error:", e); }
