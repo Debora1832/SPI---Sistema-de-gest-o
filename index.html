@@ -2537,7 +2537,7 @@ document.addEventListener("DOMContentLoaded", function() {
                   loadNcRecordsLocalAsync(_reloadTenant).then(async function(localRecords) {
                     if (_reloadTenant !== currentTenant) return; // guard again after async gap
                     // Filtrar registros do Firebase deletados localmente.
-                    if (localRecords.length > 0) {
+                    if (hasNcLocalSnapshot(_reloadTenant)) {
                       var localRecordIds = new Set(localRecords.map(function(r) { return r && r.id; }));
                       // Registros sem ID são mantidos: podem ser migrados/atribuídos abaixo.
                       records = records.filter(function(r) { return !r.id || localRecordIds.has(r.id); });
@@ -2602,7 +2602,7 @@ document.addEventListener("DOMContentLoaded", function() {
           var _snapRefRecords = ncRecords.length > 0
             ? ncRecords
             : (typeof loadNcRecordsLocal === 'function' ? loadNcRecordsLocal(tenantId) : []);
-          if (_snapRefRecords.length > 0) {
+          if (ncRecords.length > 0 || hasNcLocalSnapshot(tenantId)) {
             var localNcIds = new Set(_snapRefRecords.map(function(r) { return r && r.id; }));
             var fbHasDeletedNc = records.some(function(r) { return r && r.id && !localNcIds.has(r.id); });
             if (fbHasDeletedNc) return;
@@ -5829,6 +5829,19 @@ document.addEventListener("DOMContentLoaded", function() {
     return 'spi_nc_records_' + (tenantId || currentTenant);
   }
 
+  // Indicates whether the tenant already has a local NC snapshot key.
+  // Important: a persisted empty array ("[]") means the user intentionally
+  // deleted all NCs and this must still be treated as authoritative.
+  function hasNcLocalSnapshot(tenantId) {
+    try {
+      var activeTenant = tenantId || currentTenant;
+      if (localStorage.getItem(ncStorageKey(activeTenant)) !== null) return true;
+      // Legacy shared key existed only for the original JD tenant.
+      if (activeTenant === 'jd' && localStorage.getItem('spi_nc_records') !== null) return true;
+    } catch(e) {}
+    return false;
+  }
+
   function normalizeAttachmentSrc(value) {
     if (typeof value !== 'string') return '';
     var normalized = value.trim();
@@ -6536,7 +6549,7 @@ document.addEventListener("DOMContentLoaded", function() {
           // dados e um ID do Firebase não consta no cache local, foi excluído
           // intencionalmente — não restaurar.
           // Registros sem ID são mantidos pois ainda serão normalizados abaixo.
-          if (localRecords.length > 0) {
+          if (hasNcLocalSnapshot(tenantId)) {
             var localIdsSet = new Set(localRecords.map(function(r) { return r && r.id; }));
             records = records.filter(function(r) { return !r.id || localIdsSet.has(r.id); });
           }
