@@ -7086,18 +7086,18 @@ document.addEventListener("DOMContentLoaded", function() {
     } else if (def.field === 'qty_month') {
       orderedKeys = [];
       if (_ncYearFilter) {
-        for (var m2 = 1; m2 <= 12; m2++) {
-          var ky2 = _ncYearFilter + '-' + String(m2).padStart(2, '0');
-          counts[ky2] = 0;
-          orderedKeys.push(ky2);
+        for (var monthNum = 1; monthNum <= 12; monthNum++) {
+          var monthKey = _ncYearFilter + '-' + String(monthNum).padStart(2, '0');
+          counts[monthKey] = 0;
+          orderedKeys.push(monthKey);
         }
       } else {
-        var now2 = new Date();
-        for (var i2 = 11; i2 >= 0; i2--) {
-          var d2 = new Date(now2.getFullYear(), now2.getMonth() - i2, 1);
-          var k2 = d2.getFullYear() + '-' + String(d2.getMonth() + 1).padStart(2, '0');
-          counts[k2] = 0;
-          orderedKeys.push(k2);
+        var nowDate = new Date();
+        for (var monthOffset = 11; monthOffset >= 0; monthOffset--) {
+          var monthDate = new Date(nowDate.getFullYear(), nowDate.getMonth() - monthOffset, 1);
+          var dateKey = monthDate.getFullYear() + '-' + String(monthDate.getMonth() + 1).padStart(2, '0');
+          counts[dateKey] = 0;
+          orderedKeys.push(dateKey);
         }
       }
       filteredByYear.forEach(function(nc) {
@@ -7370,6 +7370,8 @@ document.addEventListener("DOMContentLoaded", function() {
     return '';
   }
 
+  // normalizeNcDateValue sempre retorna YYYY-MM-DD para entradas válidas;
+  // por isso os primeiros 4 caracteres representam o ano.
   function getNcRecordYear(nc) {
     var normalized = normalizeNcDateValue(nc && nc.date);
     return normalized ? normalized.slice(0, 4) : '';
