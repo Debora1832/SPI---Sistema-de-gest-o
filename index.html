@@ -2636,15 +2636,9 @@ document.addEventListener("DOMContentLoaded", function() {
           if (typeof renderNcGantt === 'function' && document.getElementById('ncGanttPage') &&
               document.getElementById('ncGanttPage').classList.contains('active')) renderNcGantt();
           // Push any locally-saved records that didn't reach Firebase back up,
-          // and persist any photo URLs recovered from Storage.
-          if ((hadLocalOnlySnap || recoveredSnap.changed) && typeof saveNcRecords === 'function') saveNcRecords();
-          // If Firebase had stale/deleted records that we just filtered out, write the
-          // corrected set directly back to Firestore so other devices see the deletion.
-          if (_fbNeedsDeleteCleanup && db && firebaseConnected) {
-            db.collection('nc_records_' + tenantId).doc('all')
-              .set({ records: ncRecords.map(stripPhotos) })
-              .catch(function(e) { console.warn('NC delete-cleanup sync error:', e); });
-          }
+          // persist any photo URLs recovered from Storage, and/or write the corrected
+          // set back when Firebase had stale deleted records that we just filtered out.
+          if ((hadLocalOnlySnap || recoveredSnap.changed || _fbNeedsDeleteCleanup) && typeof saveNcRecords === 'function') saveNcRecords();
         }, function(e) { console.warn('NC onSnapshot error:', e); });
     } catch(e) { console.warn('NC onSnapshot setup error:', e); }
 
