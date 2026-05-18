@@ -6075,7 +6075,16 @@ document.addEventListener("DOMContentLoaded", function() {
     if (!canUseNcBinaryCache()) return records;
     var fullRecords = await loadNcBinaryCache(tenantId);
     if (!Array.isArray(fullRecords) || !fullRecords.length) return records;
-    if (!records.length) return fullRecords.map(normalizeNcRecordAttachments);
+    // localStorage is the authoritative source for which records exist.
+    // If a persisted snapshot is present (even an empty []) trust it and do NOT
+    // restore stale IndexedDB data — the IndexedDB write may have failed silently
+    // while the localStorage save succeeded, leaving IndexedDB with records the
+    // user already deleted.  Only fall back to IndexedDB when no local snapshot
+    // key exists at all (brand-new tenant that never saved to localStorage).
+    if (!records.length) {
+      if (hasNcLocalSnapshot(tenantId)) return records;
+      return fullRecords.map(normalizeNcRecordAttachments);
+    }
     if (typeof mergePhotosFromLocal !== 'function') return records;
     // Merge slim metadata from localStorage with the full binary payloads from IndexedDB.
     // URLs already saved in metadata are preserved; missing binaries are restored from cache.
