@@ -2689,14 +2689,17 @@ document.addEventListener("DOMContentLoaded", function() {
         const snap = await db.collection("tenants").doc(tenantId).get();
         if (snap.exists) {
           const fbActions = snap.data().actions;
+          if (fbActions === null || typeof fbActions === "undefined") {
+            try { localStorage.setItem("spi_actions_" + tenantId, JSON.stringify([])); }
+            catch(e) { console.warn("localStorage save error:", e); }
+            return [];
+          }
           if (Array.isArray(fbActions)) {
             try { localStorage.setItem("spi_actions_" + tenantId, JSON.stringify(fbActions)); }
             catch(e) { console.warn("localStorage save error:", e); }
             return fbActions;
           }
-          try { localStorage.setItem("spi_actions_" + tenantId, JSON.stringify([])); }
-          catch(e) { console.warn("localStorage save error:", e); }
-          return [];
+          return localActions;
         }
       } catch(e) { console.error("Firebase load error:", e); }
     }
