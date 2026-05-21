@@ -2699,7 +2699,8 @@ document.addEventListener("DOMContentLoaded", function() {
             catch(e) { console.warn("localStorage save error:", e); }
             return fbActions;
           }
-          return localActions;
+          console.warn("Firebase actions payload inválido para tenant:", tenantId);
+          return [];
         }
       } catch(e) { console.error("Firebase load error:", e); }
     }
