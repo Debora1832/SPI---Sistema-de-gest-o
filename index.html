@@ -2694,7 +2694,9 @@ document.addEventListener("DOMContentLoaded", function() {
             catch(e) { console.warn("localStorage save error:", e); }
             return fbActions;
           }
-          return localActions;
+          try { localStorage.setItem("spi_actions_" + tenantId, JSON.stringify([])); }
+          catch(e) { console.warn("localStorage save error:", e); }
+          return [];
         }
       } catch(e) { console.error("Firebase load error:", e); }
     }
