@@ -2494,20 +2494,9 @@ document.addEventListener("DOMContentLoaded", function() {
           if (snap.exists) {
             const fbActions = snap.data().actions;
             if (Array.isArray(fbActions)) {
-              // Verifica se o localStorage tem um estado mais recente (autoritativo).
-              let localActions = null;
-              try {
-                const raw = localStorage.getItem("spi_actions_" + key);
-                localActions = raw ? JSON.parse(raw) : null;
-              } catch(e) { console.warn("localStorage parse error for " + key + ":", e); }
-              if (localActions !== null) {
-                // Estado local continua autoritativo, mas sem escrever de volta
-                // automaticamente durante o reload, porque essas escritas
-                // realimentam os listeners onSnapshot depois da reconexão.
-                TENANTS[key].actions = localActions;
-              } else {
-                TENANTS[key].actions = fbActions;
-              }
+              TENANTS[key].actions = fbActions;
+              try { localStorage.setItem("spi_actions_" + key, JSON.stringify(fbActions)); }
+              catch(e) { console.warn("localStorage save error for " + key + ":", e); }
             }
           }
         }).catch(function(e) { console.warn("Firebase reload error for " + key + ":", e); });
@@ -2653,14 +2642,9 @@ document.addEventListener("DOMContentLoaded", function() {
           var localJson = JSON.stringify(localActions);
           var fbJson    = JSON.stringify(saved);
           if (localJson === fbJson) return;
-          // Se Firebase trouxer itens ausentes localmente, ignoramos o snapshot
-          // para não restaurar itens deletados localmente nem disparar escritas
-          // automáticas que realimentariam o loop de sync.
-          var localIds = new Set(localActions.map(function(a){ return a && a.id; }));
-          var fbHasDeleted = saved.some(function(a){ return a && a.id && !localIds.has(a.id); });
-          if (fbHasDeleted) return;
-          // Firebase tem versão diferente mas sem itens extras: aceitar update do Firebase.
           if (TENANTS[tenantId]) TENANTS[tenantId].actions = saved;
+          try { localStorage.setItem("spi_actions_" + tenantId, JSON.stringify(saved)); }
+          catch(e) { console.warn("localStorage save error:", e); }
           if (tenantId === currentTenant) {
             allActions = saved;
             if (typeof renderDashboard === 'function') renderDashboard();
@@ -2690,10 +2674,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
   // Carrega ações de um tenant do Firestore ou, se falhar, do localStorage.
   // Retorna Promise<array | null> (null = nenhum dado salvo).
-  // O localStorage é tratado como fonte autoritativa para exclusões. Se ele
-  // tiver dados, preferimos o estado local e evitamos reconciliações automáticas
-  // durante o carregamento, porque escritas automáticas no Firebase disparam
-  // novos snapshots e podem prender a interface em ciclo de atualização.
+  // Quando conectado, o Firebase é a fonte compartilhada entre computadores.
+  // localStorage permanece como fallback offline.
   async function loadTenantActions(tenantId) {
     // Lê o estado local antes de tudo (salvo sincronicamente a cada alteração).
     let localActions = null;
@@ -2707,8 +2689,11 @@ document.addEventListener("DOMContentLoaded", function() {
         const snap = await db.collection("tenants").doc(tenantId).get();
         if (snap.exists) {
           const fbActions = snap.data().actions || [];
-          if (localActions !== null) return localActions;
-          return fbActions;
+          if (Array.isArray(fbActions)) {
+            try { localStorage.setItem("spi_actions_" + tenantId, JSON.stringify(fbActions)); }
+            catch(e) { console.warn("localStorage save error:", e); }
+            return fbActions;
+          }
         }
       } catch(e) { console.error("Firebase load error:", e); }
     }
