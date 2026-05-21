@@ -2688,7 +2688,7 @@ document.addEventListener("DOMContentLoaded", function() {
       try {
         const snap = await db.collection("tenants").doc(tenantId).get();
         if (snap.exists) {
-          const fbActions = snap.data().actions || [];
+          const fbActions = snap.data().actions;
           if (Array.isArray(fbActions)) {
             try { localStorage.setItem("spi_actions_" + tenantId, JSON.stringify(fbActions)); }
             catch(e) { console.warn("localStorage save error:", e); }
