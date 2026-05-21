@@ -2677,7 +2677,7 @@ document.addEventListener("DOMContentLoaded", function() {
   // Quando conectado, o Firebase é a fonte compartilhada entre computadores.
   // localStorage permanece como fallback offline.
   async function loadTenantActions(tenantId) {
-    // Lê o estado local antes de tudo (salvo sincronicamente a cada alteração).
+    // Lê o cache local antes de tudo para fallback offline.
     let localActions = null;
     try {
       const raw = localStorage.getItem("spi_actions_" + tenantId);
@@ -2694,6 +2694,7 @@ document.addEventListener("DOMContentLoaded", function() {
             catch(e) { console.warn("localStorage save error:", e); }
             return fbActions;
           }
+          return localActions;
         }
       } catch(e) { console.error("Firebase load error:", e); }
     }
