@@ -2525,14 +2525,6 @@ document.addEventListener("DOMContentLoaded", function() {
                 if (Array.isArray(records)) {
                   loadNcRecordsLocalAsync(_reloadTenant).then(async function(localRecords) {
                     if (_reloadTenant !== currentTenant) return; // guard again after async gap
-                    // Filtrar registros do Firebase deletados localmente.
-                    var fbRelOriginalCount = records.length;
-                    if (hasNcLocalSnapshot(_reloadTenant)) {
-                      var localRecordIds = new Set(localRecords.map(function(r) { return r && r.id; }));
-                      // Registros sem ID são mantidos: podem ser migrados/atribuídos abaixo.
-                      records = records.filter(function(r) { return !r.id || localRecordIds.has(r.id); });
-                    }
-                    var fbRelFilteredDeleted = records.length < fbRelOriginalCount;
                     // Restore photos from the local cache (not stored in Firestore)
                     records = (typeof mergePhotosFromLocal === 'function')
                       ? mergePhotosFromLocal(records, localRecords)
@@ -2552,7 +2544,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     if (typeof renderNcCustomCharts === 'function') renderNcCustomCharts();
                     // Push any locally-saved records that didn't reach Firebase back up,
                     // and persist any photo URLs recovered from Storage.
-                    if ((hadLocalOnlyRel || recoveredRel.changed || fbRelFilteredDeleted) && typeof saveNcRecords === 'function') saveNcRecords();
+                    if ((hadLocalOnlyRel || recoveredRel.changed) && typeof saveNcRecords === 'function') saveNcRecords();
                   }).catch(function(e) { console.warn('NC local cache merge error:', e); });
                 }
               }
@@ -2587,23 +2579,9 @@ document.addEventListener("DOMContentLoaded", function() {
           var localMeta = JSON.stringify(ncRecords.map(stripPhotos));
           var fbMeta    = JSON.stringify(records);
           if (localMeta === fbMeta) return;
-          // Filtrar registros do Firebase que foram deletados localmente.
-          // Quando ncRecords ainda está vazio (carregando após troca de tenant),
-          // usa o localStorage como fonte autoritativa para não restaurar exclusões.
           var _snapRefRecords = ncRecords.length > 0
             ? ncRecords
             : (typeof loadNcRecordsLocal === 'function' ? loadNcRecordsLocal(tenantId) : []);
-          var _fbNeedsDeleteCleanup = false;
-          if (ncRecords.length > 0 || hasNcLocalSnapshot(tenantId)) {
-            var localNcIds = new Set(_snapRefRecords.map(function(r) { return r && r.id; }));
-            var fbHasDeletedNc = records.some(function(r) { return r && r.id && !localNcIds.has(r.id); });
-            if (fbHasDeletedNc) {
-              // Firebase has records that local intentionally deleted.
-              // Filter them out and continue so we can push the corrected set back to Firebase.
-              records = records.filter(function(r) { return !r.id || localNcIds.has(r.id); });
-              _fbNeedsDeleteCleanup = true;
-            }
-          }
           // Restore photos from the current in-memory records before overwriting
           records = (typeof mergePhotosFromLocal === 'function')
             ? mergePhotosFromLocal(records, ncRecords.length > 0 ? ncRecords : _snapRefRecords)
@@ -2625,9 +2603,8 @@ document.addEventListener("DOMContentLoaded", function() {
           if (typeof renderNcGantt === 'function' && document.getElementById('ncGanttPage') &&
               document.getElementById('ncGanttPage').classList.contains('active')) renderNcGantt();
           // Push any locally-saved records that didn't reach Firebase back up,
-          // persist any photo URLs recovered from Storage, and/or write the corrected
-          // set back when Firebase had stale deleted records that we just filtered out.
-          if ((hadLocalOnlySnap || recoveredSnap.changed || _fbNeedsDeleteCleanup) && typeof saveNcRecords === 'function') saveNcRecords();
+          // persist any photo URLs recovered from Storage.
+          if ((hadLocalOnlySnap || recoveredSnap.changed) && typeof saveNcRecords === 'function') saveNcRecords();
         }, function(e) { console.warn('NC onSnapshot error:', e); });
     } catch(e) { console.warn('NC onSnapshot setup error:', e); }
 
@@ -6555,16 +6532,6 @@ document.addEventListener("DOMContentLoaded", function() {
           });
           // Restore attachments from the local cache (Firestore records don't carry binaries)
           var localRecords = await loadNcRecordsLocalAsync(tenantId);
-          // Filtrar do Firebase os registros deletados localmente: se local tem
-          // dados e um ID do Firebase não consta no cache local, foi excluído
-          // intencionalmente — não restaurar.
-          // Registros sem ID são mantidos pois ainda serão normalizados abaixo.
-          var fbOriginalCount = records.length;
-          if (hasNcLocalSnapshot(tenantId)) {
-            var localIdsSet = new Set(localRecords.map(function(r) { return r && r.id; }));
-            records = records.filter(function(r) { return !r.id || localIdsSet.has(r.id); });
-          }
-          var fbFilteredDeleted = records.length < fbOriginalCount;
           records = mergePhotosFromLocal(records, localRecords).map(normalizeNcRecordAttachments);
           var recoveredAsync = await recoverMissingNcPhotosFromStorage(records, tenantId);
           records = recoveredAsync.records;
@@ -6581,9 +6548,9 @@ document.addEventListener("DOMContentLoaded", function() {
           });
           // Keep localStorage in sync (with photos merged in)
           await saveNcLocalSnapshot(records, tenantId);
-          if (hadLocalOnly || needsSave || recoveredAsync.changed || fbFilteredDeleted) {
-            // Push local-only records (and/or migrated records, and/or records Firebase had
-            // that were deleted locally) back to Firebase so other devices see the correct state.
+          if (hadLocalOnly || needsSave || recoveredAsync.changed) {
+            // Push local-only records and migrated records back to Firebase so
+            // other devices see the correct state.
             db.collection('nc_records_' + tenantId).doc('all')
               .set({ records: records.map(stripPhotos) })
               .catch(function(e){ console.error('NC offline-sync save error:', e); });
