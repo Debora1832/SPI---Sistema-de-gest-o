@@ -6663,8 +6663,10 @@ document.addEventListener("DOMContentLoaded", function() {
         setNcSyncBadge('synced', '✓ Salvo no Firebase');
       } catch(e) {
         console.error('NC Firebase save error:', e);
-        markNcPendingSync(_saveTenant);
         if (currentTenant === _saveTenant) {
+          // Restore only when the user is still on the same tenant; if they
+          // switched tenants mid-save, the saved local snapshot remains
+          // available under `_saveTenant` and must not overwrite the new view.
           try {
             ncRecords = await loadNcRecordsLocalAsync(_saveTenant);
           } catch(loadErr) {
