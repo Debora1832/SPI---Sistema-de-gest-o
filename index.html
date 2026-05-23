@@ -6586,7 +6586,9 @@ document.addEventListener("DOMContentLoaded", function() {
     // Capture tenant and records at call time: prevents cross-tenant contamination if the
     // user switches tenants while an async upload (photo/PDF to Storage) is in progress.
     var _saveTenant = currentTenant;
-    var _saveRecords = ncRecords.slice();
+    var _saveRecords = ncRecords.map(function(rec) {
+      return JSON.parse(JSON.stringify(rec));
+    });
     // Always save the full record to the local cache first so attachments survive a refresh.
     await saveNcLocalSnapshot(_saveRecords, _saveTenant);
     if (db && firebaseConnected) {
