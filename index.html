@@ -2378,10 +2378,26 @@ document.addEventListener("DOMContentLoaded", function() {
     return value ? 1 : 0;
   }
 
+  function stableSnapshotString(value) {
+    if (Array.isArray(value)) {
+      return '[' + value.map(function(item) { return stableSnapshotString(item); }).join(',') + ']';
+    }
+    if (value && typeof value === 'object') {
+      return '{' + Object.keys(value).sort().map(function(key) {
+        return JSON.stringify(key) + ':' + stableSnapshotString(value[key]);
+      }).join(',') + '}';
+    }
+    return JSON.stringify(value);
+  }
+
+  function snapshotsEqual(a, b) {
+    return stableSnapshotString(a) === stableSnapshotString(b);
+  }
+
   function choosePreferredSnapshot(localSnap, remoteSnap) {
     var localTs = Number(localSnap && localSnap.updatedAt) || 0;
     var remoteTs = Number(remoteSnap && remoteSnap.updatedAt) || 0;
-    if (localTs && remoteTs && localTs !== remoteTs) return localTs > remoteTs ? 'local' : 'remote';
+    if (localTs && remoteTs) return localTs > remoteTs ? 'local' : 'remote';
     if (localTs && !remoteTs) return 'local';
     if (!localTs && remoteTs) return 'remote';
     var localScore = snapshotContentScore(localSnap ? localSnap.value : null);
@@ -2710,7 +2726,8 @@ document.addEventListener("DOMContentLoaded", function() {
           if (!Array.isArray(saved)) return;
           var remoteUpdatedAt = Number(data.updatedAt) || 0;
           var localSnapshot = readTenantActionsSnapshot(tenantId);
-          if (Array.isArray(localSnapshot.actions) && localSnapshot.updatedAt > remoteUpdatedAt) {
+          if (Array.isArray(localSnapshot.actions) && localSnapshot.updatedAt > remoteUpdatedAt &&
+              !snapshotsEqual(localSnapshot.actions, saved)) {
             saveTenantActions(tenantId, localSnapshot.actions, localSnapshot.updatedAt);
             return;
           }
@@ -2776,7 +2793,7 @@ document.addEventListener("DOMContentLoaded", function() {
             remoteSnapshot
           );
           if (preferredSource === 'local' && Array.isArray(localActions)) {
-            if (JSON.stringify(localActions) !== JSON.stringify(remoteSnapshot.value) ||
+            if (!snapshotsEqual(localActions, remoteSnapshot.value) ||
                 localSnapshot.updatedAt > remoteSnapshot.updatedAt) {
               saveTenantActions(tenantId, localActions, localSnapshot.updatedAt || Date.now());
             }
@@ -5323,7 +5340,7 @@ document.addEventListener("DOMContentLoaded", function() {
       if (preferredSource === 'local' && localSnapshot.all) {
         all = mergedAll || localSnapshot.all;
         if (db && firebaseConnected &&
-            (JSON.stringify(all) !== JSON.stringify(remoteSnapshot.all) ||
+            (!snapshotsEqual(all, remoteSnapshot.all) ||
              localSnapshot.updatedAt > remoteSnapshot.updatedAt)) {
           db.collection('tenants').doc('spi-tenants').set({
             all: all,
@@ -5334,10 +5351,10 @@ document.addEventListener("DOMContentLoaded", function() {
         all = mergedAll || remoteSnapshot.all;
         writeAllTenantsSnapshot(all, remoteSnapshot.updatedAt || Date.now());
         if (mergedAll && db && firebaseConnected &&
-            JSON.stringify(mergedAll) !== JSON.stringify(remoteSnapshot.all)) {
+            !snapshotsEqual(mergedAll, remoteSnapshot.all)) {
           db.collection('tenants').doc('spi-tenants').set({
             all: mergedAll,
-            updatedAt: Math.max(remoteSnapshot.updatedAt || 0, localSnapshot.updatedAt || 0, Date.now())
+            updatedAt: Math.max(remoteSnapshot.updatedAt || 0, localSnapshot.updatedAt || 0)
           }).catch(function(e) { console.error('Firebase save tenants error:', e); });
         }
       }
