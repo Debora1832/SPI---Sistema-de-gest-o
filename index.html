@@ -2647,9 +2647,12 @@ document.addEventListener("DOMContentLoaded", function() {
   function reintegrateLocalNcRecords(fbRecords, currentNcRecords) {
     var merged = Array.isArray(fbRecords) ? fbRecords.slice() : [];
     var changed = false;
-    var fbIds = new Set(merged.map(function(r) { return (r && r.id) || undefined; })
-                              .filter(function(id) { return id !== undefined; }));
+    // Build the ID set directly to avoid an intermediate array from map().
+    var fbIds = new Set();
+    merged.forEach(function(r) { if (r && r.id) fbIds.add(r.id); });
     (Array.isArray(currentNcRecords) ? currentNcRecords : []).forEach(function(localRec) {
+      // fbIds.has() guards the changed flag; fbIds.add() prevents double-appending
+      // the same ID when currentNcRecords contains duplicates of each other.
       if (localRec && localRec.id && !fbIds.has(localRec.id)) {
         merged.push(localRec);
         fbIds.add(localRec.id);
