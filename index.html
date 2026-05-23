@@ -2413,9 +2413,11 @@ document.addEventListener("DOMContentLoaded", function() {
     var remoteScore = snapshotContentScore(remoteSnap ? remoteSnap.value : null);
     if (localScore > 0 && remoteScore === 0) return 'local';
     if (remoteScore > 0 && localScore === 0) return 'remote';
-    if (localSnap && localSnap.value != null && (!remoteSnap || remoteSnap.value == null)) return 'local';
-    if (remoteSnap && remoteSnap.value != null && (!localSnap || localSnap.value == null)) return 'remote';
-    return remoteSnap && remoteSnap.value != null ? 'remote' : 'local';
+    var hasLocalValue = !!(localSnap && localSnap.value !== null && typeof localSnap.value !== 'undefined');
+    var hasRemoteValue = !!(remoteSnap && remoteSnap.value !== null && typeof remoteSnap.value !== 'undefined');
+    if (hasLocalValue && !hasRemoteValue) return 'local';
+    if (hasRemoteValue && !hasLocalValue) return 'remote';
+    return hasRemoteValue ? 'remote' : 'local';
   }
 
   function actionsStorageKey(tenantId) {
@@ -2732,16 +2734,17 @@ document.addEventListener("DOMContentLoaded", function() {
           if (!snap.exists) return;
           var data = snap.data() || {};
           var remoteUpdatedAt = Number(data.updatedAt) || 0;
-          var saved = Array.isArray(data.actions)
-            ? data.actions
-            : ((data.actions === null || typeof data.actions === 'undefined') ? [] : null);
+          var rawRemoteActions = data.actions;
+          var remoteActionsFieldSupported = Array.isArray(rawRemoteActions) ||
+            rawRemoteActions === null || typeof rawRemoteActions === 'undefined';
+          var saved = Array.isArray(rawRemoteActions) ? rawRemoteActions : [];
           var localSnapshot = readTenantActionsSnapshot(tenantId);
           if (Array.isArray(localSnapshot.actions) && localSnapshot.updatedAt > remoteUpdatedAt &&
-              !snapshotsEqual(localSnapshot.actions, saved || [])) {
+              !snapshotsEqual(localSnapshot.actions, saved)) {
             saveTenantActions(tenantId, localSnapshot.actions, localSnapshot.updatedAt);
             return;
           }
-          if (!Array.isArray(saved)) return;
+          if (!remoteActionsFieldSupported) return;
           var localActions = TENANTS[tenantId] ? TENANTS[tenantId].actions : [];
           var localJson = JSON.stringify(localActions);
           var fbJson    = JSON.stringify(saved);
@@ -2804,9 +2807,12 @@ document.addEventListener("DOMContentLoaded", function() {
             remoteSnapshot
           );
           if (preferredSource === 'local' && Array.isArray(localActions)) {
-            if (!snapshotsEqual(localActions, remoteSnapshot.value) ||
-                localSnapshot.updatedAt > remoteSnapshot.updatedAt) {
-              saveTenantActions(tenantId, localActions, localSnapshot.updatedAt || Date.now());
+            if (!snapshotsEqual(localActions, remoteSnapshot.value)) {
+              saveTenantActions(
+                tenantId,
+                localActions,
+                localSnapshot.updatedAt || remoteSnapshot.updatedAt || Date.now()
+              );
             }
             return localActions;
           }
@@ -5355,12 +5361,10 @@ document.addEventListener("DOMContentLoaded", function() {
       }
       if (preferredSource === 'local' && localSnapshot.all) {
         all = mergedAll || localSnapshot.all;
-        if (db && firebaseConnected &&
-            (!snapshotsEqual(all, remoteSnapshot.all) ||
-             localSnapshot.updatedAt > remoteSnapshot.updatedAt)) {
+        if (db && firebaseConnected && !snapshotsEqual(all, remoteSnapshot.all)) {
           db.collection('tenants').doc('spi-tenants').set({
             all: all,
-            updatedAt: localSnapshot.updatedAt || Date.now()
+            updatedAt: localSnapshot.updatedAt || remoteSnapshot.updatedAt || Date.now()
           }).catch(function(e) { console.error('Firebase save tenants error:', e); });
         }
       } else if (remoteSnapshot.all) {
