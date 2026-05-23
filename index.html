@@ -2620,6 +2620,10 @@ document.addEventListener("DOMContentLoaded", function() {
                     records = records.map(normalizeNcRecordAttachments);
                     var recoveredRel = await recoverMissingNcPhotosFromStorage(records, _reloadTenant);
                     records = recoveredRel.records;
+                    // Reintegrate any NC cards created during the async Storage probe.
+                    var _reloadReintegrate = reintegrateLocalNcRecords(records, ncRecords);
+                    records = _reloadReintegrate.records;
+                    if (_reloadReintegrate.changed) _reloadNeedsPendingWrite = true;
                     ncRecords = records;
                     saveNcLocalSnapshot(ncRecords, _reloadTenant);
                     renderNcCards();
@@ -2636,6 +2640,26 @@ document.addEventListener("DOMContentLoaded", function() {
         setupFirebaseListeners(currentTenant);
       });
     });
+  }
+
+  // Reintegrate NC records that were added to ncRecords DURING an async Storage probe.
+  // Returns { records, changed } where records is a new array (does not mutate fbRecords).
+  function reintegrateLocalNcRecords(fbRecords, currentNcRecords) {
+    var merged = Array.isArray(fbRecords) ? fbRecords.slice() : [];
+    var changed = false;
+    // Build the ID set directly to avoid an intermediate array from map().
+    var fbIds = new Set();
+    merged.forEach(function(r) { if (r && r.id) fbIds.add(r.id); });
+    (Array.isArray(currentNcRecords) ? currentNcRecords : []).forEach(function(localRec) {
+      // fbIds.has() guards the changed flag; fbIds.add() prevents double-appending
+      // the same ID when currentNcRecords contains duplicates of each other.
+      if (localRec && localRec.id && !fbIds.has(localRec.id)) {
+        merged.push(localRec);
+        fbIds.add(localRec.id);
+        changed = true;
+      }
+    });
+    return { records: merged, changed: changed };
   }
 
   // Set up onSnapshot real-time listeners for a given tenant.
@@ -2678,6 +2702,10 @@ document.addEventListener("DOMContentLoaded", function() {
           records = records.map(normalizeNcRecordAttachments);
           var recoveredSnap = await recoverMissingNcPhotosFromStorage(records, tenantId);
           records = recoveredSnap.records;
+          // Reintegrate any NC cards created during the async Storage probe.
+          var _snapReintegrate = reintegrateLocalNcRecords(records, ncRecords);
+          records = _snapReintegrate.records;
+          if (_snapReintegrate.changed) _snapNeedsPendingWrite = true;
           ncRecords = records;
           saveNcLocalSnapshot(ncRecords, tenantId);
           if (typeof setNcSyncBadge === 'function') setNcSyncBadge('synced', '✓ Atualizado em tempo real');
