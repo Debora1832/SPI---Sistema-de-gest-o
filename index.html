@@ -6277,8 +6277,8 @@ document.addEventListener("DOMContentLoaded", function() {
     });
     (Array.isArray(localRecords) ? localRecords : []).forEach(function(localRec) {
       if (!localRec || !localRec.id) return;
-      var existingIndex = byId.has(localRec.id) ? byId.get(localRec.id) : -1;
-      if (existingIndex === -1) {
+      var existingIndex = byId.get(localRec.id);
+      if (typeof existingIndex === 'undefined') {
         merged.push(localRec);
         byId.set(localRec.id, merged.length - 1);
         changed = true;
@@ -6752,6 +6752,16 @@ document.addEventListener("DOMContentLoaded", function() {
               clearNcPendingSync(tenantId);
             } catch(e) {
               markNcPendingSync(tenantId);
+              if (e && e.code === 'permission-denied') {
+                firebaseConnected = false;
+                setFirebaseStatus('error', 'Firebase: sem permissão de escrita');
+                setNcSyncBadge('offline', '⚠ Regras do Firebase bloqueiam escrita — abra Configurações do Firebase para corrigir');
+                window._fbPermErrorPending = true;
+              } else if (e && e.message && e.message.indexOf('exceeds the maximum allowed size') !== -1) {
+                setNcSyncBadge('offline', '⚠ Documento muito grande para o Firebase (limite 1MB) – dados preservados localmente');
+              } else {
+                setNcSyncBadge('offline', '⚠ Erro ao salvar no Firebase – dados preservados localmente');
+              }
               console.error('NC offline-sync save error:', e);
             }
           } else if (hasPendingLocalSync) {
