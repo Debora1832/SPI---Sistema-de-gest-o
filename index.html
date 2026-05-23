@@ -2620,6 +2620,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     records = records.map(normalizeNcRecordAttachments);
                     var recoveredRel = await recoverMissingNcPhotosFromStorage(records, _reloadTenant);
                     records = recoveredRel.records;
+                    records = await resolveNcRecordsMediaSources(records);
                     // Reintegrate any NC cards created during the async Storage probe.
                     var _reloadReintegrate = reintegrateLocalNcRecords(records, ncRecords);
                     records = _reloadReintegrate.records;
@@ -2702,6 +2703,7 @@ document.addEventListener("DOMContentLoaded", function() {
           records = records.map(normalizeNcRecordAttachments);
           var recoveredSnap = await recoverMissingNcPhotosFromStorage(records, tenantId);
           records = recoveredSnap.records;
+          records = await resolveNcRecordsMediaSources(records);
           // Reintegrate any NC cards created during the async Storage probe.
           var _snapReintegrate = reintegrateLocalNcRecords(records, ncRecords);
           records = _snapReintegrate.records;
@@ -3863,6 +3865,7 @@ document.addEventListener("DOMContentLoaded", function() {
   // ── Lightbox ─────────────────────────────────────────────────────────────────
 
   function openLightbox(url, name){
+    if (!isUsableAttachmentSrc(url)) return;
     document.getElementById("lightboxImg").src = url;
     document.getElementById("lightboxImg").alt = name;
     const dl = document.getElementById("lightboxDownload");
@@ -6012,26 +6015,36 @@ document.addEventListener("DOMContentLoaded", function() {
     return !!normalized && /^(data:|blob:|https?:\/\/)/i.test(normalized);
   }
 
-  function extractNcPhotoSrc(value) {
-    var direct = normalizeAttachmentSrc(value);
-    if (isUsableAttachmentSrc(direct)) return direct;
+  function isFirebaseStoragePath(value) {
+    var normalized = normalizeAttachmentSrc(value);
+    if (!normalized || /^(data:|blob:|https?:\/\/)/i.test(normalized)) return false;
+    if (/^gs:\/\//i.test(normalized)) return true;
+    if (/^(nc_photos|nc_files)\//i.test(normalized)) return true;
+    return normalized.indexOf('/') !== -1 && /\.[a-z0-9]{2,8}(?:$|[?#])/i.test(normalized);
+  }
 
+  function isResolvableAttachmentSrc(value) {
+    var normalized = normalizeAttachmentSrc(value);
+    return !!normalized && (isUsableAttachmentSrc(normalized) || isFirebaseStoragePath(normalized));
+  }
+
+  function extractAttachmentReference(value, candidateKeys) {
+    var direct = normalizeAttachmentSrc(value);
+    if (isResolvableAttachmentSrc(direct)) return direct;
     if (value && typeof value === 'object') {
-      var candidates = [
-        value.url,
-        value.src,
-        value.data,
-        value.downloadURL,
-        value.downloadUrl,
-        value.photo,
-        value.photoUrl
-      ];
-      for (var i = 0; i < candidates.length; i++) {
-        var candidate = normalizeAttachmentSrc(candidates[i]);
-        if (isUsableAttachmentSrc(candidate)) return candidate;
+      var keys = Array.isArray(candidateKeys) && candidateKeys.length
+        ? candidateKeys
+        : ['url', 'src', 'data', 'downloadURL', 'downloadUrl', 'photo', 'photoUrl', 'path', 'fullPath', 'storagePath', 'gsUrl', 'gsURI', 'gsUri'];
+      for (var i = 0; i < keys.length; i++) {
+        var candidate = normalizeAttachmentSrc(value[keys[i]]);
+        if (isResolvableAttachmentSrc(candidate)) return candidate;
       }
     }
     return '';
+  }
+
+  function extractNcPhotoSrc(value) {
+    return extractAttachmentReference(value, ['url', 'src', 'data', 'downloadURL', 'downloadUrl', 'photo', 'photoUrl', 'path', 'fullPath', 'storagePath', 'gsUrl', 'gsURI', 'gsUri']);
   }
 
   function normalizeNcRecordAttachments(nc) {
@@ -6053,8 +6066,8 @@ document.addEventListener("DOMContentLoaded", function() {
     if (Array.isArray(r.pdfs)) {
       r.pdfs = r.pdfs.map(function(pdf) {
         if (!pdf) return null;
-        var data = isUsableAttachmentSrc(pdf.data) ? pdf.data : '';
-        var url  = isUsableAttachmentSrc(pdf.url) ? pdf.url : '';
+        var data = extractAttachmentReference(pdf.data, ['data']);
+        var url  = extractAttachmentReference(pdf, ['url', 'downloadURL', 'downloadUrl', 'path', 'fullPath', 'storagePath', 'src']);
         if (!data && !url) return null;
         return {
           name: pdf.name || 'documento.pdf',
@@ -6065,10 +6078,14 @@ document.addEventListener("DOMContentLoaded", function() {
       if (!r.pdfs.length) delete r.pdfs;
     }
 
-    if (!isUsableAttachmentSrc(r.alertFile)) delete r.alertFile;
-    if (!isUsableAttachmentSrc(r.alertFileUrl)) delete r.alertFileUrl;
-    if (!isUsableAttachmentSrc(r.d8File)) delete r.d8File;
-    if (!isUsableAttachmentSrc(r.d8FileUrl)) delete r.d8FileUrl;
+    var alertFileRef = extractAttachmentReference(r.alertFile, ['data', 'url', 'src', 'downloadURL', 'downloadUrl', 'path', 'fullPath', 'storagePath']);
+    if (alertFileRef) r.alertFile = alertFileRef; else delete r.alertFile;
+    var alertUrlRef = extractAttachmentReference({ url: r.alertFileUrl, path: r.alertFilePath, fullPath: r.alertFileFullPath, storagePath: r.alertFileStoragePath }, ['url', 'path', 'fullPath', 'storagePath']);
+    if (alertUrlRef) r.alertFileUrl = alertUrlRef; else delete r.alertFileUrl;
+    var d8FileRef = extractAttachmentReference(r.d8File, ['data', 'url', 'src', 'downloadURL', 'downloadUrl', 'path', 'fullPath', 'storagePath']);
+    if (d8FileRef) r.d8File = d8FileRef; else delete r.d8File;
+    var d8UrlRef = extractAttachmentReference({ url: r.d8FileUrl, path: r.d8FilePath, fullPath: r.d8FileFullPath, storagePath: r.d8FileStoragePath }, ['url', 'path', 'fullPath', 'storagePath']);
+    if (d8UrlRef) r.d8FileUrl = d8UrlRef; else delete r.d8FileUrl;
     return r;
   }
 
@@ -6312,6 +6329,80 @@ document.addEventListener("DOMContentLoaded", function() {
   var _ncStorageProbedEmpty = new Set();
 
   var MAX_NC_PHOTO_PROBE_COUNT = 10;
+  var _resolvedStorageUrlCache = new Map();
+
+  function isMissingStorageError(error) {
+    var code = error && error.code ? String(error.code) : '';
+    var message = error && error.message ? String(error.message) : '';
+    return code === 'storage/object-not-found' ||
+      code === 'storage/invalid-url' ||
+      /object-not-found|invalid-url|not[\s-]?found|404/i.test(code + ' ' + message);
+  }
+
+  async function resolveAttachmentSrc(value) {
+    var reference = extractAttachmentReference(value);
+    if (!reference) return '';
+    if (isUsableAttachmentSrc(reference)) return reference;
+    if (!storage || _storageCorsFailed || !isFirebaseStoragePath(reference)) return '';
+    if (_resolvedStorageUrlCache.has(reference)) return _resolvedStorageUrlCache.get(reference);
+    var pending = (async function() {
+      try {
+        var storageRef = /^gs:\/\//i.test(reference) ? storage.refFromURL(reference) : storage.ref(reference);
+        return await storageRef.getDownloadURL();
+      } catch(e) {
+        if (!isMissingStorageError(e)) {
+          console.warn('[SPI Storage] Falha ao resolver mídia:', reference, e);
+        }
+        return '';
+      }
+    })();
+    _resolvedStorageUrlCache.set(reference, pending);
+    return pending;
+  }
+
+  async function resolveNcRecordMediaSources(record) {
+    var normalized = normalizeNcRecordAttachments(record);
+    if (!normalized || typeof normalized !== 'object') return normalized;
+    var resolved = Object.assign({}, normalized);
+    var photos = Array.isArray(normalized.photos) ? normalized.photos : [];
+    if (photos.length) {
+      var resolvedPhotos = (await Promise.all(photos.map(resolveAttachmentSrc))).filter(Boolean);
+      if (resolvedPhotos.length > 1) resolvedPhotos = Array.from(new Set(resolvedPhotos));
+      if (resolvedPhotos.length) {
+        resolved.photos = resolvedPhotos;
+      } else {
+        delete resolved.photos;
+      }
+    }
+    var alertFile = await resolveAttachmentSrc(normalized.alertFile);
+    if (alertFile) resolved.alertFile = alertFile; else delete resolved.alertFile;
+    var alertFileUrl = await resolveAttachmentSrc(normalized.alertFileUrl);
+    if (alertFileUrl) resolved.alertFileUrl = alertFileUrl; else delete resolved.alertFileUrl;
+    var d8File = await resolveAttachmentSrc(normalized.d8File);
+    if (d8File) resolved.d8File = d8File; else delete resolved.d8File;
+    var d8FileUrl = await resolveAttachmentSrc(normalized.d8FileUrl);
+    if (d8FileUrl) resolved.d8FileUrl = d8FileUrl; else delete resolved.d8FileUrl;
+    if (Array.isArray(normalized.pdfs)) {
+      resolved.pdfs = (await Promise.all(normalized.pdfs.map(async function(pdf) {
+        if (!pdf) return null;
+        var data = await resolveAttachmentSrc(pdf.data);
+        var url = await resolveAttachmentSrc(pdf.url);
+        if (!data && !url) return null;
+        return {
+          name: pdf.name || 'documento.pdf',
+          data: data || undefined,
+          url: url || undefined
+        };
+      }))).filter(Boolean);
+      if (!resolved.pdfs.length) delete resolved.pdfs;
+    }
+    return normalizeNcRecordAttachments(resolved);
+  }
+
+  async function resolveNcRecordsMediaSources(records) {
+    if (!Array.isArray(records) || !records.length) return Array.isArray(records) ? records : [];
+    return Promise.all(records.map(resolveNcRecordMediaSources));
+  }
 
   // Upload a single photo to Firebase Storage and return its download URL.
   // If the photo is already an HTTPS URL (already uploaded), returns it unchanged.
@@ -6782,6 +6873,7 @@ document.addEventListener("DOMContentLoaded", function() {
           records = mergePhotosFromLocal(records, localRecords).map(normalizeNcRecordAttachments);
           var recoveredAsync = await recoverMissingNcPhotosFromStorage(records, tenantId);
           records = recoveredAsync.records;
+          records = await resolveNcRecordsMediaSources(records);
           // Deduplicate by id (safety net against past cross-tenant contamination)
           var seenIdsAsync = new Set();
           records = records.filter(function(r) {
@@ -6827,7 +6919,7 @@ document.addEventListener("DOMContentLoaded", function() {
       setNcSyncBadge('offline', '⚠ Sem Firebase');
     }
     // Fallback: localStorage
-    return loadNcRecordsLocalAsync(tenantId);
+    return resolveNcRecordsMediaSources(await loadNcRecordsLocalAsync(tenantId));
   }
 
   var _ncSyncHideTimer = null;
@@ -7711,7 +7803,7 @@ document.addEventListener("DOMContentLoaded", function() {
       var photoHtml;
       if (photos.length) {
         var imgs = photos.map(function(src, i) {
-          return '<img src="' + src + '" alt="Foto ' + (i+1) + '"' + (i===0 ? ' class="nc-active-photo"' : '') + '>';
+          return '<img src="' + escHtml(src) + '" alt="Foto ' + (i+1) + '"' + (i===0 ? ' class="nc-active-photo"' : '') + '>';
         }).join('');
         var nav = photos.length > 1
           ? '<div class="nc-photo-nav"><button data-photonav="-1">&#8249;</button><button data-photonav="1">&#8250;</button></div>'
@@ -7743,7 +7835,7 @@ document.addEventListener("DOMContentLoaded", function() {
           (Array.isArray(cleanNc.pdfs) && cleanNc.pdfs.length
             ? '<div class="nc-card-pdfs">' + cleanNc.pdfs.map(function(p) {
                 var href = p.data || p.url || '#';
-                return '<a href="' + href + '" download="' + escHtml(p.name) + '" title="' + escHtml(p.name) + '" target="_blank">📄 ' + escHtml(p.name) + '</a>';
+                return '<a href="' + escHtml(href) + '" download="' + escHtml(p.name) + '" title="' + escHtml(p.name) + '" target="_blank">📄 ' + escHtml(p.name) + '</a>';
               }).join('') + '</div>'
             : '') +
         '</div>' +
@@ -7988,7 +8080,8 @@ document.addEventListener("DOMContentLoaded", function() {
       if (e.target === vBackdrop) { vBackdrop.classList.remove('open'); vContent.innerHTML = ''; }
     });
     window._openAlertViewer = function(dataUrl, fileName) {
-      if (!isUsableAttachmentSrc(dataUrl)) {
+      var resolvedSrc = extractAttachmentReference(dataUrl);
+      if (!isUsableAttachmentSrc(resolvedSrc)) {
         vTitle.textContent = fileName || 'Arquivo';
         vContent.innerHTML = '<div style="padding:18px;color:#6b7280;font-size:13px;text-align:center;">Arquivo indisponível para visualização.</div>';
         vBackdrop.classList.add('open');
@@ -7996,17 +8089,23 @@ document.addEventListener("DOMContentLoaded", function() {
       }
       vTitle.textContent = fileName || 'Alerta';
       vContent.innerHTML = '';
-      var isImage = dataUrl.startsWith('data:image/') ||
-                    (dataUrl.startsWith('https://') &&
-                     /\.(jpe?g|png|gif|webp|bmp)($|\?)/i.test(dataUrl));
+      var isImage = resolvedSrc.startsWith('data:image/') ||
+                    (/^https?:\/\//i.test(resolvedSrc) &&
+                     /\.(jpe?g|png|gif|webp|bmp)($|\?)/i.test(resolvedSrc));
       if (isImage) {
         var img = document.createElement('img');
-        img.src = dataUrl;
+        img.src = resolvedSrc;
         img.alt = fileName || 'Alerta';
+        img.onerror = function() {
+          vContent.innerHTML = '<div style="padding:18px;color:#6b7280;font-size:13px;text-align:center;">Arquivo indisponível para visualização.</div>';
+        };
         vContent.appendChild(img);
       } else {
         var iframe = document.createElement('iframe');
-        iframe.src = dataUrl;
+        iframe.src = resolvedSrc;
+        iframe.onerror = function() {
+          vContent.innerHTML = '<div style="padding:18px;color:#6b7280;font-size:13px;text-align:center;">Arquivo indisponível para visualização.</div>';
+        };
         vContent.appendChild(iframe);
       }
       vBackdrop.classList.add('open');
@@ -8040,7 +8139,7 @@ document.addEventListener("DOMContentLoaded", function() {
       var photoStripHtml = photos.length
         ? '<div class="nc-detail-photo-strip">' +
             photos.map(function(src, i) {
-              return '<img src="' + src + '" alt="Foto ' + (i+1) + '" data-lightbox-src="' + src + '" data-lightbox-alt="Foto ' + (i+1) + '" title="Clique para ampliar">';
+              return '<img src="' + escHtml(src) + '" alt="Foto ' + (i+1) + '" data-lightbox-src="' + escHtml(src) + '" data-lightbox-alt="Foto ' + (i+1) + '" title="Clique para ampliar">';
             }).join('') +
           '</div>'
         : '';
@@ -8170,6 +8269,12 @@ document.addEventListener("DOMContentLoaded", function() {
         // Silently hide broken images from stale/invalid Storage URLs.
         img.addEventListener('error', function() {
           img.style.display = 'none';
+          var strip = img.closest('.nc-detail-photo-strip');
+          if (strip) {
+            var anyVisible = Array.from(strip.querySelectorAll('img'))
+              .some(function(stripImg) { return stripImg.style.display !== 'none'; });
+            if (!anyVisible) strip.style.display = 'none';
+          }
         });
       });
 
@@ -8270,7 +8375,7 @@ document.addEventListener("DOMContentLoaded", function() {
       ? '<div class="prt-section">' +
           '<div class="prt-section-title">Fotos da Peça</div>' +
           '<div class="prt-section-body"><div class="prt-photos-row">' +
-            photos.map(function(src){ return '<img src="' + src + '" alt="Foto da peça">'; }).join('') +
+            photos.map(function(src){ return '<img src="' + escHtml(src) + '" alt="Foto da peça">'; }).join('') +
           '</div></div>' +
         '</div>'
       : '';
