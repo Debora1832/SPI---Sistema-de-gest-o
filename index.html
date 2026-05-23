@@ -6765,6 +6765,8 @@ document.addEventListener("DOMContentLoaded", function() {
               console.error('NC offline-sync save error:', e);
             }
           } else if (hasPendingLocalSync) {
+            // Pending marker can be stale when remote already includes local changes.
+            // Clear it so future reloads/listeners don't attempt unnecessary re-sync.
             clearNcPendingSync(tenantId);
           }
           setNcSyncBadge('synced', '✓ Sincronizado');
