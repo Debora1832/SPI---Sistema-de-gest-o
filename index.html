@@ -2620,20 +2620,10 @@ document.addEventListener("DOMContentLoaded", function() {
                     records = records.map(normalizeNcRecordAttachments);
                     var recoveredRel = await recoverMissingNcPhotosFromStorage(records, _reloadTenant);
                     records = recoveredRel.records;
-                    // Reintegrate any NC cards that were added to ncRecords DURING the async
-                    // Storage probe above (e.g., user clicked "Cadastrar NC" while we were
-                    // probing Firebase Storage for photo URLs on reload).
-                    var _ncAfterReload = ncRecords;
-                    if (Array.isArray(_ncAfterReload)) {
-                      var _reloadFbIds = new Set(records.map(function(r) { return r && r.id; }));
-                      _ncAfterReload.forEach(function(localRec) {
-                        if (localRec && localRec.id && !_reloadFbIds.has(localRec.id)) {
-                          records.push(localRec);
-                          _reloadFbIds.add(localRec.id);
-                          _reloadNeedsPendingWrite = true;
-                        }
-                      });
-                    }
+                    // Reintegrate any NC cards created during the async Storage probe.
+                    var _reloadReintegrate = reintegrateLocalNcRecords(records, ncRecords);
+                    records = _reloadReintegrate.records;
+                    if (_reloadReintegrate.changed) _reloadNeedsPendingWrite = true;
                     ncRecords = records;
                     saveNcLocalSnapshot(ncRecords, _reloadTenant);
                     renderNcCards();
@@ -2650,6 +2640,21 @@ document.addEventListener("DOMContentLoaded", function() {
         setupFirebaseListeners(currentTenant);
       });
     });
+  }
+
+  // Reintegrate NC records that were added to ncRecords DURING an async Storage probe.
+  // Returns { records, changed } where records is the merged array.
+  function reintegrateLocalNcRecords(fbRecords, currentNcRecords) {
+    var changed = false;
+    var fbIds = new Set(fbRecords.map(function(r) { return r && r.id; }));
+    (Array.isArray(currentNcRecords) ? currentNcRecords : []).forEach(function(localRec) {
+      if (localRec && localRec.id && !fbIds.has(localRec.id)) {
+        fbRecords.push(localRec);
+        fbIds.add(localRec.id);
+        changed = true;
+      }
+    });
+    return { records: fbRecords, changed: changed };
   }
 
   // Set up onSnapshot real-time listeners for a given tenant.
@@ -2692,21 +2697,10 @@ document.addEventListener("DOMContentLoaded", function() {
           records = records.map(normalizeNcRecordAttachments);
           var recoveredSnap = await recoverMissingNcPhotosFromStorage(records, tenantId);
           records = recoveredSnap.records;
-          // Reintegrate any NC cards that were added to ncRecords DURING the async
-          // Storage probe above (e.g., user clicked "Cadastrar NC" while we were
-          // probing Firebase Storage for photo URLs). Without this step, the newly
-          // created card would be wiped from memory and disappear from the page.
-          var _ncAfterProbe = ncRecords;
-          if (Array.isArray(_ncAfterProbe)) {
-            var _fbIds = new Set(records.map(function(r) { return r && r.id; }));
-            _ncAfterProbe.forEach(function(localRec) {
-              if (localRec && localRec.id && !_fbIds.has(localRec.id)) {
-                records.push(localRec);
-                _fbIds.add(localRec.id);
-                _snapNeedsPendingWrite = true;
-              }
-            });
-          }
+          // Reintegrate any NC cards created during the async Storage probe.
+          var _snapReintegrate = reintegrateLocalNcRecords(records, ncRecords);
+          records = _snapReintegrate.records;
+          if (_snapReintegrate.changed) _snapNeedsPendingWrite = true;
           ncRecords = records;
           saveNcLocalSnapshot(ncRecords, tenantId);
           if (typeof setNcSyncBadge === 'function') setNcSyncBadge('synced', '✓ Atualizado em tempo real');
