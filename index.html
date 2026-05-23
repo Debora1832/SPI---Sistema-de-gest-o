@@ -2643,18 +2643,20 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   // Reintegrate NC records that were added to ncRecords DURING an async Storage probe.
-  // Returns { records, changed } where records is the merged array.
+  // Returns { records, changed } where records is a new array (does not mutate fbRecords).
   function reintegrateLocalNcRecords(fbRecords, currentNcRecords) {
+    var merged = Array.isArray(fbRecords) ? fbRecords.slice() : [];
     var changed = false;
-    var fbIds = new Set(fbRecords.map(function(r) { return r && r.id; }));
+    var fbIds = new Set(merged.map(function(r) { return (r && r.id) || undefined; })
+                              .filter(function(id) { return id !== undefined; }));
     (Array.isArray(currentNcRecords) ? currentNcRecords : []).forEach(function(localRec) {
       if (localRec && localRec.id && !fbIds.has(localRec.id)) {
-        fbRecords.push(localRec);
+        merged.push(localRec);
         fbIds.add(localRec.id);
         changed = true;
       }
     });
-    return { records: fbRecords, changed: changed };
+    return { records: merged, changed: changed };
   }
 
   // Set up onSnapshot real-time listeners for a given tenant.
