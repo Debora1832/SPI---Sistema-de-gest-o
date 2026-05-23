@@ -2394,10 +2394,19 @@ document.addEventListener("DOMContentLoaded", function() {
     return stableSnapshotString(a) === stableSnapshotString(b);
   }
 
+  function logMergedTenantConflicts(baseAll, incomingAll, preferredSource) {
+    if (!baseAll || !incomingAll) return;
+    Object.keys(baseAll).forEach(function(key) {
+      if (!Object.prototype.hasOwnProperty.call(incomingAll, key)) return;
+      if (snapshotsEqual(baseAll[key], incomingAll[key])) return;
+      console.info('Mesclando metadados do tenant "' + key + '" priorizando snapshot ' + preferredSource + '.');
+    });
+  }
+
   function choosePreferredSnapshot(localSnap, remoteSnap) {
     var localTs = Number(localSnap && localSnap.updatedAt) || 0;
     var remoteTs = Number(remoteSnap && remoteSnap.updatedAt) || 0;
-    if (localTs && remoteTs) return localTs > remoteTs ? 'local' : 'remote';
+    if (localTs && remoteTs && localTs !== remoteTs) return localTs > remoteTs ? 'local' : 'remote';
     if (localTs && !remoteTs) return 'local';
     if (!localTs && remoteTs) return 'remote';
     var localScore = snapshotContentScore(localSnap ? localSnap.value : null);
@@ -2722,15 +2731,17 @@ document.addEventListener("DOMContentLoaded", function() {
         .onSnapshot(function(snap) {
           if (!snap.exists) return;
           var data = snap.data() || {};
-          var saved = data.actions;
-          if (!Array.isArray(saved)) return;
           var remoteUpdatedAt = Number(data.updatedAt) || 0;
+          var saved = Array.isArray(data.actions)
+            ? data.actions
+            : ((data.actions === null || typeof data.actions === 'undefined') ? [] : null);
           var localSnapshot = readTenantActionsSnapshot(tenantId);
           if (Array.isArray(localSnapshot.actions) && localSnapshot.updatedAt > remoteUpdatedAt &&
-              !snapshotsEqual(localSnapshot.actions, saved)) {
+              !snapshotsEqual(localSnapshot.actions, saved || [])) {
             saveTenantActions(tenantId, localSnapshot.actions, localSnapshot.updatedAt);
             return;
           }
+          if (!Array.isArray(saved)) return;
           var localActions = TENANTS[tenantId] ? TENANTS[tenantId].actions : [];
           var localJson = JSON.stringify(localActions);
           var fbJson    = JSON.stringify(saved);
@@ -5333,6 +5344,11 @@ document.addEventListener("DOMContentLoaded", function() {
       );
       var mergedAll = null;
       if (localSnapshot.all && remoteSnapshot.all) {
+        logMergedTenantConflicts(
+          preferredSource === 'local' ? remoteSnapshot.all : localSnapshot.all,
+          preferredSource === 'local' ? localSnapshot.all : remoteSnapshot.all,
+          preferredSource
+        );
         mergedAll = preferredSource === 'local'
           ? Object.assign({}, remoteSnapshot.all, localSnapshot.all)
           : Object.assign({}, localSnapshot.all, remoteSnapshot.all);
@@ -5354,7 +5370,7 @@ document.addEventListener("DOMContentLoaded", function() {
             !snapshotsEqual(mergedAll, remoteSnapshot.all)) {
           db.collection('tenants').doc('spi-tenants').set({
             all: mergedAll,
-            updatedAt: Math.max(remoteSnapshot.updatedAt || 0, localSnapshot.updatedAt || 0)
+            updatedAt: Date.now()
           }).catch(function(e) { console.error('Firebase save tenants error:', e); });
         }
       }
