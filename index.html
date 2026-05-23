@@ -2345,6 +2345,82 @@ document.addEventListener("DOMContentLoaded", function() {
     } catch(e) { return null; }
   }
 
+  function readStoredSnapshot(storageKey, fieldName) {
+    try {
+      var raw = localStorage.getItem(storageKey);
+      if (!raw) return { value: null, updatedAt: 0 };
+      var parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) &&
+          Object.prototype.hasOwnProperty.call(parsed, fieldName)) {
+        return {
+          value: parsed[fieldName],
+          updatedAt: Number(parsed.updatedAt) || 0
+        };
+      }
+      return { value: parsed, updatedAt: 0 };
+    } catch(e) {
+      return { value: null, updatedAt: 0 };
+    }
+  }
+
+  function writeStoredSnapshot(storageKey, fieldName, value, updatedAt) {
+    try {
+      localStorage.setItem(storageKey, JSON.stringify({
+        [fieldName]: value,
+        updatedAt: Number(updatedAt) || Date.now()
+      }));
+    } catch(e) { console.warn("localStorage save error:", e); }
+  }
+
+  function snapshotContentScore(value) {
+    if (Array.isArray(value)) return value.length;
+    if (value && typeof value === 'object') return Object.keys(value).length;
+    return value ? 1 : 0;
+  }
+
+  function choosePreferredSnapshot(localSnap, remoteSnap) {
+    var localTs = Number(localSnap && localSnap.updatedAt) || 0;
+    var remoteTs = Number(remoteSnap && remoteSnap.updatedAt) || 0;
+    if (localTs && remoteTs && localTs !== remoteTs) return localTs > remoteTs ? 'local' : 'remote';
+    if (localTs && !remoteTs) return 'local';
+    if (!localTs && remoteTs) return 'remote';
+    var localScore = snapshotContentScore(localSnap ? localSnap.value : null);
+    var remoteScore = snapshotContentScore(remoteSnap ? remoteSnap.value : null);
+    if (localScore > 0 && remoteScore === 0) return 'local';
+    if (remoteScore > 0 && localScore === 0) return 'remote';
+    if (localSnap && localSnap.value != null && (!remoteSnap || remoteSnap.value == null)) return 'local';
+    if (remoteSnap && remoteSnap.value != null && (!localSnap || localSnap.value == null)) return 'remote';
+    return remoteSnap && remoteSnap.value != null ? 'remote' : 'local';
+  }
+
+  function actionsStorageKey(tenantId) {
+    return "spi_actions_" + tenantId;
+  }
+
+  function readTenantActionsSnapshot(tenantId) {
+    var snap = readStoredSnapshot(actionsStorageKey(tenantId), 'actions');
+    return {
+      actions: Array.isArray(snap.value) ? snap.value : null,
+      updatedAt: snap.updatedAt
+    };
+  }
+
+  function writeTenantActionsSnapshot(tenantId, actions, updatedAt) {
+    writeStoredSnapshot(actionsStorageKey(tenantId), 'actions', actions, updatedAt);
+  }
+
+  function readAllTenantsSnapshot() {
+    var snap = readStoredSnapshot('spi_all_tenants', 'all');
+    return {
+      all: (snap.value && typeof snap.value === 'object' && !Array.isArray(snap.value)) ? snap.value : null,
+      updatedAt: snap.updatedAt
+    };
+  }
+
+  function writeAllTenantsSnapshot(all, updatedAt) {
+    writeStoredSnapshot('spi_all_tenants', 'all', all, updatedAt);
+  }
+
   function normalizeStorageBucket(projectId, bucket) {
     var safeProjectId = (projectId || '').trim();
     var normalized = (bucket || '').trim();
@@ -2490,15 +2566,8 @@ document.addEventListener("DOMContentLoaded", function() {
       const keys = Object.keys(TENANTS);
       if (!keys.length) return;
       Promise.all(keys.map(function(key) {
-        return db.collection("tenants").doc(key).get().then(function(snap) {
-          if (snap.exists) {
-            const fbActions = snap.data().actions;
-            if (Array.isArray(fbActions)) {
-              TENANTS[key].actions = fbActions;
-              try { localStorage.setItem("spi_actions_" + key, JSON.stringify(fbActions)); }
-              catch(e) { console.warn("localStorage save error for " + key + ":", e); }
-            }
-          }
+        return loadTenantActions(key).then(function(savedActions) {
+          if (Array.isArray(savedActions) && TENANTS[key]) TENANTS[key].actions = savedActions;
         }).catch(function(e) { console.warn("Firebase reload error for " + key + ":", e); });
       })).then(function() {
         return recoverMisclassifiedClientsFromData(true); // force re-run now that Firebase data is loaded
@@ -2636,15 +2705,21 @@ document.addEventListener("DOMContentLoaded", function() {
       _actionsListener = db.collection('tenants').doc(tenantId)
         .onSnapshot(function(snap) {
           if (!snap.exists) return;
-          var saved = snap.data().actions;
+          var data = snap.data() || {};
+          var saved = data.actions;
           if (!Array.isArray(saved)) return;
+          var remoteUpdatedAt = Number(data.updatedAt) || 0;
+          var localSnapshot = readTenantActionsSnapshot(tenantId);
+          if (Array.isArray(localSnapshot.actions) && localSnapshot.updatedAt > remoteUpdatedAt) {
+            saveTenantActions(tenantId, localSnapshot.actions, localSnapshot.updatedAt);
+            return;
+          }
           var localActions = TENANTS[tenantId] ? TENANTS[tenantId].actions : [];
           var localJson = JSON.stringify(localActions);
           var fbJson    = JSON.stringify(saved);
           if (localJson === fbJson) return;
           if (TENANTS[tenantId]) TENANTS[tenantId].actions = saved;
-          try { localStorage.setItem("spi_actions_" + tenantId, JSON.stringify(saved)); }
-          catch(e) { console.warn("localStorage save error:", e); }
+          writeTenantActionsSnapshot(tenantId, saved, remoteUpdatedAt);
           if (tenantId === currentTenant) {
             allActions = saved;
             if (typeof renderDashboard === 'function') renderDashboard();
@@ -2656,7 +2731,7 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   // Salva ações de um tenant no Firestore E no localStorage (fallback).
-  function saveTenantActions(tenantId, actions) {
+  function saveTenantActions(tenantId, actions, updatedAt) {
     const plain = actions.map(function(a){
       return { id:a.id, group:a.group||"", desc:a.desc||"", team:a.team||"",
                lead:a.lead||"", status:a.status||"not_started",
@@ -2664,10 +2739,10 @@ document.addEventListener("DOMContentLoaded", function() {
                completionDate:a.completionDate||"", reprazo:a.reprazo||"",
                comments:a.comments||"" };
     });
-    try { localStorage.setItem("spi_actions_" + tenantId, JSON.stringify(plain)); }
-    catch(e) { console.warn("localStorage save error:", e); }
+    var savedAt = Number(updatedAt) || Date.now();
+    writeTenantActionsSnapshot(tenantId, plain, savedAt);
     if (db && firebaseConnected) {
-      db.collection("tenants").doc(tenantId).set({ actions: plain }, { merge: true })
+      db.collection("tenants").doc(tenantId).set({ actions: plain, updatedAt: savedAt }, { merge: true })
         .catch(function(e){ console.error("Firebase save error:", e); });
     }
   }
@@ -2678,29 +2753,37 @@ document.addEventListener("DOMContentLoaded", function() {
   // localStorage permanece como fallback offline.
   async function loadTenantActions(tenantId) {
     // Lê o cache local antes de tudo para fallback offline.
-    let localActions = null;
-    try {
-      const raw = localStorage.getItem("spi_actions_" + tenantId);
-      localActions = raw ? JSON.parse(raw) : null;
-    } catch(e) { console.warn("localStorage load error:", e); }
+    let localSnapshot = readTenantActionsSnapshot(tenantId);
+    let localActions = localSnapshot.actions;
 
     if (db && firebaseConnected) {
       try {
         const snap = await db.collection("tenants").doc(tenantId).get();
         if (snap.exists) {
-          const fbActions = snap.data().actions;
-          if (fbActions === null || typeof fbActions === "undefined") {
-            try { localStorage.setItem("spi_actions_" + tenantId, JSON.stringify([])); }
-            catch(e) { console.warn("localStorage save error:", e); }
-            return [];
+          const data = snap.data() || {};
+          const fbActions = data.actions;
+          const remoteSnapshot = {
+            value: (fbActions === null || typeof fbActions === "undefined")
+              ? []
+              : (Array.isArray(fbActions) ? fbActions : []),
+            updatedAt: Number(data.updatedAt) || 0
+          };
+          if (!Array.isArray(fbActions) && fbActions !== null && typeof fbActions !== "undefined") {
+            console.warn("Firebase actions payload inválido para tenant:", tenantId);
           }
-          if (Array.isArray(fbActions)) {
-            try { localStorage.setItem("spi_actions_" + tenantId, JSON.stringify(fbActions)); }
-            catch(e) { console.warn("localStorage save error:", e); }
-            return fbActions;
+          const preferredSource = choosePreferredSnapshot(
+            { value: localActions, updatedAt: localSnapshot.updatedAt },
+            remoteSnapshot
+          );
+          if (preferredSource === 'local' && Array.isArray(localActions)) {
+            if (JSON.stringify(localActions) !== JSON.stringify(remoteSnapshot.value) ||
+                localSnapshot.updatedAt > remoteSnapshot.updatedAt) {
+              saveTenantActions(tenantId, localActions, localSnapshot.updatedAt || Date.now());
+            }
+            return localActions;
           }
-          console.warn("Firebase actions payload inválido para tenant:", tenantId);
-          return [];
+          writeTenantActionsSnapshot(tenantId, remoteSnapshot.value, remoteSnapshot.updatedAt);
+          return remoteSnapshot.value;
         }
       } catch(e) { console.error("Firebase load error:", e); }
     }
@@ -4729,10 +4812,8 @@ document.addEventListener("DOMContentLoaded", function() {
     // ── helpers ──────────────────────────────────────────────────────────────
     function loadProjectActions(tenantId) {
       var acts = [];
-      try {
-        var raw = localStorage.getItem('spi_actions_' + tenantId);
-        if (raw) acts = JSON.parse(raw) || [];
-      } catch(e) { acts = []; }
+      var localSnapshot = readTenantActionsSnapshot(tenantId);
+      if (Array.isArray(localSnapshot.actions)) acts = localSnapshot.actions;
       // fall back to in-memory if available (current tenant)
       if (!acts.length && TENANTS[tenantId] && Array.isArray(TENANTS[tenantId].actions)) {
         acts = TENANTS[tenantId].actions;
@@ -5206,30 +5287,60 @@ document.addEventListener("DOMContentLoaded", function() {
         typeManuallySet: TENANTS[key].typeManuallySet === true
       };
     });
-    try { localStorage.setItem('spi_all_tenants', JSON.stringify(all)); }
-    catch(e) { console.warn('localStorage error saving tenants:', e); }
-    if (db) {
-      db.collection('tenants').doc('spi-tenants').set({ all: all })
+    var savedAt = Date.now();
+    writeAllTenantsSnapshot(all, savedAt);
+    if (db && firebaseConnected) {
+      db.collection('tenants').doc('spi-tenants').set({ all: all, updatedAt: savedAt })
         .catch(function(e) { console.error('Firebase save tenants error:', e); });
     }
   }
 
   async function loadAllTenants() {
     let all = null;
-    if (db) {
+    let localSnapshot = readAllTenantsSnapshot();
+    let remoteSnapshot = { all: null, updatedAt: 0 };
+    if (db && firebaseConnected) {
       try {
         const snap = await db.collection('tenants').doc('spi-tenants').get();
         if (snap.exists) {
           const d = snap.data();
-          if (d.all) all = d.all;
+          if (d.all && typeof d.all === 'object') remoteSnapshot.all = d.all;
+          remoteSnapshot.updatedAt = Number(d.updatedAt) || 0;
         }
       } catch(e) { console.error('Firebase load tenants error:', e); }
     }
-    if (!all) {
-      try {
-        const raw = localStorage.getItem('spi_all_tenants');
-        if (raw) all = JSON.parse(raw);
-      } catch(e) { console.warn('localStorage load tenants error:', e); }
+    if (localSnapshot.all || remoteSnapshot.all) {
+      var preferredSource = choosePreferredSnapshot(
+        { value: localSnapshot.all, updatedAt: localSnapshot.updatedAt },
+        { value: remoteSnapshot.all, updatedAt: remoteSnapshot.updatedAt }
+      );
+      var mergedAll = null;
+      if (localSnapshot.all && remoteSnapshot.all) {
+        mergedAll = preferredSource === 'local'
+          ? Object.assign({}, remoteSnapshot.all, localSnapshot.all)
+          : Object.assign({}, localSnapshot.all, remoteSnapshot.all);
+      }
+      if (preferredSource === 'local' && localSnapshot.all) {
+        all = mergedAll || localSnapshot.all;
+        if (db && firebaseConnected &&
+            (JSON.stringify(all) !== JSON.stringify(remoteSnapshot.all) ||
+             localSnapshot.updatedAt > remoteSnapshot.updatedAt)) {
+          db.collection('tenants').doc('spi-tenants').set({
+            all: all,
+            updatedAt: localSnapshot.updatedAt || Date.now()
+          }).catch(function(e) { console.error('Firebase save tenants error:', e); });
+        }
+      } else if (remoteSnapshot.all) {
+        all = mergedAll || remoteSnapshot.all;
+        writeAllTenantsSnapshot(all, remoteSnapshot.updatedAt || Date.now());
+        if (mergedAll && db && firebaseConnected &&
+            JSON.stringify(mergedAll) !== JSON.stringify(remoteSnapshot.all)) {
+          db.collection('tenants').doc('spi-tenants').set({
+            all: mergedAll,
+            updatedAt: Math.max(remoteSnapshot.updatedAt || 0, localSnapshot.updatedAt || 0, Date.now())
+          }).catch(function(e) { console.error('Firebase save tenants error:', e); });
+        }
+      }
     }
     // Legacy: try spi_custom_tenants (previous version)
     if (!all) {
