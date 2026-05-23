@@ -2521,28 +2521,21 @@ document.addEventListener("DOMContentLoaded", function() {
     return 'nc_records_' + (typeof currentTenant !== 'undefined' ? currentTenant : 'jd');
   }
 
-  // Test Firestore connectivity using the real NC records document path so that
-  // even Firestore rules scoped to specific document IDs (e.g. "all") don't
-  // falsely fail the connection test and leave the app in local-only mode.
+  function _runNcConnectionProbe() {
+    var docRef = db.collection(_fbTestCollection()).doc('all');
+    return docRef.get().then(function(snap) {
+      var data = snap.exists ? (snap.data() || {}) : {};
+      var records = Array.isArray(data.records) ? data.records : [];
+      // Write back the same payload shape used by saveNcRecords() so the probe
+      // exercises the exact Firestore path and schema that production saves use.
+      return docRef.set({ records: records });
+    });
+  }
+
+  // Test Firestore connectivity using the exact same NC payload/path used by
+  // normal saves so schema-based Firestore rules don't reject the probe only.
   function _testFirestoreWrite(projectId) {
-    var testCol = _fbTestCollection();
-    var docRef  = db.collection(testCol).doc('all');
-    // Step 1: read the real NC records doc (proves network + read rules work).
-    // Note: get() completes successfully even when the document doesn't exist
-    // (returning exists: false).
-    docRef.get()
-      .then(function(snap) {
-        // Step 2: verify write access with a non-destructive write.
-        // If the document already has a `records` array we merge a single timestamp
-        // field so the records array is never overwritten.  When the document does
-        // not exist we initialize it with an empty records array so that subsequent
-        // reads behave consistently. `_connTest` is always a single fixed-key field
-        // (not an array) so it never accumulates — each test simply overwrites it.
-        var writeData = snap.exists
-          ? { _connTest: Date.now() }
-          : { records: [], _connTest: Date.now() };
-        return docRef.set(writeData, { merge: true });
-      })
+    _runNcConnectionProbe()
       .then(function() {
         firebaseConnected = true;
         setFirebaseStatus("connected", "Firebase: conectado ✓");
@@ -3817,15 +3810,7 @@ document.addEventListener("DOMContentLoaded", function() {
     msg.textContent = "Testando leitura e escrita no Firestore…";
     document.getElementById("fbRulesGuide").style.display = "none";
 
-    var testCol = _fbTestCollection();
-    var testDocRef = db.collection(testCol).doc('all');
-
-    // Step 1: read the real NC records document
-    testDocRef.get()
-      .then(function() {
-        // Step 2: verify write access with a non-destructive merge
-        return testDocRef.set({ _connTest: Date.now() }, { merge: true });
-      })
+    _runNcConnectionProbe()
       .then(function() {
         msg.className = "fb-status-msg ok";
         msg.textContent = "✓ Leitura e escrita funcionando corretamente! Os dados serão sincronizados.";
@@ -6601,10 +6586,16 @@ document.addEventListener("DOMContentLoaded", function() {
     // Capture tenant and records at call time: prevents cross-tenant contamination if the
     // user switches tenants while an async upload (photo/PDF to Storage) is in progress.
     var _saveTenant = currentTenant;
-    var _saveRecords = ncRecords.slice();
+    var _saveRecords = ncRecords.map(function(rec) {
+      return JSON.parse(JSON.stringify(rec));
+    });
     // Always save the full record to the local cache first so attachments survive a refresh.
     await saveNcLocalSnapshot(_saveRecords, _saveTenant);
     if (db && firebaseConnected) {
+      // Mark as pending before the remote write starts so any in-flight onSnapshot
+      // callback merges the local snapshot instead of temporarily deleting cards
+      // that haven't been acknowledged by Firestore yet.
+      markNcPendingSync(_saveTenant);
       setNcSyncBadge('syncing', (storage && !_storageCorsFailed) ? '↻ Enviando arquivos…' : '↻ Salvando no Firebase…');
       try {
         var slim;
@@ -6674,7 +6665,17 @@ document.addEventListener("DOMContentLoaded", function() {
         setNcSyncBadge('synced', '✓ Salvo no Firebase');
       } catch(e) {
         console.error('NC Firebase save error:', e);
-        markNcPendingSync(_saveTenant);
+        if (currentTenant === _saveTenant) {
+          // Restore only when the user is still on the same tenant; if they
+          // switched tenants mid-save, the saved local snapshot remains
+          // available under `_saveTenant` and must not overwrite the new view.
+          try {
+            ncRecords = await loadNcRecordsLocalAsync(_saveTenant);
+          } catch(loadErr) {
+            console.warn('NC local restore error after Firebase failure:', loadErr);
+            ncRecords = _saveRecords.map(normalizeNcRecordAttachments);
+          }
+        }
         if (e.code === 'permission-denied') {
           firebaseConnected = false;
           setFirebaseStatus('error', 'Firebase: sem permissão de escrita');
