@@ -6001,7 +6001,7 @@ document.addEventListener("DOMContentLoaded", function() {
     }
     // Legacy migration: old datasets may carry Storage URLs with "photo 0.jpg/png"
     // while uploads now use the stable "photo_0.jpg/png" naming convention.
-    normalized = normalized.replace(/photo(?:%20|\s)+(\d+)\.(jpg|jpeg|png)/ig, function(_, index, ext) {
+    normalized = normalized.replace(/photo(?:%20|\s)(\d+)\.(jpg|jpeg|png)/ig, function(_, index, ext) {
       return 'photo_' + index + '.' + ext.toLowerCase();
     });
     return normalized;
