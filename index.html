@@ -8072,6 +8072,11 @@ document.addEventListener("DOMContentLoaded", function() {
     var vBackdrop = document.getElementById('ncAlertViewerBackdrop');
     var vContent  = document.getElementById('ncAlertViewerContent');
     var vTitle    = document.getElementById('ncAlertViewerTitle');
+    function showUnavailableViewerMessage(title) {
+      vTitle.textContent = title || 'Arquivo';
+      vContent.innerHTML = '<div style="padding:18px;color:#6b7280;font-size:13px;text-align:center;">Arquivo indisponível para visualização.</div>';
+      vBackdrop.classList.add('open');
+    }
     document.getElementById('ncAlertViewerClose').addEventListener('click', function() {
       vBackdrop.classList.remove('open');
       vContent.innerHTML = '';
@@ -8082,9 +8087,7 @@ document.addEventListener("DOMContentLoaded", function() {
     window._openAlertViewer = function(dataUrl, fileName) {
       var resolvedSrc = extractAttachmentReference(dataUrl);
       if (!isUsableAttachmentSrc(resolvedSrc)) {
-        vTitle.textContent = fileName || 'Arquivo';
-        vContent.innerHTML = '<div style="padding:18px;color:#6b7280;font-size:13px;text-align:center;">Arquivo indisponível para visualização.</div>';
-        vBackdrop.classList.add('open');
+        showUnavailableViewerMessage(fileName || 'Arquivo');
         return;
       }
       vTitle.textContent = fileName || 'Alerta';
@@ -8097,14 +8100,14 @@ document.addEventListener("DOMContentLoaded", function() {
         img.src = resolvedSrc;
         img.alt = fileName || 'Alerta';
         img.onerror = function() {
-          vContent.innerHTML = '<div style="padding:18px;color:#6b7280;font-size:13px;text-align:center;">Arquivo indisponível para visualização.</div>';
+          showUnavailableViewerMessage(fileName || 'Arquivo');
         };
         vContent.appendChild(img);
       } else {
         var iframe = document.createElement('iframe');
         iframe.src = resolvedSrc;
         iframe.onerror = function() {
-          vContent.innerHTML = '<div style="padding:18px;color:#6b7280;font-size:13px;text-align:center;">Arquivo indisponível para visualização.</div>';
+          showUnavailableViewerMessage(fileName || 'Arquivo');
         };
         vContent.appendChild(iframe);
       }
