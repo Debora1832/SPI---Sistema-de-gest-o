@@ -2521,16 +2521,20 @@ document.addEventListener("DOMContentLoaded", function() {
     return 'nc_records_' + (typeof currentTenant !== 'undefined' ? currentTenant : 'jd');
   }
 
-  // Test Firestore connectivity with BOTH a read and a write so we catch
-  // "permission-denied" write failures that a read-only test would miss.
+  // Test Firestore connectivity using the real NC records document path so that
+  // even Firestore rules scoped to specific document IDs (e.g. "all") don't
+  // falsely fail the connection test and leave the app in local-only mode.
   function _testFirestoreWrite(projectId) {
     var testCol = _fbTestCollection();
-    var testDoc = 'spi-conntest';
-    // First try a small write to the NC collection
-    db.collection(testCol).doc(testDoc).set({ _test: true, _ts: Date.now() })
+    var docRef  = db.collection(testCol).doc('all');
+    // Step 1: read the real NC records doc (proves network + read rules work).
+    docRef.get()
       .then(function() {
-        // Write succeeded — delete the test document
-        db.collection(testCol).doc(testDoc).delete().catch(function() {});
+        // Step 2: merge a non-destructive field to verify write access.
+        // merge:true ensures the existing `records` array is never overwritten.
+        return docRef.set({ _connTest: Date.now() }, { merge: true });
+      })
+      .then(function() {
         firebaseConnected = true;
         setFirebaseStatus("connected", "Firebase: conectado ✓");
         // Resolve the startup promise so init() can proceed with data loading.
@@ -2541,7 +2545,7 @@ document.addEventListener("DOMContentLoaded", function() {
         if (typeof onFirebaseConnected === "function") onFirebaseConnected(true);
       })
       .catch(function(e) {
-        console.error("Firebase write test error:", e);
+        console.error("Firebase connection test error:", e);
         if (e.code === "permission-denied") {
           firebaseConnected = false;
           setFirebaseStatus("error", "Firebase: sem permissão de escrita — abra as Configurações do Firebase para corrigir");
@@ -2553,31 +2557,10 @@ document.addEventListener("DOMContentLoaded", function() {
           var guide = document.getElementById("fbRulesGuide");
           if (guide) guide.style.display = "";
         } else {
-          // Network or other error — fall back to read-only ping
-          db.collection("projects").limit(1).get()
-            .then(function() {
-              firebaseConnected = true;
-              setFirebaseStatus("connected", "Firebase: conectado ✓ (escrita não testada)");
-              _resolveFirebaseReady();
-              if (_initDone) reloadFromFirebase();
-              if (typeof onFirebaseConnected === "function") onFirebaseConnected(true);
-            })
-            .catch(function(e2) {
-              if (e2.code === "permission-denied") {
-                // Sem leitura/escrita válida: operar em modo local para evitar
-                // sobrescrever alterações com dados remotos desatualizados.
-                firebaseConnected = false;
-                setFirebaseStatus("error", "Firebase: sem permissão de acesso");
-                _resolveFirebaseReady();
-                if (_initDone) reloadFromFirebase();
-                if (typeof onFirebaseConnected === "function") onFirebaseConnected(false, e2);
-              } else {
-                firebaseConnected = false;
-                setFirebaseStatus("error", "Firebase: erro de conexão — " + (e2.message || e2.code || "verifique a rede"));
-                _resolveFirebaseReady();
-                if (typeof onFirebaseConnected === "function") onFirebaseConnected(false, e2);
-              }
-            });
+          firebaseConnected = false;
+          setFirebaseStatus("error", "Firebase: erro de conexão — " + (e.message || e.code || "verifique a rede"));
+          _resolveFirebaseReady();
+          if (typeof onFirebaseConnected === "function") onFirebaseConnected(false, e);
         }
       });
   }
@@ -3826,17 +3809,15 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById("fbRulesGuide").style.display = "none";
 
     var testCol = _fbTestCollection();
-    var testDoc = 'spi-conntest';
+    var testDocRef = db.collection(testCol).doc('all');
 
-    // Step 1: write test
-    db.collection(testCol).doc(testDoc).set({ _test: true, _ts: Date.now() })
+    // Step 1: read the real NC records document
+    testDocRef.get()
       .then(function() {
-        // Step 2: read it back
-        return db.collection(testCol).doc(testDoc).get();
+        // Step 2: verify write access with a non-destructive merge
+        return testDocRef.set({ _connTest: Date.now() }, { merge: true });
       })
-      .then(function(snap) {
-        // Step 3: clean up
-        db.collection(testCol).doc(testDoc).delete().catch(function() {});
+      .then(function() {
         msg.className = "fb-status-msg ok";
         msg.textContent = "✓ Leitura e escrita funcionando corretamente! Os dados serão sincronizados.";
         btn.disabled = false;
