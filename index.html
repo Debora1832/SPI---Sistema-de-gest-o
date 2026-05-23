@@ -6345,17 +6345,23 @@ document.addEventListener("DOMContentLoaded", function() {
     if (isUsableAttachmentSrc(reference)) return reference;
     if (!storage || _storageCorsFailed || !isFirebaseStoragePath(reference)) return '';
     if (_resolvedStorageUrlCache.has(reference)) return _resolvedStorageUrlCache.get(reference);
+    var cacheEmptyResult = false;
     var pending = (async function() {
       try {
         var storageRef = /^gs:\/\//i.test(reference) ? storage.refFromURL(reference) : storage.ref(reference);
         return await storageRef.getDownloadURL();
       } catch(e) {
-        if (!isMissingStorageError(e)) {
+        if (isMissingStorageError(e)) {
+          cacheEmptyResult = true;
+        } else {
           console.warn('[SPI Storage] Falha ao resolver mídia:', reference, e);
         }
         return '';
       }
-    })();
+    })().then(function(resolvedUrl) {
+      if (!resolvedUrl && !cacheEmptyResult) _resolvedStorageUrlCache.delete(reference);
+      return resolvedUrl;
+    });
     _resolvedStorageUrlCache.set(reference, pending);
     return pending;
   }
@@ -8084,8 +8090,8 @@ document.addEventListener("DOMContentLoaded", function() {
     vBackdrop.addEventListener('click', function(e) {
       if (e.target === vBackdrop) { vBackdrop.classList.remove('open'); vContent.innerHTML = ''; }
     });
-    window._openAlertViewer = function(dataUrl, fileName) {
-      var resolvedSrc = extractAttachmentReference(dataUrl);
+    window._openAlertViewer = async function(dataUrl, fileName) {
+      var resolvedSrc = await resolveAttachmentSrc(dataUrl);
       if (!isUsableAttachmentSrc(resolvedSrc)) {
         showUnavailableViewerMessage(fileName || 'Arquivo');
         return;
