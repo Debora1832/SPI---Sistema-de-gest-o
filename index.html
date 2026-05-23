@@ -3864,12 +3864,13 @@ document.addEventListener("DOMContentLoaded", function() {
 
   // ── Lightbox ─────────────────────────────────────────────────────────────────
 
-  function openLightbox(url, name){
-    if (!isUsableAttachmentSrc(url)) return;
-    document.getElementById("lightboxImg").src = url;
+  async function openLightbox(url, name){
+    var resolvedUrl = await resolveAttachmentSrc(url);
+    if (!isUsableAttachmentSrc(resolvedUrl)) return;
+    document.getElementById("lightboxImg").src = resolvedUrl;
     document.getElementById("lightboxImg").alt = name;
     const dl = document.getElementById("lightboxDownload");
-    dl.href = url;
+    dl.href = resolvedUrl;
     dl.download = name;
     document.getElementById("lightboxCaption").textContent = name;
     document.getElementById("lightboxBackdrop").classList.add("open");
@@ -6330,6 +6331,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
   var MAX_NC_PHOTO_PROBE_COUNT = 10;
   var _resolvedStorageUrlCache = new Map();
+  var _pendingStorageUrlCache = new Map();
 
   function isMissingStorageError(error) {
     var code = error && error.code ? String(error.code) : '';
@@ -6345,24 +6347,25 @@ document.addEventListener("DOMContentLoaded", function() {
     if (isUsableAttachmentSrc(reference)) return reference;
     if (!storage || _storageCorsFailed || !isFirebaseStoragePath(reference)) return '';
     if (_resolvedStorageUrlCache.has(reference)) return _resolvedStorageUrlCache.get(reference);
-    var cacheEmptyResult = false;
+    if (_pendingStorageUrlCache.has(reference)) return _pendingStorageUrlCache.get(reference);
     var pending = (async function() {
       try {
         var storageRef = /^gs:\/\//i.test(reference) ? storage.refFromURL(reference) : storage.ref(reference);
-        return await storageRef.getDownloadURL();
+        var resolvedUrl = await storageRef.getDownloadURL();
+        _resolvedStorageUrlCache.set(reference, resolvedUrl || '');
+        return resolvedUrl || '';
       } catch(e) {
         if (isMissingStorageError(e)) {
-          cacheEmptyResult = true;
+          _resolvedStorageUrlCache.set(reference, '');
         } else {
           console.warn('[SPI Storage] Falha ao resolver mídia:', reference, e);
         }
         return '';
+      } finally {
+        _pendingStorageUrlCache.delete(reference);
       }
-    })().then(function(resolvedUrl) {
-      if (!resolvedUrl && !cacheEmptyResult) _resolvedStorageUrlCache.delete(reference);
-      return resolvedUrl;
     });
-    _resolvedStorageUrlCache.set(reference, pending);
+    _pendingStorageUrlCache.set(reference, pending);
     return pending;
   }
 
@@ -6373,7 +6376,7 @@ document.addEventListener("DOMContentLoaded", function() {
     var photos = Array.isArray(normalized.photos) ? normalized.photos : [];
     if (photos.length) {
       var resolvedPhotos = (await Promise.all(photos.map(resolveAttachmentSrc))).filter(Boolean);
-      if (resolvedPhotos.length > 1) resolvedPhotos = Array.from(new Set(resolvedPhotos));
+      resolvedPhotos = Array.from(new Set(resolvedPhotos));
       if (resolvedPhotos.length) {
         resolved.photos = resolvedPhotos;
       } else {
