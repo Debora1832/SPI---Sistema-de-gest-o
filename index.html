@@ -2621,6 +2621,13 @@ document.addEventListener("DOMContentLoaded", function() {
                 if (Array.isArray(records)) {
                   loadNcRecordsLocalAsync(_reloadTenant).then(async function(localRecords) {
                     if (_reloadTenant !== currentTenant) return; // guard again after async gap
+                    var _reloadNeedsPendingWrite = false;
+                    if (hasNcPendingSync(_reloadTenant) && Array.isArray(localRecords) && localRecords.length) {
+                      var _reloadPendingMerge = mergePendingNcLocalUpserts(records, localRecords);
+                      records = _reloadPendingMerge.records;
+                      _reloadNeedsPendingWrite = _reloadPendingMerge.changed;
+                      if (!_reloadNeedsPendingWrite) clearNcPendingSync(_reloadTenant);
+                    }
                     // Restore photos from the local cache (not stored in Firestore)
                     records = (typeof mergePhotosFromLocal === 'function')
                       ? mergePhotosFromLocal(records, localRecords)
@@ -2634,6 +2641,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     renderHomePage();
                     if (typeof renderNcCharts === 'function') renderNcCharts();
                     if (typeof renderNcCustomCharts === 'function') renderNcCustomCharts();
+                    if (_reloadNeedsPendingWrite && typeof saveNcRecords === 'function') saveNcRecords();
                   }).catch(function(e) { console.warn('NC local cache merge error:', e); });
                 }
               }
@@ -2671,6 +2679,13 @@ document.addEventListener("DOMContentLoaded", function() {
           var _snapRefRecords = ncRecords.length > 0
             ? ncRecords
             : (typeof loadNcRecordsLocal === 'function' ? loadNcRecordsLocal(tenantId) : []);
+          var _snapNeedsPendingWrite = false;
+          if (hasNcPendingSync(tenantId) && Array.isArray(_snapRefRecords) && _snapRefRecords.length) {
+            var _snapPendingMerge = mergePendingNcLocalUpserts(records, _snapRefRecords);
+            records = _snapPendingMerge.records;
+            _snapNeedsPendingWrite = _snapPendingMerge.changed;
+            if (!_snapNeedsPendingWrite) clearNcPendingSync(tenantId);
+          }
           // Restore photos from the current in-memory records before overwriting
           records = (typeof mergePhotosFromLocal === 'function')
             ? mergePhotosFromLocal(records, ncRecords.length > 0 ? ncRecords : _snapRefRecords)
@@ -2687,6 +2702,7 @@ document.addEventListener("DOMContentLoaded", function() {
           if (typeof renderNcCustomCharts === 'function') renderNcCustomCharts();
           if (typeof renderNcGantt === 'function' && document.getElementById('ncGanttPage') &&
               document.getElementById('ncGanttPage').classList.contains('active')) renderNcGantt();
+          if (_snapNeedsPendingWrite && typeof saveNcRecords === 'function') saveNcRecords();
         }, function(e) { console.warn('NC onSnapshot error:', e); });
     } catch(e) { console.warn('NC onSnapshot setup error:', e); }
 
@@ -5941,6 +5957,22 @@ document.addEventListener("DOMContentLoaded", function() {
     return 'spi_nc_records_' + (tenantId || currentTenant);
   }
 
+  function ncPendingSyncKey(tenantId) {
+    return 'spi_nc_pending_sync_' + (tenantId || currentTenant);
+  }
+
+  function hasNcPendingSync(tenantId) {
+    try { return localStorage.getItem(ncPendingSyncKey(tenantId)) !== null; } catch(e) { return false; }
+  }
+
+  function markNcPendingSync(tenantId) {
+    try { localStorage.setItem(ncPendingSyncKey(tenantId), String(Date.now())); } catch(e) {}
+  }
+
+  function clearNcPendingSync(tenantId) {
+    try { localStorage.removeItem(ncPendingSyncKey(tenantId)); } catch(e) {}
+  }
+
   // Indicates whether the tenant already has a local NC snapshot key.
   // Important: a persisted empty array ("[]") means the user intentionally
   // deleted all NCs and this must still be treated as authoritative.
@@ -6234,6 +6266,32 @@ document.addEventListener("DOMContentLoaded", function() {
       });
     }
     return r;
+  }
+
+  function mergePendingNcLocalUpserts(remoteRecords, localRecords) {
+    var merged = Array.isArray(remoteRecords) ? remoteRecords.slice() : [];
+    var changed = false;
+    var byId = new Map();
+    merged.forEach(function(rec, idx) {
+      if (rec && rec.id) byId.set(rec.id, idx);
+    });
+    (Array.isArray(localRecords) ? localRecords : []).forEach(function(localRec) {
+      if (!localRec || !localRec.id) return;
+      var existingIndex = byId.get(localRec.id);
+      if (typeof existingIndex === 'undefined') {
+        merged.push(localRec);
+        byId.set(localRec.id, merged.length - 1);
+        changed = true;
+        return;
+      }
+      var remoteSlim = JSON.stringify(stripPhotos(merged[existingIndex]));
+      var localSlim = JSON.stringify(stripPhotos(localRec));
+      if (remoteSlim !== localSlim) {
+        merged[existingIndex] = localRec;
+        changed = true;
+      }
+    });
+    return { records: merged, changed: changed };
   }
 
   // Flag: once a CORS/network failure is detected on Storage, skip all subsequent
@@ -6622,9 +6680,11 @@ document.addEventListener("DOMContentLoaded", function() {
           slim = _saveRecords.map(stripPhotos);
         }
         await db.collection('nc_records_' + _saveTenant).doc('all').set({ records: slim });
+        clearNcPendingSync(_saveTenant);
         setNcSyncBadge('synced', '✓ Salvo no Firebase');
       } catch(e) {
         console.error('NC Firebase save error:', e);
+        markNcPendingSync(_saveTenant);
         if (e.code === 'permission-denied') {
           firebaseConnected = false;
           setFirebaseStatus('error', 'Firebase: sem permissão de escrita');
@@ -6637,6 +6697,7 @@ document.addEventListener("DOMContentLoaded", function() {
         }
       }
     } else {
+      markNcPendingSync(_saveTenant);
       setNcSyncBadge('offline', '⚠ Salvo localmente (Firebase desconectado)');
     }
   }
@@ -6666,6 +6727,12 @@ document.addEventListener("DOMContentLoaded", function() {
           });
           // Restore attachments from the local cache (Firestore records don't carry binaries)
           var localRecords = await loadNcRecordsLocalAsync(tenantId);
+          var hasPendingLocalSync = hasNcPendingSync(tenantId);
+          if (hasPendingLocalSync && Array.isArray(localRecords) && localRecords.length) {
+            var pendingAsyncMerge = mergePendingNcLocalUpserts(records, localRecords);
+            records = pendingAsyncMerge.records;
+            if (pendingAsyncMerge.changed) needsSave = true;
+          }
           records = mergePhotosFromLocal(records, localRecords).map(normalizeNcRecordAttachments);
           var recoveredAsync = await recoverMissingNcPhotosFromStorage(records, tenantId);
           records = recoveredAsync.records;
@@ -6680,9 +6747,27 @@ document.addEventListener("DOMContentLoaded", function() {
           await saveNcLocalSnapshot(records, tenantId);
           if (needsSave || recoveredAsync.changed) {
             // Persist deterministic normalizations/recoveries back to Firebase.
-            db.collection('nc_records_' + tenantId).doc('all')
-              .set({ records: records.map(stripPhotos) })
-              .catch(function(e){ console.error('NC offline-sync save error:', e); });
+            try {
+              await db.collection('nc_records_' + tenantId).doc('all').set({ records: records.map(stripPhotos) });
+              clearNcPendingSync(tenantId);
+            } catch(e) {
+              markNcPendingSync(tenantId);
+              if (e && e.code === 'permission-denied') {
+                firebaseConnected = false;
+                setFirebaseStatus('error', 'Firebase: sem permissão de escrita');
+                setNcSyncBadge('offline', '⚠ Regras do Firebase bloqueiam escrita — abra Configurações do Firebase para corrigir');
+                window._fbPermErrorPending = true;
+              } else if (e && e.message && e.message.indexOf('exceeds the maximum allowed size') !== -1) {
+                setNcSyncBadge('offline', '⚠ Documento muito grande para o Firebase (limite 1MB) – dados preservados localmente');
+              } else {
+                setNcSyncBadge('offline', '⚠ Erro ao salvar no Firebase – dados preservados localmente');
+              }
+              console.error('NC offline-sync save error:', e);
+            }
+          } else if (hasPendingLocalSync) {
+            // Pending marker can be stale when remote already includes local changes.
+            // Clear it so future reloads/listeners don't attempt unnecessary re-sync.
+            clearNcPendingSync(tenantId);
           }
           setNcSyncBadge('synced', '✓ Sincronizado');
           return records;
