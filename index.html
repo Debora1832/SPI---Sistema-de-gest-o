@@ -7788,7 +7788,7 @@ document.addEventListener("DOMContentLoaded", function() {
           var strip = img.closest('.nc-card-photo-strip');
           if (strip) {
             var anyVisible = Array.from(strip.querySelectorAll('img'))
-              .some(function(i) { return i.style.display !== 'none'; });
+              .some(function(stripImg) { return stripImg.style.display !== 'none'; });
             if (!anyVisible) strip.style.display = 'none';
           }
         });
