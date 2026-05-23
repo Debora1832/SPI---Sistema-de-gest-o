@@ -6306,6 +6306,11 @@ document.addEventListener("DOMContentLoaded", function() {
   // upload attempts so they resolve immediately and don't block the Firestore save.
   var _storageCorsFailed = false;
 
+  // Session-level cache of NC IDs (key: "<tenantId>/<ncId>") for which a Storage
+  // probe already found no files. Prevents the same 404 requests from being repeated
+  // on every snapshot or reload event during the current browser session.
+  var _ncStorageProbedEmpty = new Set();
+
   var MAX_NC_PHOTO_PROBE_COUNT = 10;
 
   // Upload a single photo to Firebase Storage and return its download URL.
@@ -6322,6 +6327,7 @@ document.addEventListener("DOMContentLoaded", function() {
       var blob = await res.blob();
       var ext = blob.type === 'image/png' ? 'png' : 'jpg';
       var path = 'nc_photos/' + tenantId + '/' + ncId + '/photo_' + index + '.' + ext;
+      console.log('[SPI Storage] Enviando foto:', path, '(' + Math.round(blob.size / 1024) + ' KB)');
       var storageRef = storage.ref(path);
       var uploadTask = storageRef.put(blob, { contentType: blob.type });
       // Race the upload against an 8-second timeout so a CORS-blocked preflight
@@ -6335,16 +6341,18 @@ document.addEventListener("DOMContentLoaded", function() {
           }, 8000);
         })
       ]);
-      return await storageRef.getDownloadURL();
+      var url = await storageRef.getDownloadURL();
+      console.log('[SPI Storage] Foto enviada com sucesso:', path);
+      return url;
     } catch(e) {
       if (e.message === 'storage-timeout' || e.code === 'storage/canceled' ||
           (e.code && e.code.indexOf('storage') === 0)) {
         // Likely a CORS or network issue — disable Storage for the rest of this session
         // so subsequent uploads short-circuit and don't delay the Firestore write.
         _storageCorsFailed = true;
-        console.warn('Firebase Storage unavailable (CORS/network) — photos saved locally only');
+        console.warn('[SPI Storage] Storage indisponível (CORS/rede) — fotos preservadas localmente. Erro:', e.code || e.message);
       } else {
-        console.warn('Storage upload failed for ' + ncId + '[' + index + ']:', e);
+        console.warn('[SPI Storage] Falha no upload da foto', ncId + '[' + index + ']:', e);
       }
       return null;
     }
@@ -6356,6 +6364,10 @@ document.addEventListener("DOMContentLoaded", function() {
   // the URLs without needing the original base64 payload.
   async function findNcPhotoUrlsInStorage(tenantId, ncId) {
     if (!storage || _storageCorsFailed || !tenantId || !ncId) return [];
+    var cacheKey = tenantId + '/' + ncId;
+    // Skip NCs already probed this session that had no files in Storage — avoids
+    // flooding the console with repeated 404 requests on every snapshot event.
+    if (_ncStorageProbedEmpty.has(cacheKey)) return [];
     var recoveredPhotoUrls = [];
     var extensions = ['jpg', 'png'];
     for (var photoIndex = 0; photoIndex < MAX_NC_PHOTO_PROBE_COUNT; photoIndex++) {
@@ -6372,6 +6384,10 @@ document.addEventListener("DOMContentLoaded", function() {
       }
       if (!foundUrl) break;
       recoveredPhotoUrls.push(foundUrl);
+    }
+    if (!recoveredPhotoUrls.length) {
+      // Cache the negative result so we don't probe this NC again in this session.
+      _ncStorageProbedEmpty.add(cacheKey);
     }
     return recoveredPhotoUrls;
   }
@@ -6416,6 +6432,7 @@ document.addEventListener("DOMContentLoaded", function() {
       }
       if (!ext) ext = (blob.type.split('/')[1] || 'bin').split(';')[0];
       var path = 'nc_files/' + tenantId + '/' + ncId + '/' + slot + '.' + ext;
+      console.log('[SPI Storage] Enviando arquivo:', path, '(' + Math.round(blob.size / 1024) + ' KB)');
       var storageRef = storage.ref(path);
       var uploadTask = storageRef.put(blob, { contentType: blob.type });
       await Promise.race([
@@ -6427,14 +6444,16 @@ document.addEventListener("DOMContentLoaded", function() {
           }, 15000);
         })
       ]);
-      return await storageRef.getDownloadURL();
+      var url = await storageRef.getDownloadURL();
+      console.log('[SPI Storage] Arquivo enviado com sucesso:', path);
+      return url;
     } catch(e) {
       if (e.message === 'storage-timeout' || e.code === 'storage/canceled' ||
           (e.code && e.code.indexOf('storage') === 0)) {
         _storageCorsFailed = true;
-        console.warn('Firebase Storage unavailable — files saved locally only');
+        console.warn('[SPI Storage] Storage indisponível — arquivos preservados localmente. Erro:', e.code || e.message);
       } else {
-        console.warn('Storage file upload failed (' + slot + '):', e);
+        console.warn('[SPI Storage] Falha no upload do arquivo (' + slot + '):', e);
       }
       return null;
     }
@@ -6622,6 +6641,7 @@ document.addEventListener("DOMContentLoaded", function() {
     var _saveRecords = ncRecords.map(function(rec) {
       return JSON.parse(JSON.stringify(rec));
     });
+    console.log('[SPI] Iniciando salvamento NC — tenant:', _saveTenant, '| registros:', _saveRecords.length);
     // Always save the full record to the local cache first so attachments survive a refresh.
     await saveNcLocalSnapshot(_saveRecords, _saveTenant);
     if (db && firebaseConnected) {
@@ -6693,11 +6713,13 @@ document.addEventListener("DOMContentLoaded", function() {
         } else {
           slim = _saveRecords.map(stripPhotos);
         }
+        console.log('[SPI] Enviando para Firestore nc_records_' + _saveTenant + '/all — registros:', slim.length);
         await db.collection('nc_records_' + _saveTenant).doc('all').set({ records: slim });
         clearNcPendingSync(_saveTenant);
+        console.log('[SPI] Firestore salvo com sucesso — nc_records_' + _saveTenant);
         setNcSyncBadge('synced', '✓ Salvo no Firebase');
       } catch(e) {
-        console.error('NC Firebase save error:', e);
+        console.error('[SPI] Erro ao salvar NC no Firestore — tenant:', _saveTenant, '| código:', e.code, '| mensagem:', e.message, e);
         if (currentTenant === _saveTenant) {
           // Restore only when the user is still on the same tenant; if they
           // switched tenants mid-save, the saved local snapshot remains
@@ -7759,6 +7781,17 @@ document.addEventListener("DOMContentLoaded", function() {
           e.stopPropagation();
           openLightbox(img.src, img.alt || 'Foto NC');
         });
+        // Silently hide broken images (e.g., stale Firebase Storage URLs that returned 404).
+        img.addEventListener('error', function() {
+          img.style.display = 'none';
+          // Hide the whole photo strip if every image in it failed to load.
+          var strip = img.closest('.nc-card-photo-strip');
+          if (strip) {
+            var anyVisible = Array.from(strip.querySelectorAll('img'))
+              .some(function(i) { return i.style.display !== 'none'; });
+            if (!anyVisible) strip.style.display = 'none';
+          }
+        });
       });
 
       // Action buttons — stop propagation so card-body click doesn't also fire
@@ -8133,6 +8166,10 @@ document.addEventListener("DOMContentLoaded", function() {
       bodyEl.querySelectorAll('[data-lightbox-src]').forEach(function(img) {
         img.addEventListener('click', function() {
           openLightbox(img.dataset.lightboxSrc, img.dataset.lightboxAlt || 'Foto');
+        });
+        // Silently hide broken images from stale/invalid Storage URLs.
+        img.addEventListener('error', function() {
+          img.style.display = 'none';
         });
       });
 
