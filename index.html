@@ -6364,7 +6364,7 @@ document.addEventListener("DOMContentLoaded", function() {
       } finally {
         _pendingStorageUrlCache.delete(reference);
       }
-    });
+    })();
     _pendingStorageUrlCache.set(reference, pending);
     return pending;
   }
@@ -8106,18 +8106,15 @@ document.addEventListener("DOMContentLoaded", function() {
                      /\.(jpe?g|png|gif|webp|bmp)($|\?)/i.test(resolvedSrc));
       if (isImage) {
         var img = document.createElement('img');
-        img.src = resolvedSrc;
-        img.alt = fileName || 'Alerta';
         img.onerror = function() {
           showUnavailableViewerMessage(fileName || 'Arquivo');
         };
+        img.alt = fileName || 'Alerta';
+        img.src = resolvedSrc;
         vContent.appendChild(img);
       } else {
         var iframe = document.createElement('iframe');
         iframe.src = resolvedSrc;
-        iframe.onerror = function() {
-          showUnavailableViewerMessage(fileName || 'Arquivo');
-        };
         vContent.appendChild(iframe);
       }
       vBackdrop.classList.add('open');
