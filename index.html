@@ -2528,11 +2528,19 @@ document.addEventListener("DOMContentLoaded", function() {
     var testCol = _fbTestCollection();
     var docRef  = db.collection(testCol).doc('all');
     // Step 1: read the real NC records doc (proves network + read rules work).
+    // Note: get() succeeds even when the document doesn't yet exist.
     docRef.get()
-      .then(function() {
-        // Step 2: merge a non-destructive field to verify write access.
-        // merge:true ensures the existing `records` array is never overwritten.
-        return docRef.set({ _connTest: Date.now() }, { merge: true });
+      .then(function(snap) {
+        // Step 2: verify write access with a non-destructive write.
+        // If the document already has a `records` array we merge a single timestamp
+        // field so the records array is never overwritten.  When the document does
+        // not exist we initialise it with an empty records array so that subsequent
+        // reads behave consistently. `_connTest` is always a single fixed-key field
+        // (not an array) so it never accumulates — each test simply overwrites it.
+        var writeData = snap.exists
+          ? { _connTest: Date.now() }
+          : { records: [], _connTest: Date.now() };
+        return docRef.set(writeData, { merge: true });
       })
       .then(function() {
         firebaseConnected = true;
