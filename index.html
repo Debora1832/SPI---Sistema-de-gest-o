@@ -2607,7 +2607,7 @@ document.addEventListener("DOMContentLoaded", function() {
                   loadNcRecordsLocalAsync(_reloadTenant).then(async function(localRecords) {
                     if (_reloadTenant !== currentTenant) return; // guard again after async gap
                     var _reloadNeedsPendingWrite = false;
-                    if (hasNcPendingSync(_reloadTenant) && Array.isArray(localRecords) && localRecords.length) {
+                    if (hasNcPendingSync(_reloadTenant) && Array.isArray(localRecords)) {
                       var _reloadPendingMerge = mergePendingNcLocalUpserts(records, localRecords);
                       records = _reloadPendingMerge.records;
                       _reloadNeedsPendingWrite = _reloadPendingMerge.changed;
@@ -2689,7 +2689,7 @@ document.addEventListener("DOMContentLoaded", function() {
             ? ncRecords
             : (typeof loadNcRecordsLocal === 'function' ? loadNcRecordsLocal(tenantId) : []);
           var _snapNeedsPendingWrite = false;
-          if (hasNcPendingSync(tenantId) && Array.isArray(_snapRefRecords) && _snapRefRecords.length) {
+          if (hasNcPendingSync(tenantId) && Array.isArray(_snapRefRecords)) {
             var _snapPendingMerge = mergePendingNcLocalUpserts(records, _snapRefRecords);
             records = _snapPendingMerge.records;
             _snapNeedsPendingWrite = _snapPendingMerge.changed;
@@ -6362,8 +6362,11 @@ document.addEventListener("DOMContentLoaded", function() {
     merged.forEach(function(rec, idx) {
       if (rec && rec.id) byId.set(rec.id, idx);
     });
-    (Array.isArray(localRecords) ? localRecords : []).forEach(function(localRec) {
+    var normalizedLocalRecords = Array.isArray(localRecords) ? localRecords : [];
+    var localIds = new Set();
+    normalizedLocalRecords.forEach(function(localRec) {
       if (!localRec || !localRec.id) return;
+      localIds.add(localRec.id);
       var existingIndex = byId.get(localRec.id);
       if (typeof existingIndex === 'undefined') {
         merged.push(localRec);
@@ -6378,6 +6381,15 @@ document.addEventListener("DOMContentLoaded", function() {
         changed = true;
       }
     });
+    if (Array.isArray(localRecords)) {
+      var filtered = merged.filter(function(remoteRec) {
+        return !remoteRec || !remoteRec.id || localIds.has(remoteRec.id);
+      });
+      if (filtered.length !== merged.length) {
+        merged = filtered;
+        changed = true;
+      }
+    }
     return { records: merged, changed: changed };
   }
 
@@ -6870,7 +6882,7 @@ document.addEventListener("DOMContentLoaded", function() {
           // Restore attachments from the local cache (Firestore records don't carry binaries)
           var localRecords = await loadNcRecordsLocalAsync(tenantId);
           var hasPendingLocalSync = hasNcPendingSync(tenantId);
-          if (hasPendingLocalSync && Array.isArray(localRecords) && localRecords.length) {
+          if (hasPendingLocalSync && Array.isArray(localRecords)) {
             var pendingAsyncMerge = mergePendingNcLocalUpserts(records, localRecords);
             records = pendingAsyncMerge.records;
             if (pendingAsyncMerge.changed) needsSave = true;
