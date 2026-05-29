@@ -5341,11 +5341,13 @@ document.addEventListener("DOMContentLoaded", function() {
         var secondaryAll = preferredSource === 'local' ? remoteSnapshot.all : localSnapshot.all;
         mergedAll = {};
         Object.keys(preferredAll).forEach(function(key) {
-          if (secondaryAll[key] && typeof secondaryAll[key] === 'object') {
-            mergedAll[key] = Object.assign({}, secondaryAll[key], preferredAll[key]);
-          } else {
-            mergedAll[key] = preferredAll[key];
-          }
+          var preferredTenant = preferredAll[key];
+          var secondaryTenant = secondaryAll[key];
+          var canMerge = preferredTenant && secondaryTenant &&
+            typeof preferredTenant === 'object' && !Array.isArray(preferredTenant) &&
+            typeof secondaryTenant === 'object' && !Array.isArray(secondaryTenant);
+          if (canMerge) mergedAll[key] = Object.assign({}, secondaryTenant, preferredTenant);
+          else mergedAll[key] = preferredTenant;
         });
       }
       if (preferredSource === 'local' && localSnapshot.all) {
