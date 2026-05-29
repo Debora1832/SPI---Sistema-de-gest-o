@@ -6382,8 +6382,8 @@ document.addEventListener("DOMContentLoaded", function() {
       }
     });
     if (Array.isArray(localRecords)) {
-      var filtered = merged.filter(function(remoteRec) {
-        return !remoteRec || !remoteRec.id || localIds.has(remoteRec.id);
+      var filtered = merged.filter(function(rec) {
+        return !!(rec && rec.id && localIds.has(rec.id));
       });
       if (filtered.length !== merged.length) {
         merged = filtered;
