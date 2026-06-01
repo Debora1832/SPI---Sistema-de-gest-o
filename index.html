@@ -4607,6 +4607,8 @@ document.addEventListener("DOMContentLoaded", function() {
     _ncGanttExpandedGroup = null;
     // Reload NC records for the newly selected company (Firebase-aware)
     loadNcRecordsAsync(key).then(function(records) {
+      // Guard: discard stale result if the user switched tenants again while loading.
+      if (currentTenant !== key) return;
       ncRecords = records;
       syncNcsToGantt();
       renderNcCards();
@@ -4617,7 +4619,7 @@ document.addEventListener("DOMContentLoaded", function() {
         renderNcGantt();
       }
     });
-    loadNcCustomCharts().then(function() { renderNcCustomCharts(); });
+    loadNcCustomCharts().then(function() { if (currentTenant === key) renderNcCustomCharts(); });
     updateNcVisibility();
     // Switch real-time listeners to the new tenant
     if (typeof setupFirebaseListeners === 'function') setupFirebaseListeners(key);
@@ -7531,16 +7533,19 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   async function loadNcCustomCharts() {
+    var _chartTenant = currentTenant; // capture at call time to guard against tenant switches
     var charts = null;
     if (db) {
       try {
-        var snap = await db.collection('nc_custom_charts').doc('spi-' + currentTenant).get();
+        var snap = await db.collection('nc_custom_charts').doc('spi-' + _chartTenant).get();
+        if (_chartTenant !== currentTenant) return; // tenant changed while waiting, discard
         if (snap.exists) { var d = snap.data(); if (Array.isArray(d.charts)) charts = d.charts; }
       } catch(e) { console.warn('Firebase load custom charts error:', e); }
     }
+    if (_chartTenant !== currentTenant) return; // guard before localStorage fallback
     if (!charts) {
       try {
-        var raw = localStorage.getItem(_ncCustomChartsKey());
+        var raw = localStorage.getItem('spi_nc_custom_charts_' + _chartTenant);
         if (raw) charts = JSON.parse(raw);
       } catch(e) {}
     }
@@ -8540,7 +8545,9 @@ document.addEventListener("DOMContentLoaded", function() {
 
   function initNcPage() {
     // Load NC records: try Firebase first, fall back to localStorage
-    loadNcRecordsAsync(currentTenant).then(function(records) {
+    var _initTenant = currentTenant;
+    loadNcRecordsAsync(_initTenant).then(function(records) {
+      if (currentTenant !== _initTenant) return; // tenant changed while loading, discard
       ncRecords = records;
       syncNcsToGantt();
       renderNcCards();
@@ -8549,7 +8556,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 
     // Load and render custom charts
-    loadNcCustomCharts().then(function() { renderNcCustomCharts(); });
+    loadNcCustomCharts().then(function() { if (currentTenant === _initTenant) renderNcCustomCharts(); });
 
     var backdrop = document.getElementById('ncModalBackdrop');
     var drop     = document.getElementById('ncPhotoDrop');
