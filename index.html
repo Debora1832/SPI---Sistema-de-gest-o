@@ -8915,7 +8915,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
       if (_editingNcId) {
         // ── Edit mode: update existing record ─────────────────────────────
-        var destinationTenant = (moveTenantSelect && moveTenantSelect.value && TENANTS[moveTenantSelect.value])
+        var selectedTenant = moveTenantSelect && moveTenantSelect.value ? TENANTS[moveTenantSelect.value] : null;
+        var destinationTenant = (selectedTenant && selectedTenant.isClient !== false)
           ? moveTenantSelect.value
           : currentTenant;
         var movingToAnotherTenant = destinationTenant !== currentTenant;
