@@ -5622,8 +5622,13 @@ document.addEventListener("DOMContentLoaded", function() {
       }).catch(function(e) {
         console.warn('Erro ao carregar NCs após remover tenant:', e);
       });
-      loadNcCustomCharts().then(function() { renderNcCustomCharts(); });
-      if (typeof setupFirebaseListeners === 'function') setupFirebaseListeners(nextKey);
+      loadNcCustomCharts()
+        .then(function() { renderNcCustomCharts(); })
+        .catch(function(e) { console.warn('Erro ao carregar gráficos NC após remover tenant:', e); });
+      if (typeof setupFirebaseListeners === 'function') {
+        try { setupFirebaseListeners(nextKey); }
+        catch(e) { console.warn('Erro ao atualizar listeners Firebase após remover tenant:', e); }
+      }
       const isProject = TENANTS[nextKey].isProject === true || TENANTS[nextKey].isClient === false;
       const targetPageId = isProject ? 'dashboard' : 'ncPage';
       const targetNav = document.querySelector('.sidebar-nav li[data-page="' + targetPageId + '"]');
