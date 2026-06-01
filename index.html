@@ -5615,7 +5615,6 @@ document.addEventListener("DOMContentLoaded", function() {
         syncNcsToGantt();
         renderNcCards();
         renderNcCharts();
-        renderNcCustomCharts();
         renderHomePage();
         if (document.getElementById('ncGanttPage') && document.getElementById('ncGanttPage').classList.contains('active')) {
           renderNcGantt();
@@ -5623,7 +5622,7 @@ document.addEventListener("DOMContentLoaded", function() {
       });
       loadNcCustomCharts().then(function() { renderNcCustomCharts(); });
       if (typeof setupFirebaseListeners === 'function') setupFirebaseListeners(nextKey);
-      var isProject = TENANTS[nextKey] && (TENANTS[nextKey].isProject === true || TENANTS[nextKey].isClient === false);
+      var isProject = TENANTS[nextKey].isProject === true || TENANTS[nextKey].isClient === false;
       var targetPageId = isProject ? 'dashboard' : 'ncPage';
       var targetNav = document.querySelector('.sidebar-nav li[data-page="' + targetPageId + '"]');
       if (targetNav) targetNav.click();
