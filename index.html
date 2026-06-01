@@ -2574,6 +2574,7 @@ document.addEventListener("DOMContentLoaded", function() {
   // Called after Firebase connects to pull fresh data from Firestore
   function reloadFromFirebase() {
     if (!db || !firebaseConnected) return;
+    _homeNcRefreshLoaded = Object.create(null);
     loadAllTenants().then(function() {
       const keys = Object.keys(TENANTS);
       if (!keys.length) return;
@@ -2607,7 +2608,7 @@ document.addEventListener("DOMContentLoaded", function() {
                   loadNcRecordsLocalAsync(_reloadTenant).then(async function(localRecords) {
                     if (_reloadTenant !== currentTenant) return; // guard again after async gap
                     var _reloadNeedsPendingWrite = false;
-                    if (hasNcPendingSync(_reloadTenant) && Array.isArray(localRecords) && localRecords.length) {
+                    if (hasNcPendingSync(_reloadTenant) && Array.isArray(localRecords)) {
                       var _reloadPendingMerge = mergePendingNcLocalUpserts(records, localRecords);
                       records = _reloadPendingMerge.records;
                       _reloadNeedsPendingWrite = _reloadPendingMerge.changed;
@@ -2689,7 +2690,7 @@ document.addEventListener("DOMContentLoaded", function() {
             ? ncRecords
             : (typeof loadNcRecordsLocal === 'function' ? loadNcRecordsLocal(tenantId) : []);
           var _snapNeedsPendingWrite = false;
-          if (hasNcPendingSync(tenantId) && Array.isArray(_snapRefRecords) && _snapRefRecords.length) {
+          if (hasNcPendingSync(tenantId) && Array.isArray(_snapRefRecords)) {
             var _snapPendingMerge = mergePendingNcLocalUpserts(records, _snapRefRecords);
             records = _snapPendingMerge.records;
             _snapNeedsPendingWrite = _snapPendingMerge.changed;
@@ -4818,6 +4819,62 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   }
 
+  var _homeNcRefreshPending = Object.create(null);
+  var _homeNcRefreshLoaded  = Object.create(null);
+
+  function loadHomeNcRecords(tenantId) {
+    if (tenantId === currentTenant && Array.isArray(ncRecords)) {
+      return ncRecords.map(normalizeNcRecordAttachments);
+    }
+    if (typeof loadNcRecordsLocal === 'function') {
+      return loadNcRecordsLocal(tenantId);
+    }
+    try {
+      var raw = localStorage.getItem('spi_nc_records_' + tenantId);
+      var records = raw ? JSON.parse(raw) : [];
+      return Array.isArray(records) ? records.map(normalizeNcRecordAttachments) : [];
+    } catch(e) { return []; }
+  }
+
+  function refreshHomeNcRecordsFromFirebase(tenantId) {
+    if (!tenantId || tenantId === currentTenant || !db || !firebaseConnected) return;
+    if (_homeNcRefreshPending[tenantId] || _homeNcRefreshLoaded[tenantId]) return;
+    _homeNcRefreshPending[tenantId] = true;
+    db.collection('nc_records_' + tenantId).doc('all').get()
+      .then(function(snap) {
+        if (!snap.exists) {
+          _homeNcRefreshLoaded[tenantId] = true;
+          return;
+        }
+        var data = snap.data() || {};
+        var remoteRecords = Array.isArray(data.records) ? data.records : [];
+        remoteRecords = remoteRecords.map(function(record) {
+          var normalized = Object.assign({}, record);
+          if (typeof normalized.rncAberta === 'undefined') normalized.rncAberta = normalized.status === 'rnc_aberta';
+          if (typeof normalized.d8Finalizado === 'undefined') normalized.d8Finalizado = normalized.status === '8d_finalizado';
+          if (!normalized.id) {
+            normalized.id = 'nc_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
+          }
+          return normalizeNcRecordAttachments(normalized);
+        });
+        var localRecords = loadHomeNcRecords(tenantId);
+        if (typeof hasNcPendingSync === 'function' && hasNcPendingSync(tenantId) && Array.isArray(localRecords)) {
+          remoteRecords = mergePendingNcLocalUpserts(remoteRecords, localRecords).records;
+        }
+        _homeNcRefreshLoaded[tenantId] = true;
+        return Promise.resolve(saveNcLocalSnapshot(remoteRecords, tenantId)).then(function() {
+          var homePage = document.getElementById('homePage');
+          if (homePage && homePage.classList.contains('active')) renderHomePage();
+        });
+      })
+      .catch(function(e) {
+        console.warn('Home NC refresh error for ' + tenantId + ':', e);
+      })
+      .finally(function() {
+        _homeNcRefreshPending[tenantId] = false;
+      });
+  }
+
   function renderHomePage() {
     var projGrid = document.getElementById('homeGridProjetos');
     var cliGrid  = document.getElementById('homeGridClientes');
@@ -4835,15 +4892,6 @@ document.addEventListener("DOMContentLoaded", function() {
         acts = TENANTS[tenantId].actions;
       }
       return acts;
-    }
-
-    function loadNcRecords(tenantId) {
-      var recs = [];
-      try {
-        var raw = localStorage.getItem('spi_nc_records_' + tenantId);
-        if (raw) recs = JSON.parse(raw) || [];
-      } catch(e) { recs = []; }
-      return recs;
     }
 
     function getNcOpenDays(rec) {
@@ -4980,7 +5028,7 @@ document.addEventListener("DOMContentLoaded", function() {
         lbl2  = 'Concluídas';
         lbl3  = 'Em Atraso';
       } else {
-        var records  = loadNcRecords(tenantId);
+        var records  = loadHomeNcRecords(tenantId);
         total = records.length;
         stat1 = records.filter(function(r){ return r.rncAberta === true && !r.d8Finalizado; }).length;
         stat2 = records.filter(function(r){ return r.d8Finalizado === true; }).length;
@@ -5015,6 +5063,11 @@ document.addEventListener("DOMContentLoaded", function() {
     var projKeys = keys.filter(function(k){ return TENANTS[k].isProject === true || TENANTS[k].isClient === false; });
     var cliKeys  = keys.filter(function(k){ return TENANTS[k].isProject !== true && TENANTS[k].isClient !== false; });
 
+    var homePage = document.getElementById('homePage');
+    if (homePage && homePage.classList.contains('active')) {
+      cliKeys.forEach(function(k) { refreshHomeNcRecordsFromFirebase(k); });
+    }
+
     if (projKeys.length === 0) {
       projGrid.innerHTML = '<p class="home-empty-msg">Nenhum projeto cadastrado.</p>';
     } else {
@@ -5031,7 +5084,7 @@ document.addEventListener("DOMContentLoaded", function() {
     if (cliSec)  cliSec.style.display  = cliKeys.length  > 0 ? '' : 'none';
 
     // ── Aggregate data ──────────────────────────────────────────────────────
-    var allCliRecs  = cliKeys.reduce(function(acc, k) { return acc.concat(loadNcRecords(k)); }, []);
+    var allCliRecs  = cliKeys.reduce(function(acc, k) { return acc.concat(loadHomeNcRecords(k)); }, []);
     var totalNc     = allCliRecs.length;
     var totalRnc    = allCliRecs.filter(function(r) { return r.rncAberta === true && !r.d8Finalizado; }).length;
     var total8d     = allCliRecs.filter(function(r) { return r.d8Finalizado === true; }).length;
@@ -5154,7 +5207,7 @@ document.addEventListener("DOMContentLoaded", function() {
     if (kpiCliRow && cliKeys.length > 0) {
       // annotate each NC record with its client label
       var allCliRecsTagged = cliKeys.reduce(function(acc, k) {
-        return acc.concat(loadNcRecords(k).map(function(r) {
+        return acc.concat(loadHomeNcRecords(k).map(function(r) {
           r = Object.assign({}, r); r._clientLabel = TENANTS[k] ? TENANTS[k].label : k; return r;
         }));
       }, []);
@@ -5222,7 +5275,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
       // Clientes com mais RNC abertas
       cliKeys.forEach(function(k) {
-        var recs = loadNcRecords(k);
+        var recs = loadHomeNcRecords(k);
         var openRnc = recs.filter(function(r) { return r.rncAberta === true && !r.d8Finalizado; }).length;
         var venc    = recs.filter(function(r) { return isNcOverdue(r); }).length;
         if (openRnc > 0) alertItems.push({ accent:'#dc2626', tag:'RNC Aberta', title: TENANTS[k].label, sub: openRnc + ' registro(s) com RNC aberta',    tenantId: k, type:'rnc' });
@@ -5251,12 +5304,12 @@ document.addEventListener("DOMContentLoaded", function() {
             card.addEventListener('click', function() {
               var tenantLabel = TENANTS[it.tenantId] ? TENANTS[it.tenantId].label : it.tenantId;
               if (it.type === 'rnc') {
-                var recs = loadNcRecords(it.tenantId)
+                var recs = loadHomeNcRecords(it.tenantId)
                   .filter(function(r) { return r.rncAberta === true && !r.d8Finalizado; })
                   .map(function(r) { r = Object.assign({}, r); r._clientLabel = tenantLabel; return r; });
                 openKpiDetailPopup('RNC Aberta — ' + tenantLabel, it.accent, true, recs);
               } else if (it.type === 'venc') {
-                var recs = loadNcRecords(it.tenantId)
+                var recs = loadHomeNcRecords(it.tenantId)
                   .filter(function(r) { return isNcOverdue(r); })
                   .map(function(r) { r = Object.assign({}, r); r._clientLabel = tenantLabel; return r; });
                 openKpiDetailPopup('NCs Vencidas (+30 dias) — ' + tenantLabel, it.accent, true, recs);
@@ -6362,8 +6415,11 @@ document.addEventListener("DOMContentLoaded", function() {
     merged.forEach(function(rec, idx) {
       if (rec && rec.id) byId.set(rec.id, idx);
     });
-    (Array.isArray(localRecords) ? localRecords : []).forEach(function(localRec) {
+    var normalizedLocalRecords = Array.isArray(localRecords) ? localRecords : [];
+    var localIds = new Set();
+    normalizedLocalRecords.forEach(function(localRec) {
       if (!localRec || !localRec.id) return;
+      localIds.add(localRec.id);
       var existingIndex = byId.get(localRec.id);
       if (typeof existingIndex === 'undefined') {
         merged.push(localRec);
@@ -6378,6 +6434,15 @@ document.addEventListener("DOMContentLoaded", function() {
         changed = true;
       }
     });
+    if (Array.isArray(localRecords)) {
+      var filtered = merged.filter(function(rec) {
+        return !!(rec && rec.id && localIds.has(rec.id));
+      });
+      if (filtered.length !== merged.length) {
+        merged = filtered;
+        changed = true;
+      }
+    }
     return { records: merged, changed: changed };
   }
 
@@ -6870,7 +6935,7 @@ document.addEventListener("DOMContentLoaded", function() {
           // Restore attachments from the local cache (Firestore records don't carry binaries)
           var localRecords = await loadNcRecordsLocalAsync(tenantId);
           var hasPendingLocalSync = hasNcPendingSync(tenantId);
-          if (hasPendingLocalSync && Array.isArray(localRecords) && localRecords.length) {
+          if (hasPendingLocalSync && Array.isArray(localRecords)) {
             var pendingAsyncMerge = mergePendingNcLocalUpserts(records, localRecords);
             records = pendingAsyncMerge.records;
             if (pendingAsyncMerge.changed) needsSave = true;
