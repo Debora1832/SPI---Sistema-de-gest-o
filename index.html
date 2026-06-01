@@ -6956,6 +6956,60 @@ document.addEventListener("DOMContentLoaded", function() {
     }
   }
 
+  async function persistNcRecordsForTenant(tenantId, records) {
+    var tenantRecords = Array.isArray(records)
+      ? records.map(function(rec) { return JSON.parse(JSON.stringify(rec)); })
+      : [];
+    await saveNcLocalSnapshot(tenantRecords, tenantId);
+    if (!(db && firebaseConnected)) {
+      markNcPendingSync(tenantId);
+      return tenantRecords.map(normalizeNcRecordAttachments);
+    }
+    markNcPendingSync(tenantId);
+    try {
+      var slim = storage
+        ? await Promise.all(tenantRecords.map(function(r) { return prepareRecordForFirestore(r, tenantId); }))
+        : tenantRecords.map(stripPhotos);
+      await db.collection('nc_records_' + tenantId).doc('all').set({ records: slim });
+      clearNcPendingSync(tenantId);
+
+      if (!storage) return tenantRecords.map(normalizeNcRecordAttachments);
+
+      var recordsWithUrls = tenantRecords.map(function(rec) {
+        var prepRec = slim.find(function(s) { return s.id === rec.id; });
+        if (!prepRec) return normalizeNcRecordAttachments(rec);
+        var updated = Object.assign({}, rec);
+        if (Array.isArray(prepRec.photos) && prepRec.photos.length) {
+          var origPhotos = Array.isArray(rec.photos) ? rec.photos : [];
+          updated.photos = origPhotos.map(function(photo, i) {
+            var url = prepRec.photos[i];
+            return (url && typeof url === 'string' && url.startsWith('https://')) ? url : photo;
+          });
+        }
+        if (prepRec.alertFileUrl && typeof prepRec.alertFileUrl === 'string' && prepRec.alertFileUrl.startsWith('https://')) {
+          updated.alertFileUrl = prepRec.alertFileUrl;
+        }
+        if (prepRec.d8FileUrl && typeof prepRec.d8FileUrl === 'string' && prepRec.d8FileUrl.startsWith('https://')) {
+          updated.d8FileUrl = prepRec.d8FileUrl;
+        }
+        if (Array.isArray(prepRec.pdfs) && prepRec.pdfs.length) {
+          var origPdfs = Array.isArray(rec.pdfs) ? rec.pdfs : [];
+          updated.pdfs = prepRec.pdfs.map(function(prepPdf, i) {
+            var orig = origPdfs.find(function(op) { return op.name === prepPdf.name; }) || origPdfs[i] || {};
+            return Object.assign({}, orig, prepPdf.url ? { url: prepPdf.url } : {});
+          });
+        }
+        return normalizeNcRecordAttachments(updated);
+      });
+      await saveNcLocalSnapshot(recordsWithUrls, tenantId);
+      return recordsWithUrls;
+    } catch(e) {
+      markNcPendingSync(tenantId);
+      console.error('[SPI] Erro ao persistir NC no tenant de destino:', tenantId, e);
+      return tenantRecords.map(normalizeNcRecordAttachments);
+    }
+  }
+
   // Async loader: Firebase first, localStorage fallback
   async function loadNcRecordsAsync(tenantId) {
     setNcSyncBadge('syncing', '↻ Sincronizando…');
@@ -8567,6 +8621,28 @@ document.addEventListener("DOMContentLoaded", function() {
     var _editAlertFileName = '';
     var _editD8DataUrl     = null;
     var _editD8FileName    = '';
+    var moveTenantSection  = document.getElementById('ncMoveTenantSection');
+    var moveTenantSelect   = document.getElementById('ncMoveTenant');
+
+    function populateNcMoveTenantOptions() {
+      if (!moveTenantSelect) return;
+      var sourceTenant = currentTenant;
+      var options = [{
+        value: sourceTenant,
+        label: 'Manter em ' + ((TENANTS[sourceTenant] && TENANTS[sourceTenant].label) || sourceTenant)
+      }];
+      Object.keys(TENANTS).forEach(function(key) {
+        if (key === sourceTenant) return;
+        var tenant = TENANTS[key];
+        if (!tenant || tenant.isClient === false) return;
+        options.push({ value: key, label: 'Mover para ' + (tenant.label || key) });
+      });
+      moveTenantSelect.innerHTML = options.map(function(opt) {
+        return '<option value="' + escHtml(opt.value) + '">' + escHtml(opt.label) + '</option>';
+      }).join('');
+      moveTenantSelect.value = sourceTenant;
+      moveTenantSelect.disabled = options.length <= 1;
+    }
 
     // ── Open / close modal ────────────────────────────────────────────────
     function openNcModal() {
@@ -8596,6 +8672,8 @@ document.addEventListener("DOMContentLoaded", function() {
       document.getElementById('ncEditD8FileName').textContent = '';
       document.getElementById('ncEditD8FileInput').value = '';
       document.getElementById('ncNaoProcedente').checked = false;
+      if (moveTenantSection) moveTenantSection.style.display = 'none';
+      if (moveTenantSelect) moveTenantSelect.innerHTML = '';
       document.getElementById('ncModalTitle').innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 20 20" fill="currentColor" style="vertical-align:-2px;margin-right:6px"><path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/></svg>Cadastrar Nova NC';
       document.getElementById('ncBtnSubmit').innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/></svg> Cadastrar NC';
       backdrop.classList.add('open');
@@ -8656,6 +8734,8 @@ document.addEventListener("DOMContentLoaded", function() {
       document.getElementById('ncModalTitle').innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 20 20" fill="currentColor" style="vertical-align:-2px;margin-right:6px"><path stroke="currentColor" d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zm-2.207 2.207L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/></svg>Editar NC';
       document.getElementById('ncBtnSubmit').innerHTML = '✔ Salvar Alterações';
       document.getElementById('ncNaoProcedente').checked = !!nc.naoProcedente;
+      if (moveTenantSection) moveTenantSection.style.display = '';
+      populateNcMoveTenantOptions();
       backdrop.classList.add('open');
       setTimeout(function(){ document.getElementById('ncPiece').focus(); }, 80);
     }
@@ -8835,6 +8915,10 @@ document.addEventListener("DOMContentLoaded", function() {
 
       if (_editingNcId) {
         // ── Edit mode: update existing record ─────────────────────────────
+        var destinationTenant = (moveTenantSelect && moveTenantSelect.value && TENANTS[moveTenantSelect.value])
+          ? moveTenantSelect.value
+          : currentTenant;
+        var movingToAnotherTenant = destinationTenant !== currentTenant;
         var idx = ncRecords.findIndex(function(r){ return r.id === _editingNcId; });
         if (idx !== -1) {
           ncRecords[idx].ncNumber    = document.getElementById('ncNumber').value.trim() || ncRecords[idx].ncNumber;
@@ -8865,7 +8949,7 @@ document.addEventListener("DOMContentLoaded", function() {
           }
           // Sync linked Gantt action; remove it entirely if NC is não procedente
           var editedNc = ncRecords[idx];
-          if (editedNc && editedNc.ncGanttId != null) {
+          if (!movingToAnotherTenant && editedNc && editedNc.ncGanttId != null) {
             if (editedNc.naoProcedente) {
               // Remove the Gantt item — não procedente NCs don't belong in the schedule
               var gRmIdx = allActions.findIndex(function(a){ return a.id === editedNc.ncGanttId; });
@@ -8880,6 +8964,60 @@ document.addEventListener("DOMContentLoaded", function() {
                 saveTenantActions(currentTenant, allActions);
               }
             }
+          }
+          if (movingToAnotherTenant) {
+            if (editedNc && editedNc.ncGanttId != null) {
+              var sourceGanttIdx = allActions.findIndex(function(a){ return a.id === editedNc.ncGanttId; });
+              if (sourceGanttIdx !== -1) {
+                allActions.splice(sourceGanttIdx, 1);
+                saveTenantActions(currentTenant, allActions);
+              }
+              editedNc.ncGanttId = null;
+            }
+
+            var movedNc = JSON.parse(JSON.stringify(editedNc));
+            ncRecords.splice(idx, 1);
+            await saveNcRecords();
+
+            var targetRecords = await loadNcRecordsAsync(destinationTenant);
+            if (!Array.isArray(targetRecords)) targetRecords = [];
+
+            var targetActions = await loadTenantActions(destinationTenant);
+            if (!Array.isArray(targetActions)) targetActions = [];
+            if (!movedNc.naoProcedente && movedNc.date) {
+              var newTargetActionId = targetActions.reduce(function(maxId, x){ return x.id > maxId ? x.id : maxId; }, 0) + 1;
+              var movedNcAction = {
+                id:             newTargetActionId,
+                group:          'NC – Não Conformidades',
+                desc:           movedNc.ncNumber + ' – ' + (movedNc.description || movedNc.customer || ''),
+                team:           '',
+                lead:           '',
+                status:         'on_going',
+                start:          movedNc.date,
+                end:            addDaysToDateStr(movedNc.date, 30),
+                completionDate: '',
+                reprazo:        '',
+                comments:       ''
+              };
+              targetActions.push(movedNcAction);
+              movedNc.ncGanttId = newTargetActionId;
+            } else {
+              movedNc.ncGanttId = null;
+            }
+            saveTenantActions(destinationTenant, targetActions);
+            if (TENANTS[destinationTenant]) TENANTS[destinationTenant].actions = targetActions;
+
+            var existingTargetIdx = targetRecords.findIndex(function(r){ return r.id === movedNc.id; });
+            if (existingTargetIdx !== -1) targetRecords[existingTargetIdx] = movedNc;
+            else targetRecords.push(movedNc);
+            await persistNcRecordsForTenant(destinationTenant, targetRecords);
+
+            closeNcModal();
+            renderNcCards();
+            renderNcCharts();
+            renderNcCustomCharts();
+            renderHomePage();
+            return;
           }
           await saveNcRecords();
           closeNcModal();
@@ -9518,6 +9656,12 @@ document.addEventListener("DOMContentLoaded", function() {
         <div class="nc-field nc-field-full">
           <label>Descrição da Reclamação</label>
           <textarea id="ncDescription" placeholder="Descreva brevemente o problema encontrado…" maxlength="400"></textarea>
+        </div>
+
+        <div class="nc-field nc-field-full" id="ncMoveTenantSection" style="display:none;">
+          <label>Mover card para outro cliente</label>
+          <select id="ncMoveTenant"></select>
+          <small style="display:block;margin-top:6px;color:#6b7280;font-size:11px;">Ao salvar, o card sai desta página e é transferido para o cliente selecionado.</small>
         </div>
 
         <!-- RNC section (only shown in edit mode when rncAberta is true) -->
