@@ -6995,7 +6995,7 @@ document.addEventListener("DOMContentLoaded", function() {
         if (Array.isArray(prepRec.pdfs) && prepRec.pdfs.length) {
           var origPdfs = Array.isArray(rec.pdfs) ? rec.pdfs : [];
           updated.pdfs = prepRec.pdfs.map(function(prepPdf, i) {
-            var orig = origPdfs.find(function(op) { return op.name === prepPdf.name; }) || origPdfs[i] || {};
+            var orig = origPdfs.find(function(op) { return op.name === prepPdf.name; }) || {};
             return Object.assign({}, orig, prepPdf.url ? { url: prepPdf.url } : {});
           });
         }
@@ -8966,58 +8966,83 @@ document.addEventListener("DOMContentLoaded", function() {
             }
           }
           if (movingToAnotherTenant) {
-            if (editedNc && editedNc.ncGanttId != null) {
-              var sourceGanttIdx = allActions.findIndex(function(a){ return a.id === editedNc.ncGanttId; });
-              if (sourceGanttIdx !== -1) {
-                allActions.splice(sourceGanttIdx, 1);
-                saveTenantActions(currentTenant, allActions);
+            var sourceRecordsBackup = ncRecords.map(function(rec) { return JSON.parse(JSON.stringify(rec)); });
+            var sourceActionsBackup = allActions.map(function(action) { return JSON.parse(JSON.stringify(action)); });
+            var targetRecordsBackup = null;
+            var targetActionsBackup = null;
+            try {
+              if (editedNc && editedNc.ncGanttId != null) {
+                var sourceGanttIdx = allActions.findIndex(function(a){ return a.id === editedNc.ncGanttId; });
+                if (sourceGanttIdx !== -1) {
+                  allActions.splice(sourceGanttIdx, 1);
+                  saveTenantActions(currentTenant, allActions);
+                }
+                editedNc.ncGanttId = null;
               }
-              editedNc.ncGanttId = null;
+
+              var movedNc = JSON.parse(JSON.stringify(editedNc));
+              ncRecords.splice(idx, 1);
+              await saveNcRecords();
+
+              var targetRecords = await loadNcRecordsAsync(destinationTenant);
+              if (!Array.isArray(targetRecords)) targetRecords = [];
+              targetRecordsBackup = targetRecords.map(function(rec) { return JSON.parse(JSON.stringify(rec)); });
+
+              var targetActions = await loadTenantActions(destinationTenant);
+              if (!Array.isArray(targetActions)) targetActions = [];
+              targetActionsBackup = targetActions.map(function(action) { return JSON.parse(JSON.stringify(action)); });
+              if (!movedNc.naoProcedente && movedNc.date) {
+                var newTargetActionId = targetActions.reduce(function(maxId, x){
+                  var safeId = Number(x && x.id);
+                  return safeId > maxId ? safeId : maxId;
+                }, 0) + 1;
+                var movedNcAction = {
+                  id:             newTargetActionId,
+                  group:          'NC – Não Conformidades',
+                  desc:           movedNc.ncNumber + ' – ' + (movedNc.description || movedNc.customer || ''),
+                  team:           '',
+                  lead:           '',
+                  status:         'on_going',
+                  start:          movedNc.date,
+                  end:            addDaysToDateStr(movedNc.date, 30),
+                  completionDate: '',
+                  reprazo:        '',
+                  comments:       ''
+                };
+                targetActions.push(movedNcAction);
+                movedNc.ncGanttId = newTargetActionId;
+              } else {
+                movedNc.ncGanttId = null;
+              }
+
+              var existingTargetIdx = targetRecords.findIndex(function(r){ return r.id === movedNc.id; });
+              if (existingTargetIdx !== -1) targetRecords[existingTargetIdx] = movedNc;
+              else targetRecords.push(movedNc);
+              await persistNcRecordsForTenant(destinationTenant, targetRecords);
+              saveTenantActions(destinationTenant, targetActions);
+              if (TENANTS[destinationTenant]) TENANTS[destinationTenant].actions = targetActions;
+
+              closeNcModal();
+              renderNcCards();
+              renderNcCharts();
+              renderNcCustomCharts();
+              renderHomePage();
+              alert('Card transferido com sucesso para ' + ((TENANTS[destinationTenant] && TENANTS[destinationTenant].label) || destinationTenant) + '.');
+              return;
+            } catch(transferErr) {
+              console.error('Erro ao transferir NC para outro cliente:', transferErr);
+              ncRecords = sourceRecordsBackup.map(normalizeNcRecordAttachments);
+              allActions = sourceActionsBackup;
+              saveTenantActions(currentTenant, allActions);
+              await saveNcRecords();
+              if (targetRecordsBackup) await persistNcRecordsForTenant(destinationTenant, targetRecordsBackup);
+              if (targetActionsBackup) {
+                saveTenantActions(destinationTenant, targetActionsBackup);
+                if (TENANTS[destinationTenant]) TENANTS[destinationTenant].actions = targetActionsBackup;
+              }
+              alert('Não foi possível transferir o card. Os dados foram restaurados no cliente de origem.');
+              return;
             }
-
-            var movedNc = JSON.parse(JSON.stringify(editedNc));
-            ncRecords.splice(idx, 1);
-            await saveNcRecords();
-
-            var targetRecords = await loadNcRecordsAsync(destinationTenant);
-            if (!Array.isArray(targetRecords)) targetRecords = [];
-
-            var targetActions = await loadTenantActions(destinationTenant);
-            if (!Array.isArray(targetActions)) targetActions = [];
-            if (!movedNc.naoProcedente && movedNc.date) {
-              var newTargetActionId = targetActions.reduce(function(maxId, x){ return x.id > maxId ? x.id : maxId; }, 0) + 1;
-              var movedNcAction = {
-                id:             newTargetActionId,
-                group:          'NC – Não Conformidades',
-                desc:           movedNc.ncNumber + ' – ' + (movedNc.description || movedNc.customer || ''),
-                team:           '',
-                lead:           '',
-                status:         'on_going',
-                start:          movedNc.date,
-                end:            addDaysToDateStr(movedNc.date, 30),
-                completionDate: '',
-                reprazo:        '',
-                comments:       ''
-              };
-              targetActions.push(movedNcAction);
-              movedNc.ncGanttId = newTargetActionId;
-            } else {
-              movedNc.ncGanttId = null;
-            }
-            saveTenantActions(destinationTenant, targetActions);
-            if (TENANTS[destinationTenant]) TENANTS[destinationTenant].actions = targetActions;
-
-            var existingTargetIdx = targetRecords.findIndex(function(r){ return r.id === movedNc.id; });
-            if (existingTargetIdx !== -1) targetRecords[existingTargetIdx] = movedNc;
-            else targetRecords.push(movedNc);
-            await persistNcRecordsForTenant(destinationTenant, targetRecords);
-
-            closeNcModal();
-            renderNcCards();
-            renderNcCharts();
-            renderNcCustomCharts();
-            renderHomePage();
-            return;
           }
           await saveNcRecords();
           closeNcModal();
