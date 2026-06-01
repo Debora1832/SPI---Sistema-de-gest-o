@@ -2619,10 +2619,11 @@ document.addEventListener("DOMContentLoaded", function() {
                       ? mergePhotosFromLocal(records, localRecords)
                       : records;
                     records = records.map(normalizeNcRecordAttachments);
+                    var _reloadBaselineNcRecords = Array.isArray(ncRecords) ? ncRecords.slice() : [];
                     var recoveredRel = await recoverMissingNcPhotosFromStorage(records, _reloadTenant);
                     records = recoveredRel.records;
                     // Reintegrate any NC cards created during the async Storage probe.
-                    var _reloadReintegrate = reintegrateLocalNcRecords(records, ncRecords);
+                    var _reloadReintegrate = reintegrateLocalNcRecords(records, ncRecords, _reloadBaselineNcRecords);
                     records = _reloadReintegrate.records;
                     if (_reloadReintegrate.changed) _reloadNeedsPendingWrite = true;
                     ncRecords = records;
@@ -2645,16 +2646,22 @@ document.addEventListener("DOMContentLoaded", function() {
 
   // Reintegrate NC records that were added to ncRecords DURING an async Storage probe.
   // Returns { records, changed } where records is a new array (does not mutate fbRecords).
-  function reintegrateLocalNcRecords(fbRecords, currentNcRecords) {
+  function reintegrateLocalNcRecords(fbRecords, currentNcRecords, baselineNcRecords) {
     var merged = Array.isArray(fbRecords) ? fbRecords.slice() : [];
     var changed = false;
     // Build the ID set directly to avoid an intermediate array from map().
     var fbIds = new Set();
     merged.forEach(function(r) { if (r && r.id) fbIds.add(r.id); });
+    // Only preserve records that appeared after the async probe started.
+    // This avoids reintroducing records that were deleted remotely on another device.
+    var baselineIds = new Set();
+    (Array.isArray(baselineNcRecords) ? baselineNcRecords : []).forEach(function(baseRec) {
+      if (baseRec && baseRec.id) baselineIds.add(baseRec.id);
+    });
     (Array.isArray(currentNcRecords) ? currentNcRecords : []).forEach(function(localRec) {
       // fbIds.has() guards the changed flag; fbIds.add() prevents double-appending
       // the same ID when currentNcRecords contains duplicates of each other.
-      if (localRec && localRec.id && !fbIds.has(localRec.id)) {
+      if (localRec && localRec.id && !fbIds.has(localRec.id) && !baselineIds.has(localRec.id)) {
         merged.push(localRec);
         fbIds.add(localRec.id);
         changed = true;
@@ -2701,10 +2708,11 @@ document.addEventListener("DOMContentLoaded", function() {
             ? mergePhotosFromLocal(records, ncRecords.length > 0 ? ncRecords : _snapRefRecords)
             : records;
           records = records.map(normalizeNcRecordAttachments);
+          var _snapBaselineNcRecords = Array.isArray(ncRecords) ? ncRecords.slice() : [];
           var recoveredSnap = await recoverMissingNcPhotosFromStorage(records, tenantId);
           records = recoveredSnap.records;
           // Reintegrate any NC cards created during the async Storage probe.
-          var _snapReintegrate = reintegrateLocalNcRecords(records, ncRecords);
+          var _snapReintegrate = reintegrateLocalNcRecords(records, ncRecords, _snapBaselineNcRecords);
           records = _snapReintegrate.records;
           if (_snapReintegrate.changed) _snapNeedsPendingWrite = true;
           ncRecords = records;
