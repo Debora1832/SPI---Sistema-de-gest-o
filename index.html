@@ -8994,7 +8994,7 @@ document.addEventListener("DOMContentLoaded", function() {
               targetActionsBackup = targetActions.map(function(action) { return JSON.parse(JSON.stringify(action)); });
               if (!movedNc.naoProcedente && movedNc.date) {
                 var newTargetActionId = targetActions.reduce(function(maxId, x){
-                  var safeId = Number(x && x.id);
+                  var safeId = Number(x && x.id) || 0;
                   return safeId > maxId ? safeId : maxId;
                 }, 0) + 1;
                 var movedNcAction = {
@@ -9032,7 +9032,7 @@ document.addEventListener("DOMContentLoaded", function() {
               return;
             } catch(transferErr) {
               console.error('Erro ao transferir NC para outro cliente:', transferErr);
-              ncRecords = sourceRecordsBackup.map(normalizeNcRecordAttachments);
+              ncRecords = sourceRecordsBackup;
               allActions = sourceActionsBackup;
               saveTenantActions(currentTenant, allActions);
               await saveNcRecords();
