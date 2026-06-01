@@ -5572,23 +5572,33 @@ document.addEventListener("DOMContentLoaded", function() {
   // ── Delete tenant ──────────────────────────────────────────────────────────
 
   function deleteTenant(key) {
+    if (!TENANTS[key]) return;
     if (Object.keys(TENANTS).length <= 1) {
       alert('Não é possível remover o único cliente cadastrado.');
       return;
     }
     if (!confirm('Remover o cliente "' + TENANTS[key].label + '"? As ações serão apagadas.')) return;
+    const removingCurrentTenant = currentTenant === key;
     const keys = Object.keys(TENANTS);
     const nextKey = keys.find(function(k) { return k !== key; }) || keys[0];
     delete TENANTS[key];
-    try { localStorage.removeItem('spi_actions_' + key); }
-    catch(e) { console.warn('localStorage error removing tenant actions:', e); }
+    try {
+      localStorage.removeItem(actionsStorageKey(key));
+      localStorage.removeItem(ncStorageKey(key));
+      localStorage.removeItem(ncPendingSyncKey(key));
+      localStorage.removeItem('spi_nc_custom_charts_' + key);
+    } catch(e) { console.warn('localStorage error removing tenant data:', e); }
+    if (db && firebaseConnected) {
+      db.collection('tenants').doc(key).delete()
+        .catch(function(e) { console.warn('Firebase tenant delete error:', e); });
+    }
     saveAllTenants();
-    if (currentTenant === key) {
-      // Switch without the guard that checks key === currentTenant
+    if (removingCurrentTenant && TENANTS[nextKey]) {
       TENANTS[nextKey].attachments = TENANTS[nextKey].attachments || {};
       currentTenant  = nextKey;
       allActions     = TENANTS[nextKey].actions;
       attachmentsMap = TENANTS[nextKey].attachments;
+      ncRecords = [];
       applyTenantTheme(nextKey);
       document.getElementById('logoInitials').textContent   = TENANTS[nextKey].initials;
       document.getElementById('sidebarTitle').textContent    = TENANTS[nextKey].sidebarTitle;
@@ -5596,10 +5606,37 @@ document.addEventListener("DOMContentLoaded", function() {
       document.title = 'SSQE - Gestão | ' + TENANTS[nextKey].label;
       sortCol = null; sortDir = 'asc';
       renderDashboard(); populateFilters(); renderTable();
+      renderBell();
       expandedGroup = null;
+      if (typeof _ncGanttExpandedGroup !== 'undefined') _ncGanttExpandedGroup = null;
+      updateNcVisibility();
+      loadNcRecordsAsync(nextKey).then(function(records) {
+        ncRecords = records;
+        syncNcsToGantt();
+        renderNcCards();
+        renderNcCharts();
+        renderHomePage();
+        if (document.getElementById('ncGanttPage') && document.getElementById('ncGanttPage').classList.contains('active')) {
+          renderNcGantt();
+        }
+      }).catch(function(e) {
+        console.warn('Erro ao carregar NCs após remover tenant:', e);
+      });
+      loadNcCustomCharts()
+        .then(function() { renderNcCustomCharts(); })
+        .catch(function(e) { console.warn('Erro ao carregar gráficos NC após remover tenant:', e); });
+      if (typeof setupFirebaseListeners === 'function') {
+        try { setupFirebaseListeners(nextKey); }
+        catch(e) { console.warn('Erro ao atualizar listeners Firebase após remover tenant:', e); }
+      }
+      const isProject = TENANTS[nextKey].isProject === true || TENANTS[nextKey].isClient === false;
+      const targetPageId = isProject ? 'dashboard' : 'ncPage';
+      const targetNav = document.querySelector('.sidebar-nav li[data-page="' + targetPageId + '"]');
+      if (targetNav) targetNav.click();
     }
     renderTenantList();
     renderProjectList();
+    if (!removingCurrentTenant) renderHomePage();
   }
 
   // ── Duplicate tenant ──────────────────────────────────────────────────────
