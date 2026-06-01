@@ -5578,7 +5578,7 @@ document.addEventListener("DOMContentLoaded", function() {
       return;
     }
     if (!confirm('Remover o cliente "' + TENANTS[key].label + '"? As ações serão apagadas.')) return;
-    var removingCurrentTenant = currentTenant === key;
+    const removingCurrentTenant = currentTenant === key;
     const keys = Object.keys(TENANTS);
     const nextKey = keys.find(function(k) { return k !== key; }) || keys[0];
     delete TENANTS[key];
@@ -5624,9 +5624,9 @@ document.addEventListener("DOMContentLoaded", function() {
       });
       loadNcCustomCharts().then(function() { renderNcCustomCharts(); });
       if (typeof setupFirebaseListeners === 'function') setupFirebaseListeners(nextKey);
-      var isProject = TENANTS[nextKey].isProject === true || TENANTS[nextKey].isClient === false;
-      var targetPageId = isProject ? 'dashboard' : 'ncPage';
-      var targetNav = document.querySelector('.sidebar-nav li[data-page="' + targetPageId + '"]');
+      const isProject = TENANTS[nextKey].isProject === true || TENANTS[nextKey].isClient === false;
+      const targetPageId = isProject ? 'dashboard' : 'ncPage';
+      const targetNav = document.querySelector('.sidebar-nav li[data-page="' + targetPageId + '"]');
       if (targetNav) targetNav.click();
     }
     renderTenantList();
