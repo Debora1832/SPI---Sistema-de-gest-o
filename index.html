@@ -4814,6 +4814,7 @@ document.addEventListener("DOMContentLoaded", function() {
     document.documentElement.style.setProperty('--tenant-sidebar-hover', darkenHex(sidebarBg, 0.15));
     document.documentElement.style.setProperty('--tenant-nav-active-bg',   t.accentBg   || '#367C2B');
     document.documentElement.style.setProperty('--tenant-nav-active-text', t.accentText || '#FFDE00');
+    if (typeof _syncNcThemeColorInputs === 'function') _syncNcThemeColorInputs();
   }
 
   // ── NC visibility based on tenant type ────────────────────────────────────
@@ -6429,6 +6430,65 @@ document.addEventListener("DOMContentLoaded", function() {
   var PT_MONTHS_SHORT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                           'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   var NC_CHART_DEFAULT_TITLE = 'Volume de Reclamações do Cliente (por mês)';
+  /**
+   * Read a CSS custom property from :root with fallback.
+   * @param {string} varName CSS variable name (must include `--` prefix).
+   * @param {string} fallback Fallback color when the CSS variable is unavailable.
+   * @returns {string} The trimmed CSS variable value or fallback.
+   */
+  function _ncThemeColor(varName, fallback) {
+    if (!varName || typeof varName !== 'string' || !varName.startsWith('--')) return fallback;
+    var css = getComputedStyle(document.documentElement).getPropertyValue(varName);
+    var value = (css || '').trim();
+    return value || fallback;
+  }
+  function _ncThemePrimaryColor() {
+    return _ncThemeColor('--tenant-sidebar-bg', '#1E4D17');
+  }
+  function _ncThemeMetaColor() {
+    return darkenHex(_ncThemePrimaryColor(), 0.2);
+  }
+  /**
+   * Check whether a color setting exists and has a non-empty value.
+   * @param {string} key Setting key in `_ncChartSettings`.
+   * @returns {boolean} True when a saved non-empty value exists.
+   */
+  function _hasNcChartColorSetting(key) {
+    if (!_ncChartSettings || typeof _ncChartSettings !== 'object') return false;
+    return Object.prototype.hasOwnProperty.call(_ncChartSettings, key) &&
+      _ncChartSettings[key] !== null &&
+      _ncChartSettings[key] !== undefined &&
+      _ncChartSettings[key] !== '';
+  }
+  var _ncThemeColorInputRefs = null;
+  function _getNcThemeColorInputRefs() {
+    if (_ncThemeColorInputRefs) return _ncThemeColorInputRefs;
+    _ncThemeColorInputRefs = {
+      monthlyBar: document.getElementById('ncCepBarColor'),
+      monthlyMeta: document.getElementById('ncCepMetaColor'),
+      pieceBar: document.getElementById('ncCepPieceBarColor'),
+      pieceMeta: document.getElementById('ncCepPieceMetaColor'),
+      failureBar: document.getElementById('ncCepFailureBarColor'),
+      failureMeta: document.getElementById('ncCepFailureMetaColor')
+    };
+    return _ncThemeColorInputRefs;
+  }
+  /**
+   * Sync chart color inputs with tenant theme colors when no saved color exists.
+   * Called when tenant theme changes so popovers start with the active visual pattern.
+   */
+  function _syncNcThemeColorInputs() {
+    if (!_ncChartSettings || typeof _ncChartSettings !== 'object') return;
+    var primaryColor = _ncThemePrimaryColor();
+    var metaColor = _ncThemeMetaColor();
+    var refs = _getNcThemeColorInputRefs();
+    if (refs.monthlyBar && !_hasNcChartColorSetting('barColor')) refs.monthlyBar.value = primaryColor;
+    if (refs.monthlyMeta && !_hasNcChartColorSetting('metaColor')) refs.monthlyMeta.value = metaColor;
+    if (refs.pieceBar && !_hasNcChartColorSetting('pieceBarColor')) refs.pieceBar.value = primaryColor;
+    if (refs.pieceMeta && !_hasNcChartColorSetting('pieceMetaColor')) refs.pieceMeta.value = metaColor;
+    if (refs.failureBar && !_hasNcChartColorSetting('failureBarColor')) refs.failureBar.value = primaryColor;
+    if (refs.failureMeta && !_hasNcChartColorSetting('failureMetaColor')) refs.failureMeta.value = metaColor;
+  }
   var BAR_DIM_SUFFIX = '66'; // 40 % opacity hex appended to bar color when dimmed
   var _ncPhotos = []; // array of data-URL strings for the modal in progress
   var _ncPdfs   = []; // array of {name, data} objects for PDF attachments
@@ -7676,9 +7736,11 @@ document.addEventListener("DOMContentLoaded", function() {
     if (elEightD)  elEightD.textContent  = statEightD;
     if (elQty)     elQty.textContent     = statQty;
 
-    // Standard palette — navy blue as primary bar color, warm palette for doughnut
-    var navyBlue     = _ncChartSettings.barColor     || '#1b4d8e';
-    var pieceBarBlue = _ncChartSettings.pieceBarColor || '#1b4d8e';
+    // Standard palette aligned with tenant visual theme
+    var chartPrimaryColor = _ncThemePrimaryColor();
+    var chartMetaDefaultColor = _ncThemeMetaColor();
+    var navyBlue     = _ncChartSettings.barColor      || chartPrimaryColor;
+    var pieceBarBlue = _ncChartSettings.pieceBarColor || chartPrimaryColor;
     var lightGrid = 'rgba(0,0,0,0.06)';
     var darkText  = '#374151';
     var lightFont = { family: "'Inter','Segoe UI',sans-serif" };
@@ -7738,7 +7800,7 @@ document.addEventListener("DOMContentLoaded", function() {
       });
       var pieceLabels = _ncChartSettings.pieceShowLabels !== false;
       var pieceMeta     = _ncChartSettings.pieceMetaValue != null ? Number(_ncChartSettings.pieceMetaValue) : 0;
-      var pieceMetaColor = _ncChartSettings.pieceMetaColor || '#f97316';
+      var pieceMetaColor = _ncChartSettings.pieceMetaColor || chartMetaDefaultColor;
       var pieceDatasets = [
         {
           type: 'bar',
@@ -7829,7 +7891,7 @@ document.addEventListener("DOMContentLoaded", function() {
           return 0;
         });
         var fVals = fKeys.map(function(k){ return failureCount[k]; });
-        var failureBarColor = _ncChartSettings.failureBarColor || '#2563eb';
+        var failureBarColor = _ncChartSettings.failureBarColor || chartPrimaryColor;
         var fColors = fKeys.map(function(k) {
           if (_ncFailureFilter && k === _ncFailureFilter) return failureBarColor;
           if (_ncFailureFilter) return failureBarColor + BAR_DIM_SUFFIX;
@@ -7837,7 +7899,7 @@ document.addEventListener("DOMContentLoaded", function() {
         });
         var failureLabels = _ncChartSettings.failureShowLabels !== false;
         var failureMeta      = _ncChartSettings.failureMetaValue != null ? Number(_ncChartSettings.failureMetaValue) : 0;
-        var failureMetaColor = _ncChartSettings.failureMetaColor || '#f97316';
+        var failureMetaColor = _ncChartSettings.failureMetaColor || chartMetaDefaultColor;
         var failureDatasets = [
           {
             type: 'bar',
@@ -7918,7 +7980,7 @@ document.addEventListener("DOMContentLoaded", function() {
       var metaVal = _ncChartSettings.metaValue != null
         ? Number(_ncChartSettings.metaValue)
         : (hasData ? Math.max(1, Math.round(totalNc / activeKeys.length)) : 0);
-      var metaColor = _ncChartSettings.metaColor || '#f97316';
+      var metaColor = _ncChartSettings.metaColor || chartMetaDefaultColor;
 
       // Highlight the active-filter bar with lighter color (dim inactive bars)
       var barColors = displayKeys.map(function(k) {
@@ -8009,7 +8071,7 @@ document.addEventListener("DOMContentLoaded", function() {
       var metaValInput   = document.getElementById('ncCepMetaValue');
       var showLabelsInput = document.getElementById('ncCepShowLabels');
       if (titleInput)     titleInput.value = _ncChartSettings.title || NC_CHART_DEFAULT_TITLE;
-      if (barInput)       barInput.value   = _ncChartSettings.barColor  || '#1b4d8e';
+      if (barInput)       barInput.value   = _ncChartSettings.barColor  || chartPrimaryColor;
       if (metaColorInput) metaColorInput.value = metaColor;
       if (metaValInput)   metaValInput.value   = metaVal;
       if (showLabelsInput) showLabelsInput.checked = _ncChartSettings.showLabels !== false;
@@ -8037,10 +8099,10 @@ document.addEventListener("DOMContentLoaded", function() {
     var pieceMetaColorInput    = document.getElementById('ncCepPieceMetaColor');
     var pieceMetaValInput      = document.getElementById('ncCepPieceMetaValue');
     if (pieceTitleInput)      pieceTitleInput.value        = _ncChartSettings.pieceTitle    || 'NCs por Peça';
-    if (pieceBarInput)        pieceBarInput.value          = _ncChartSettings.pieceBarColor || '#1b4d8e';
+    if (pieceBarInput)        pieceBarInput.value          = _ncChartSettings.pieceBarColor || chartPrimaryColor;
     if (pieceSortInput)       pieceSortInput.value         = _ncChartSettings.pieceSort     || 'desc';
     if (pieceShowLabelsInput) pieceShowLabelsInput.checked  = _ncChartSettings.pieceShowLabels !== false;
-    if (pieceMetaColorInput)  pieceMetaColorInput.value    = _ncChartSettings.pieceMetaColor || '#f97316';
+    if (pieceMetaColorInput)  pieceMetaColorInput.value    = _ncChartSettings.pieceMetaColor || chartMetaDefaultColor;
     if (pieceMetaValInput)    pieceMetaValInput.value      = _ncChartSettings.pieceMetaValue != null ? _ncChartSettings.pieceMetaValue : 0;
 
     // ── Sync failure chart title + popover fields ─────────────────────────────
@@ -8057,10 +8119,10 @@ document.addEventListener("DOMContentLoaded", function() {
     var failureMetaColorInput    = document.getElementById('ncCepFailureMetaColor');
     var failureMetaValInput      = document.getElementById('ncCepFailureMetaValue');
     if (failureTitleInput)      failureTitleInput.value        = _ncChartSettings.failureTitle    || 'NCs por Modo de Falha';
-    if (failureBarInput)        failureBarInput.value          = _ncChartSettings.failureBarColor || '#2563eb';
+    if (failureBarInput)        failureBarInput.value          = _ncChartSettings.failureBarColor || chartPrimaryColor;
     if (failureSortInput)       failureSortInput.value         = _ncChartSettings.failureSort     || 'desc';
     if (failureShowLabelsInput) failureShowLabelsInput.checked  = _ncChartSettings.failureShowLabels !== false;
-    if (failureMetaColorInput)  failureMetaColorInput.value    = _ncChartSettings.failureMetaColor || '#f97316';
+    if (failureMetaColorInput)  failureMetaColorInput.value    = _ncChartSettings.failureMetaColor || chartMetaDefaultColor;
     if (failureMetaValInput)    failureMetaValInput.value      = _ncChartSettings.failureMetaValue != null ? _ncChartSettings.failureMetaValue : 0;
 
   }
@@ -8203,7 +8265,7 @@ document.addEventListener("DOMContentLoaded", function() {
     var canvas = document.getElementById('ncCustomCanvas_' + def.id);
     if (!canvas || typeof Chart === 'undefined') return;
     var data = _getCustomChartData(def);
-    var color = def.color || '#1b4d8e';
+    var color = def.color || _ncThemePrimaryColor();
     var isPie = def.type === 'pie' || def.type === 'doughnut';
     var isLine = def.type === 'line';
     var isHBar = def.type === 'bar-h';
@@ -8334,7 +8396,8 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById('ncBuilderTitleInput').value = def ? (def.title || '') : '';
     document.getElementById('ncBuilderField').value      = def ? (def.field || 'piece') : 'piece';
     document.getElementById('ncBuilderType').value       = def ? (def.type  || 'bar')   : 'bar';
-    document.getElementById('ncBuilderColor').value      = def ? (def.color || '#1b4d8e') : '#1b4d8e';
+    var defaultBuilderColor = _ncThemePrimaryColor();
+    document.getElementById('ncBuilderColor').value      = def ? (def.color || defaultBuilderColor) : defaultBuilderColor;
     document.getElementById('ncBuilderSort').value       = def ? (def.sort  || 'desc')  : 'desc';
     // Show/hide sort row depending on field (read from the select after setting its value)
     var sortRow = document.getElementById('ncBuilderSortRow');
@@ -10200,7 +10263,7 @@ document.addEventListener("DOMContentLoaded", function() {
         _ncChartSettings.pieceBarColor   = barEl.value;
         _ncChartSettings.pieceSort       = sortEl ? sortEl.value : 'desc';
         _ncChartSettings.pieceShowLabels = showLabelsEl ? showLabelsEl.checked : true;
-        _ncChartSettings.pieceMetaColor  = metaColorEl ? metaColorEl.value : '#f97316';
+        _ncChartSettings.pieceMetaColor  = metaColorEl ? metaColorEl.value : _ncThemeMetaColor();
         _ncChartSettings.pieceMetaValue  = metaValEl ? (isNaN(Number(metaValEl.value)) ? 0 : Number(metaValEl.value)) : 0;
         saveNcChartSettings();
         pieceEditPopover.classList.remove('open');
@@ -10229,10 +10292,10 @@ document.addEventListener("DOMContentLoaded", function() {
         var metaValEl       = document.getElementById('ncCepFailureMetaValue');
         if (!titleEl) return;
         _ncChartSettings.failureTitle      = (titleEl.value || '').trim() || 'NCs por Modo de Falha';
-        _ncChartSettings.failureBarColor   = barEl ? barEl.value : '#2563eb';
+        _ncChartSettings.failureBarColor   = barEl ? barEl.value : _ncThemePrimaryColor();
         _ncChartSettings.failureSort       = sortEl ? sortEl.value : 'desc';
         _ncChartSettings.failureShowLabels = showLabelsEl ? showLabelsEl.checked : true;
-        _ncChartSettings.failureMetaColor  = metaColorEl ? metaColorEl.value : '#f97316';
+        _ncChartSettings.failureMetaColor  = metaColorEl ? metaColorEl.value : _ncThemeMetaColor();
         _ncChartSettings.failureMetaValue  = metaValEl ? (isNaN(Number(metaValEl.value)) ? 0 : Number(metaValEl.value)) : 0;
         saveNcChartSettings();
         failureEditPopover.classList.remove('open');
