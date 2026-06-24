@@ -1801,7 +1801,7 @@
       <div class="kpi-card"><h4>Total Cobrado</h4><div class="kpi-value" id="ncCostTotalCharged">R$ 0,00</div></div>
       <div class="kpi-card"><h4>Total Negociado</h4><div class="kpi-value" id="ncCostTotalNegotiated">R$ 0,00</div></div>
       <div class="kpi-card"><h4>Economia</h4><div class="kpi-value" id="ncCostTotalSavings">R$ 0,00</div></div>
-      <div class="kpi-card"><h4>Sem NC vinculada</h4><div class="kpi-value" id="ncCostOpenCount">0</div></div>
+      <div class="kpi-card"><h4>Registros sem NC</h4><div class="kpi-value" id="ncCostOpenCount">0</div></div>
     </div>
 
     <div class="card">
@@ -6151,7 +6151,7 @@ document.addEventListener("DOMContentLoaded", function() {
     r.notes = (r.notes || '').trim();
     var charged = Number(r.chargedValue);
     var negotiated = r.negotiatedValue == null || r.negotiatedValue === '' ? null : Number(r.negotiatedValue);
-    r.chargedValue = Number.isFinite(charged) ? charged : null;
+    r.chargedValue = Number.isFinite(charged) ? charged : 0;
     r.negotiatedValue = Number.isFinite(negotiated) ? negotiated : null;
     r.negotiationOpen = !!r.negotiationOpen;
     r.evidences = Array.isArray(r.evidences) ? r.evidences.map(function(ev) {
@@ -6799,7 +6799,7 @@ document.addEventListener("DOMContentLoaded", function() {
       if (ev.data && typeof ev.data === 'string' && ev.data.startsWith('https://')) return { name: ev.name || 'evidencia', url: ev.data };
       if (!ev.data || typeof ev.data !== 'string' || !ev.data.startsWith('data:')) return null;
       return uploadFileToStorage(tenantId, out.id, ev.data, 'cost_evidence_' + idx, ev.name)
-        .then(function(url) { return url ? { name: ev.name || 'evidencia', url: url } : { name: ev.name || 'evidencia' }; });
+        .then(function(url) { return url ? { name: ev.name || 'evidencia', url: url } : null; });
     }));
     out.evidences = out.evidences.filter(Boolean);
     if (!out.evidences.length) delete out.evidences;
@@ -8817,7 +8817,7 @@ document.addEventListener("DOMContentLoaded", function() {
     var withoutNcCount = 0;
     (ncCostRecords || []).forEach(function(rec) {
       totalCharged += Number(rec.chargedValue) || 0;
-      if (rec.negotiatedValue != null && rec.negotiatedValue !== '') {
+      if (!rec.negotiationOpen && rec.negotiatedValue != null && rec.negotiatedValue !== '') {
         var negotiated = Number(rec.negotiatedValue) || 0;
         totalNegotiated += negotiated;
         totalSavings += (Number(rec.chargedValue) || 0) - negotiated;
@@ -8889,7 +8889,7 @@ document.addEventListener("DOMContentLoaded", function() {
       btn.title = 'Remover';
       btn.textContent = '✕';
       btn.addEventListener('click', function() {
-        _ncCostEvidence.splice(idx, 1);
+        _ncCostEvidence = _ncCostEvidence.filter(function(_, i) { return i !== idx; });
         rebuildNcCostEvidenceList();
       });
       row.appendChild(btn);
