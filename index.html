@@ -1801,7 +1801,7 @@
       <div class="kpi-card"><h4>Total Cobrado</h4><div class="kpi-value" id="ncCostTotalCharged">R$ 0,00</div></div>
       <div class="kpi-card"><h4>Total Negociado</h4><div class="kpi-value" id="ncCostTotalNegotiated">R$ 0,00</div></div>
       <div class="kpi-card"><h4>Economia</h4><div class="kpi-value" id="ncCostTotalSavings">R$ 0,00</div></div>
-      <div class="kpi-card"><h4>Registros sem NC</h4><div class="kpi-value" id="ncCostOpenCount">0</div></div>
+      <div class="kpi-card"><h4>Registros sem NC</h4><div class="kpi-value" id="ncCostWithoutNcCount">0</div></div>
     </div>
 
     <div class="card">
@@ -6160,7 +6160,7 @@ document.addEventListener("DOMContentLoaded", function() {
       var url  = typeof ev.url === 'string' ? ev.url : '';
       if (!data && !url) return null;
       return {
-        name: (ev.name || 'evidencia').trim() || 'evidencia',
+        name: (ev.name || 'evidencia').trim(),
         data: data || undefined,
         url: url || undefined
       };
@@ -6796,6 +6796,7 @@ document.addEventListener("DOMContentLoaded", function() {
     out.evidences = await Promise.all(out.evidences.map(function(ev, idx) {
       if (!ev) return null;
       if (ev.url && typeof ev.url === 'string') return { name: ev.name || 'evidencia', url: ev.url };
+      // Compatibilidade com registros antigos que podem ter URL em `data`.
       if (ev.data && typeof ev.data === 'string' && ev.data.startsWith('https://')) return { name: ev.name || 'evidencia', url: ev.data };
       if (!ev.data || typeof ev.data !== 'string' || !ev.data.startsWith('data:')) return null;
       return uploadFileToStorage(tenantId, out.id, ev.data, 'cost_evidence_' + idx, ev.name)
@@ -8817,7 +8818,7 @@ document.addEventListener("DOMContentLoaded", function() {
     var withoutNcCount = 0;
     (ncCostRecords || []).forEach(function(rec) {
       totalCharged += Number(rec.chargedValue) || 0;
-      if (!rec.negotiationOpen && rec.negotiatedValue != null && rec.negotiatedValue !== '') {
+      if (!rec.negotiationOpen && rec.negotiatedValue != null) {
         var negotiated = Number(rec.negotiatedValue) || 0;
         totalNegotiated += negotiated;
         totalSavings += (Number(rec.chargedValue) || 0) - negotiated;
@@ -8828,7 +8829,7 @@ document.addEventListener("DOMContentLoaded", function() {
     var chargedEl = document.getElementById('ncCostTotalCharged');
     var negotiatedEl = document.getElementById('ncCostTotalNegotiated');
     var savingsEl = document.getElementById('ncCostTotalSavings');
-    var openEl = document.getElementById('ncCostOpenCount');
+    var openEl = document.getElementById('ncCostWithoutNcCount');
     if (chargedEl) chargedEl.textContent = formatCurrencyBRL(totalCharged);
     if (negotiatedEl) negotiatedEl.textContent = formatCurrencyBRL(totalNegotiated);
     if (savingsEl) savingsEl.textContent = formatCurrencyBRL(totalSavings);
@@ -9000,7 +9001,7 @@ document.addEventListener("DOMContentLoaded", function() {
         var negotiatedRaw = document.getElementById('ncCostNegotiatedValue').value;
         var negotiationOpen = document.getElementById('ncCostNegotiationOpen').checked;
         if (!Number.isFinite(charged) || charged <= 0) {
-          alert('Informe um valor cobrado válido e maior que zero.');
+          alert('Informe um valor cobrado válido (número maior que zero).');
           return;
         }
         var selectedNcId = document.getElementById('ncCostLinkedNc').value || '';
@@ -9009,7 +9010,7 @@ document.addEventListener("DOMContentLoaded", function() {
         if (!negotiationOpen && negotiatedRaw !== '') {
           var n = Number(negotiatedRaw);
           if (!Number.isFinite(n) || n < 0) {
-            alert('Informe um valor negociado válido (maior ou igual a zero) ou marque negociação em aberto.');
+            alert('Informe um número válido para o valor negociado (maior ou igual a zero) ou marque negociação em aberto.');
             return;
           }
           if (n > charged) {
