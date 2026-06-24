@@ -1611,11 +1611,11 @@
           </span>
           <span class="nav-label">NC Gantt</span>
         </li>
-        <li data-page="ncCostPage" data-tooltip="Custos NC">
+        <li data-page="ncCostPage" data-tooltip="Negociação NC">
           <span class="nav-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path d="M10 2a7 7 0 100 14 7 7 0 000-14zm.75 3.5a.75.75 0 00-1.5 0V6H8.5a.75.75 0 000 1.5h.75v1H8.5a.75.75 0 000 1.5h.75v.5a.75.75 0 001.5 0V10h.75a.75.75 0 000-1.5h-.75v-1h.75a.75.75 0 000-1.5h-.75v-.5z"/></svg>
           </span>
-          <span class="nav-label">Custos NC</span>
+          <span class="nav-label">Negociação NC</span>
         </li>
       </ul>
     </li>
@@ -2712,6 +2712,7 @@ document.addEventListener("DOMContentLoaded", function() {
   function reloadFromFirebase() {
     if (!db || !firebaseConnected) return;
     _homeNcRefreshLoaded = Object.create(null);
+    _homeNcCostRefreshLoaded = Object.create(null);
     loadAllTenants().then(function() {
       const keys = Object.keys(TENANTS);
       if (!keys.length) return;
@@ -4619,6 +4620,8 @@ document.addEventListener("DOMContentLoaded", function() {
       item.classList.add("active");
       var pageId = item.dataset.page;
       document.getElementById(pageId).classList.add("active");
+      var parentGroup = item.closest('.nav-group');
+      if (parentGroup) parentGroup.classList.add('open');
 
       // When going home, collapse context-specific groups and reset state
       var tratGrp    = document.getElementById('navGroupTratativas');
@@ -4979,6 +4982,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
   var _homeNcRefreshPending = Object.create(null);
   var _homeNcRefreshLoaded  = Object.create(null);
+  var _homeNcCostRefreshPending = Object.create(null);
+  var _homeNcCostRefreshLoaded  = Object.create(null);
   var HOME_COST_MONTHS = [
     { value:'01', label:'Janeiro' },
     { value:'02', label:'Fevereiro' },
@@ -5045,6 +5050,36 @@ document.addEventListener("DOMContentLoaded", function() {
       })
       .finally(function() {
         _homeNcRefreshPending[tenantId] = false;
+      });
+  }
+
+  function refreshHomeNcCostRecordsFromFirebase(tenantId) {
+    if (!tenantId || tenantId === currentTenant || !db || !firebaseConnected) return;
+    if (_homeNcCostRefreshPending[tenantId] || _homeNcCostRefreshLoaded[tenantId]) return;
+    var localRecords = loadHomeNcCostRecords(tenantId);
+    if (Array.isArray(localRecords) && localRecords.length) {
+      _homeNcCostRefreshLoaded[tenantId] = true;
+      return;
+    }
+    _homeNcCostRefreshPending[tenantId] = true;
+    db.collection('nc_cost_records_' + tenantId).doc('all').get()
+      .then(function(snap) {
+        if (!snap.exists) {
+          _homeNcCostRefreshLoaded[tenantId] = true;
+          return;
+        }
+        var data = snap.data() || {};
+        var remoteRecords = Array.isArray(data.records) ? data.records.map(normalizeNcCostRecord) : [];
+        saveNcCostRecordsLocal(remoteRecords, tenantId);
+        _homeNcCostRefreshLoaded[tenantId] = true;
+        var homePage = document.getElementById('homePage');
+        if (homePage && homePage.classList.contains('active')) renderHomePage();
+      })
+      .catch(function(e) {
+        console.warn('Home NC cost refresh error for ' + tenantId + ':', e);
+      })
+      .finally(function() {
+        _homeNcCostRefreshPending[tenantId] = false;
       });
   }
 
@@ -5441,6 +5476,7 @@ document.addEventListener("DOMContentLoaded", function() {
     var homePage = document.getElementById('homePage');
     if (homePage && homePage.classList.contains('active')) {
       cliKeys.forEach(function(k) { refreshHomeNcRecordsFromFirebase(k); });
+      Object.keys(TENANTS || {}).forEach(function(k) { refreshHomeNcCostRecordsFromFirebase(k); });
     }
 
     if (projKeys.length === 0) {
