@@ -1978,7 +1978,7 @@
           </div>
           <div class="nc-cep-row">
             <label>Cor da linha meta</label>
-            <input type="color" id="ncCepMetaColor" value="#183e12" />
+            <input type="color" id="ncCepMetaColor" value="#183d12" />
           </div>
           <div class="nc-cep-row">
             <label>Valor da meta</label>
@@ -2018,7 +2018,7 @@
           </div>
           <div class="nc-cep-row">
             <label>Cor da linha meta</label>
-            <input type="color" id="ncCepPieceMetaColor" value="#183e12" />
+            <input type="color" id="ncCepPieceMetaColor" value="#183d12" />
           </div>
           <div class="nc-cep-row">
             <label>Valor da meta</label>
@@ -2055,7 +2055,7 @@
           </div>
           <div class="nc-cep-row">
             <label>Cor da linha meta</label>
-            <input type="color" id="ncCepFailureMetaColor" value="#183e12" />
+            <input type="color" id="ncCepFailureMetaColor" value="#183d12" />
           </div>
           <div class="nc-cep-row">
             <label>Valor da meta</label>
@@ -4814,6 +4814,7 @@ document.addEventListener("DOMContentLoaded", function() {
     document.documentElement.style.setProperty('--tenant-sidebar-hover', darkenHex(sidebarBg, 0.15));
     document.documentElement.style.setProperty('--tenant-nav-active-bg',   t.accentBg   || '#367C2B');
     document.documentElement.style.setProperty('--tenant-nav-active-text', t.accentText || '#FFDE00');
+    if (typeof _syncNcThemeColorInputs === 'function') _syncNcThemeColorInputs();
   }
 
   // ── NC visibility based on tenant type ────────────────────────────────────
@@ -6430,6 +6431,7 @@ document.addEventListener("DOMContentLoaded", function() {
                           'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   var NC_CHART_DEFAULT_TITLE = 'Volume de Reclamações do Cliente (por mês)';
   function _ncThemeColor(varName, fallback) {
+    if (!varName || String(varName).slice(0, 2) !== '--') return fallback;
     var css = getComputedStyle(document.documentElement).getPropertyValue(varName);
     var value = (css || '').trim();
     return value || fallback;
@@ -6439,6 +6441,25 @@ document.addEventListener("DOMContentLoaded", function() {
   }
   function _ncThemeMetaColor() {
     return darkenHex(_ncThemePrimaryColor(), 0.2);
+  }
+  function _syncNcThemeColorInputs() {
+    if (!_ncChartSettings || typeof _ncChartSettings !== 'object') return;
+    var primaryColor = _ncThemePrimaryColor();
+    var metaColor = _ncThemeMetaColor();
+    var monthlyBar = document.getElementById('ncCepBarColor');
+    var monthlyMeta = document.getElementById('ncCepMetaColor');
+    var pieceBar = document.getElementById('ncCepPieceBarColor');
+    var pieceMeta = document.getElementById('ncCepPieceMetaColor');
+    var failureBar = document.getElementById('ncCepFailureBarColor');
+    var failureMeta = document.getElementById('ncCepFailureMetaColor');
+    var builderColor = document.getElementById('ncBuilderColor');
+    if (monthlyBar && !_ncChartSettings.barColor) monthlyBar.value = primaryColor;
+    if (monthlyMeta && !_ncChartSettings.metaColor) monthlyMeta.value = metaColor;
+    if (pieceBar && !_ncChartSettings.pieceBarColor) pieceBar.value = primaryColor;
+    if (pieceMeta && !_ncChartSettings.pieceMetaColor) pieceMeta.value = metaColor;
+    if (failureBar && !_ncChartSettings.failureBarColor) failureBar.value = primaryColor;
+    if (failureMeta && !_ncChartSettings.failureMetaColor) failureMeta.value = metaColor;
+    if (builderColor && !_ncBuilderEditId) builderColor.value = primaryColor;
   }
   var BAR_DIM_SUFFIX = '66'; // 40 % opacity hex appended to bar color when dimmed
   var _ncPhotos = []; // array of data-URL strings for the modal in progress
