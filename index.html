@@ -1801,7 +1801,7 @@
       <div class="kpi-card"><h4>Total Cobrado</h4><div class="kpi-value" id="ncCostTotalCharged">R$ 0,00</div></div>
       <div class="kpi-card"><h4>Total Negociado</h4><div class="kpi-value" id="ncCostTotalNegotiated">R$ 0,00</div></div>
       <div class="kpi-card"><h4>Economia</h4><div class="kpi-value" id="ncCostTotalSavings">R$ 0,00</div></div>
-      <div class="kpi-card"><h4>Registros não vinculados</h4><div class="kpi-value" id="ncCostOpenCount">0</div></div>
+      <div class="kpi-card"><h4>Sem NC vinculada</h4><div class="kpi-value" id="ncCostOpenCount">0</div></div>
     </div>
 
     <div class="card">
@@ -6151,7 +6151,7 @@ document.addEventListener("DOMContentLoaded", function() {
     r.notes = (r.notes || '').trim();
     var charged = Number(r.chargedValue);
     var negotiated = r.negotiatedValue == null || r.negotiatedValue === '' ? null : Number(r.negotiatedValue);
-    r.chargedValue = Number.isFinite(charged) ? charged : 0;
+    r.chargedValue = Number.isFinite(charged) ? charged : null;
     r.negotiatedValue = Number.isFinite(negotiated) ? negotiated : null;
     r.negotiationOpen = !!r.negotiationOpen;
     r.evidences = Array.isArray(r.evidences) ? r.evidences.map(function(ev) {
@@ -6815,8 +6815,8 @@ document.addEventListener("DOMContentLoaded", function() {
         return [String((ev && ev.name) || '').trim().toLowerCase(), ev];
       }));
       var merged = Object.assign({}, rec);
-      merged.evidences = rec.evidences.map(function(ev, idx) {
-        var localEv = localByName.get(String((ev && ev.name) || '').trim().toLowerCase()) || (localRec.evidences || [])[idx];
+      merged.evidences = rec.evidences.map(function(ev) {
+        var localEv = localByName.get(String((ev && ev.name) || '').trim().toLowerCase());
         if (localEv && localEv.data) {
           return { name: ev.name || localEv.name || 'evidencia', data: localEv.data, url: ev.url || localEv.url };
         }
@@ -9010,6 +9010,10 @@ document.addEventListener("DOMContentLoaded", function() {
           var n = Number(negotiatedRaw);
           if (!Number.isFinite(n) || n < 0) {
             alert('Informe um valor negociado válido (maior ou igual a zero) ou marque negociação em aberto.');
+            return;
+          }
+          if (n > charged) {
+            alert('O valor negociado não pode ser maior que o valor cobrado.');
             return;
           }
           negotiated = n;
