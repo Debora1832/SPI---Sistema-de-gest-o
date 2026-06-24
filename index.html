@@ -1547,6 +1547,12 @@
           </span>
           <span class="nav-label">NC Gantt</span>
         </li>
+        <li data-page="ncCostPage" data-tooltip="Custos NC">
+          <span class="nav-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path d="M10 2a7 7 0 100 14 7 7 0 000-14zm.75 3.5a.75.75 0 00-1.5 0V6H8.5a.75.75 0 000 1.5h.75v1H8.5a.75.75 0 000 1.5h.75v.5a.75.75 0 001.5 0V10h.75a.75.75 0 000-1.5h-.75v-1h.75a.75.75 0 000-1.5h-.75v-.5z"/></svg>
+          </span>
+          <span class="nav-label">Custos NC</span>
+        </li>
       </ul>
     </li>
     <!-- GROUP: PROJETOS (independent projects like SIP) -->
@@ -1776,6 +1782,50 @@
       <span style="display:flex;align-items:center;gap:5px;"><span style="width:14px;height:14px;border-radius:3px;background:rgba(107,114,128,.20);border-left:3px solid #6b7280;display:inline-block;"></span>Não Procedente</span>
     </div>
     <div id="ncGantt"></div>
+  </div>
+
+  <!-- NC COST CONTROL PAGE -->
+  <div id="ncCostPage" class="page">
+    <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+      <div>
+        <h1>Controle de Custos NC</h1>
+        <p>Registro de gastos e negociação de valores com ou sem vínculo direto com NC.</p>
+      </div>
+      <button class="btn-primary" id="ncCostBtnNew" style="margin-top:4px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/></svg>
+        Novo Registro
+      </button>
+    </div>
+
+    <div class="kpi-grid kpi-grid-unified" style="margin-bottom:14px;">
+      <div class="kpi-card"><h4>Total Cobrado</h4><div class="kpi-value" id="ncCostTotalCharged">R$ 0,00</div></div>
+      <div class="kpi-card"><h4>Total Negociado</h4><div class="kpi-value" id="ncCostTotalNegotiated">R$ 0,00</div></div>
+      <div class="kpi-card"><h4>Economia</h4><div class="kpi-value" id="ncCostTotalSavings">R$ 0,00</div></div>
+      <div class="kpi-card"><h4>Registros sem NC</h4><div class="kpi-value" id="ncCostOpenCount">0</div></div>
+    </div>
+
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Tipo</th>
+              <th>NC vinculada</th>
+              <th>Descrição</th>
+              <th>Valor cobrado</th>
+              <th>Valor negociado</th>
+              <th>Status negociação</th>
+              <th>Evidências</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="ncCostTableBody">
+            <tr><td colspan="9" style="text-align:center;color:#9ca3af;padding:16px;">Nenhum registro de custo cadastrado.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
   <!-- NC – Non-Conformance -->
@@ -4507,6 +4557,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
       if(pageId === "ganttPage") { setTimeout(renderGantt, 100); renderGanttBell(); }
       else if(pageId === "ncGanttPage") { setTimeout(renderNcGantt, 100); }
+      else if(pageId === "ncCostPage") { setTimeout(renderNcCostPage, 80); }
       else if(pageId === "homePage") { renderHomePage(); }
     });
   });
@@ -4615,11 +4666,17 @@ document.addEventListener("DOMContentLoaded", function() {
       renderNcCharts();
       renderNcCustomCharts();
       renderHomePage();
+      renderNcCostPage();
       if (document.getElementById('ncGanttPage') && document.getElementById('ncGanttPage').classList.contains('active')) {
         renderNcGantt();
       }
     });
     loadNcCustomCharts().then(function() { if (currentTenant === key) renderNcCustomCharts(); });
+    loadNcCostRecordsAsync(key).then(function(records) {
+      if (currentTenant !== key) return;
+      ncCostRecords = records;
+      renderNcCostPage();
+    }).catch(function(e) { console.warn('Erro ao carregar custos NC:', e); });
     updateNcVisibility();
     // Switch real-time listeners to the new tenant
     if (typeof setupFirebaseListeners === 'function') setupFirebaseListeners(key);
@@ -4696,8 +4753,10 @@ document.addEventListener("DOMContentLoaded", function() {
     if (ncGroup) ncGroup.style.display = showNcPages ? '' : 'none';
     var ncPageEl      = document.getElementById('ncPage');
     var ncGanttPageEl = document.getElementById('ncGanttPage');
+    var ncCostPageEl  = document.getElementById('ncCostPage');
     if (ncPageEl)      ncPageEl.style.display      = showNcPages ? '' : 'none';
     if (ncGanttPageEl) ncGanttPageEl.style.display = showNcPages ? '' : 'none';
+    if (ncCostPageEl)  ncCostPageEl.style.display  = showNcPages ? '' : 'none';
 
     // Do not auto-expand groups; let the user choose when to expand them
 
@@ -4707,7 +4766,7 @@ document.addEventListener("DOMContentLoaded", function() {
     if (clienteOnly && (activePage === 'dashboard' || activePage === 'ganttPage')) {
       var ncNav = document.querySelector('.sidebar-nav li[data-page="ncPage"]');
       if (ncNav) ncNav.click();
-    } else if (!showNcPages && (activePage === 'ncPage' || activePage === 'ncGanttPage')) {
+    } else if (!showNcPages && (activePage === 'ncPage' || activePage === 'ncGanttPage' || activePage === 'ncCostPage')) {
       var homeNav = document.querySelector('.sidebar-nav li[data-page="homePage"]');
       if (homeNav) homeNav.click();
     }
@@ -5597,6 +5656,7 @@ document.addEventListener("DOMContentLoaded", function() {
       localStorage.removeItem(ncStorageKey(key));
       localStorage.removeItem(ncPendingSyncKey(key));
       localStorage.removeItem('spi_nc_custom_charts_' + key);
+      localStorage.removeItem(ncCostStorageKey(key));
     } catch(e) { console.warn('localStorage error removing tenant data:', e); }
     if (db && firebaseConnected) {
       db.collection('tenants').doc(key).delete()
@@ -5626,6 +5686,7 @@ document.addEventListener("DOMContentLoaded", function() {
         renderNcCards();
         renderNcCharts();
         renderHomePage();
+        renderNcCostPage();
         if (document.getElementById('ncGanttPage') && document.getElementById('ncGanttPage').classList.contains('active')) {
           renderNcGantt();
         }
@@ -5635,6 +5696,9 @@ document.addEventListener("DOMContentLoaded", function() {
       loadNcCustomCharts()
         .then(function() { renderNcCustomCharts(); })
         .catch(function(e) { console.warn('Erro ao carregar gráficos NC após remover tenant:', e); });
+      loadNcCostRecordsAsync(nextKey)
+        .then(function(records) { ncCostRecords = records; renderNcCostPage(); })
+        .catch(function(e) { console.warn('Erro ao carregar custos NC após remover tenant:', e); });
       if (typeof setupFirebaseListeners === 'function') {
         try { setupFirebaseListeners(nextKey); }
         catch(e) { console.warn('Erro ao atualizar listeners Firebase após remover tenant:', e); }
@@ -6014,6 +6078,7 @@ document.addEventListener("DOMContentLoaded", function() {
     renderBell();
     initTableResize(document.querySelector('#actionTableSection .table-wrap table'));
     initNcPage();
+    initNcCostPage();
     updateNcVisibility();
     renderHomePage();
     // Start on home page — hide context-specific groups, show home branding
@@ -6063,6 +6128,57 @@ document.addEventListener("DOMContentLoaded", function() {
   var _ncPdfs   = []; // array of {name, data} objects for PDF attachments
   var _ncStatusPending = null; // { id, action } while status popup is open
   var _ncDetailCurrent = null; // nc record shown in detail popup
+  var ncCostRecords = [];
+  var _ncCostEvidence = [];
+  var _editingNcCostId = null;
+
+  function ncCostStorageKey(tenantId) {
+    return 'spi_nc_cost_records_' + (tenantId || currentTenant);
+  }
+
+  function normalizeNcCostRecord(rec) {
+    var r = Object.assign({}, rec || {});
+    if (!r.id) r.id = 'nccost_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
+    if (!r.date) r.date = new Date().toISOString().slice(0, 10);
+    r.type = r.type === 'administrativo' ? 'administrativo' : 'nc';
+    r.linkedNcId = (r.linkedNcId || '').trim();
+    r.linkedNcNumber = (r.linkedNcNumber || '').trim();
+    r.description = (r.description || '').trim();
+    r.notes = (r.notes || '').trim();
+    var charged = Number(r.chargedValue);
+    var negotiated = r.negotiatedValue == null || r.negotiatedValue === '' ? null : Number(r.negotiatedValue);
+    r.chargedValue = Number.isFinite(charged) ? charged : 0;
+    r.negotiatedValue = Number.isFinite(negotiated) ? negotiated : null;
+    r.negotiationOpen = !!r.negotiationOpen;
+    r.evidences = Array.isArray(r.evidences) ? r.evidences.map(function(ev) {
+      if (!ev) return null;
+      var data = typeof ev.data === 'string' ? ev.data : '';
+      var url  = typeof ev.url === 'string' ? ev.url : '';
+      if (!data && !url) return null;
+      return {
+        name: (ev.name || 'evidencia').trim() || 'evidencia',
+        data: data || undefined,
+        url: url || undefined
+      };
+    }).filter(Boolean) : [];
+    return r;
+  }
+
+  function loadNcCostRecordsLocal(tenantId) {
+    try {
+      var raw = localStorage.getItem(ncCostStorageKey(tenantId));
+      var arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr.map(normalizeNcCostRecord) : [];
+    } catch(e) {
+      console.warn('Erro ao carregar custos NC locais:', e);
+      return [];
+    }
+  }
+
+  function saveNcCostRecordsLocal(records, tenantId) {
+    try { localStorage.setItem(ncCostStorageKey(tenantId), JSON.stringify(records || [])); }
+    catch(e) { console.warn('Erro ao salvar custos NC locais:', e); }
+  }
 
   // ── Per-tenant NC storage key ──────────────────────────────────────────────
   function ncStorageKey(tenantId) {
@@ -6664,6 +6780,80 @@ document.addEventListener("DOMContentLoaded", function() {
         console.warn('[SPI Storage] Falha no upload do arquivo (' + slot + '):', e);
       }
       return null;
+    }
+  }
+
+  async function prepareNcCostRecordForFirestore(rec, tenantId) {
+    var out = Object.assign({}, rec);
+    if (!Array.isArray(out.evidences) || !out.evidences.length) {
+      delete out.evidences;
+      return out;
+    }
+    out.evidences = await Promise.all(out.evidences.map(function(ev, idx) {
+      if (!ev) return null;
+      if (ev.url && typeof ev.url === 'string') return { name: ev.name || 'evidencia', url: ev.url };
+      if (ev.data && typeof ev.data === 'string' && ev.data.startsWith('https://')) return { name: ev.name || 'evidencia', url: ev.data };
+      if (!ev.data || typeof ev.data !== 'string' || !ev.data.startsWith('data:')) return { name: ev.name || 'evidencia' };
+      return uploadFileToStorage(tenantId, out.id, ev.data, 'cost_evidence_' + idx, ev.name)
+        .then(function(url) { return url ? { name: ev.name || 'evidencia', url: url } : { name: ev.name || 'evidencia' }; });
+    }));
+    out.evidences = out.evidences.filter(Boolean);
+    if (!out.evidences.length) delete out.evidences;
+    return out;
+  }
+
+  function mergeNcCostEvidencesFromLocal(remoteRecords, localRecords) {
+    var byId = new Map((Array.isArray(localRecords) ? localRecords : []).map(function(rec) { return [rec.id, rec]; }));
+    return (Array.isArray(remoteRecords) ? remoteRecords : []).map(function(rec) {
+      var localRec = byId.get(rec.id);
+      if (!localRec || !Array.isArray(rec.evidences) || !rec.evidences.length) return normalizeNcCostRecord(rec);
+      var merged = Object.assign({}, rec);
+      merged.evidences = rec.evidences.map(function(ev, idx) {
+        var localEv = (localRec.evidences || [])[idx];
+        if (localEv && localEv.data) {
+          return { name: ev.name || localEv.name || 'evidencia', data: localEv.data, url: ev.url || localEv.url };
+        }
+        return ev;
+      });
+      return normalizeNcCostRecord(merged);
+    });
+  }
+
+  async function loadNcCostRecordsAsync(tenantId) {
+    var localRecords = loadNcCostRecordsLocal(tenantId);
+    if (!(db && firebaseConnected)) return localRecords;
+    try {
+      var snap = await db.collection('nc_cost_records_' + tenantId).doc('all').get();
+      if (!snap.exists) return localRecords;
+      var data = snap.data();
+      var remoteRecords = Array.isArray(data.records) ? data.records.map(normalizeNcCostRecord) : [];
+      var merged = mergeNcCostEvidencesFromLocal(remoteRecords, localRecords);
+      saveNcCostRecordsLocal(merged, tenantId);
+      return merged;
+    } catch(e) {
+      console.warn('Erro ao carregar custos NC do Firebase:', e);
+      return localRecords;
+    }
+  }
+
+  async function saveNcCostRecords() {
+    var tenantId = currentTenant;
+    var snapshot = (ncCostRecords || []).map(normalizeNcCostRecord);
+    saveNcCostRecordsLocal(snapshot, tenantId);
+    if (!(db && firebaseConnected)) return;
+    try {
+      var slim = storage
+        ? await Promise.all(snapshot.map(function(rec) { return prepareNcCostRecordForFirestore(rec, tenantId); }))
+        : snapshot.map(function(rec) {
+            var out = Object.assign({}, rec);
+            if (Array.isArray(out.evidences)) {
+              out.evidences = out.evidences.map(function(ev) { return ev.url ? { name: ev.name, url: ev.url } : { name: ev.name }; });
+            }
+            return out;
+          });
+      await db.collection('nc_cost_records_' + tenantId).doc('all').set({ records: slim });
+    } catch(e) {
+      console.warn('Erro ao salvar custos NC no Firebase:', e);
     }
   }
 
@@ -8597,6 +8787,256 @@ document.addEventListener("DOMContentLoaded", function() {
     window.print();
   }
 
+  function formatCurrencyBRL(value) {
+    var num = Number(value);
+    if (!Number.isFinite(num)) num = 0;
+    return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  }
+
+  function getNcCostLinkedLabel(cost) {
+    if (!cost || !cost.linkedNcId) return '—';
+    var linked = ncRecords.find(function(nc) { return nc.id === cost.linkedNcId; });
+    if (linked) return linked.ncNumber || linked.id || 'NC vinculada';
+    return cost.linkedNcNumber || 'NC vinculada';
+  }
+
+  function renderNcCostPage() {
+    var tbody = document.getElementById('ncCostTableBody');
+    if (!tbody) return;
+
+    var totalCharged = 0;
+    var totalNegotiated = 0;
+    var totalSavings = 0;
+    var withoutNcCount = 0;
+    (ncCostRecords || []).forEach(function(rec) {
+      totalCharged += Number(rec.chargedValue) || 0;
+      if (rec.negotiatedValue != null && rec.negotiatedValue !== '') {
+        var negotiated = Number(rec.negotiatedValue) || 0;
+        totalNegotiated += negotiated;
+        totalSavings += (Number(rec.chargedValue) || 0) - negotiated;
+      }
+      if (!rec.linkedNcId) withoutNcCount++;
+    });
+
+    var chargedEl = document.getElementById('ncCostTotalCharged');
+    var negotiatedEl = document.getElementById('ncCostTotalNegotiated');
+    var savingsEl = document.getElementById('ncCostTotalSavings');
+    var openEl = document.getElementById('ncCostOpenCount');
+    if (chargedEl) chargedEl.textContent = formatCurrencyBRL(totalCharged);
+    if (negotiatedEl) negotiatedEl.textContent = formatCurrencyBRL(totalNegotiated);
+    if (savingsEl) savingsEl.textContent = formatCurrencyBRL(totalSavings);
+    if (openEl) openEl.textContent = String(withoutNcCount);
+
+    if (!ncCostRecords.length) {
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#9ca3af;padding:16px;">Nenhum registro de custo cadastrado.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = '';
+    ncCostRecords.slice().sort(function(a, b) {
+      return (b.date || '').localeCompare(a.date || '');
+    }).forEach(function(rec) {
+      var tr = document.createElement('tr');
+      var negotiationStatus = rec.negotiationOpen ? 'Em aberto' : (rec.negotiatedValue != null ? 'Fechada' : 'Sem valor final');
+      tr.innerHTML =
+        '<td>' + escHtml(rec.date || '—') + '</td>' +
+        '<td>' + escHtml(rec.type === 'administrativo' ? 'Administrativo' : 'NC') + '</td>' +
+        '<td>' + escHtml(getNcCostLinkedLabel(rec)) + '</td>' +
+        '<td>' + escHtml(rec.description || '—') + '</td>' +
+        '<td>' + escHtml(formatCurrencyBRL(rec.chargedValue)) + '</td>' +
+        '<td>' + escHtml(rec.negotiatedValue != null ? formatCurrencyBRL(rec.negotiatedValue) : '—') + '</td>' +
+        '<td>' + escHtml(negotiationStatus) + '</td>' +
+        '<td>' + escHtml(String((rec.evidences || []).length)) + '</td>' +
+        '<td><button type="button" class="btn-icon" data-nccost-edit="' + escHtml(rec.id) + '" title="Editar">✏️</button> <button type="button" class="btn-icon" data-nccost-del="' + escHtml(rec.id) + '" title="Excluir">🗑️</button></td>';
+      tbody.appendChild(tr);
+    });
+
+    tbody.querySelectorAll('[data-nccost-edit]').forEach(function(btn) {
+      btn.addEventListener('click', function() { openNcCostModal(btn.getAttribute('data-nccost-edit')); });
+    });
+    tbody.querySelectorAll('[data-nccost-del]').forEach(function(btn) {
+      btn.addEventListener('click', async function() {
+        var id = btn.getAttribute('data-nccost-del');
+        if (!confirm('Excluir o registro de custo selecionado?')) return;
+        ncCostRecords = ncCostRecords.filter(function(item) { return item.id !== id; });
+        await saveNcCostRecords();
+        renderNcCostPage();
+      });
+    });
+  }
+
+  function rebuildNcCostEvidenceList() {
+    var list = document.getElementById('ncCostEvidenceList');
+    if (!list) return;
+    list.innerHTML = '';
+    if (!_ncCostEvidence.length) {
+      list.innerHTML = '<span class="attachment-empty">Nenhuma evidência anexada.</span>';
+      return;
+    }
+    _ncCostEvidence.forEach(function(ev, idx) {
+      var row = document.createElement('div');
+      row.className = 'attachment-item';
+      row.innerHTML = '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">📎 ' + escHtml(ev.name || 'evidencia') + '</span>';
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.title = 'Remover';
+      btn.textContent = '✕';
+      btn.addEventListener('click', function() {
+        _ncCostEvidence.splice(idx, 1);
+        rebuildNcCostEvidenceList();
+      });
+      row.appendChild(btn);
+      list.appendChild(row);
+    });
+  }
+
+  function populateNcCostLinkedNcOptions(selectedId) {
+    var select = document.getElementById('ncCostLinkedNc');
+    if (!select) return;
+    var options = ['<option value="">Sem NC vinculada</option>'];
+    (ncRecords || []).forEach(function(nc) {
+      var label = (nc.ncNumber || nc.id || 'NC') + ' — ' + (nc.description || nc.customer || 'Sem descrição');
+      options.push('<option value="' + escHtml(nc.id) + '">' + escHtml(label) + '</option>');
+    });
+    select.innerHTML = options.join('');
+    select.value = selectedId || '';
+  }
+
+  function syncNcCostNegotiatedFieldState() {
+    var openChk = document.getElementById('ncCostNegotiationOpen');
+    var valInput = document.getElementById('ncCostNegotiatedValue');
+    if (!openChk || !valInput) return;
+    valInput.disabled = openChk.checked;
+    if (openChk.checked) valInput.value = '';
+  }
+
+  function openNcCostModal(costId) {
+    var backdrop = document.getElementById('ncCostModalBackdrop');
+    if (!backdrop) return;
+    _editingNcCostId = costId || null;
+    _ncCostEvidence = [];
+    document.getElementById('ncCostDate').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('ncCostType').value = 'nc';
+    document.getElementById('ncCostDescription').value = '';
+    document.getElementById('ncCostChargedValue').value = '';
+    document.getElementById('ncCostNegotiatedValue').value = '';
+    document.getElementById('ncCostNegotiationOpen').checked = false;
+    document.getElementById('ncCostNotes').value = '';
+    document.getElementById('ncCostModalTitle').textContent = costId ? 'Editar Registro de Custo' : 'Novo Registro de Custo';
+    populateNcCostLinkedNcOptions('');
+
+    if (costId) {
+      var rec = ncCostRecords.find(function(item) { return item.id === costId; });
+      if (rec) {
+        document.getElementById('ncCostDate').value = rec.date || new Date().toISOString().slice(0, 10);
+        document.getElementById('ncCostType').value = rec.type || 'nc';
+        document.getElementById('ncCostDescription').value = rec.description || '';
+        document.getElementById('ncCostChargedValue').value = rec.chargedValue != null ? rec.chargedValue : '';
+        document.getElementById('ncCostNegotiatedValue').value = rec.negotiatedValue != null ? rec.negotiatedValue : '';
+        document.getElementById('ncCostNegotiationOpen').checked = !!rec.negotiationOpen;
+        document.getElementById('ncCostNotes').value = rec.notes || '';
+        _ncCostEvidence = Array.isArray(rec.evidences) ? rec.evidences.slice() : [];
+        populateNcCostLinkedNcOptions(rec.linkedNcId || '');
+      }
+    }
+
+    syncNcCostNegotiatedFieldState();
+    rebuildNcCostEvidenceList();
+    backdrop.classList.add('open');
+  }
+
+  function closeNcCostModal() {
+    var backdrop = document.getElementById('ncCostModalBackdrop');
+    if (backdrop) backdrop.classList.remove('open');
+    _editingNcCostId = null;
+    _ncCostEvidence = [];
+  }
+
+  function initNcCostPage() {
+    loadNcCostRecordsAsync(currentTenant).then(function(records) {
+      ncCostRecords = records;
+      renderNcCostPage();
+    });
+
+    var btnNew = document.getElementById('ncCostBtnNew');
+    if (btnNew) btnNew.addEventListener('click', function() { openNcCostModal(null); });
+
+    var backdrop = document.getElementById('ncCostModalBackdrop');
+    var closeBtn = document.getElementById('ncCostModalClose');
+    var cancelBtn = document.getElementById('ncCostModalCancel');
+    if (closeBtn) closeBtn.addEventListener('click', closeNcCostModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeNcCostModal);
+    if (backdrop) backdrop.addEventListener('click', function(e) { if (e.target === backdrop) closeNcCostModal(); });
+
+    var openChk = document.getElementById('ncCostNegotiationOpen');
+    if (openChk) openChk.addEventListener('change', syncNcCostNegotiatedFieldState);
+
+    var fileInput = document.getElementById('ncCostEvidenceInput');
+    if (fileInput) {
+      fileInput.addEventListener('change', function() {
+        Array.prototype.forEach.call(fileInput.files || [], function(file) {
+          var reader = new FileReader();
+          reader.onload = function(ev) {
+            _ncCostEvidence.push({ name: file.name, data: ev.target.result });
+            rebuildNcCostEvidenceList();
+          };
+          reader.readAsDataURL(file);
+        });
+        fileInput.value = '';
+      });
+    }
+
+    var saveBtn = document.getElementById('ncCostModalSave');
+    if (saveBtn) {
+      saveBtn.addEventListener('click', async function() {
+        var charged = Number(document.getElementById('ncCostChargedValue').value);
+        var negotiatedRaw = document.getElementById('ncCostNegotiatedValue').value;
+        var negotiationOpen = document.getElementById('ncCostNegotiationOpen').checked;
+        if (!Number.isFinite(charged) || charged <= 0) {
+          alert('Informe um valor cobrado válido.');
+          return;
+        }
+        var selectedNcId = document.getElementById('ncCostLinkedNc').value || '';
+        var linkedNc = selectedNcId ? ncRecords.find(function(nc) { return nc.id === selectedNcId; }) : null;
+        var negotiated = null;
+        if (!negotiationOpen && negotiatedRaw !== '') {
+          var n = Number(negotiatedRaw);
+          if (!Number.isFinite(n) || n < 0) {
+            alert('Informe um valor negociado válido ou marque negociação em aberto.');
+            return;
+          }
+          negotiated = n;
+        }
+
+        var record = normalizeNcCostRecord({
+          id: _editingNcCostId || ('nccost_' + Date.now() + '_' + Math.floor(Math.random() * 100000)),
+          date: document.getElementById('ncCostDate').value || new Date().toISOString().slice(0, 10),
+          type: document.getElementById('ncCostType').value || 'nc',
+          linkedNcId: selectedNcId,
+          linkedNcNumber: linkedNc ? (linkedNc.ncNumber || linkedNc.id || '') : '',
+          description: document.getElementById('ncCostDescription').value.trim(),
+          chargedValue: charged,
+          negotiatedValue: negotiated,
+          negotiationOpen: negotiationOpen,
+          notes: document.getElementById('ncCostNotes').value.trim(),
+          evidences: _ncCostEvidence.slice()
+        });
+
+        if (_editingNcCostId) {
+          var idx = ncCostRecords.findIndex(function(item) { return item.id === _editingNcCostId; });
+          if (idx !== -1) ncCostRecords[idx] = record;
+          else ncCostRecords.push(record);
+        } else {
+          ncCostRecords.push(record);
+        }
+
+        await saveNcCostRecords();
+        renderNcCostPage();
+        closeNcCostModal();
+      });
+    }
+  }
+
   function initNcPage() {
     // Load NC records: try Firebase first, fall back to localStorage
     var _initTenant = currentTenant;
@@ -8607,6 +9047,7 @@ document.addEventListener("DOMContentLoaded", function() {
       renderNcCards();
       renderNcCharts();
       renderHomePage();
+      renderNcCostPage();
     });
 
     // Load and render custom charts
@@ -9488,6 +9929,12 @@ document.addEventListener("DOMContentLoaded", function() {
         setTimeout(renderNcCustomCharts, 80);
       });
     }
+    var ncCostNavItem = document.querySelector('.sidebar-nav li[data-page="ncCostPage"]');
+    if (ncCostNavItem) {
+      ncCostNavItem.addEventListener('click', function() {
+        setTimeout(renderNcCostPage, 80);
+      });
+    }
 
     // ── Custom chart builder ───────────────────────────────────────────────
     var addCustomChartBtn = document.getElementById('ncAddCustomChartBtn');
@@ -9549,6 +9996,69 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 
 </script>
+<!-- NC COST MODAL -->
+<div class="nc-modal-backdrop" id="ncCostModalBackdrop" role="dialog" aria-modal="true" aria-labelledby="ncCostModalTitle">
+  <div class="nc-modal" style="max-width:760px;">
+    <div class="nc-modal-header">
+      <h3 id="ncCostModalTitle">Novo Registro de Custo</h3>
+      <button class="nc-modal-close" id="ncCostModalClose" aria-label="Fechar">✕</button>
+    </div>
+    <div class="nc-modal-body">
+      <div class="nc-form-grid">
+        <div class="nc-field">
+          <label>Data</label>
+          <input type="date" id="ncCostDate" />
+        </div>
+        <div class="nc-field">
+          <label>Tipo de custo</label>
+          <select id="ncCostType">
+            <option value="nc">NC vinculada</option>
+            <option value="administrativo">Administrativo / sem NC</option>
+          </select>
+        </div>
+        <div class="nc-field nc-field-full">
+          <label>NC vinculada (opcional)</label>
+          <select id="ncCostLinkedNc"><option value="">Sem NC vinculada</option></select>
+        </div>
+        <div class="nc-field nc-field-full">
+          <label>Descrição da negociação/custo</label>
+          <textarea id="ncCostDescription" placeholder="Ex: negociação de custo administrativo, frete, retrabalho..." maxlength="400"></textarea>
+        </div>
+        <div class="nc-field">
+          <label>Valor cobrado (R$)</label>
+          <input type="number" id="ncCostChargedValue" min="0" step="0.01" placeholder="0,00" />
+        </div>
+        <div class="nc-field">
+          <label>Valor negociado (R$)</label>
+          <input type="number" id="ncCostNegotiatedValue" min="0" step="0.01" placeholder="0,00" />
+        </div>
+        <div class="nc-field nc-field-full">
+          <label class="nc-nao-proc-toggle">
+            <input type="checkbox" id="ncCostNegotiationOpen" />
+            <span class="nc-nao-proc-toggle-label">
+              Negociação em aberto
+              <small>Marque quando a negociação ainda não tiver valor final fechado.</small>
+            </span>
+          </label>
+        </div>
+        <div class="nc-field nc-field-full">
+          <label>Evidências de negociação</label>
+          <input type="file" id="ncCostEvidenceInput" multiple />
+          <div class="attachment-list" id="ncCostEvidenceList"></div>
+        </div>
+        <div class="nc-field nc-field-full">
+          <label>Observações</label>
+          <textarea id="ncCostNotes" placeholder="Detalhes adicionais da tratativa financeira" maxlength="500"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="nc-modal-footer">
+      <button class="nc-btn-cancel-modal" id="ncCostModalCancel">Cancelar</button>
+      <button class="nc-btn-save" id="ncCostModalSave">Salvar Registro</button>
+    </div>
+  </div>
+</div>
+
 <!-- NC REGISTRATION MODAL -->
 <div class="nc-modal-backdrop" id="ncModalBackdrop" role="dialog" aria-modal="true" aria-labelledby="ncModalTitle">
   <div class="nc-modal">
