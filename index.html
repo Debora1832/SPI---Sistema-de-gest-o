@@ -6430,6 +6430,12 @@ document.addEventListener("DOMContentLoaded", function() {
   var PT_MONTHS_SHORT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                           'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   var NC_CHART_DEFAULT_TITLE = 'Volume de Reclamações do Cliente (por mês)';
+  /**
+   * Read a CSS custom property from :root with fallback.
+   * @param {string} varName CSS variable name (must include `--` prefix).
+   * @param {string} fallback Fallback color when the CSS variable is unavailable.
+   * @returns {string} The trimmed CSS variable value or fallback.
+   */
   function _ncThemeColor(varName, fallback) {
     if (typeof varName !== 'string' || !varName.startsWith('--')) return fallback;
     var css = getComputedStyle(document.documentElement).getPropertyValue(varName);
@@ -6442,12 +6448,21 @@ document.addEventListener("DOMContentLoaded", function() {
   function _ncThemeMetaColor() {
     return darkenHex(_ncThemePrimaryColor(), 0.2);
   }
+  /**
+   * Check whether a color setting exists and has a non-empty value.
+   * @param {string} key Setting key in `_ncChartSettings`.
+   * @returns {boolean} True when a saved non-empty value exists.
+   */
   function _hasNcChartColorSetting(key) {
     if (!_ncChartSettings || typeof _ncChartSettings !== 'object') return false;
     return Object.prototype.hasOwnProperty.call(_ncChartSettings, key) &&
       _ncChartSettings[key] != null &&
       _ncChartSettings[key] !== '';
   }
+  /**
+   * Sync chart color inputs with tenant theme colors when no saved color exists.
+   * Called when tenant theme changes so popovers start with the active visual pattern.
+   */
   function _syncNcThemeColorInputs() {
     if (!_ncChartSettings || typeof _ncChartSettings !== 'object') return;
     var primaryColor = _ncThemePrimaryColor();
