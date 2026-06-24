@@ -1974,11 +1974,11 @@
           </div>
           <div class="nc-cep-row">
             <label>Cor das barras</label>
-            <input type="color" id="ncCepBarColor" value="#1E4D17" />
+            <input type="color" id="ncCepBarColor" value="#1b4d8e" />
           </div>
           <div class="nc-cep-row">
             <label>Cor da linha meta</label>
-            <input type="color" id="ncCepMetaColor" value="#183d12" />
+            <input type="color" id="ncCepMetaColor" value="#f97316" />
           </div>
           <div class="nc-cep-row">
             <label>Valor da meta</label>
@@ -2005,7 +2005,7 @@
           </div>
           <div class="nc-cep-row">
             <label>Cor das barras</label>
-            <input type="color" id="ncCepPieceBarColor" value="#1E4D17" />
+            <input type="color" id="ncCepPieceBarColor" value="#1b4d8e" />
           </div>
           <div class="nc-cep-row">
             <label>Ordenar por</label>
@@ -2018,7 +2018,7 @@
           </div>
           <div class="nc-cep-row">
             <label>Cor da linha meta</label>
-            <input type="color" id="ncCepPieceMetaColor" value="#183d12" />
+            <input type="color" id="ncCepPieceMetaColor" value="#f97316" />
           </div>
           <div class="nc-cep-row">
             <label>Valor da meta</label>
@@ -2042,7 +2042,7 @@
           </div>
           <div class="nc-cep-row">
             <label>Cor das barras</label>
-            <input type="color" id="ncCepFailureBarColor" value="#1E4D17" />
+            <input type="color" id="ncCepFailureBarColor" value="#2563eb" />
           </div>
           <div class="nc-cep-row">
             <label>Ordenar por</label>
@@ -2055,7 +2055,7 @@
           </div>
           <div class="nc-cep-row">
             <label>Cor da linha meta</label>
-            <input type="color" id="ncCepFailureMetaColor" value="#183d12" />
+            <input type="color" id="ncCepFailureMetaColor" value="#f97316" />
           </div>
           <div class="nc-cep-row">
             <label>Valor da meta</label>
@@ -2171,7 +2171,7 @@
     </div>
     <div class="nc-builder-row">
       <label for="ncBuilderColor">Cor principal</label>
-      <input type="color" id="ncBuilderColor" value="#1E4D17" />
+      <input type="color" id="ncBuilderColor" value="#1b4d8e" />
     </div>
     <div class="nc-builder-row" id="ncBuilderSortRow">
       <label for="ncBuilderSort">Ordenar por</label>
@@ -6431,7 +6431,7 @@ document.addEventListener("DOMContentLoaded", function() {
                           'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   var NC_CHART_DEFAULT_TITLE = 'Volume de Reclamações do Cliente (por mês)';
   function _ncThemeColor(varName, fallback) {
-    if (!varName || String(varName).slice(0, 2) !== '--') return fallback;
+    if (typeof varName !== 'string' || !varName.startsWith('--')) return fallback;
     var css = getComputedStyle(document.documentElement).getPropertyValue(varName);
     var value = (css || '').trim();
     return value || fallback;
@@ -6441,6 +6441,12 @@ document.addEventListener("DOMContentLoaded", function() {
   }
   function _ncThemeMetaColor() {
     return darkenHex(_ncThemePrimaryColor(), 0.2);
+  }
+  function _hasNcChartColorSetting(key) {
+    if (!_ncChartSettings || typeof _ncChartSettings !== 'object') return false;
+    return Object.prototype.hasOwnProperty.call(_ncChartSettings, key) &&
+      _ncChartSettings[key] != null &&
+      _ncChartSettings[key] !== '';
   }
   function _syncNcThemeColorInputs() {
     if (!_ncChartSettings || typeof _ncChartSettings !== 'object') return;
@@ -6452,14 +6458,12 @@ document.addEventListener("DOMContentLoaded", function() {
     var pieceMeta = document.getElementById('ncCepPieceMetaColor');
     var failureBar = document.getElementById('ncCepFailureBarColor');
     var failureMeta = document.getElementById('ncCepFailureMetaColor');
-    var builderColor = document.getElementById('ncBuilderColor');
-    if (monthlyBar && !_ncChartSettings.barColor) monthlyBar.value = primaryColor;
-    if (monthlyMeta && !_ncChartSettings.metaColor) monthlyMeta.value = metaColor;
-    if (pieceBar && !_ncChartSettings.pieceBarColor) pieceBar.value = primaryColor;
-    if (pieceMeta && !_ncChartSettings.pieceMetaColor) pieceMeta.value = metaColor;
-    if (failureBar && !_ncChartSettings.failureBarColor) failureBar.value = primaryColor;
-    if (failureMeta && !_ncChartSettings.failureMetaColor) failureMeta.value = metaColor;
-    if (builderColor && !_ncBuilderEditId) builderColor.value = primaryColor;
+    if (monthlyBar && !_hasNcChartColorSetting('barColor')) monthlyBar.value = primaryColor;
+    if (monthlyMeta && !_hasNcChartColorSetting('metaColor')) monthlyMeta.value = metaColor;
+    if (pieceBar && !_hasNcChartColorSetting('pieceBarColor')) pieceBar.value = primaryColor;
+    if (pieceMeta && !_hasNcChartColorSetting('pieceMetaColor')) pieceMeta.value = metaColor;
+    if (failureBar && !_hasNcChartColorSetting('failureBarColor')) failureBar.value = primaryColor;
+    if (failureMeta && !_hasNcChartColorSetting('failureMetaColor')) failureMeta.value = metaColor;
   }
   var BAR_DIM_SUFFIX = '66'; // 40 % opacity hex appended to bar color when dimmed
   var _ncPhotos = []; // array of data-URL strings for the modal in progress
