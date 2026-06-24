@@ -4620,7 +4620,7 @@ document.addEventListener("DOMContentLoaded", function() {
       item.classList.add("active");
       var pageId = item.dataset.page;
       document.getElementById(pageId).classList.add("active");
-      var parentGroup = item.closest ? item.closest('.nav-group') : null;
+      var parentGroup = item.closest('.nav-group');
       if (parentGroup) parentGroup.classList.add('open');
 
       // When going home, collapse context-specific groups and reset state
