@@ -1801,7 +1801,7 @@
       <div class="kpi-card"><h4>Total Cobrado</h4><div class="kpi-value" id="ncCostTotalCharged">R$ 0,00</div></div>
       <div class="kpi-card"><h4>Total Negociado</h4><div class="kpi-value" id="ncCostTotalNegotiated">R$ 0,00</div></div>
       <div class="kpi-card"><h4>Economia</h4><div class="kpi-value" id="ncCostTotalSavings">R$ 0,00</div></div>
-      <div class="kpi-card"><h4>Registros sem NC</h4><div class="kpi-value" id="ncCostOpenCount">0</div></div>
+      <div class="kpi-card"><h4>Registros não vinculados</h4><div class="kpi-value" id="ncCostOpenCount">0</div></div>
     </div>
 
     <div class="card">
@@ -6136,9 +6136,13 @@ document.addEventListener("DOMContentLoaded", function() {
     return 'spi_nc_cost_records_' + (tenantId || currentTenant);
   }
 
+  function generateNcCostId() {
+    return 'nccost_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+  }
+
   function normalizeNcCostRecord(rec) {
     var r = Object.assign({}, rec || {});
-    if (!r.id) r.id = 'nccost_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
+    if (!r.id) r.id = generateNcCostId();
     if (!r.date) r.date = new Date().toISOString().slice(0, 10);
     r.type = r.type === 'administrativo' ? 'administrativo' : 'nc';
     r.linkedNcId = (r.linkedNcId || '').trim();
@@ -6793,7 +6797,7 @@ document.addEventListener("DOMContentLoaded", function() {
       if (!ev) return null;
       if (ev.url && typeof ev.url === 'string') return { name: ev.name || 'evidencia', url: ev.url };
       if (ev.data && typeof ev.data === 'string' && ev.data.startsWith('https://')) return { name: ev.name || 'evidencia', url: ev.data };
-      if (!ev.data || typeof ev.data !== 'string' || !ev.data.startsWith('data:')) return { name: ev.name || 'evidencia' };
+      if (!ev.data || typeof ev.data !== 'string' || !ev.data.startsWith('data:')) return null;
       return uploadFileToStorage(tenantId, out.id, ev.data, 'cost_evidence_' + idx, ev.name)
         .then(function(url) { return url ? { name: ev.name || 'evidencia', url: url } : { name: ev.name || 'evidencia' }; });
     }));
@@ -6807,9 +6811,12 @@ document.addEventListener("DOMContentLoaded", function() {
     return (Array.isArray(remoteRecords) ? remoteRecords : []).map(function(rec) {
       var localRec = byId.get(rec.id);
       if (!localRec || !Array.isArray(rec.evidences) || !rec.evidences.length) return normalizeNcCostRecord(rec);
+      var localByName = new Map((localRec.evidences || []).map(function(ev) {
+        return [String((ev && ev.name) || '').trim().toLowerCase(), ev];
+      }));
       var merged = Object.assign({}, rec);
       merged.evidences = rec.evidences.map(function(ev, idx) {
-        var localEv = (localRec.evidences || [])[idx];
+        var localEv = localByName.get(String((ev && ev.name) || '').trim().toLowerCase()) || (localRec.evidences || [])[idx];
         if (localEv && localEv.data) {
           return { name: ev.name || localEv.name || 'evidencia', data: localEv.data, url: ev.url || localEv.url };
         }
@@ -8837,7 +8844,7 @@ document.addEventListener("DOMContentLoaded", function() {
       return (b.date || '').localeCompare(a.date || '');
     }).forEach(function(rec) {
       var tr = document.createElement('tr');
-      var negotiationStatus = rec.negotiationOpen ? 'Em aberto' : (rec.negotiatedValue != null ? 'Fechada' : 'Sem valor final');
+      var negotiationStatus = rec.negotiationOpen ? 'Em aberto' : (rec.negotiatedValue != null ? 'Fechada' : 'Sem negociação');
       tr.innerHTML =
         '<td>' + escHtml(rec.date || '—') + '</td>' +
         '<td>' + escHtml(rec.type === 'administrativo' ? 'Administrativo' : 'NC') + '</td>' +
@@ -8993,7 +9000,7 @@ document.addEventListener("DOMContentLoaded", function() {
         var negotiatedRaw = document.getElementById('ncCostNegotiatedValue').value;
         var negotiationOpen = document.getElementById('ncCostNegotiationOpen').checked;
         if (!Number.isFinite(charged) || charged <= 0) {
-          alert('Informe um valor cobrado válido.');
+          alert('Informe um valor cobrado válido e maior que zero.');
           return;
         }
         var selectedNcId = document.getElementById('ncCostLinkedNc').value || '';
@@ -9002,14 +9009,14 @@ document.addEventListener("DOMContentLoaded", function() {
         if (!negotiationOpen && negotiatedRaw !== '') {
           var n = Number(negotiatedRaw);
           if (!Number.isFinite(n) || n < 0) {
-            alert('Informe um valor negociado válido ou marque negociação em aberto.');
+            alert('Informe um valor negociado válido (maior ou igual a zero) ou marque negociação em aberto.');
             return;
           }
           negotiated = n;
         }
 
         var record = normalizeNcCostRecord({
-          id: _editingNcCostId || ('nccost_' + Date.now() + '_' + Math.floor(Math.random() * 100000)),
+          id: _editingNcCostId || undefined,
           date: document.getElementById('ncCostDate').value || new Date().toISOString().slice(0, 10),
           type: document.getElementById('ncCostType').value || 'nc',
           linkedNcId: selectedNcId,
