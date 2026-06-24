@@ -6437,7 +6437,7 @@ document.addEventListener("DOMContentLoaded", function() {
    * @returns {string} The trimmed CSS variable value or fallback.
    */
   function _ncThemeColor(varName, fallback) {
-    if (typeof varName !== 'string' || !varName.startsWith('--')) return fallback;
+    if (!varName || typeof varName !== 'string' || !varName.startsWith('--')) return fallback;
     var css = getComputedStyle(document.documentElement).getPropertyValue(varName);
     var value = (css || '').trim();
     return value || fallback;
@@ -6456,8 +6456,22 @@ document.addEventListener("DOMContentLoaded", function() {
   function _hasNcChartColorSetting(key) {
     if (!_ncChartSettings || typeof _ncChartSettings !== 'object') return false;
     return Object.prototype.hasOwnProperty.call(_ncChartSettings, key) &&
-      _ncChartSettings[key] != null &&
+      _ncChartSettings[key] !== null &&
+      _ncChartSettings[key] !== undefined &&
       _ncChartSettings[key] !== '';
+  }
+  var _ncThemeColorInputRefs = null;
+  function _getNcThemeColorInputRefs() {
+    if (_ncThemeColorInputRefs) return _ncThemeColorInputRefs;
+    _ncThemeColorInputRefs = {
+      monthlyBar: document.getElementById('ncCepBarColor'),
+      monthlyMeta: document.getElementById('ncCepMetaColor'),
+      pieceBar: document.getElementById('ncCepPieceBarColor'),
+      pieceMeta: document.getElementById('ncCepPieceMetaColor'),
+      failureBar: document.getElementById('ncCepFailureBarColor'),
+      failureMeta: document.getElementById('ncCepFailureMetaColor')
+    };
+    return _ncThemeColorInputRefs;
   }
   /**
    * Sync chart color inputs with tenant theme colors when no saved color exists.
@@ -6467,18 +6481,13 @@ document.addEventListener("DOMContentLoaded", function() {
     if (!_ncChartSettings || typeof _ncChartSettings !== 'object') return;
     var primaryColor = _ncThemePrimaryColor();
     var metaColor = _ncThemeMetaColor();
-    var monthlyBar = document.getElementById('ncCepBarColor');
-    var monthlyMeta = document.getElementById('ncCepMetaColor');
-    var pieceBar = document.getElementById('ncCepPieceBarColor');
-    var pieceMeta = document.getElementById('ncCepPieceMetaColor');
-    var failureBar = document.getElementById('ncCepFailureBarColor');
-    var failureMeta = document.getElementById('ncCepFailureMetaColor');
-    if (monthlyBar && !_hasNcChartColorSetting('barColor')) monthlyBar.value = primaryColor;
-    if (monthlyMeta && !_hasNcChartColorSetting('metaColor')) monthlyMeta.value = metaColor;
-    if (pieceBar && !_hasNcChartColorSetting('pieceBarColor')) pieceBar.value = primaryColor;
-    if (pieceMeta && !_hasNcChartColorSetting('pieceMetaColor')) pieceMeta.value = metaColor;
-    if (failureBar && !_hasNcChartColorSetting('failureBarColor')) failureBar.value = primaryColor;
-    if (failureMeta && !_hasNcChartColorSetting('failureMetaColor')) failureMeta.value = metaColor;
+    var refs = _getNcThemeColorInputRefs();
+    if (refs.monthlyBar && !_hasNcChartColorSetting('barColor')) refs.monthlyBar.value = primaryColor;
+    if (refs.monthlyMeta && !_hasNcChartColorSetting('metaColor')) refs.monthlyMeta.value = metaColor;
+    if (refs.pieceBar && !_hasNcChartColorSetting('pieceBarColor')) refs.pieceBar.value = primaryColor;
+    if (refs.pieceMeta && !_hasNcChartColorSetting('pieceMetaColor')) refs.pieceMeta.value = metaColor;
+    if (refs.failureBar && !_hasNcChartColorSetting('failureBarColor')) refs.failureBar.value = primaryColor;
+    if (refs.failureMeta && !_hasNcChartColorSetting('failureMetaColor')) refs.failureMeta.value = metaColor;
   }
   var BAR_DIM_SUFFIX = '66'; // 40 % opacity hex appended to bar color when dimmed
   var _ncPhotos = []; // array of data-URL strings for the modal in progress
