@@ -1986,15 +1986,15 @@
         </div>
         <!-- Stat balloons below Volume AQE -->
         <div class="nc-stat-balloons" id="ncStatBalloons">
-          <div class="nc-stat-balloon nc-stat-balloon-clickable rnc" id="ncStatBalloonRnc" role="button" tabindex="0" title="Clique para ver detalhes" aria-label="Clique para ver detalhes de RNC Aberta e Alerta Emitido">
+          <div class="nc-stat-balloon nc-stat-balloon-clickable rnc" id="ncStatBalloonRnc" role="button" tabindex="0" aria-label="Clique para ver detalhes de RNC Aberta e Alerta Emitido">
             <div class="nc-stat-balloon-value" id="ncStatClosed">0</div>
             <div class="nc-stat-balloon-label">RNC Aberta /<br>Alerta Emitido</div>
           </div>
-          <div class="nc-stat-balloon nc-stat-balloon-clickable eightd" id="ncStatBalloonEightD" role="button" tabindex="0" title="Clique para ver detalhes" aria-label="Clique para ver detalhes de 8D Finalizado">
+          <div class="nc-stat-balloon nc-stat-balloon-clickable eightd" id="ncStatBalloonEightD" role="button" tabindex="0" aria-label="Clique para ver detalhes de 8D Finalizado">
             <div class="nc-stat-balloon-value" id="ncStatEightD">0</div>
             <div class="nc-stat-balloon-label">8D Finalizado</div>
           </div>
-          <div class="nc-stat-balloon nc-stat-balloon-clickable qty" id="ncStatBalloonQty" role="button" tabindex="0" title="Clique para ver detalhes" aria-label="Clique para ver detalhes de Quantidade de Peças">
+          <div class="nc-stat-balloon nc-stat-balloon-clickable qty" id="ncStatBalloonQty" role="button" tabindex="0" aria-label="Clique para ver detalhes de Quantidade de Peças">
             <div class="nc-stat-balloon-value" id="ncStatQty">0</div>
             <div class="nc-stat-balloon-label">Qtd. de<br>Peças</div>
           </div>
@@ -9371,7 +9371,7 @@ document.addEventListener("DOMContentLoaded", function() {
     var photosHtml = ncPhotos.length
       ? '<div class="nc-cost-detail-photo-strip">' + ncPhotos.map(function(src, idx) {
           var alt = photoAltBase + ' (' + (idx + 1) + ')';
-          return '<img src="' + escHtml(src) + '" alt="' + escHtml(alt) + '" aria-label="' + escHtml(alt) + '" data-nccost-photo-src="' + escHtml(src) + '" data-nccost-photo-alt="' + escHtml(alt) + '" tabindex="0" role="button">';
+          return '<img src="' + escHtml(src) + '" alt="' + escHtml(alt) + '" data-nccost-photo-src="' + escHtml(src) + '" data-nccost-photo-alt="' + escHtml(alt) + '" tabindex="0" role="button">';
         }).join('') + '</div>'
       : '';
 
