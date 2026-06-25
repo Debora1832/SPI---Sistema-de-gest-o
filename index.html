@@ -320,6 +320,12 @@
       background:rgba(255,255,255,.88); border:1px solid rgba(226,232,240,.95); border-radius:14px;
       padding:14px 15px; display:flex; flex-direction:column; gap:4px;
     }
+    .savings-summary-metric.clickable { cursor:pointer; transition:transform .15s, box-shadow .15s, border-color .15s; }
+    .savings-summary-metric.clickable:hover {
+      transform:translateY(-2px);
+      box-shadow:0 10px 22px rgba(15,23,42,.10);
+      border-color:#93c5fd;
+    }
     .savings-summary-metric-label { font-size:11px; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:.08em; }
     .savings-summary-metric-value { font-size:22px; font-weight:800; color:#0f172a; line-height:1.15; }
     .savings-summary-metric-sub { font-size:12px; color:#94a3b8; }
@@ -1036,10 +1042,12 @@
     .nc-card-photo-strip:hover::after { opacity:1; }
 
     /* ── PDF print area (hidden on screen, visible when printing) ── */
-    #nc-print-area { display:none; }
+    #nc-print-area, #nc-cost-print-area { display:none; }
     @media print {
       body > *     { display:none !important; }
-      #nc-print-area { display:block !important; font-family:Arial,sans-serif; padding:28px; color:#1a1a1a; max-width:800px; margin:0 auto; }
+      #nc-print-area, #nc-cost-print-area { display:none !important; }
+      body.print-nc #nc-print-area { display:block !important; font-family:Arial,sans-serif; padding:28px; color:#1a1a1a; max-width:800px; margin:0 auto; }
+      body.print-nccost #nc-cost-print-area { display:block !important; font-family:Arial,sans-serif; padding:24px; color:#1a1a1a; max-width:960px; margin:0 auto; }
 
       /* Header strip */
       #nc-print-area .prt-header { background:#1565C0; color:#fff; padding:20px 28px; border-radius:10px 10px 0 0; display:flex; align-items:center; justify-content:space-between; }
@@ -1081,6 +1089,19 @@
 
       /* Footer */
       #nc-print-area .prt-footer { margin-top:20px; font-size:9px; color:#9ca3af; text-align:right; border-top:1px solid #f0f0f0; padding-top:8px; display:flex; justify-content:space-between; }
+
+      #nc-cost-print-area .ncp-head { background:#0D2461; color:#fff; padding:16px 20px; border-radius:10px 10px 0 0; display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
+      #nc-cost-print-area .ncp-head h1 { margin:0 0 4px; font-size:20px; }
+      #nc-cost-print-area .ncp-head p { margin:0; font-size:12px; opacity:.85; }
+      #nc-cost-print-area .ncp-wrap { border:1px solid #e5e7eb; border-top:none; border-radius:0 0 10px 10px; overflow:hidden; }
+      #nc-cost-print-area .ncp-summary { display:grid; grid-template-columns:repeat(4,minmax(120px,1fr)); gap:8px; padding:12px; background:#f8fafc; border-bottom:1px solid #e5e7eb; }
+      #nc-cost-print-area .ncp-box { background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:8px 10px; }
+      #nc-cost-print-area .ncp-box label { display:block; font-size:9px; text-transform:uppercase; letter-spacing:.08em; color:#64748b; margin-bottom:3px; font-weight:700; }
+      #nc-cost-print-area .ncp-box strong { font-size:14px; color:#0f172a; }
+      #nc-cost-print-area .ncp-table { width:100%; border-collapse:collapse; }
+      #nc-cost-print-area .ncp-table thead th { background:#1e3a8a; color:#fff; font-size:10px; text-transform:uppercase; letter-spacing:.05em; padding:8px; text-align:left; }
+      #nc-cost-print-area .ncp-table tbody td { font-size:11px; color:#1f2937; padding:8px; border-bottom:1px solid #eef2f7; }
+      #nc-cost-print-area .ncp-foot { margin-top:10px; font-size:10px; color:#94a3b8; display:flex; justify-content:space-between; }
     }
 
     /* ── RNC/8D Status popup ── */
@@ -1435,6 +1456,38 @@
       box-shadow:0 1px 2px rgba(15,23,42,.04);
     }
     .home-cost-filters select:focus { border-color:#0D2461; box-shadow:0 0 0 3px rgba(13,36,97,.14); }
+    .nc-cost-controls { display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; }
+    .nc-cost-filters { display:flex; gap:10px; flex-wrap:wrap; }
+    .nc-cost-filters label { display:flex; flex-direction:column; gap:6px; font-size:12px; font-weight:700; color:#334155; }
+    .nc-cost-filters select {
+      min-width:130px; padding:9px 12px; border-radius:10px; border:1px solid #cbd5e1;
+      background:#fff; color:#0f172a; font-size:13px; font-weight:600; outline:none;
+      box-shadow:0 1px 2px rgba(15,23,42,.04);
+    }
+    .nc-cost-filters select:focus { border-color:#0D2461; box-shadow:0 0 0 3px rgba(13,36,97,.14); }
+    .nc-cost-chart-card {
+      background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:14px 16px; margin-bottom:14px;
+      box-shadow:0 2px 9px rgba(15,23,42,.05);
+    }
+    .nc-cost-chart-card h4 { margin:0 0 8px; font-size:13px; font-weight:700; color:#0f172a; }
+    .nc-cost-chart-card p { margin:0 0 12px; font-size:12px; color:#64748b; }
+    .nc-cost-chart-wrap { min-height:210px; }
+
+    #ncCostPdfModal { display:none; position:fixed; inset:0; z-index:9105; background:rgba(0,0,0,.45); align-items:center; justify-content:center; padding:16px; }
+    #ncCostPdfModal.open { display:flex; }
+    .nc-cost-pdf-box { width:min(620px,calc(100vw - 24px)); background:#fff; border-radius:12px; box-shadow:0 20px 48px rgba(0,0,0,.24); overflow:hidden; }
+    .nc-cost-pdf-head { background:#0D2461; color:#fff; padding:14px 16px; }
+    .nc-cost-pdf-head h3 { margin:0; font-size:15px; }
+    .nc-cost-pdf-body { padding:14px 16px; display:grid; gap:10px; }
+    .nc-cost-pdf-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px; }
+    .nc-cost-pdf-grid label { display:flex; flex-direction:column; gap:5px; font-size:12px; font-weight:700; color:#334155; }
+    .nc-cost-pdf-grid select {
+      padding:8px 10px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; font-size:13px; color:#0f172a; font-weight:600;
+    }
+    .nc-cost-pdf-check { display:flex; align-items:center; gap:8px; font-size:12px; font-weight:700; color:#374151; }
+    .nc-cost-pdf-foot { display:flex; justify-content:flex-end; gap:8px; padding:10px 16px 14px; border-top:1px solid #e5e7eb; background:#f8fafc; }
+    .nc-cost-pdf-btn-cancel { background:#e5e7eb; color:#374151; border:none; border-radius:8px; padding:8px 14px; font-size:12px; font-weight:700; cursor:pointer; }
+    .nc-cost-pdf-btn-export { background:#0D2461; color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:12px; font-weight:700; cursor:pointer; }
 
     /* KPI two-column layout (kept for compat, unused now) */
     .home-kpi-row { display:none; }
@@ -1913,10 +1966,28 @@
         <h1>Controle de Custos NC</h1>
         <p>Registro de gastos e negociação de valores com ou sem vínculo direto com NC.</p>
       </div>
-      <button class="btn-primary" id="ncCostBtnNew" style="margin-top:4px;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/></svg>
-        Novo Registro
-      </button>
+      <div class="nc-cost-controls">
+        <div class="nc-cost-filters">
+          <label>Mês
+            <select id="ncCostMonthFilter">
+              <option value="all">Todos</option>
+            </select>
+          </label>
+          <label>Ano
+            <select id="ncCostYearFilter">
+              <option value="all">Todos</option>
+            </select>
+          </label>
+        </div>
+        <button class="btn-primary" id="ncCostExportPdfBtn" style="margin-top:4px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a6 6 0 00-6 6v3.586L2.293 13.293a1 1 0 101.414 1.414L5 13.414V16a2 2 0 002 2h6a2 2 0 002-2v-2.586l1.293 1.293a1 1 0 001.414-1.414L16 11.586V8a6 6 0 00-6-6zm1 8V5a1 1 0 10-2 0v5H6l4 4 4-4h-3z"/></svg>
+          Exportar PDF
+        </button>
+        <button class="btn-primary" id="ncCostBtnNew" style="margin-top:4px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/></svg>
+          Novo Registro
+        </button>
+      </div>
     </div>
 
     <div class="kpi-grid kpi-grid-unified" style="margin-bottom:14px;">
@@ -1927,6 +1998,13 @@
     </div>
 
     <div id="ncCostSummaryCard" style="margin-bottom:14px;"></div>
+    <div class="nc-cost-chart-card">
+      <h4>Comparativo financeiro</h4>
+      <p>Total projetado vs total economizado nos filtros selecionados.</p>
+      <div class="nc-cost-chart-wrap">
+        <canvas id="ncCostSavingsBarChart"></canvas>
+      </div>
+    </div>
 
     <div class="card">
       <div class="table-wrap">
@@ -4802,6 +4880,12 @@ document.addEventListener("DOMContentLoaded", function() {
     loadNcCostRecordsAsync(key).then(function(records) {
       if (currentTenant !== key) return;
       ncCostRecords = records;
+      homeNcCostFilters.userTouched = false;
+      homeNcCostFilters.month = 'all';
+      homeNcCostFilters.year = 'all';
+      ncCostPageFilters.userTouched = false;
+      ncCostPageFilters.month = 'all';
+      ncCostPageFilters.year = 'all';
       renderNcCostPage();
       renderHomePage();
     }).catch(function(e) { console.warn('Erro ao carregar custos NC:', e); });
@@ -5035,7 +5119,7 @@ document.addEventListener("DOMContentLoaded", function() {
     { value:'11', label:'Novembro' },
     { value:'12', label:'Dezembro' }
   ];
-  var homeNcCostFilters = { month:'all', year:'all' };
+  var homeNcCostFilters = { month:'all', year:'all', userTouched:false };
 
   function loadHomeNcRecords(tenantId) {
     if (tenantId === currentTenant && Array.isArray(ncRecords)) {
@@ -5148,6 +5232,90 @@ document.addEventListener("DOMContentLoaded", function() {
     return true;
   }
 
+  function getCurrentMonthYear() {
+    var now = new Date();
+    return {
+      month: String(now.getMonth() + 1).padStart(2, '0'),
+      year: String(now.getFullYear())
+    };
+  }
+
+  function normalizeNcCostPeriodFilters(filters, availableYears) {
+    var years = Array.isArray(availableYears) ? availableYears : [];
+    if (!filters.userTouched) {
+      var currentPeriod = getCurrentMonthYear();
+      filters.month = currentPeriod.month;
+      filters.year = years.indexOf(currentPeriod.year) !== -1 ? currentPeriod.year : 'all';
+    }
+    if (filters.month !== 'all' && !HOME_COST_MONTHS.some(function(item) { return item.value === filters.month; })) {
+      filters.month = 'all';
+    }
+    if (filters.year !== 'all' && years.indexOf(filters.year) === -1) {
+      filters.year = 'all';
+    }
+  }
+
+  function withNcCostTenantLabel(records, tenantId) {
+    var tenant = (TENANTS && TENANTS[tenantId]) || null;
+    var tenantLabel = tenant ? (tenant.label || tenantId) : tenantId;
+    return (records || []).map(function(rec) {
+      var item = normalizeNcCostRecord(rec);
+      item._tenantId = tenantId || currentTenant;
+      item._tenantLabel = tenantLabel || '—';
+      return item;
+    });
+  }
+
+  function getNcCostMetricRecords(kind, records) {
+    var list = (records || []).slice();
+    if (kind === 'savings') {
+      return list.filter(function(rec) {
+        var charged = Number(rec && rec.chargedValue) || 0;
+        return charged > getNcCostCurrentValue(rec);
+      });
+    }
+    if (kind === 'closed') {
+      return list.filter(function(rec) { return !rec.negotiationOpen && rec.negotiatedValue != null; });
+    }
+    return list;
+  }
+
+  function openNcCostMetricPopup(kind, records, scopeLabel) {
+    var titleEl = document.getElementById('groupDetailTitle');
+    var tbody = document.getElementById('groupDetailTbody');
+    var thead = document.querySelector('#groupDetailTable thead tr');
+    var backdrop = document.getElementById('groupDetailBackdrop');
+    if (!titleEl || !tbody || !thead || !backdrop) return;
+    var map = {
+      projected: 'Projetado',
+      current: 'Atual / negociado',
+      savings: 'Economizado',
+      closed: 'Negociações fechadas'
+    };
+    var list = getNcCostMetricRecords(kind, records).slice().sort(function(a, b) {
+      return (b.date || '').localeCompare(a.date || '');
+    });
+    titleEl.textContent = (map[kind] || 'Detalhes') + ' — ' + (scopeLabel || 'Negociações');
+    thead.innerHTML = '<th>#</th><th>Data</th><th>Cliente</th><th>NC</th><th>Tipo</th><th>Status</th><th>Valor cobrado</th><th>Atual / negociado</th><th>Economia</th>';
+    tbody.innerHTML = list.length ? list.map(function(rec, idx) {
+      var charged = Number(rec && rec.chargedValue) || 0;
+      var current = getNcCostCurrentValue(rec);
+      var savings = Math.max(0, charged - current);
+      return '<tr>' +
+        '<td>' + (idx + 1) + '</td>' +
+        '<td>' + escHtml(rec.date || '—') + '</td>' +
+        '<td>' + escHtml(rec._tenantLabel || ((TENANTS[currentTenant] && TENANTS[currentTenant].label) || '—')) + '</td>' +
+        '<td>' + escHtml(getNcCostLinkedLabel(rec)) + '</td>' +
+        '<td>' + escHtml(rec.type === 'administrativo' ? 'Administrativo' : 'NC') + '</td>' +
+        '<td>' + escHtml(getNcCostNegotiationStatus(rec)) + '</td>' +
+        '<td>' + escHtml(formatCurrencyBRL(charged)) + '</td>' +
+        '<td>' + escHtml(formatCurrencyBRL(current)) + '</td>' +
+        '<td>' + escHtml(formatCurrencyBRL(savings)) + '</td>' +
+      '</tr>';
+    }).join('') : '<tr><td colspan="9" style="text-align:center;color:#6b7280;">Nenhum registro encontrado para este indicador.</td></tr>';
+    backdrop.classList.add('open');
+  }
+
   function getNcCostCurrentValue(rec) {
     var charged = Number(rec && rec.chargedValue) || 0;
     if (rec && !rec.negotiationOpen && rec.negotiatedValue != null) {
@@ -5213,7 +5381,10 @@ document.addEventListener("DOMContentLoaded", function() {
       subtitle: 'Comparativo entre o valor projetado e o valor atual após as negociações.',
       periodLabel: '',
       currentLabel: 'Atual / negociado',
-      emptyText: 'Nenhum registro de custo disponível para exibir o comparativo.'
+      emptyText: 'Nenhum registro de custo disponível para exibir o comparativo.',
+      records: [],
+      scopeLabel: 'Negociações',
+      onMetricClick: null
     }, options || {});
     if (!summary || summary.projected <= 0) {
       target.innerHTML =
@@ -5249,13 +5420,28 @@ document.addEventListener("DOMContentLoaded", function() {
             '</div>' +
           '</div>' +
           '<div class="savings-summary-metrics">' +
-            '<div class="savings-summary-metric"><span class="savings-summary-metric-label">Projetado</span><strong class="savings-summary-metric-value">' + escHtml(formatCurrencyBRL(summary.projected)) + '</strong><span class="savings-summary-metric-sub">Valor originalmente cobrado</span></div>' +
-            '<div class="savings-summary-metric"><span class="savings-summary-metric-label">' + escHtml(cfg.currentLabel) + '</span><strong class="savings-summary-metric-value">' + escHtml(formatCurrencyBRL(summary.current)) + '</strong><span class="savings-summary-metric-sub">Valor atual depois das tratativas</span></div>' +
-            '<div class="savings-summary-metric"><span class="savings-summary-metric-label">Economizado</span><strong class="savings-summary-metric-value">' + escHtml(formatCurrencyBRL(summary.savings)) + '</strong><span class="savings-summary-metric-sub">' + escHtml(formatPercentPtBr(summary.savingsRate)) + ' do total projetado</span></div>' +
-            '<div class="savings-summary-metric"><span class="savings-summary-metric-label">Negociações fechadas</span><strong class="savings-summary-metric-value">' + escHtml(String(summary.closedCount)) + '</strong><span class="savings-summary-metric-sub">' + escHtml(formatCurrencyBRL(summary.negotiated)) + ' negociados</span></div>' +
+            '<div class="savings-summary-metric clickable" role="button" tabindex="0" data-summary-kind="projected"><span class="savings-summary-metric-label">Projetado</span><strong class="savings-summary-metric-value">' + escHtml(formatCurrencyBRL(summary.projected)) + '</strong><span class="savings-summary-metric-sub">Valor originalmente cobrado</span></div>' +
+            '<div class="savings-summary-metric clickable" role="button" tabindex="0" data-summary-kind="current"><span class="savings-summary-metric-label">' + escHtml(cfg.currentLabel) + '</span><strong class="savings-summary-metric-value">' + escHtml(formatCurrencyBRL(summary.current)) + '</strong><span class="savings-summary-metric-sub">Valor atual depois das tratativas</span></div>' +
+            '<div class="savings-summary-metric clickable" role="button" tabindex="0" data-summary-kind="savings"><span class="savings-summary-metric-label">Economizado</span><strong class="savings-summary-metric-value">' + escHtml(formatCurrencyBRL(summary.savings)) + '</strong><span class="savings-summary-metric-sub">' + escHtml(formatPercentPtBr(summary.savingsRate)) + ' do total projetado</span></div>' +
+            '<div class="savings-summary-metric clickable" role="button" tabindex="0" data-summary-kind="closed"><span class="savings-summary-metric-label">Negociações fechadas</span><strong class="savings-summary-metric-value">' + escHtml(String(summary.closedCount)) + '</strong><span class="savings-summary-metric-sub">' + escHtml(formatCurrencyBRL(summary.negotiated)) + ' negociados</span></div>' +
           '</div>' +
         '</div>' +
       '</div>';
+    if (typeof cfg.onMetricClick === 'function') {
+      target.querySelectorAll('[data-summary-kind]').forEach(function(node) {
+        var open = function() {
+          var kind = node.getAttribute('data-summary-kind') || '';
+          cfg.onMetricClick(kind, cfg.records || [], cfg.scopeLabel || 'Negociações');
+        };
+        node.addEventListener('click', open);
+        node.addEventListener('keydown', function(evt) {
+          if (evt.key === 'Enter' || evt.key === ' ') {
+            evt.preventDefault();
+            open();
+          }
+        });
+      });
+    }
   }
 
   function renderHomeNcCostSummary() {
@@ -5269,6 +5455,7 @@ document.addEventListener("DOMContentLoaded", function() {
       monthSelect.dataset.bound = '1';
       monthSelect.addEventListener('change', function() {
         homeNcCostFilters.month = monthSelect.value || 'all';
+        homeNcCostFilters.userTouched = true;
         renderHomePage();
       });
     }
@@ -5276,12 +5463,13 @@ document.addEventListener("DOMContentLoaded", function() {
       yearSelect.dataset.bound = '1';
       yearSelect.addEventListener('change', function() {
         homeNcCostFilters.year = yearSelect.value || 'all';
+        homeNcCostFilters.userTouched = true;
         renderHomePage();
       });
     }
 
     var allRecords = Object.keys(TENANTS || {}).reduce(function(acc, tenantId) {
-      return acc.concat(loadHomeNcCostRecords(tenantId));
+      return acc.concat(withNcCostTenantLabel(loadHomeNcCostRecords(tenantId), tenantId));
     }, []);
     if (!allRecords.length) {
       section.style.display = 'none';
@@ -5294,12 +5482,7 @@ document.addEventListener("DOMContentLoaded", function() {
       return period ? period.year : '';
     }).filter(Boolean))).sort(function(a, b) { return b.localeCompare(a); });
 
-    if (homeNcCostFilters.month !== 'all' && !HOME_COST_MONTHS.some(function(item) { return item.value === homeNcCostFilters.month; })) {
-      homeNcCostFilters.month = 'all';
-    }
-    if (homeNcCostFilters.year !== 'all' && availableYears.indexOf(homeNcCostFilters.year) === -1) {
-      homeNcCostFilters.year = 'all';
-    }
+    normalizeNcCostPeriodFilters(homeNcCostFilters, availableYears);
 
     var monthOptions = ['<option value="all">Todos</option>'].concat(HOME_COST_MONTHS.map(function(item) {
       return '<option value="' + item.value + '"' + (item.value === homeNcCostFilters.month ? ' selected' : '') + '>' + item.label + '</option>';
@@ -5317,7 +5500,10 @@ document.addEventListener("DOMContentLoaded", function() {
       title: 'Economia geral consolidada',
       subtitle: 'Visão total do que foi projetado gastar, do valor atual negociado e da economia obtida.',
       periodLabel: getNcCostPeriodLabel(homeNcCostFilters.month, homeNcCostFilters.year),
-      emptyText: 'Não há registros de custo para o mês e ano selecionados.'
+      emptyText: 'Não há registros de custo para o mês e ano selecionados.',
+      records: filteredRecords,
+      scopeLabel: 'Visão geral',
+      onMetricClick: openNcCostMetricPopup
     });
     section.style.display = '';
   }
@@ -6077,7 +6263,17 @@ document.addEventListener("DOMContentLoaded", function() {
         .then(function() { renderNcCustomCharts(); })
         .catch(function(e) { console.warn('Erro ao carregar gráficos NC após remover tenant:', e); });
       loadNcCostRecordsAsync(nextKey)
-        .then(function(records) { ncCostRecords = records; renderNcCostPage(); renderHomePage(); })
+        .then(function(records) {
+          ncCostRecords = records;
+          homeNcCostFilters.userTouched = false;
+          homeNcCostFilters.month = 'all';
+          homeNcCostFilters.year = 'all';
+          ncCostPageFilters.userTouched = false;
+          ncCostPageFilters.month = 'all';
+          ncCostPageFilters.year = 'all';
+          renderNcCostPage();
+          renderHomePage();
+        })
         .catch(function(e) { console.warn('Erro ao carregar custos NC após remover tenant:', e); });
       if (typeof setupFirebaseListeners === 'function') {
         try { setupFirebaseListeners(nextKey); }
@@ -6569,6 +6765,8 @@ document.addEventListener("DOMContentLoaded", function() {
   var _ncDetailCurrent = null; // nc record shown in detail popup
   var _ncCurrentFilteredRecords = [];
   var ncCostRecords = [];
+  var ncCostPageFilters = { month:'all', year:'all', userTouched:false };
+  var _ncCostBarChart = null;
   var _ncCostEvidence = [];
   var _editingNcCostId = null;
 
@@ -9310,6 +9508,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
     var area = document.getElementById('nc-print-area');
     area.innerHTML = html;
+    document.body.classList.remove('print-nccost');
+    document.body.classList.add('print-nc');
     window.print();
   }
 
@@ -9450,11 +9650,96 @@ document.addEventListener("DOMContentLoaded", function() {
     backdrop.classList.add('open');
   }
 
+  function getFilteredNcCostRecords(extraFilters) {
+    var filters = Object.assign({
+      month: ncCostPageFilters.month || 'all',
+      year: ncCostPageFilters.year || 'all',
+      status: 'all',
+      type: 'all',
+      savingsOnly: false
+    }, extraFilters || {});
+    return (ncCostRecords || []).filter(function(rec) {
+      if (!matchesNcCostPeriod(rec, filters.month, filters.year)) return false;
+      if (filters.status === 'open' && !rec.negotiationOpen) return false;
+      if (filters.status === 'closed' && (rec.negotiationOpen || rec.negotiatedValue == null)) return false;
+      if (filters.status === 'none' && getNcCostNegotiationStatus(rec) !== 'Sem negociação') return false;
+      if (filters.type !== 'all' && rec.type !== filters.type) return false;
+      if (filters.savingsOnly) {
+        var charged = Number(rec && rec.chargedValue) || 0;
+        if (charged <= getNcCostCurrentValue(rec)) return false;
+      }
+      return true;
+    });
+  }
+
+  function renderNcCostBarChart(summary) {
+    var canvas = document.getElementById('ncCostSavingsBarChart');
+    if (!canvas || typeof Chart === 'undefined') return;
+    if (_ncCostBarChart) {
+      try { _ncCostBarChart.destroy(); } catch(e) {}
+      _ncCostBarChart = null;
+    }
+    try {
+      _ncCostBarChart = new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: ['Total projetado', 'Total economizado'],
+          datasets: [{
+            data: [Number(summary && summary.projected) || 0, Number(summary && summary.savings) || 0],
+            backgroundColor: ['#1d4ed8', '#22c55e'],
+            borderRadius: 10,
+            borderSkipped: false
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(ctx) { return formatCurrencyBRL(ctx.raw); }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: function(v) { return formatCurrencyBRL(v); }
+              }
+            }
+          }
+        }
+      });
+    } catch (chartErr) {
+      console.warn('Não foi possível renderizar o gráfico de economia NC:', chartErr);
+    }
+  }
+
   function renderNcCostPage() {
     var tbody = document.getElementById('ncCostTableBody');
-    if (!tbody) return;
+    var monthSelect = document.getElementById('ncCostMonthFilter');
+    var yearSelect = document.getElementById('ncCostYearFilter');
+    if (!tbody || !monthSelect || !yearSelect) return;
 
-    var summary = getNcCostSummary(ncCostRecords || []);
+    var allRecords = withNcCostTenantLabel(ncCostRecords || [], currentTenant);
+    var availableYears = Array.from(new Set(allRecords.map(function(rec) {
+      var period = getNcCostRecordPeriod(rec);
+      return period ? period.year : '';
+    }).filter(Boolean))).sort(function(a, b) { return b.localeCompare(a); });
+    normalizeNcCostPeriodFilters(ncCostPageFilters, availableYears);
+
+    monthSelect.innerHTML = ['<option value="all">Todos</option>'].concat(HOME_COST_MONTHS.map(function(item) {
+      return '<option value="' + item.value + '"' + (item.value === ncCostPageFilters.month ? ' selected' : '') + '>' + item.label + '</option>';
+    })).join('');
+    yearSelect.innerHTML = ['<option value="all">Todos</option>'].concat(availableYears.map(function(year) {
+      return '<option value="' + year + '"' + (year === ncCostPageFilters.year ? ' selected' : '') + '>' + year + '</option>';
+    })).join('');
+
+    var filteredRecords = getFilteredNcCostRecords();
+    filteredRecords = withNcCostTenantLabel(filteredRecords, currentTenant);
+    var summary = getNcCostSummary(filteredRecords);
     var totalCharged = summary.projected;
     var totalNegotiated = summary.negotiated;
     var totalSavings = summary.savings;
@@ -9471,17 +9756,21 @@ document.addEventListener("DOMContentLoaded", function() {
     renderNcCostSummaryCard(document.getElementById('ncCostSummaryCard'), summary, {
       title: 'Visual de economia das negociações',
       subtitle: 'Compare o valor projetado para gastar com o valor atual negociado e a economia já conquistada nesta página.',
-      periodLabel: 'Tenant atual',
-      emptyText: 'Cadastre registros de custo para visualizar o gráfico de rosca desta página.'
+      periodLabel: getNcCostPeriodLabel(ncCostPageFilters.month, ncCostPageFilters.year),
+      emptyText: 'Cadastre registros de custo para visualizar o gráfico de rosca desta página.',
+      records: filteredRecords,
+      scopeLabel: (TENANTS[currentTenant] && TENANTS[currentTenant].label) || 'Cliente atual',
+      onMetricClick: openNcCostMetricPopup
     });
+    renderNcCostBarChart(summary);
 
-    if (!ncCostRecords.length) {
-      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#9ca3af;padding:16px;">Nenhum registro de custo cadastrado.</td></tr>';
+    if (!filteredRecords.length) {
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#9ca3af;padding:16px;">Nenhum registro encontrado para os filtros selecionados.</td></tr>';
       return;
     }
 
     tbody.innerHTML = '';
-    ncCostRecords.slice().sort(function(a, b) {
+    filteredRecords.slice().sort(function(a, b) {
       return (b.date || '').localeCompare(a.date || '');
     }).forEach(function(rec) {
       var tr = document.createElement('tr');
@@ -9521,6 +9810,106 @@ document.addEventListener("DOMContentLoaded", function() {
         renderHomePage();
       });
     });
+  }
+
+  function closeNcCostPdfModal() {
+    var modal = document.getElementById('ncCostPdfModal');
+    if (modal) modal.classList.remove('open');
+  }
+
+  function openNcCostPdfModal() {
+    var modal = document.getElementById('ncCostPdfModal');
+    var monthSelect = document.getElementById('ncCostPdfMonthFilter');
+    var yearSelect = document.getElementById('ncCostPdfYearFilter');
+    if (!modal || !monthSelect || !yearSelect) return;
+    var availableYears = Array.from(new Set((ncCostRecords || []).map(function(rec) {
+      var period = getNcCostRecordPeriod(rec);
+      return period ? period.year : '';
+    }).filter(Boolean))).sort(function(a, b) { return b.localeCompare(a); });
+    monthSelect.innerHTML = ['<option value="all">Todos</option>'].concat(HOME_COST_MONTHS.map(function(item) {
+      return '<option value="' + item.value + '"' + (item.value === ncCostPageFilters.month ? ' selected' : '') + '>' + item.label + '</option>';
+    })).join('');
+    yearSelect.innerHTML = ['<option value="all">Todos</option>'].concat(availableYears.map(function(year) {
+      return '<option value="' + year + '"' + (year === ncCostPageFilters.year ? ' selected' : '') + '>' + year + '</option>';
+    })).join('');
+    document.getElementById('ncCostPdfStatusFilter').value = 'all';
+    document.getElementById('ncCostPdfTypeFilter').value = 'all';
+    document.getElementById('ncCostPdfSavingsOnly').checked = false;
+    modal.classList.add('open');
+  }
+
+  function exportNcCostPdfWithFilters() {
+    var month = (document.getElementById('ncCostPdfMonthFilter') || {}).value || 'all';
+    var year = (document.getElementById('ncCostPdfYearFilter') || {}).value || 'all';
+    var status = (document.getElementById('ncCostPdfStatusFilter') || {}).value || 'all';
+    var type = (document.getElementById('ncCostPdfTypeFilter') || {}).value || 'all';
+    var savingsOnly = !!((document.getElementById('ncCostPdfSavingsOnly') || {}).checked);
+    var records = withNcCostTenantLabel(getFilteredNcCostRecords({
+      month: month,
+      year: year,
+      status: status,
+      type: type,
+      savingsOnly: savingsOnly
+    }), currentTenant).sort(function(a, b) {
+      return (b.date || '').localeCompare(a.date || '');
+    });
+    var summary = getNcCostSummary(records);
+    var printedAt = new Date().toLocaleString('pt-BR');
+    var appliedFilters = [
+      'Período: ' + getNcCostPeriodLabel(month, year),
+      'Status: ' + ({
+        all: 'Todos',
+        closed: 'Somente pagas/fechadas',
+        open: 'Somente em aberto',
+        none: 'Sem negociação'
+      }[status] || 'Todos'),
+      'Tipo: ' + ({
+        all: 'Todos',
+        nc: 'NC vinculada',
+        administrativo: 'Administrativo'
+      }[type] || 'Todos'),
+      'Economia: ' + (savingsOnly ? 'Somente com economia' : 'Todos')
+    ];
+    var rowsHtml = records.length ? records.map(function(rec, idx) {
+      var charged = Number(rec && rec.chargedValue) || 0;
+      var current = getNcCostCurrentValue(rec);
+      var savings = Math.max(0, charged - current);
+      return '<tr>' +
+        '<td>' + (idx + 1) + '</td>' +
+        '<td>' + escHtml(rec.date || '—') + '</td>' +
+        '<td>' + escHtml(getNcCostLinkedLabel(rec)) + '</td>' +
+        '<td>' + escHtml(rec.type === 'administrativo' ? 'Administrativo' : 'NC') + '</td>' +
+        '<td>' + escHtml(getNcCostNegotiationStatus(rec)) + '</td>' +
+        '<td>' + escHtml(formatCurrencyBRL(charged)) + '</td>' +
+        '<td>' + escHtml(formatCurrencyBRL(current)) + '</td>' +
+        '<td>' + escHtml(formatCurrencyBRL(savings)) + '</td>' +
+      '</tr>';
+    }).join('') : '<tr><td colspan="8" style="text-align:center;color:#6b7280;">Nenhum registro encontrado para os filtros selecionados.</td></tr>';
+    var area = document.getElementById('nc-cost-print-area');
+    if (!area) return;
+    area.innerHTML =
+      '<div class="ncp-head">' +
+        '<div><h1>Relatório de negociação NC</h1><p>' + escHtml(((TENANTS[currentTenant] && TENANTS[currentTenant].label) || currentTenant)) + '</p></div>' +
+        '<div style="font-size:11px;text-align:right;">Emitido em<br>' + escHtml(printedAt) + '</div>' +
+      '</div>' +
+      '<div class="ncp-wrap">' +
+        '<div style="padding:10px 12px;font-size:11px;color:#475569;border-bottom:1px solid #e5e7eb;background:#fff;">' + escHtml(appliedFilters.join(' · ')) + '</div>' +
+        '<div class="ncp-summary">' +
+          '<div class="ncp-box"><label>Projetado</label><strong>' + escHtml(formatCurrencyBRL(summary.projected)) + '</strong></div>' +
+          '<div class="ncp-box"><label>Atual / negociado</label><strong>' + escHtml(formatCurrencyBRL(summary.current)) + '</strong></div>' +
+          '<div class="ncp-box"><label>Economizado</label><strong>' + escHtml(formatCurrencyBRL(summary.savings)) + '</strong></div>' +
+          '<div class="ncp-box"><label>Fechadas</label><strong>' + escHtml(String(summary.closedCount)) + '</strong></div>' +
+        '</div>' +
+        '<table class="ncp-table">' +
+          '<thead><tr><th>#</th><th>Data</th><th>NC</th><th>Tipo</th><th>Status</th><th>Valor cobrado</th><th>Atual / negociado</th><th>Economia</th></tr></thead>' +
+          '<tbody>' + rowsHtml + '</tbody>' +
+        '</table>' +
+      '</div>' +
+      '<div class="ncp-foot"><span>SSQE – Gestão SPI</span><span>' + escHtml(printedAt) + '</span></div>';
+    closeNcCostPdfModal();
+    document.body.classList.remove('print-nc');
+    document.body.classList.add('print-nccost');
+    window.print();
   }
 
   function rebuildNcCostEvidenceList() {
@@ -9613,12 +10002,61 @@ document.addEventListener("DOMContentLoaded", function() {
   function initNcCostPage() {
     loadNcCostRecordsAsync(currentTenant).then(function(records) {
       ncCostRecords = records;
+      ncCostPageFilters.userTouched = false;
+      ncCostPageFilters.month = 'all';
+      ncCostPageFilters.year = 'all';
       renderNcCostPage();
       renderHomePage();
     });
 
     var btnNew = document.getElementById('ncCostBtnNew');
     if (btnNew) btnNew.addEventListener('click', function() { openNcCostModal(null); });
+    var monthFilter = document.getElementById('ncCostMonthFilter');
+    var yearFilter = document.getElementById('ncCostYearFilter');
+    if (monthFilter && !monthFilter.dataset.bound) {
+      monthFilter.dataset.bound = '1';
+      monthFilter.addEventListener('change', function() {
+        ncCostPageFilters.month = monthFilter.value || 'all';
+        ncCostPageFilters.userTouched = true;
+        renderNcCostPage();
+      });
+    }
+    if (yearFilter && !yearFilter.dataset.bound) {
+      yearFilter.dataset.bound = '1';
+      yearFilter.addEventListener('change', function() {
+        ncCostPageFilters.year = yearFilter.value || 'all';
+        ncCostPageFilters.userTouched = true;
+        renderNcCostPage();
+      });
+    }
+    var pdfBtn = document.getElementById('ncCostExportPdfBtn');
+    if (pdfBtn && !pdfBtn.dataset.bound) {
+      pdfBtn.dataset.bound = '1';
+      pdfBtn.addEventListener('click', openNcCostPdfModal);
+    }
+    var pdfModal = document.getElementById('ncCostPdfModal');
+    var pdfCancelBtn = document.getElementById('ncCostPdfCancelBtn');
+    var pdfConfirmBtn = document.getElementById('ncCostPdfConfirmBtn');
+    if (pdfCancelBtn && !pdfCancelBtn.dataset.bound) {
+      pdfCancelBtn.dataset.bound = '1';
+      pdfCancelBtn.addEventListener('click', closeNcCostPdfModal);
+    }
+    if (pdfConfirmBtn && !pdfConfirmBtn.dataset.bound) {
+      pdfConfirmBtn.dataset.bound = '1';
+      pdfConfirmBtn.addEventListener('click', exportNcCostPdfWithFilters);
+    }
+    if (pdfModal && !pdfModal.dataset.bound) {
+      pdfModal.dataset.bound = '1';
+      pdfModal.addEventListener('click', function(e) {
+        if (e.target === pdfModal) closeNcCostPdfModal();
+      });
+    }
+    if (!window._spiPrintCleanupBound) {
+      window._spiPrintCleanupBound = true;
+      window.addEventListener('afterprint', function() {
+        document.body.classList.remove('print-nc', 'print-nccost');
+      });
+    }
 
     var backdrop = document.getElementById('ncCostModalBackdrop');
     var closeBtn = document.getElementById('ncCostModalClose');
@@ -10746,6 +11184,52 @@ document.addEventListener("DOMContentLoaded", function() {
   </div>
 </div>
 
+<!-- NC COST – PDF FILTER MODAL -->
+<div id="ncCostPdfModal" role="dialog" aria-modal="true" aria-labelledby="ncCostPdfTitle">
+  <div class="nc-cost-pdf-box">
+    <div class="nc-cost-pdf-head">
+      <h3 id="ncCostPdfTitle">Exportar PDF da negociação</h3>
+    </div>
+    <div class="nc-cost-pdf-body">
+      <div class="nc-cost-pdf-grid">
+        <label>Status da negociação
+          <select id="ncCostPdfStatusFilter">
+            <option value="all">Todos</option>
+            <option value="closed">Somente pagas / fechadas</option>
+            <option value="open">Somente em aberto</option>
+            <option value="none">Sem negociação</option>
+          </select>
+        </label>
+        <label>Tipo
+          <select id="ncCostPdfTypeFilter">
+            <option value="all">Todos</option>
+            <option value="nc">Somente NC vinculada</option>
+            <option value="administrativo">Somente administrativo</option>
+          </select>
+        </label>
+        <label>Mês
+          <select id="ncCostPdfMonthFilter">
+            <option value="all">Todos</option>
+          </select>
+        </label>
+        <label>Ano
+          <select id="ncCostPdfYearFilter">
+            <option value="all">Todos</option>
+          </select>
+        </label>
+      </div>
+      <label class="nc-cost-pdf-check">
+        <input type="checkbox" id="ncCostPdfSavingsOnly" />
+        Somente itens com economia
+      </label>
+    </div>
+    <div class="nc-cost-pdf-foot">
+      <button type="button" class="nc-cost-pdf-btn-cancel" id="ncCostPdfCancelBtn">Cancelar</button>
+      <button type="button" class="nc-cost-pdf-btn-export" id="ncCostPdfConfirmBtn">Gerar PDF</button>
+    </div>
+  </div>
+</div>
+
 <!-- NC REGISTRATION MODAL -->
 <div class="nc-modal-backdrop" id="ncModalBackdrop" role="dialog" aria-modal="true" aria-labelledby="ncModalTitle">
   <div class="nc-modal">
@@ -10945,6 +11429,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
 <!-- NC PDF PRINT AREA (hidden on screen; shown only during window.print()) -->
 <div id="nc-print-area"></div>
+<div id="nc-cost-print-area"></div>
 
 <!-- ALERT FILE VIEWER POPUP -->
 <div class="nc-alert-viewer-backdrop" id="ncAlertViewerBackdrop" role="dialog" aria-modal="true">
