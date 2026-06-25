@@ -7752,7 +7752,16 @@ document.addEventListener("DOMContentLoaded", function() {
     var backdrop = document.getElementById('groupDetailBackdrop');
     if (!titleEl || !tbody || !thead || !backdrop) return;
 
-    var records = Array.isArray(_ncCurrentFilteredRecords) ? _ncCurrentFilteredRecords.slice() : [];
+    var records = (Array.isArray(_ncCurrentFilteredRecords) && _ncCurrentFilteredRecords.length)
+      ? _ncCurrentFilteredRecords.slice()
+      : (ncRecords || []).filter(function(nc) {
+          if (nc.naoProcedente) return false;
+          if (!_recordMatchesNcYearFilter(nc)) return false;
+          if (_ncMonthFilter && (!nc.date || nc.date.slice(0,7) !== _ncMonthFilter)) return false;
+          if (_ncPieceFilter && (nc.piece || '(sem nome)') !== _ncPieceFilter) return false;
+          if (_ncFailureFilter && (nc.failureMode || 'Outro') !== _ncFailureFilter) return false;
+          return true;
+        });
     var filtered = records;
     var title = 'Detalhes';
     if (kind === 'rnc') {
@@ -9356,9 +9365,13 @@ document.addEventListener("DOMContentLoaded", function() {
       linkedNc = normalizeNcRecordAttachments(linkedNc);
       ncPhotos = (linkedNc.photos && linkedNc.photos.length) ? linkedNc.photos : (linkedNc.photo ? [linkedNc.photo] : []);
     }
+    var photoAltBase = linkedNc
+      ? ('Foto da peça ' + (linkedNc.piece || 'sem peça') + ' - falha ' + (linkedNc.failureMode || 'não informada'))
+      : 'Foto da NC';
     var photosHtml = ncPhotos.length
       ? '<div class="nc-cost-detail-photo-strip">' + ncPhotos.map(function(src, idx) {
-          return '<img src="' + escHtml(src) + '" alt="Foto ' + (idx + 1) + '" data-nccost-photo-src="' + escHtml(src) + '" data-nccost-photo-alt="Foto ' + (idx + 1) + '" tabindex="0" role="button">';
+          var alt = photoAltBase + ' (' + (idx + 1) + ')';
+          return '<img src="' + escHtml(src) + '" alt="' + escHtml(alt) + '" data-nccost-photo-src="' + escHtml(src) + '" data-nccost-photo-alt="' + escHtml(alt) + '" tabindex="0" role="button">';
         }).join('') + '</div>'
       : '';
 
@@ -9387,7 +9400,7 @@ document.addEventListener("DOMContentLoaded", function() {
     var evidencesHtml = evidences.length
       ? '<div class="nc-cost-evidence-list">' + evidences.map(function(ev, idx) {
           var src = getNcCostEvidenceSrc(ev);
-          return '<button type="button" class="nc-cost-evidence-btn" data-nccost-ev-src="' + escHtml(src) + '" data-nccost-ev-name="' + escHtml((ev && ev.name) || ('evidência-' + (idx + 1))) + '">📎 ' + escHtml((ev && ev.name) || ('evidência ' + (idx + 1))) + '</button>';
+          return '<button type="button" class="nc-cost-evidence-btn" data-nccost-ev-src="' + escHtml(src) + '" data-nccost-ev-name="' + escHtml((ev && ev.name) || ('evidência ' + (idx + 1))) + '">📎 ' + escHtml((ev && ev.name) || ('evidência ' + (idx + 1))) + '</button>';
         }).join('') + '</div>'
       : '<div class="nc-cost-detail-empty">Nenhuma evidência anexada.</div>';
 
@@ -9485,7 +9498,7 @@ document.addEventListener("DOMContentLoaded", function() {
         '<td>' + escHtml(String((rec.evidences || []).length)) + '</td>' +
         '<td><button type="button" class="btn-icon" data-nccost-edit="' + escHtml(rec.id) + '" title="Editar">✏️</button> <button type="button" class="btn-icon" data-nccost-del="' + escHtml(rec.id) + '" title="Excluir">🗑️</button></td>';
       tr.addEventListener('click', function(e) {
-        if (e.target && e.target.closest && e.target.closest('.btn-icon')) return;
+        if (e.target.closest('.btn-icon')) return;
         openNcCostDetailModal(rec.id);
       });
       tbody.appendChild(tr);
