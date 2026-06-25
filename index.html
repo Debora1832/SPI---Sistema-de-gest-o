@@ -6791,6 +6791,7 @@ document.addEventListener("DOMContentLoaded", function() {
   var _ncCostBarChart = null;
   var _ncCostEvidence = [];
   var _editingNcCostId = null;
+  var _finalizingNcCostId = null;
 
   function ncCostStorageKey(tenantId) {
     return 'spi_nc_cost_records_' + (tenantId || currentTenant);
@@ -9693,7 +9694,6 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 
     backdrop.classList.add('open');
-    backdrop._costId = costId;
     var detailFinalizeBtn = document.getElementById('ncCostDetailBtnFinalize');
     if (detailFinalizeBtn) {
       detailFinalizeBtn.onclick = function() {
@@ -9701,7 +9701,7 @@ document.addEventListener("DOMContentLoaded", function() {
         openNcFinalizeModal(costId);
       };
       detailFinalizeBtn.textContent = rec.finalizationType ? '☑️ Alterar finalização' : '☑️ Finalizar negociação';
-      detailFinalizeBtn.className = 'nc-finalize-btn ' + (rec.finalizationType === 'paga' ? 'paga' : rec.finalizationType === 'reembolsada' ? 'reembolsada' : 'paga');
+      detailFinalizeBtn.className = 'nc-finalize-btn ' + (rec.finalizationType === 'paga' ? 'paga' : rec.finalizationType === 'reembolsada' ? 'reembolsada' : 'desfinalizar');
       detailFinalizeBtn.style.cssText = 'width:auto;padding:8px 16px;font-size:12px;';
     }
   }
@@ -9880,7 +9880,7 @@ document.addEventListener("DOMContentLoaded", function() {
   function openNcFinalizeModal(costId) {
     var backdrop = document.getElementById('ncFinalizeBackdrop');
     if (!backdrop) return;
-    backdrop._costId = costId;
+    _finalizingNcCostId = costId;
     backdrop.classList.add('open');
     var rec = (ncCostRecords || []).find(function(item) { return item.id === costId; });
     var hasFinalized = rec && rec.finalizationType;
@@ -9890,12 +9890,12 @@ document.addEventListener("DOMContentLoaded", function() {
 
   function closeNcFinalizeModal() {
     var backdrop = document.getElementById('ncFinalizeBackdrop');
-    if (backdrop) { backdrop.classList.remove('open'); backdrop._costId = null; }
+    if (backdrop) backdrop.classList.remove('open');
+    _finalizingNcCostId = null;
   }
 
   async function applyNcFinalizationType(type) {
-    var backdrop = document.getElementById('ncFinalizeBackdrop');
-    var costId = backdrop && backdrop._costId;
+    var costId = _finalizingNcCostId;
     if (!costId) return;
     var idx = (ncCostRecords || []).findIndex(function(item) { return item.id === costId; });
     if (idx === -1) { closeNcFinalizeModal(); return; }
