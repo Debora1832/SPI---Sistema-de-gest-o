@@ -6787,7 +6787,7 @@ document.addEventListener("DOMContentLoaded", function() {
   };
 
   function normalizeNcCostKind(value) {
-    var kind = (value || '').toString().trim().toLowerCase();
+    var kind = String(value || '').trim().toLowerCase();
     if (NC_COST_KIND_LABELS[kind]) return kind;
     return NC_COST_KIND_DEFAULT;
   }
