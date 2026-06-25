@@ -1979,7 +1979,7 @@
             </select>
           </label>
         </div>
-        <button class="btn-primary btn-export" id="ncCostExportPdfBtn" style="margin-top:4px;">
+        <button class="btn-primary" id="ncCostExportPdfBtn" style="margin-top:4px;">
           <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a6 6 0 00-6 6v3.586L2.293 13.293a1 1 0 101.414 1.414L5 13.414V16a2 2 0 002 2h6a2 2 0 002-2v-2.586l1.293 1.293a1 1 0 001.414-1.414L16 11.586V8a6 6 0 00-6-6zm1 8V5a1 1 0 10-2 0v5H6l4 4 4-4h-3z"/></svg>
           Exportar PDF
         </button>
@@ -9679,38 +9679,42 @@ document.addEventListener("DOMContentLoaded", function() {
       try { _ncCostBarChart.destroy(); } catch(e) {}
       _ncCostBarChart = null;
     }
-    _ncCostBarChart = new Chart(canvas.getContext('2d'), {
-      type: 'bar',
-      data: {
-        labels: ['Total projetado', 'Total economizado'],
-        datasets: [{
-          data: [Number(summary && summary.projected) || 0, Number(summary && summary.savings) || 0],
-          backgroundColor: ['#1d4ed8', '#22c55e'],
-          borderRadius: 10,
-          borderSkipped: false
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: function(ctx) { return formatCurrencyBRL(ctx.raw); }
-            }
-          }
+    try {
+      _ncCostBarChart = new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: ['Total projetado', 'Total economizado'],
+          datasets: [{
+            data: [Number(summary && summary.projected) || 0, Number(summary && summary.savings) || 0],
+            backgroundColor: ['#1d4ed8', '#22c55e'],
+            borderRadius: 10,
+            borderSkipped: false
+          }]
         },
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: {
-              callback: function(v) { return formatCurrencyBRL(v); }
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(ctx) { return formatCurrencyBRL(ctx.raw); }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: function(v) { return formatCurrencyBRL(v); }
+              }
             }
           }
         }
-      }
-    });
+      });
+    } catch (chartErr) {
+      console.warn('Não foi possível renderizar o gráfico de economia NC:', chartErr);
+    }
   }
 
   function renderNcCostPage() {
