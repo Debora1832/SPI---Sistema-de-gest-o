@@ -832,6 +832,8 @@
     .nc-stat-balloon.eightd   { background:#dbeafe; border:2px solid #2563eb; color:#1565C0; }
     .nc-stat-balloon.rnc      { background:#fff7ed; border:2px solid #f97316; color:#c2410c; }
     .nc-stat-balloon.qty      { background:#f3e8ff; border:2px solid #9333ea; color:#7e22ce; }
+    .nc-stat-balloon.nc-stat-balloon-clickable { cursor:pointer; transition:transform .15s, box-shadow .15s; }
+    .nc-stat-balloon.nc-stat-balloon-clickable:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(0,0,0,.12); }
     .nc-charts-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:0; }
     @media (max-width:600px) { .nc-charts-row { grid-template-columns:1fr; } }
     .nc-chart-card {
@@ -1984,15 +1986,15 @@
         </div>
         <!-- Stat balloons below Volume AQE -->
         <div class="nc-stat-balloons" id="ncStatBalloons">
-          <div class="nc-stat-balloon rnc">
+          <div class="nc-stat-balloon nc-stat-balloon-clickable rnc" id="ncStatBalloonRnc" role="button" tabindex="0" title="Clique para ver detalhes">
             <div class="nc-stat-balloon-value" id="ncStatClosed">0</div>
             <div class="nc-stat-balloon-label">RNC Aberta /<br>Alerta Emitido</div>
           </div>
-          <div class="nc-stat-balloon eightd">
+          <div class="nc-stat-balloon nc-stat-balloon-clickable eightd" id="ncStatBalloonEightD" role="button" tabindex="0" title="Clique para ver detalhes">
             <div class="nc-stat-balloon-value" id="ncStatEightD">0</div>
             <div class="nc-stat-balloon-label">8D Finalizado</div>
           </div>
-          <div class="nc-stat-balloon qty">
+          <div class="nc-stat-balloon nc-stat-balloon-clickable qty" id="ncStatBalloonQty" role="button" tabindex="0" title="Clique para ver detalhes">
             <div class="nc-stat-balloon-value" id="ncStatQty">0</div>
             <div class="nc-stat-balloon-label">Qtd. de<br>Peças</div>
           </div>
@@ -6565,6 +6567,7 @@ document.addEventListener("DOMContentLoaded", function() {
   var _ncPdfs   = []; // array of {name, data} objects for PDF attachments
   var _ncStatusPending = null; // { id, action } while status popup is open
   var _ncDetailCurrent = null; // nc record shown in detail popup
+  var _ncCurrentFilteredRecords = [];
   var ncCostRecords = [];
   var _ncCostEvidence = [];
   var _editingNcCostId = null;
@@ -7742,6 +7745,71 @@ document.addEventListener("DOMContentLoaded", function() {
     }
   }
 
+  function openNcStatBalloonPopup(kind) {
+    var titleEl = document.getElementById('groupDetailTitle');
+    var tbody = document.getElementById('groupDetailTbody');
+    var thead = document.querySelector('#groupDetailTable thead tr');
+    var backdrop = document.getElementById('groupDetailBackdrop');
+    if (!titleEl || !tbody || !thead || !backdrop) return;
+
+    var records = Array.isArray(_ncCurrentFilteredRecords) ? _ncCurrentFilteredRecords.slice() : [];
+    var filtered = records;
+    var title = 'Detalhes';
+    if (kind === 'rnc') {
+      filtered = records.filter(function(nc) { return !!nc.rncAberta; });
+      title = 'RNC Aberta / Alerta Emitido';
+    } else if (kind === 'eightd') {
+      filtered = records.filter(function(nc) { return !!nc.d8Finalizado; });
+      title = '8D Finalizado';
+    } else if (kind === 'qty') {
+      filtered = records.filter(function(nc) { return (parseInt(nc.qty, 10) || 0) > 0; })
+        .sort(function(a, b) { return (parseInt(b.qty, 10) || 0) - (parseInt(a.qty, 10) || 0); });
+      title = 'Quantidade de Peças';
+    }
+    titleEl.textContent = title;
+
+    thead.innerHTML = '<th>#</th><th>NC</th><th>Cliente</th><th>Peça</th><th>Data</th><th>Qtd</th><th>Status</th>';
+    tbody.innerHTML = filtered.length
+      ? filtered.map(function(r, i) {
+          var dateFmt = r.date ? r.date.split('-').reverse().join('/') : '—';
+          var statusLabel = r.d8Finalizado ? '8D Finalizado' : (r.rncAberta ? 'RNC Aberta' : 'Em aberto');
+          return '<tr>' +
+            '<td>' + (i + 1) + '</td>' +
+            '<td>' + escHtml(r.ncNumber || r.id || '—') + '</td>' +
+            '<td>' + escHtml(r.customer || '—') + '</td>' +
+            '<td>' + escHtml(r.piece || '—') + '</td>' +
+            '<td>' + dateFmt + '</td>' +
+            '<td>' + escHtml(String(parseInt(r.qty, 10) || 0)) + '</td>' +
+            '<td>' + escHtml(statusLabel) + '</td>' +
+          '</tr>';
+        }).join('')
+      : '<tr><td colspan="7" style="text-align:center;color:#6b7280;">Nenhum registro encontrado para este balão.</td></tr>';
+
+    backdrop.classList.add('open');
+  }
+
+  function bindNcStatBalloonPopups() {
+    var map = [
+      { id: 'ncStatBalloonRnc', kind: 'rnc' },
+      { id: 'ncStatBalloonEightD', kind: 'eightd' },
+      { id: 'ncStatBalloonQty', kind: 'qty' }
+    ];
+    map.forEach(function(item) {
+      var el = document.getElementById(item.id);
+      if (!el || el.dataset.bound === '1') return;
+      el.dataset.bound = '1';
+      el.addEventListener('click', function() {
+        openNcStatBalloonPopup(item.kind);
+      });
+      el.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openNcStatBalloonPopup(item.kind);
+        }
+      });
+    });
+  }
+
   function renderNcCharts() {
     if (typeof Chart === 'undefined') return;
 
@@ -7775,6 +7843,7 @@ document.addEventListener("DOMContentLoaded", function() {
       if (_ncFailureFilter && (nc.failureMode || 'Outro') !== _ncFailureFilter) return false;
       return true;
     });
+    _ncCurrentFilteredRecords = filteredRecords.slice();
 
     yearScopedRecords.forEach(function(nc) {
       // Monthly chart always shows all data (the bar highlight shows the selected month)
@@ -9619,6 +9688,7 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   function initNcPage() {
+    bindNcStatBalloonPopups();
     // Load NC records: try Firebase first, fall back to localStorage
     var _initTenant = currentTenant;
     loadNcRecordsAsync(_initTenant).then(function(records) {
