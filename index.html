@@ -6802,7 +6802,7 @@ document.addEventListener("DOMContentLoaded", function() {
     if (!r.id) r.id = generateNcCostId();
     if (!r.date) r.date = new Date().toISOString().slice(0, 10);
     r.type = r.type === 'administrativo' ? 'administrativo' : 'nc';
-    r.costKind = normalizeNcCostKind(r.costKind || (r.type === 'administrativo' ? NC_COST_KIND_DEFAULT : ''));
+    r.costKind = normalizeNcCostKind(r.costKind);
     r.linkedNcId = (r.linkedNcId || '').trim();
     r.linkedNcNumber = (r.linkedNcNumber || '').trim();
     r.description = (r.description || '').trim();
@@ -9998,7 +9998,7 @@ document.addEventListener("DOMContentLoaded", function() {
       if (rec) {
         document.getElementById('ncCostDate').value = rec.date || new Date().toISOString().slice(0, 10);
         document.getElementById('ncCostType').value = rec.type || 'nc';
-        document.getElementById('ncCostKind').value = normalizeNcCostKind(rec.costKind || (rec.type === 'administrativo' ? NC_COST_KIND_DEFAULT : ''));
+        document.getElementById('ncCostKind').value = rec.costKind || NC_COST_KIND_DEFAULT;
         document.getElementById('ncCostDescription').value = rec.description || '';
         document.getElementById('ncCostChargedValue').value = rec.chargedValue != null ? rec.chargedValue : '';
         document.getElementById('ncCostNegotiatedValue').value = rec.negotiatedValue != null ? rec.negotiatedValue : '';
