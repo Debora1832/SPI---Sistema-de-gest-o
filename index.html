@@ -5306,7 +5306,7 @@ document.addEventListener("DOMContentLoaded", function() {
         '<td>' + escHtml(rec.date || '—') + '</td>' +
         '<td>' + escHtml(rec._tenantLabel || ((TENANTS[currentTenant] && TENANTS[currentTenant].label) || '—')) + '</td>' +
         '<td>' + escHtml(getNcCostLinkedLabel(rec)) + '</td>' +
-        '<td>' + escHtml(rec.type === 'administrativo' ? 'Administrativo' : 'NC') + '</td>' +
+        '<td>' + escHtml(getNcCostKindLabel(rec)) + '</td>' +
         '<td>' + escHtml(getNcCostNegotiationStatus(rec)) + '</td>' +
         '<td>' + escHtml(formatCurrencyBRL(charged)) + '</td>' +
         '<td>' + escHtml(formatCurrencyBRL(current)) + '</td>' +
@@ -6778,11 +6778,30 @@ document.addEventListener("DOMContentLoaded", function() {
     return 'nccost_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
   }
 
+  var NC_COST_KIND_LABELS = {
+    administrativo: 'Administrativo',
+    contencao_retrabalho: 'Contenção / Retrabalho',
+    reatividade: 'Reatividade',
+    retrabalho: 'Retrabalho'
+  };
+
+  function normalizeNcCostKind(value) {
+    var kind = (value || '').toString().trim().toLowerCase();
+    if (NC_COST_KIND_LABELS[kind]) return kind;
+    return 'administrativo';
+  }
+
+  function getNcCostKindLabel(rec) {
+    var kind = normalizeNcCostKind(rec && rec.costKind);
+    return NC_COST_KIND_LABELS[kind] || NC_COST_KIND_LABELS.administrativo;
+  }
+
   function normalizeNcCostRecord(rec) {
     var r = Object.assign({}, rec || {});
     if (!r.id) r.id = generateNcCostId();
     if (!r.date) r.date = new Date().toISOString().slice(0, 10);
     r.type = r.type === 'administrativo' ? 'administrativo' : 'nc';
+    r.costKind = normalizeNcCostKind(r.costKind || (r.type === 'administrativo' ? 'administrativo' : ''));
     r.linkedNcId = (r.linkedNcId || '').trim();
     r.linkedNcNumber = (r.linkedNcNumber || '').trim();
     r.description = (r.description || '').trim();
@@ -9610,7 +9629,7 @@ document.addEventListener("DOMContentLoaded", function() {
         '<div class="nc-cost-detail-card-body">' +
           '<div class="nc-cost-detail-fields">' +
             '<div class="nc-cost-detail-field"><label>Data</label><span>' + escHtml(rec.date || '—') + '</span></div>' +
-            '<div class="nc-cost-detail-field"><label>Tipo</label><span>' + escHtml(rec.type === 'administrativo' ? 'Administrativo' : 'NC') + '</span></div>' +
+            '<div class="nc-cost-detail-field"><label>Tipo</label><span>' + escHtml(getNcCostKindLabel(rec)) + '</span></div>' +
             '<div class="nc-cost-detail-field"><label>Valor cobrado</label><span>' + escHtml(formatCurrencyBRL(rec.chargedValue)) + '</span></div>' +
             '<div class="nc-cost-detail-field"><label>Valor negociado</label><span>' + escHtml(rec.negotiatedValue != null ? formatCurrencyBRL(rec.negotiatedValue) : '—') + '</span></div>' +
             '<div class="nc-cost-detail-field"><label>Economia</label><span>' + escHtml(formatCurrencyBRL(savings)) + '</span></div>' +
@@ -9778,7 +9797,7 @@ document.addEventListener("DOMContentLoaded", function() {
       var negotiationStatus = getNcCostNegotiationStatus(rec);
       tr.innerHTML =
         '<td>' + escHtml(rec.date || '—') + '</td>' +
-        '<td>' + escHtml(rec.type === 'administrativo' ? 'Administrativo' : 'NC') + '</td>' +
+        '<td>' + escHtml(getNcCostKindLabel(rec)) + '</td>' +
         '<td>' + escHtml(getNcCostLinkedLabel(rec)) + '</td>' +
         '<td>' + escHtml(rec.description || '—') + '</td>' +
         '<td>' + escHtml(formatCurrencyBRL(rec.chargedValue)) + '</td>' +
@@ -9878,7 +9897,7 @@ document.addEventListener("DOMContentLoaded", function() {
         '<td>' + (idx + 1) + '</td>' +
         '<td>' + escHtml(rec.date || '—') + '</td>' +
         '<td>' + escHtml(getNcCostLinkedLabel(rec)) + '</td>' +
-        '<td>' + escHtml(rec.type === 'administrativo' ? 'Administrativo' : 'NC') + '</td>' +
+        '<td>' + escHtml(getNcCostKindLabel(rec)) + '</td>' +
         '<td>' + escHtml(getNcCostNegotiationStatus(rec)) + '</td>' +
         '<td>' + escHtml(formatCurrencyBRL(charged)) + '</td>' +
         '<td>' + escHtml(formatCurrencyBRL(current)) + '</td>' +
@@ -9964,6 +9983,7 @@ document.addEventListener("DOMContentLoaded", function() {
     _ncCostEvidence = [];
     document.getElementById('ncCostDate').value = new Date().toISOString().slice(0, 10);
     document.getElementById('ncCostType').value = 'nc';
+    document.getElementById('ncCostKind').value = 'administrativo';
     document.getElementById('ncCostDescription').value = '';
     document.getElementById('ncCostChargedValue').value = '';
     document.getElementById('ncCostNegotiatedValue').value = '';
@@ -9977,6 +9997,7 @@ document.addEventListener("DOMContentLoaded", function() {
       if (rec) {
         document.getElementById('ncCostDate').value = rec.date || new Date().toISOString().slice(0, 10);
         document.getElementById('ncCostType').value = rec.type || 'nc';
+        document.getElementById('ncCostKind').value = normalizeNcCostKind(rec.costKind || (rec.type === 'administrativo' ? 'administrativo' : ''));
         document.getElementById('ncCostDescription').value = rec.description || '';
         document.getElementById('ncCostChargedValue').value = rec.chargedValue != null ? rec.chargedValue : '';
         document.getElementById('ncCostNegotiatedValue').value = rec.negotiatedValue != null ? rec.negotiatedValue : '';
@@ -10119,6 +10140,7 @@ document.addEventListener("DOMContentLoaded", function() {
           id: _editingNcCostId || undefined,
           date: document.getElementById('ncCostDate').value || new Date().toISOString().slice(0, 10),
           type: document.getElementById('ncCostType').value || 'nc',
+          costKind: document.getElementById('ncCostKind').value || 'administrativo',
           linkedNcId: selectedNcId,
           linkedNcNumber: linkedNc ? (linkedNc.ncNumber || linkedNc.id || '') : '',
           description: document.getElementById('ncCostDescription').value.trim(),
@@ -11119,10 +11141,19 @@ document.addEventListener("DOMContentLoaded", function() {
           <input type="date" id="ncCostDate" />
         </div>
         <div class="nc-field">
-          <label>Tipo de custo</label>
+          <label>Vínculo do custo</label>
           <select id="ncCostType">
             <option value="nc">NC vinculada</option>
             <option value="administrativo">Administrativo / sem NC</option>
+          </select>
+        </div>
+        <div class="nc-field">
+          <label>Tipo de custo</label>
+          <select id="ncCostKind">
+            <option value="administrativo">Administrativo</option>
+            <option value="contencao_retrabalho">Contenção / Retrabalho</option>
+            <option value="reatividade">Reatividade</option>
+            <option value="retrabalho">Retrabalho</option>
           </select>
         </div>
         <div class="nc-field nc-field-full">
