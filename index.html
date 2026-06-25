@@ -6778,6 +6778,7 @@ document.addEventListener("DOMContentLoaded", function() {
     return 'nccost_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
   }
 
+  var NC_COST_KIND_DEFAULT = 'administrativo';
   var NC_COST_KIND_LABELS = {
     administrativo: 'Administrativo',
     contencao_retrabalho: 'Contenção / Retrabalho',
@@ -6788,12 +6789,12 @@ document.addEventListener("DOMContentLoaded", function() {
   function normalizeNcCostKind(value) {
     var kind = (value || '').toString().trim().toLowerCase();
     if (NC_COST_KIND_LABELS[kind]) return kind;
-    return 'administrativo';
+    return NC_COST_KIND_DEFAULT;
   }
 
   function getNcCostKindLabel(rec) {
     var kind = normalizeNcCostKind(rec && rec.costKind);
-    return NC_COST_KIND_LABELS[kind] || NC_COST_KIND_LABELS.administrativo;
+    return NC_COST_KIND_LABELS[kind] || NC_COST_KIND_LABELS[NC_COST_KIND_DEFAULT];
   }
 
   function normalizeNcCostRecord(rec) {
@@ -6801,7 +6802,7 @@ document.addEventListener("DOMContentLoaded", function() {
     if (!r.id) r.id = generateNcCostId();
     if (!r.date) r.date = new Date().toISOString().slice(0, 10);
     r.type = r.type === 'administrativo' ? 'administrativo' : 'nc';
-    r.costKind = normalizeNcCostKind(r.costKind || (r.type === 'administrativo' ? 'administrativo' : ''));
+    r.costKind = normalizeNcCostKind(r.costKind || (r.type === 'administrativo' ? NC_COST_KIND_DEFAULT : ''));
     r.linkedNcId = (r.linkedNcId || '').trim();
     r.linkedNcNumber = (r.linkedNcNumber || '').trim();
     r.description = (r.description || '').trim();
@@ -9983,7 +9984,7 @@ document.addEventListener("DOMContentLoaded", function() {
     _ncCostEvidence = [];
     document.getElementById('ncCostDate').value = new Date().toISOString().slice(0, 10);
     document.getElementById('ncCostType').value = 'nc';
-    document.getElementById('ncCostKind').value = 'administrativo';
+    document.getElementById('ncCostKind').value = NC_COST_KIND_DEFAULT;
     document.getElementById('ncCostDescription').value = '';
     document.getElementById('ncCostChargedValue').value = '';
     document.getElementById('ncCostNegotiatedValue').value = '';
@@ -9997,7 +9998,7 @@ document.addEventListener("DOMContentLoaded", function() {
       if (rec) {
         document.getElementById('ncCostDate').value = rec.date || new Date().toISOString().slice(0, 10);
         document.getElementById('ncCostType').value = rec.type || 'nc';
-        document.getElementById('ncCostKind').value = normalizeNcCostKind(rec.costKind || (rec.type === 'administrativo' ? 'administrativo' : ''));
+        document.getElementById('ncCostKind').value = normalizeNcCostKind(rec.costKind || (rec.type === 'administrativo' ? NC_COST_KIND_DEFAULT : ''));
         document.getElementById('ncCostDescription').value = rec.description || '';
         document.getElementById('ncCostChargedValue').value = rec.chargedValue != null ? rec.chargedValue : '';
         document.getElementById('ncCostNegotiatedValue').value = rec.negotiatedValue != null ? rec.negotiatedValue : '';
@@ -10140,7 +10141,7 @@ document.addEventListener("DOMContentLoaded", function() {
           id: _editingNcCostId || undefined,
           date: document.getElementById('ncCostDate').value || new Date().toISOString().slice(0, 10),
           type: document.getElementById('ncCostType').value || 'nc',
-          costKind: document.getElementById('ncCostKind').value || 'administrativo',
+          costKind: document.getElementById('ncCostKind').value || NC_COST_KIND_DEFAULT,
           linkedNcId: selectedNcId,
           linkedNcNumber: linkedNc ? (linkedNc.ncNumber || linkedNc.id || '') : '',
           description: document.getElementById('ncCostDescription').value.trim(),
@@ -11141,7 +11142,7 @@ document.addEventListener("DOMContentLoaded", function() {
           <input type="date" id="ncCostDate" />
         </div>
         <div class="nc-field">
-          <label>Vínculo do custo</label>
+          <label>Categoria de vínculo</label>
           <select id="ncCostType">
             <option value="nc">NC vinculada</option>
             <option value="administrativo">Administrativo / sem NC</option>
