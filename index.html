@@ -1214,6 +1214,28 @@
     .nc-cost-detail-badge.open { background:#fef9c3; border:1px solid #fde68a; color:#a16207; }
     .nc-cost-detail-badge.closed { background:#dcfce7; border:1px solid #bbf7d0; color:#166534; }
     .nc-cost-detail-badge.none { background:#f3f4f6; border:1px solid #e5e7eb; color:#6b7280; }
+    .nc-cost-detail-badge.paga { background:#d1fae5; border:1px solid #6ee7b7; color:#065f46; }
+    .nc-cost-detail-badge.reembolsada { background:#dbeafe; border:1px solid #93c5fd; color:#1e40af; }
+    /* Finalize modal */
+    .nc-finalize-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:5000; align-items:center; justify-content:center; }
+    .nc-finalize-backdrop.open { display:flex; }
+    .nc-finalize-box { background:#fff; border-radius:14px; width:min(400px,calc(100vw - 32px)); box-shadow:0 16px 48px rgba(0,0,0,.3); overflow:hidden; }
+    .nc-finalize-header { background:linear-gradient(135deg,#15803d 0%,#166534 100%); padding:14px 18px; display:flex; align-items:center; justify-content:space-between; }
+    .nc-finalize-header h3 { color:#fff; font-size:15px; font-weight:700; margin:0; }
+    .nc-finalize-close { background:rgba(255,255,255,.18); border:none; color:#fff; font-size:18px; cursor:pointer; border-radius:7px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; }
+    .nc-finalize-close:hover { background:rgba(255,255,255,.35); }
+    .nc-finalize-body { padding:20px; display:flex; flex-direction:column; gap:10px; }
+    .nc-finalize-body p { margin:0 0 6px; font-size:13px; color:#374151; }
+    .nc-finalize-btn { width:100%; padding:12px 16px; border-radius:10px; border:2px solid transparent; font-size:13px; font-weight:700; cursor:pointer; text-align:left; display:flex; align-items:center; gap:10px; transition:all .15s; }
+    .nc-finalize-btn.paga { background:#d1fae5; border-color:#6ee7b7; color:#065f46; }
+    .nc-finalize-btn.paga:hover { background:#a7f3d0; border-color:#34d399; }
+    .nc-finalize-btn.reembolsada { background:#dbeafe; border-color:#93c5fd; color:#1e40af; }
+    .nc-finalize-btn.reembolsada:hover { background:#bfdbfe; border-color:#60a5fa; }
+    .nc-finalize-btn.desfinalizar { background:#fef2f2; border-color:#fca5a5; color:#991b1b; }
+    .nc-finalize-btn.desfinalizar:hover { background:#fee2e2; border-color:#f87171; }
+    .nc-finalize-footer { padding:10px 18px 14px; border-top:1px solid #f3f4f6; display:flex; justify-content:flex-end; }
+    .nc-finalize-cancel { background:#e5e7eb; color:#374151; border:none; border-radius:8px; padding:8px 16px; font-size:12px; font-weight:700; cursor:pointer; }
+    .nc-finalize-cancel:hover { background:#d1d5db; }
     .nc-cost-evidence-list { display:flex; flex-direction:column; gap:8px; }
     .nc-cost-evidence-btn { width:100%; text-align:left; border:1px solid #bfdbfe; background:#eff6ff; color:#1d4ed8; border-radius:8px; padding:8px 10px; font-size:12px; font-weight:600; cursor:pointer; }
     .nc-cost-evidence-btn:hover { background:#dbeafe; }
@@ -6812,6 +6834,7 @@ document.addEventListener("DOMContentLoaded", function() {
     r.chargedValue = Number.isFinite(charged) ? charged : 0;
     r.negotiatedValue = Number.isFinite(negotiated) ? negotiated : null;
     r.negotiationOpen = !!r.negotiationOpen;
+    r.finalizationType = (r.finalizationType === 'paga' || r.finalizationType === 'reembolsada') ? r.finalizationType : null;
     r.evidences = Array.isArray(r.evidences) ? r.evidences.map(function(ev) {
       if (!ev) return null;
       var data = typeof ev.data === 'string' ? ev.data : '';
@@ -9548,6 +9571,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
   function getNcCostNegotiationStatus(cost) {
     if (!cost) return 'Sem negociação';
+    if (cost.finalizationType === 'paga') return 'Paga ✓';
+    if (cost.finalizationType === 'reembolsada') return 'Reembolsada ✓';
     return cost.negotiationOpen ? 'Em aberto' : (cost.negotiatedValue != null ? 'Fechada' : 'Sem negociação');
   }
 
@@ -9573,7 +9598,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
     var linkedNc = rec.linkedNcId ? (ncRecords || []).find(function(nc) { return nc.id === rec.linkedNcId; }) : null;
     var negotiationStatus = getNcCostNegotiationStatus(rec);
-    var statusClass = rec.negotiationOpen ? 'open' : (rec.negotiatedValue != null ? 'closed' : 'none');
+    var statusClass = rec.finalizationType ? rec.finalizationType : (rec.negotiationOpen ? 'open' : (rec.negotiatedValue != null ? 'closed' : 'none'));
     var savings = (rec.negotiatedValue != null && !rec.negotiationOpen)
       ? Math.max(0, (Number(rec.chargedValue) || 0) - (Number(rec.negotiatedValue) || 0))
       : 0;
@@ -9668,6 +9693,17 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 
     backdrop.classList.add('open');
+    backdrop._costId = costId;
+    var detailFinalizeBtn = document.getElementById('ncCostDetailBtnFinalize');
+    if (detailFinalizeBtn) {
+      detailFinalizeBtn.onclick = function() {
+        closeNcCostDetailModal();
+        openNcFinalizeModal(costId);
+      };
+      detailFinalizeBtn.textContent = rec.finalizationType ? '☑️ Alterar finalização' : '☑️ Finalizar negociação';
+      detailFinalizeBtn.className = 'nc-finalize-btn ' + (rec.finalizationType === 'paga' ? 'paga' : rec.finalizationType === 'reembolsada' ? 'reembolsada' : 'paga');
+      detailFinalizeBtn.style.cssText = 'width:auto;padding:8px 16px;font-size:12px;';
+    }
   }
 
   function getFilteredNcCostRecords(extraFilters) {
@@ -9683,6 +9719,9 @@ document.addEventListener("DOMContentLoaded", function() {
       if (filters.status === 'open' && !rec.negotiationOpen) return false;
       if (filters.status === 'closed' && (rec.negotiationOpen || rec.negotiatedValue == null)) return false;
       if (filters.status === 'none' && getNcCostNegotiationStatus(rec) !== 'Sem negociação') return false;
+      if (filters.status === 'paga' && rec.finalizationType !== 'paga') return false;
+      if (filters.status === 'reembolsada' && rec.finalizationType !== 'reembolsada') return false;
+      if (filters.status === 'finalizada' && !rec.finalizationType) return false;
       if (filters.type !== 'all' && rec.type !== filters.type) return false;
       if (filters.savingsOnly) {
         var charged = Number(rec && rec.chargedValue) || 0;
@@ -9805,7 +9844,7 @@ document.addEventListener("DOMContentLoaded", function() {
         '<td>' + escHtml(rec.negotiatedValue != null ? formatCurrencyBRL(rec.negotiatedValue) : '—') + '</td>' +
         '<td>' + escHtml(negotiationStatus) + '</td>' +
         '<td>' + escHtml(String((rec.evidences || []).length)) + '</td>' +
-        '<td><button type="button" class="btn-icon" data-nccost-edit="' + escHtml(rec.id) + '" title="Editar">✏️</button> <button type="button" class="btn-icon" data-nccost-del="' + escHtml(rec.id) + '" title="Excluir">🗑️</button></td>';
+        '<td><button type="button" class="btn-icon" data-nccost-edit="' + escHtml(rec.id) + '" title="Editar">✏️</button> <button type="button" class="btn-icon" data-nccost-del="' + escHtml(rec.id) + '" title="Excluir">🗑️</button> <button type="button" class="btn-icon" data-nccost-finalize="' + escHtml(rec.id) + '" title="Marcar como finalizada (paga/reembolsada)">' + (rec.finalizationType ? '✅' : '☑️') + '</button></td>';
       tr.addEventListener('click', function(e) {
         if (e.target.closest('.btn-icon')) return;
         openNcCostDetailModal(rec.id);
@@ -9830,6 +9869,41 @@ document.addEventListener("DOMContentLoaded", function() {
         renderHomePage();
       });
     });
+    tbody.querySelectorAll('[data-nccost-finalize]').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        openNcFinalizeModal(btn.getAttribute('data-nccost-finalize'));
+      });
+    });
+  }
+
+  function openNcFinalizeModal(costId) {
+    var backdrop = document.getElementById('ncFinalizeBackdrop');
+    if (!backdrop) return;
+    backdrop._costId = costId;
+    backdrop.classList.add('open');
+    var rec = (ncCostRecords || []).find(function(item) { return item.id === costId; });
+    var hasFinalized = rec && rec.finalizationType;
+    var desfinBtn = document.getElementById('ncFinalizeBtnDesfinalizar');
+    if (desfinBtn) desfinBtn.style.display = hasFinalized ? '' : 'none';
+  }
+
+  function closeNcFinalizeModal() {
+    var backdrop = document.getElementById('ncFinalizeBackdrop');
+    if (backdrop) { backdrop.classList.remove('open'); backdrop._costId = null; }
+  }
+
+  async function applyNcFinalizationType(type) {
+    var backdrop = document.getElementById('ncFinalizeBackdrop');
+    var costId = backdrop && backdrop._costId;
+    if (!costId) return;
+    var idx = (ncCostRecords || []).findIndex(function(item) { return item.id === costId; });
+    if (idx === -1) { closeNcFinalizeModal(); return; }
+    ncCostRecords[idx] = normalizeNcCostRecord(Object.assign({}, ncCostRecords[idx], { finalizationType: type }));
+    closeNcFinalizeModal();
+    await saveNcCostRecords();
+    renderNcCostPage();
+    renderHomePage();
   }
 
   function closeNcCostPdfModal() {
@@ -9881,7 +9955,10 @@ document.addEventListener("DOMContentLoaded", function() {
         all: 'Todos',
         closed: 'Somente pagas/fechadas',
         open: 'Somente em aberto',
-        none: 'Sem negociação'
+        none: 'Sem negociação',
+        paga: 'Somente pagas (finalizadas)',
+        reembolsada: 'Somente reembolsadas (finalizadas)',
+        finalizada: 'Todas finalizadas'
       }[status] || 'Todos'),
       'Tipo: ' + ({
         all: 'Todos',
@@ -10092,6 +10169,19 @@ document.addEventListener("DOMContentLoaded", function() {
     if (detailCloseBtn) detailCloseBtn.addEventListener('click', closeNcCostDetailModal);
     if (detailCloseFooter) detailCloseFooter.addEventListener('click', closeNcCostDetailModal);
     if (detailBackdrop) detailBackdrop.addEventListener('click', function(e) { if (e.target === detailBackdrop) closeNcCostDetailModal(); });
+
+    var finalizeBackdrop = document.getElementById('ncFinalizeBackdrop');
+    var finalizeClose = document.getElementById('ncFinalizeClose');
+    var finalizeCancel = document.getElementById('ncFinalizeCancelBtn');
+    var finalizePaga = document.getElementById('ncFinalizeBtnPaga');
+    var finalizeReembolsada = document.getElementById('ncFinalizeBtnReembolsada');
+    var finalizeDesfinalizar = document.getElementById('ncFinalizeBtnDesfinalizar');
+    if (finalizeClose) finalizeClose.addEventListener('click', closeNcFinalizeModal);
+    if (finalizeCancel) finalizeCancel.addEventListener('click', closeNcFinalizeModal);
+    if (finalizeBackdrop) finalizeBackdrop.addEventListener('click', function(e) { if (e.target === finalizeBackdrop) closeNcFinalizeModal(); });
+    if (finalizePaga) finalizePaga.addEventListener('click', function() { applyNcFinalizationType('paga'); });
+    if (finalizeReembolsada) finalizeReembolsada.addEventListener('click', function() { applyNcFinalizationType('reembolsada'); });
+    if (finalizeDesfinalizar) finalizeDesfinalizar.addEventListener('click', function() { applyNcFinalizationType(null); });
 
     var openChk = document.getElementById('ncCostNegotiationOpen');
     if (openChk) openChk.addEventListener('change', syncNcCostNegotiatedFieldState);
@@ -11200,6 +11290,25 @@ document.addEventListener("DOMContentLoaded", function() {
   </div>
 </div>
 
+<!-- NC COST FINALIZE MODAL -->
+<div class="nc-finalize-backdrop" id="ncFinalizeBackdrop" role="dialog" aria-modal="true" aria-labelledby="ncFinalizeTitle">
+  <div class="nc-finalize-box">
+    <div class="nc-finalize-header">
+      <h3 id="ncFinalizeTitle">Finalizar negociação</h3>
+      <button class="nc-finalize-close" id="ncFinalizeClose" aria-label="Fechar">✕</button>
+    </div>
+    <div class="nc-finalize-body">
+      <p>Selecione como esta negociação foi finalizada:</p>
+      <button type="button" class="nc-finalize-btn paga" id="ncFinalizeBtnPaga">✅ Paga</button>
+      <button type="button" class="nc-finalize-btn reembolsada" id="ncFinalizeBtnReembolsada">↩️ Reembolsada</button>
+      <button type="button" class="nc-finalize-btn desfinalizar" id="ncFinalizeBtnDesfinalizar">✖ Desfinalizar (remover status)</button>
+    </div>
+    <div class="nc-finalize-footer">
+      <button class="nc-finalize-cancel" id="ncFinalizeCancelBtn">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <!-- NC COST DETAIL POPUP -->
 <div class="nc-cost-detail-backdrop" id="ncCostDetailBackdrop" role="dialog" aria-modal="true" aria-labelledby="ncCostDetailTitle">
   <div class="nc-cost-detail-modal">
@@ -11210,7 +11319,8 @@ document.addEventListener("DOMContentLoaded", function() {
     <div class="nc-cost-detail-body" id="ncCostDetailBody">
       <!-- populated dynamically -->
     </div>
-    <div class="nc-cost-detail-footer">
+    <div class="nc-cost-detail-footer" style="justify-content:space-between;">
+      <button class="nc-finalize-btn paga" id="ncCostDetailBtnFinalize" style="width:auto;padding:8px 16px;font-size:12px;">☑️ Finalizar negociação</button>
       <button class="nc-detail-btn-close" id="ncCostDetailBtnClose">Fechar</button>
     </div>
   </div>
@@ -11230,6 +11340,9 @@ document.addEventListener("DOMContentLoaded", function() {
             <option value="closed">Somente pagas / fechadas</option>
             <option value="open">Somente em aberto</option>
             <option value="none">Sem negociação</option>
+            <option value="paga">Somente pagas (finalizadas)</option>
+            <option value="reembolsada">Somente reembolsadas (finalizadas)</option>
+            <option value="finalizada">Todas finalizadas (paga ou reembolsada)</option>
           </select>
         </label>
         <label>Tipo
