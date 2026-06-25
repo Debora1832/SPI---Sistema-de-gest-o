@@ -1165,6 +1165,41 @@
     .nc-detail-obs-contencao-btn:hover { background:#eff6ff; }
     .nc-detail-obs-contencao-btn.active:hover { background:#1e40af; }
 
+    /* ── NC cost negotiation detail popup ─────────────────────────────────── */
+    .nc-cost-row-clickable { cursor:pointer; }
+    .nc-cost-row-clickable:hover td { background:#f8fafc; }
+    .nc-cost-detail-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:3600; align-items:flex-start; justify-content:center; overflow-y:auto; padding:30px 16px; }
+    .nc-cost-detail-backdrop.open { display:flex; }
+    .nc-cost-detail-modal { background:#fff; border-radius:16px; width:100%; max-width:1080px; margin:auto; box-shadow:0 24px 64px rgba(0,0,0,.36); overflow:hidden; }
+    .nc-cost-detail-header { background:linear-gradient(135deg,#1565C0 0%,#0d47a1 100%); padding:16px 20px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .nc-cost-detail-header h3 { color:#fff; font-size:16px; font-weight:700; margin:0; }
+    .nc-cost-detail-close { background:rgba(255,255,255,.18); border:none; color:#fff; font-size:20px; cursor:pointer; border-radius:8px; width:32px; height:32px; display:flex; align-items:center; justify-content:center; }
+    .nc-cost-detail-close:hover { background:rgba(255,255,255,.35); }
+    .nc-cost-detail-body { padding:16px; background:#f8fafc; }
+    .nc-cost-detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    .nc-cost-detail-card { border:1px solid #e5e7eb; border-radius:12px; background:#fff; overflow:hidden; }
+    .nc-cost-detail-card-title { background:#f1f5f9; border-bottom:1px solid #e5e7eb; padding:10px 14px; font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:#1565C0; }
+    .nc-cost-detail-card-body { padding:14px; }
+    .nc-cost-detail-photo-strip { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+    .nc-cost-detail-photo-strip img { width:120px; height:90px; object-fit:contain; background:#111; border-radius:8px; border:1px solid #d1d5db; cursor:pointer; }
+    .nc-cost-detail-fields { display:grid; grid-template-columns:1fr 1fr; gap:10px 16px; }
+    .nc-cost-detail-field.full { grid-column:1 / -1; }
+    .nc-cost-detail-field label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#6b7280; display:block; margin-bottom:3px; }
+    .nc-cost-detail-field span { font-size:13px; color:#111827; font-weight:500; white-space:pre-wrap; word-break:break-word; }
+    .nc-cost-detail-empty { font-size:13px; color:#6b7280; padding:14px; background:#f9fafb; border:1px dashed #d1d5db; border-radius:10px; }
+    .nc-cost-detail-badge { display:inline-flex; align-items:center; border-radius:999px; padding:4px 10px; font-size:11px; font-weight:700; }
+    .nc-cost-detail-badge.open { background:#fef9c3; border:1px solid #fde68a; color:#a16207; }
+    .nc-cost-detail-badge.closed { background:#dcfce7; border:1px solid #bbf7d0; color:#166534; }
+    .nc-cost-detail-badge.none { background:#f3f4f6; border:1px solid #e5e7eb; color:#6b7280; }
+    .nc-cost-evidence-list { display:flex; flex-direction:column; gap:8px; }
+    .nc-cost-evidence-btn { width:100%; text-align:left; border:1px solid #bfdbfe; background:#eff6ff; color:#1d4ed8; border-radius:8px; padding:8px 10px; font-size:12px; font-weight:600; cursor:pointer; }
+    .nc-cost-evidence-btn:hover { background:#dbeafe; }
+    .nc-cost-detail-footer { padding:12px 16px 14px; border-top:1px solid #e5e7eb; display:flex; justify-content:flex-end; background:#fff; }
+    @media (max-width:900px) {
+      .nc-cost-detail-grid { grid-template-columns:1fr; }
+      .nc-cost-detail-fields { grid-template-columns:1fr; }
+    }
+
 
     .nc-alert-viewer-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,.75); z-index:5000; align-items:center; justify-content:center; padding:20px; }
     .nc-alert-viewer-backdrop.open { display:flex; }
@@ -9213,6 +9248,120 @@ document.addEventListener("DOMContentLoaded", function() {
     return cost.linkedNcNumber || 'NC vinculada';
   }
 
+  function getNcCostNegotiationStatus(cost) {
+    if (!cost) return 'Sem negociação';
+    return cost.negotiationOpen ? 'Em aberto' : (cost.negotiatedValue != null ? 'Fechada' : 'Sem negociação');
+  }
+
+  function getNcCostEvidenceSrc(ev) {
+    if (!ev) return '';
+    if (isUsableAttachmentSrc(ev.data)) return ev.data;
+    if (isUsableAttachmentSrc(ev.url)) return ev.url;
+    return '';
+  }
+
+  function closeNcCostDetailModal() {
+    var backdrop = document.getElementById('ncCostDetailBackdrop');
+    if (backdrop) backdrop.classList.remove('open');
+  }
+
+  function openNcCostDetailModal(costId) {
+    var backdrop = document.getElementById('ncCostDetailBackdrop');
+    var body = document.getElementById('ncCostDetailBody');
+    var title = document.getElementById('ncCostDetailTitle');
+    if (!backdrop || !body || !title) return;
+    var rec = (ncCostRecords || []).find(function(item) { return item.id === costId; });
+    if (!rec) return;
+
+    var linkedNc = rec.linkedNcId ? (ncRecords || []).find(function(nc) { return nc.id === rec.linkedNcId; }) : null;
+    var negotiationStatus = getNcCostNegotiationStatus(rec);
+    var statusClass = rec.negotiationOpen ? 'open' : (rec.negotiatedValue != null ? 'closed' : 'none');
+    var savings = (rec.negotiatedValue != null && !rec.negotiationOpen)
+      ? Math.max(0, (Number(rec.chargedValue) || 0) - (Number(rec.negotiatedValue) || 0))
+      : 0;
+
+    title.textContent = 'Negociação ' + (getNcCostLinkedLabel(rec) || 'NC');
+
+    var ncPhotos = [];
+    if (linkedNc) {
+      linkedNc = normalizeNcRecordAttachments(linkedNc);
+      ncPhotos = (linkedNc.photos && linkedNc.photos.length) ? linkedNc.photos : (linkedNc.photo ? [linkedNc.photo] : []);
+    }
+    var photosHtml = ncPhotos.length
+      ? '<div class="nc-cost-detail-photo-strip">' + ncPhotos.map(function(src, idx) {
+          return '<img src="' + escHtml(src) + '" alt="Foto ' + (idx + 1) + '" data-nccost-photo-src="' + escHtml(src) + '" data-nccost-photo-alt="Foto ' + (idx + 1) + '">';
+        }).join('') + '</div>'
+      : '';
+
+    var leftHtml = linkedNc
+      ? '<div class="nc-cost-detail-card">' +
+          '<div class="nc-cost-detail-card-title">NC vinculada</div>' +
+          '<div class="nc-cost-detail-card-body">' +
+            photosHtml +
+            '<div class="nc-cost-detail-fields">' +
+              '<div class="nc-cost-detail-field"><label>Nº da NC</label><span>' + escHtml(linkedNc.ncNumber || linkedNc.id || '—') + '</span></div>' +
+              '<div class="nc-cost-detail-field"><label>Data</label><span>' + escHtml(ncFmtDate(linkedNc.date)) + '</span></div>' +
+              '<div class="nc-cost-detail-field"><label>Cliente</label><span>' + escHtml(linkedNc.customer || '—') + '</span></div>' +
+              '<div class="nc-cost-detail-field"><label>Peça</label><span>' + escHtml(linkedNc.piece || '—') + '</span></div>' +
+              '<div class="nc-cost-detail-field"><label>Modo de Falha</label><span>' + escHtml(linkedNc.failureMode || '—') + '</span></div>' +
+              '<div class="nc-cost-detail-field"><label>Status</label><span>' + escHtml(linkedNc.d8Finalizado ? '8D Finalizado' : (linkedNc.rncAberta ? 'RNC Aberta' : 'Em aberto')) + '</span></div>' +
+              '<div class="nc-cost-detail-field full"><label>Descrição</label><span>' + escHtml(linkedNc.description || '—') + '</span></div>' +
+            '</div>' +
+          '</div>' +
+        '</div>'
+      : '<div class="nc-cost-detail-card">' +
+          '<div class="nc-cost-detail-card-title">NC vinculada</div>' +
+          '<div class="nc-cost-detail-card-body"><div class="nc-cost-detail-empty">Este custo não possui NC vinculada.</div></div>' +
+        '</div>';
+
+    var evidences = Array.isArray(rec.evidences) ? rec.evidences : [];
+    var evidencesHtml = evidences.length
+      ? '<div class="nc-cost-evidence-list">' + evidences.map(function(ev, idx) {
+          var src = getNcCostEvidenceSrc(ev);
+          return '<button type="button" class="nc-cost-evidence-btn" data-nccost-ev-src="' + escHtml(src) + '" data-nccost-ev-name="' + escHtml((ev && ev.name) || ('evidencia-' + (idx + 1))) + '">📎 ' + escHtml((ev && ev.name) || ('evidência ' + (idx + 1))) + '</button>';
+        }).join('') + '</div>'
+      : '<div class="nc-cost-detail-empty">Nenhuma evidência anexada.</div>';
+
+    var rightHtml =
+      '<div class="nc-cost-detail-card">' +
+        '<div class="nc-cost-detail-card-title">Custos da negociação</div>' +
+        '<div class="nc-cost-detail-card-body">' +
+          '<div class="nc-cost-detail-fields">' +
+            '<div class="nc-cost-detail-field"><label>Data</label><span>' + escHtml(rec.date || '—') + '</span></div>' +
+            '<div class="nc-cost-detail-field"><label>Tipo</label><span>' + escHtml(rec.type === 'administrativo' ? 'Administrativo' : 'NC') + '</span></div>' +
+            '<div class="nc-cost-detail-field"><label>Valor cobrado</label><span>' + escHtml(formatCurrencyBRL(rec.chargedValue)) + '</span></div>' +
+            '<div class="nc-cost-detail-field"><label>Valor negociado</label><span>' + escHtml(rec.negotiatedValue != null ? formatCurrencyBRL(rec.negotiatedValue) : '—') + '</span></div>' +
+            '<div class="nc-cost-detail-field"><label>Economia</label><span>' + escHtml(formatCurrencyBRL(savings)) + '</span></div>' +
+            '<div class="nc-cost-detail-field"><label>Status</label><span><span class="nc-cost-detail-badge ' + statusClass + '">' + escHtml(negotiationStatus) + '</span></span></div>' +
+            '<div class="nc-cost-detail-field full"><label>Descrição da negociação</label><span>' + escHtml(rec.description || '—') + '</span></div>' +
+            '<div class="nc-cost-detail-field full"><label>Observações</label><span>' + escHtml(rec.notes || '—') + '</span></div>' +
+            '<div class="nc-cost-detail-field full"><label>Evidências (' + evidences.length + ')</label><span>' + evidencesHtml + '</span></div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+
+    body.innerHTML = '<div class="nc-cost-detail-grid">' + leftHtml + rightHtml + '</div>';
+
+    body.querySelectorAll('[data-nccost-photo-src]').forEach(function(img) {
+      img.addEventListener('click', function() {
+        openLightbox(img.getAttribute('data-nccost-photo-src'), img.getAttribute('data-nccost-photo-alt') || 'Foto');
+      });
+      img.addEventListener('error', function() {
+        img.style.display = 'none';
+      });
+    });
+
+    body.querySelectorAll('[data-nccost-ev-src]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var src = btn.getAttribute('data-nccost-ev-src') || '';
+        var name = btn.getAttribute('data-nccost-ev-name') || 'evidência';
+        if (window._openAlertViewer) window._openAlertViewer(src, name);
+      });
+    });
+
+    backdrop.classList.add('open');
+  }
+
   function renderNcCostPage() {
     var tbody = document.getElementById('ncCostTableBody');
     if (!tbody) return;
@@ -9248,7 +9397,8 @@ document.addEventListener("DOMContentLoaded", function() {
       return (b.date || '').localeCompare(a.date || '');
     }).forEach(function(rec) {
       var tr = document.createElement('tr');
-      var negotiationStatus = rec.negotiationOpen ? 'Em aberto' : (rec.negotiatedValue != null ? 'Fechada' : 'Sem negociação');
+      tr.className = 'nc-cost-row-clickable';
+      var negotiationStatus = getNcCostNegotiationStatus(rec);
       tr.innerHTML =
         '<td>' + escHtml(rec.date || '—') + '</td>' +
         '<td>' + escHtml(rec.type === 'administrativo' ? 'Administrativo' : 'NC') + '</td>' +
@@ -9259,14 +9409,21 @@ document.addEventListener("DOMContentLoaded", function() {
         '<td>' + escHtml(negotiationStatus) + '</td>' +
         '<td>' + escHtml(String((rec.evidences || []).length)) + '</td>' +
         '<td><button type="button" class="btn-icon" data-nccost-edit="' + escHtml(rec.id) + '" title="Editar">✏️</button> <button type="button" class="btn-icon" data-nccost-del="' + escHtml(rec.id) + '" title="Excluir">🗑️</button></td>';
+      tr.addEventListener('click', function() {
+        openNcCostDetailModal(rec.id);
+      });
       tbody.appendChild(tr);
     });
 
     tbody.querySelectorAll('[data-nccost-edit]').forEach(function(btn) {
-      btn.addEventListener('click', function() { openNcCostModal(btn.getAttribute('data-nccost-edit')); });
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        openNcCostModal(btn.getAttribute('data-nccost-edit'));
+      });
     });
     tbody.querySelectorAll('[data-nccost-del]').forEach(function(btn) {
-      btn.addEventListener('click', async function() {
+      btn.addEventListener('click', async function(e) {
+        e.stopPropagation();
         var id = btn.getAttribute('data-nccost-del');
         if (!confirm('Excluir o registro de custo selecionado?')) return;
         ncCostRecords = ncCostRecords.filter(function(item) { return item.id !== id; });
@@ -9380,6 +9537,12 @@ document.addEventListener("DOMContentLoaded", function() {
     if (closeBtn) closeBtn.addEventListener('click', closeNcCostModal);
     if (cancelBtn) cancelBtn.addEventListener('click', closeNcCostModal);
     if (backdrop) backdrop.addEventListener('click', function(e) { if (e.target === backdrop) closeNcCostModal(); });
+    var detailBackdrop = document.getElementById('ncCostDetailBackdrop');
+    var detailCloseBtn = document.getElementById('ncCostDetailClose');
+    var detailCloseFooter = document.getElementById('ncCostDetailBtnClose');
+    if (detailCloseBtn) detailCloseBtn.addEventListener('click', closeNcCostDetailModal);
+    if (detailCloseFooter) detailCloseFooter.addEventListener('click', closeNcCostDetailModal);
+    if (detailBackdrop) detailBackdrop.addEventListener('click', function(e) { if (e.target === detailBackdrop) closeNcCostDetailModal(); });
 
     var openChk = document.getElementById('ncCostNegotiationOpen');
     if (openChk) openChk.addEventListener('change', syncNcCostNegotiatedFieldState);
@@ -10473,6 +10636,22 @@ document.addEventListener("DOMContentLoaded", function() {
     <div class="nc-modal-footer">
       <button class="nc-btn-cancel-modal" id="ncCostModalCancel">Cancelar</button>
       <button class="nc-btn-save" id="ncCostModalSave">Salvar Registro</button>
+    </div>
+  </div>
+</div>
+
+<!-- NC COST DETAIL POPUP -->
+<div class="nc-cost-detail-backdrop" id="ncCostDetailBackdrop" role="dialog" aria-modal="true" aria-labelledby="ncCostDetailTitle">
+  <div class="nc-cost-detail-modal">
+    <div class="nc-cost-detail-header">
+      <h3 id="ncCostDetailTitle">Detalhes da negociação</h3>
+      <button class="nc-cost-detail-close" id="ncCostDetailClose" aria-label="Fechar">✕</button>
+    </div>
+    <div class="nc-cost-detail-body" id="ncCostDetailBody">
+      <!-- populated dynamically -->
+    </div>
+    <div class="nc-cost-detail-footer">
+      <button class="nc-detail-btn-close" id="ncCostDetailBtnClose">Fechar</button>
     </div>
   </div>
 </div>
