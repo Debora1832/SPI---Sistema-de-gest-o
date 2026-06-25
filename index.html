@@ -9358,7 +9358,7 @@ document.addEventListener("DOMContentLoaded", function() {
     }
     var photosHtml = ncPhotos.length
       ? '<div class="nc-cost-detail-photo-strip">' + ncPhotos.map(function(src, idx) {
-          return '<img src="' + escHtml(src) + '" alt="Foto ' + (idx + 1) + '" data-nccost-photo-src="' + escHtml(src) + '" data-nccost-photo-alt="Foto ' + (idx + 1) + '">';
+          return '<img src="' + escHtml(src) + '" alt="Foto ' + (idx + 1) + '" data-nccost-photo-src="' + escHtml(src) + '" data-nccost-photo-alt="Foto ' + (idx + 1) + '" tabindex="0" role="button">';
         }).join('') + '</div>'
       : '';
 
@@ -9387,7 +9387,7 @@ document.addEventListener("DOMContentLoaded", function() {
     var evidencesHtml = evidences.length
       ? '<div class="nc-cost-evidence-list">' + evidences.map(function(ev, idx) {
           var src = getNcCostEvidenceSrc(ev);
-          return '<button type="button" class="nc-cost-evidence-btn" data-nccost-ev-src="' + escHtml(src) + '" data-nccost-ev-name="' + escHtml((ev && ev.name) || ('evidencia-' + (idx + 1))) + '">📎 ' + escHtml((ev && ev.name) || ('evidência ' + (idx + 1))) + '</button>';
+          return '<button type="button" class="nc-cost-evidence-btn" data-nccost-ev-src="' + escHtml(src) + '" data-nccost-ev-name="' + escHtml((ev && ev.name) || ('evidência-' + (idx + 1))) + '">📎 ' + escHtml((ev && ev.name) || ('evidência ' + (idx + 1))) + '</button>';
         }).join('') + '</div>'
       : '<div class="nc-cost-detail-empty">Nenhuma evidência anexada.</div>';
 
@@ -9414,6 +9414,12 @@ document.addEventListener("DOMContentLoaded", function() {
     body.querySelectorAll('[data-nccost-photo-src]').forEach(function(img) {
       img.addEventListener('click', function() {
         openLightbox(img.getAttribute('data-nccost-photo-src'), img.getAttribute('data-nccost-photo-alt') || 'Foto');
+      });
+      img.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openLightbox(img.getAttribute('data-nccost-photo-src'), img.getAttribute('data-nccost-photo-alt') || 'Foto');
+        }
       });
       img.addEventListener('error', function() {
         img.style.display = 'none';
@@ -9478,7 +9484,8 @@ document.addEventListener("DOMContentLoaded", function() {
         '<td>' + escHtml(negotiationStatus) + '</td>' +
         '<td>' + escHtml(String((rec.evidences || []).length)) + '</td>' +
         '<td><button type="button" class="btn-icon" data-nccost-edit="' + escHtml(rec.id) + '" title="Editar">✏️</button> <button type="button" class="btn-icon" data-nccost-del="' + escHtml(rec.id) + '" title="Excluir">🗑️</button></td>';
-      tr.addEventListener('click', function() {
+      tr.addEventListener('click', function(e) {
+        if (e.target && e.target.closest && e.target.closest('.btn-icon')) return;
         openNcCostDetailModal(rec.id);
       });
       tbody.appendChild(tr);
