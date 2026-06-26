@@ -1212,6 +1212,8 @@
     .nc-cost-detail-empty { font-size:13px; color:#6b7280; padding:14px; background:#f9fafb; border:1px dashed #d1d5db; border-radius:10px; }
     .nc-cost-detail-badge { display:inline-flex; align-items:center; border-radius:999px; padding:4px 10px; font-size:11px; font-weight:700; }
     .nc-cost-detail-badge.open { background:#fee2e2; border:1px solid #fca5a5; color:#991b1b; font-weight:800; }
+    .nc-cost-payment-date { font-size:11px; color:#374151; margin-top:4px; font-weight:600; }
+    .nc-cost-payment-date-value { font-weight:700; color:#065f46; }
     .nc-cost-detail-badge.closed { background:#dcfce7; border:1px solid #bbf7d0; color:#166534; }
     .nc-cost-detail-badge.none { background:#f3f4f6; border:1px solid #e5e7eb; color:#6b7280; }
     .nc-cost-detail-badge.paga { background:#d1fae5; border:1px solid #6ee7b7; color:#065f46; }
@@ -9661,7 +9663,7 @@ document.addEventListener("DOMContentLoaded", function() {
         '<div class="nc-cost-detail-card-body">' +
           '<div class="nc-cost-detail-fields">' +
             '<div class="nc-cost-detail-field"><label>Data do registro</label><span>' + escHtml(ncFmtDate(rec.date) || '—') + '</span></div>' +
-            (rec.finalizationDate ? '<div class="nc-cost-detail-field"><label>Data do pagamento</label><span style="font-weight:700;color:#065f46;">' + escHtml(ncFmtDate(rec.finalizationDate)) + '</span></div>' : '') +
+            (rec.finalizationDate ? '<div class="nc-cost-detail-field"><label>Data do pagamento</label><span class="nc-cost-payment-date-value">' + escHtml(ncFmtDate(rec.finalizationDate)) + '</span></div>' : '') +
             '<div class="nc-cost-detail-field"><label>Tipo</label><span>' + escHtml(getNcCostKindLabel(rec)) + '</span></div>' +
             '<div class="nc-cost-detail-field"><label>Valor cobrado</label><span>' + escHtml(formatCurrencyBRL(rec.chargedValue)) + '</span></div>' +
             '<div class="nc-cost-detail-field"><label>Valor negociado</label><span>' + escHtml(rec.negotiatedValue != null ? formatCurrencyBRL(rec.negotiatedValue) : '—') + '</span></div>' +
@@ -9844,7 +9846,7 @@ document.addEventListener("DOMContentLoaded", function() {
       var negotiationStatus = getNcCostNegotiationStatus(rec);
       var statusBadgeClass = rec.finalizationType ? rec.finalizationType : (rec.negotiationOpen ? 'open' : (rec.negotiatedValue != null ? 'closed' : 'none'));
       var statusCellHtml = '<span class="nc-cost-detail-badge ' + statusBadgeClass + '">' + escHtml(negotiationStatus) + '</span>' +
-        (rec.finalizationDate ? '<div style="font-size:11px;color:#374151;margin-top:4px;font-weight:600;">Pago em: ' + escHtml(ncFmtDate(rec.finalizationDate)) + '</div>' : '');
+        (rec.finalizationDate ? '<div class="nc-cost-payment-date">Pago em: ' + escHtml(ncFmtDate(rec.finalizationDate)) + '</div>' : '');
       tr.innerHTML =
         '<td>' + escHtml(rec.date || '—') + '</td>' +
         '<td>' + escHtml(getNcCostKindLabel(rec)) + '</td>' +
@@ -9909,7 +9911,7 @@ document.addEventListener("DOMContentLoaded", function() {
     if (!costId) return;
     var idx = (ncCostRecords || []).findIndex(function(item) { return item.id === costId; });
     if (idx === -1) { closeNcFinalizeModal(); return; }
-    ncCostRecords[idx] = normalizeNcCostRecord(Object.assign({}, ncCostRecords[idx], { finalizationType: type, finalizationDate: type ? new Date().toISOString().slice(0, 10) : null }));
+    ncCostRecords[idx] = normalizeNcCostRecord(Object.assign({}, ncCostRecords[idx], { finalizationType: type, finalizationDate: type ? (ncCostRecords[idx].finalizationDate || new Date().toISOString().slice(0, 10)) : null }));
     closeNcFinalizeModal();
     await saveNcCostRecords();
     renderNcCostPage();
