@@ -9127,7 +9127,7 @@ document.addEventListener("DOMContentLoaded", function() {
       var payClass = nc.atencao ? ' nc-pay-alerta' : '';
       var ncNegotiationSummary = getNcNegotiationSummaryByNcId(nc.id);
       var payBadgeHtml = ncNegotiationSummary.count === 0
-        ? '<span class="nc-card-payment-status">SEM CUSTO ASSOCIADO A NC</span>'
+        ? '<span class="nc-card-payment-status">' + escHtml('SEM CUSTO ASSOCIADO A NC') + '</span>'
         : '<span class="nc-card-payment-status">' + escHtml(NC_COST_STATUS_LABEL + ncNegotiationSummary.paymentStatus) + '</span>';
       return '<div class="nc-card' + naoProcClass + payClass + '" data-nc-id="' + nc.id + '">' +
         naoProcBadge +
