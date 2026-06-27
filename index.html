@@ -9127,9 +9127,10 @@ document.addEventListener("DOMContentLoaded", function() {
       // Alert flag (red) takes highest priority — short-circuit cost lookup when set
       var payClass = nc.atencao ? ' nc-pay-alerta' : '';
       var ncNegotiationSummary = getNcNegotiationSummaryByNcId(nc.id);
+      var paymentStatusText = escHtml(ncNegotiationSummary.paymentStatus || '—');
       var payBadgeHtml = ncNegotiationSummary.count === 0
         ? '<span class="nc-card-payment-status">' + escHtml(NC_COST_STATUS_LABEL_NONE) + '</span>'
-        : '<span class="nc-card-payment-status">' + escHtml(NC_COST_STATUS_LABEL + ncNegotiationSummary.paymentStatus) + '</span>';
+        : '<span class="nc-card-payment-status">' + escHtml(NC_COST_STATUS_LABEL) + paymentStatusText + '</span>';
       return '<div class="nc-card' + naoProcClass + payClass + '" data-nc-id="' + nc.id + '">' +
         naoProcBadge +
         atencaoBadge +
@@ -9456,6 +9457,7 @@ document.addEventListener("DOMContentLoaded", function() {
       if (!nc.rncAberta && !nc.d8Finalizado) statusBadges = '<span class="nc-detail-status-badge nc-detail-status-none">○ Em aberto</span>';
       var ncNegotiationSummary = getNcNegotiationSummaryByNcId(nc.id);
       var negotiationStatusClass = ncNegotiationSummary.paymentStatus === 'Pago' ? 'paid' : 'pending';
+      var negotiationStatusText = escHtml(ncNegotiationSummary.paymentStatus || '—');
       var negotiationCardsHtml = ncNegotiationSummary.records.length
         ? '<div class="nc-detail-neg-summary-cards">' +
             '<div class="nc-detail-neg-summary-card"><label>Status custo NC</label><strong>' + escHtml(ncNegotiationSummary.paymentStatus) + '</strong></div>' +
@@ -9471,7 +9473,7 @@ document.addEventListener("DOMContentLoaded", function() {
         '<div class="nc-detail-section">' +
           '<button type="button" class="nc-detail-neg-toggle" id="ncDetailNegotiationToggle">' +
             '<span>Custo da não-conformidade</span>' +
-            '<span class="nc-detail-neg-status ' + negotiationStatusClass + '">' + escHtml(NC_COST_STATUS_LABEL + ncNegotiationSummary.paymentStatus) + '</span>' +
+            '<span class="nc-detail-neg-status ' + negotiationStatusClass + '">' + escHtml(NC_COST_STATUS_LABEL) + negotiationStatusText + '</span>' +
           '</button>' +
           '<div class="nc-detail-neg-panel" id="ncDetailNegotiationPanel">' + negotiationCardsHtml + '</div>' +
         '</div>';
