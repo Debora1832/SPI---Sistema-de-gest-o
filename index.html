@@ -9045,7 +9045,7 @@ document.addEventListener("DOMContentLoaded", function() {
       var sitSelectClass = sit ? ' sit-' + sit : '';
       var sitSelectHtml =
         '<div class="nc-situacao-wrap">' +
-          '<select class="nc-situacao-select' + sitSelectClass + '" data-action="situacao">' +
+          '<select class="nc-situacao-select' + sitSelectClass + '" data-action="situacao" aria-label="Situação da NC">' +
             '<option value="">— Situação —</option>' +
             '<option value="aberto"'     + (sit === 'aberto'     ? ' selected' : '') + '>🟠 Em aberto</option>' +
             '<option value="finalizado"' + (sit === 'finalizado' ? ' selected' : '') + '>🟢 Finalizado</option>' +
