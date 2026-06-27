@@ -977,9 +977,7 @@
     .nc-situacao-select.sit-aberto     { border-color:#f97316; color:#fb923c; background:rgba(249,115,22,.15); }
     .nc-situacao-select.sit-alerta     { border-color:#ef4444; color:#f87171; background:rgba(239,68,68,.15); }
     /* Payment status mini-badge inside NC card */
-    .nc-card-payment-status { display:inline-block; margin-top:6px; font-size:10px; font-weight:800; padding:2px 8px; border-radius:99px; letter-spacing:.04em; }
-    .nc-card-payment-status.pago   { background:rgba(22,163,74,.2); color:#4ade80; border:1px solid rgba(22,163,74,.45); }
-    .nc-card-payment-status.aberto { background:rgba(249,115,22,.2); color:#fb923c; border:1px solid rgba(249,115,22,.45); }
+    .nc-card-payment-status { display:inline-block; margin-top:6px; font-size:10px; font-weight:800; padding:2px 8px; border-radius:99px; letter-spacing:.04em; background:rgba(255,255,255,.1); color:#e5e7eb; border:1px solid rgba(255,255,255,.2); }
     /* Atenção badge — shown on NC card when attention flag is set */
     .nc-card-atencao-badge { position:absolute; top:8px; right:8px; background:#f97316; color:#fff; border-radius:20px; font-size:11px; font-weight:800; padding:3px 8px; display:flex; align-items:center; gap:4px; box-shadow:0 2px 8px rgba(249,115,22,.5); z-index:10; letter-spacing:.04em; pointer-events:none; animation:nc-atencao-pulse 2s infinite; }
     /* Evidências de contenção badge — shown on NC card when contencaoEnviada flag is set */
@@ -1206,6 +1204,26 @@
     .nc-detail-obs-contencao-btn.active { background:#1d4ed8; color:#fff; box-shadow:0 2px 8px rgba(29,78,216,.4); }
     .nc-detail-obs-contencao-btn:hover { background:#eff6ff; }
     .nc-detail-obs-contencao-btn.active:hover { background:#1e40af; }
+    .nc-detail-neg-toggle { width:100%; border:none; background:#f8fafc; padding:12px 14px; display:flex; align-items:center; justify-content:space-between; gap:10px; cursor:pointer; font-size:12px; font-weight:700; color:#0f172a; text-align:left; }
+    .nc-detail-neg-toggle.open { border-bottom:1px solid #e5e7eb; }
+    .nc-detail-neg-status { display:inline-flex; align-items:center; justify-content:center; padding:4px 10px; border-radius:999px; font-size:11px; font-weight:800; }
+    .nc-detail-neg-status.paid { background:#dcfce7; color:#166534; border:1px solid #86efac; }
+    .nc-detail-neg-status.pending { background:#fef3c7; color:#92400e; border:1px solid #fcd34d; }
+    .nc-detail-neg-panel { display:none; padding:14px; background:#fff; }
+    .nc-detail-neg-panel.open { display:block; }
+    .nc-detail-neg-summary-cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin-bottom:12px; }
+    .nc-detail-neg-summary-card { border:1px solid #e2e8f0; border-radius:10px; padding:9px 10px; background:#f8fafc; }
+    .nc-detail-neg-summary-card label { display:block; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:#64748b; margin-bottom:4px; }
+    .nc-detail-neg-summary-card strong { font-size:13px; color:#0f172a; }
+    .nc-detail-neg-mini-list { display:grid; gap:10px; }
+    .nc-detail-neg-mini-card { border:1px solid #e5e7eb; border-radius:10px; background:#fff; box-shadow:0 1px 6px rgba(15,23,42,.04); padding:10px; }
+    .nc-detail-neg-mini-head { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; }
+    .nc-detail-neg-mini-head strong { font-size:12px; color:#111827; }
+    .nc-detail-neg-mini-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px 12px; }
+    .nc-detail-neg-mini-grid label { display:block; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#6b7280; margin-bottom:3px; }
+    .nc-detail-neg-mini-grid span { font-size:12px; color:#111827; }
+    .nc-detail-neg-mini-grid .full { grid-column:1/-1; }
+    .nc-detail-neg-empty { font-size:12px; color:#6b7280; }
 
     /* ── NC cost negotiation detail popup ─────────────────────────────────── */
     .nc-cost-card-list { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:12px; }
@@ -9029,6 +9047,28 @@ document.addEventListener("DOMContentLoaded", function() {
     }
   }
 
+  function isNcCostPaymentConcluded(cost) {
+    return !!(cost && (cost.finalizationType === 'paga' || cost.finalizationType === 'reembolsada' || cost.finalizationType === 'assumido_cliente'));
+  }
+
+  function getNcNegotiationSummaryByNcId(ncId) {
+    var records = (ncCostRecords || []).filter(function(rec) { return rec.linkedNcId === ncId; });
+    var totalCharged = records.reduce(function(sum, rec) { return sum + (Number(rec.chargedValue) || 0); }, 0);
+    var totalNegotiated = records.reduce(function(sum, rec) {
+      var value = rec.negotiatedValue != null ? Number(rec.negotiatedValue) : 0;
+      return sum + (Number.isFinite(value) ? value : 0);
+    }, 0);
+    var allPaid = records.length > 0 && records.every(isNcCostPaymentConcluded);
+    return {
+      records: records,
+      count: records.length,
+      totalCharged: totalCharged,
+      totalNegotiated: totalNegotiated,
+      totalSavings: Math.max(0, totalCharged - totalNegotiated),
+      paymentStatus: allPaid ? 'Pago' : 'Pendente'
+    };
+  }
+
   function renderNcCards() {
     var grid = document.getElementById('ncCardsGrid');
     if (!grid) return;
@@ -9070,23 +9110,9 @@ document.addEventListener("DOMContentLoaded", function() {
       var naoProcClass = nc.naoProcedente ? ' nc-nao-procedente' : '';
       // Payment status: check linked cost records for this NC
       // Alert flag (red) takes highest priority — short-circuit cost lookup when set
-      var payClass = '';
-      var payBadgeHtml = '';
-      if (nc.atencao) {
-        payClass = ' nc-pay-alerta';
-      } else {
-        var linkedCosts = (ncCostRecords || []).filter(function(c) { return c.linkedNcId === nc.id; });
-        if (linkedCosts.length) {
-          var allPaid = linkedCosts.every(function(c) { return c.finalizationType === 'paga' || c.finalizationType === 'reembolsada' || c.finalizationType === 'assumido_cliente'; });
-          if (allPaid) {
-            payClass = ' nc-pay-pago';
-            payBadgeHtml = '<span class="nc-card-payment-status pago">💰 Pagamento de custo NC concluído</span>';
-          } else {
-            payClass = ' nc-pay-aberto';
-            payBadgeHtml = '<span class="nc-card-payment-status aberto">💰 Pagamento de custo NC pendente</span>';
-          }
-        }
-      }
+      var payClass = nc.atencao ? ' nc-pay-alerta' : '';
+      var ncNegotiationSummary = getNcNegotiationSummaryByNcId(nc.id);
+      var payBadgeHtml = '<span class="nc-card-payment-status">Status custo NC: ' + escHtml(ncNegotiationSummary.paymentStatus) + '</span>';
       return '<div class="nc-card' + naoProcClass + payClass + '" data-nc-id="' + nc.id + '">' +
         naoProcBadge +
         atencaoBadge +
@@ -9412,6 +9438,37 @@ document.addEventListener("DOMContentLoaded", function() {
       if (nc.d8Finalizado) statusBadges += '<span class="nc-detail-status-badge nc-detail-status-8d">✔ 8D Finalizado</span>';
       if (!nc.rncAberta && !nc.d8Finalizado) statusBadges = '<span class="nc-detail-status-badge nc-detail-status-none">○ Em aberto</span>';
       var sitDetailLabel = nc.situacao === 'finalizado' ? '🟢 Finalizado' : nc.situacao === 'alerta' ? '🔴 Alerta' : nc.situacao === 'aberto' ? '🟠 Em aberto' : '—';
+      var ncNegotiationSummary = getNcNegotiationSummaryByNcId(nc.id);
+      var negotiationStatusClass = ncNegotiationSummary.paymentStatus === 'Pago' ? 'paid' : 'pending';
+      var negotiationCardsHtml = ncNegotiationSummary.records.length
+        ? '<div class="nc-detail-neg-summary-cards">' +
+            '<div class="nc-detail-neg-summary-card"><label>Status custo NC</label><strong>' + escHtml(ncNegotiationSummary.paymentStatus) + '</strong></div>' +
+            '<div class="nc-detail-neg-summary-card"><label>Custo total NC</label><strong>' + escHtml(formatCurrencyBRL(ncNegotiationSummary.totalCharged)) + '</strong></div>' +
+            '<div class="nc-detail-neg-summary-card"><label>Soma negociações</label><strong>' + escHtml(formatCurrencyBRL(ncNegotiationSummary.totalNegotiated)) + '</strong></div>' +
+            '<div class="nc-detail-neg-summary-card"><label>Economia</label><strong>' + escHtml(formatCurrencyBRL(ncNegotiationSummary.totalSavings)) + '</strong></div>' +
+          '</div>' +
+          '<div class="nc-detail-neg-mini-list">' + ncNegotiationSummary.records.map(function(rec, index) {
+            var currentStage = getNcCostCurrentStageInfo(rec);
+            return '<div class="nc-detail-neg-mini-card">' +
+              '<div class="nc-detail-neg-mini-head"><strong>Negociação ' + (index + 1) + '</strong><span class="nc-cost-payment-badge ' + getNcCostPaymentBadgeClass(rec) + '">' + escHtml(getNcCostPaymentStatus(rec)) + '</span></div>' +
+              '<div class="nc-detail-neg-mini-grid">' +
+                '<div><label>Tipo</label><span>' + escHtml(getNcCostKindLabel(rec)) + '</span></div>' +
+                '<div><label>Lançamento</label><span>' + escHtml(getNcCostEffectiveDate(rec) ? ncFmtDate(getNcCostEffectiveDate(rec)) : '—') + '</span></div>' +
+                '<div><label>Valor cobrado</label><span>' + escHtml(formatCurrencyBRL(rec.chargedValue)) + '</span></div>' +
+                '<div><label>Valor negociado</label><span>' + escHtml(rec.negotiatedValue != null ? formatCurrencyBRL(rec.negotiatedValue) : '—') + '</span></div>' +
+                '<div class="full"><label>Status negociação</label><span>' + escHtml(currentStage.label + ' — ' + currentStage.status) + '</span></div>' +
+              '</div>' +
+            '</div>';
+          }).join('') + '</div>'
+        : '<div class="nc-detail-neg-empty">Nenhuma negociação vinculada a esta NC.</div>';
+      var negotiationHtml =
+        '<div class="nc-detail-section">' +
+          '<button type="button" class="nc-detail-neg-toggle" id="ncDetailNegotiationToggle">' +
+            '<span>Status de negociação</span>' +
+            '<span class="nc-detail-neg-status ' + negotiationStatusClass + '">Status custo NC: ' + escHtml(ncNegotiationSummary.paymentStatus) + '</span>' +
+          '</button>' +
+          '<div class="nc-detail-neg-panel" id="ncDetailNegotiationPanel">' + negotiationCardsHtml + '</div>' +
+        '</div>';
 
       // Main info section
       var infoHtml =
@@ -9492,7 +9549,7 @@ document.addEventListener("DOMContentLoaded", function() {
           '</div>' +
         '</div>';
 
-      bodyEl.innerHTML = photoStripHtml + infoHtml + rncHtml + d8Html + obsHtml + '<div style="height:16px"></div>';
+      bodyEl.innerHTML = photoStripHtml + infoHtml + negotiationHtml + rncHtml + d8Html + obsHtml + '<div style="height:16px"></div>';
 
       // Wire alert-open buttons after innerHTML is set
       bodyEl.querySelectorAll('[data-open-alert]').forEach(function(btn) {
@@ -9535,6 +9592,16 @@ document.addEventListener("DOMContentLoaded", function() {
           img.style.display = 'none';
         });
       });
+
+      // Wire observations textarea — save on change/blur
+      var negotiationToggle = document.getElementById('ncDetailNegotiationToggle');
+      var negotiationPanel = document.getElementById('ncDetailNegotiationPanel');
+      if (negotiationToggle && negotiationPanel) {
+        negotiationToggle.addEventListener('click', function() {
+          var isOpen = negotiationPanel.classList.toggle('open');
+          negotiationToggle.classList.toggle('open', isOpen);
+        });
+      }
 
       // Wire observations textarea — save on change/blur
       var obsTextarea = document.getElementById('ncDetailObsTextarea');
