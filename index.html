@@ -6809,6 +6809,7 @@ document.addEventListener("DOMContentLoaded", function() {
   var ncRecords = [];
   var _ncChartPiece = null, _ncChartFailure = null, _ncChartMonth = null;
   var _ncYearFilter    = null; // active YYYY filter key, or null
+  var _ncYearFilterInitialized = false;
   var _ncMonthFilter   = null; // active YYYY-MM filter key, or null
   var _ncPieceFilter   = null; // active piece name filter, or null
   var _ncFailureFilter = null; // active failure mode filter, or null
@@ -8301,6 +8302,11 @@ document.addEventListener("DOMContentLoaded", function() {
     var ctxP = document.getElementById('ncChartPiece');
     if (ctxP) {
       var pKeys = Object.keys(pieceCount);
+      var MIN_PIECE_CHART_HEIGHT = 220;
+      var PIECE_CHART_ROW_HEIGHT = 24;
+      var pieceChartHeight = Math.max(MIN_PIECE_CHART_HEIGHT, (pKeys.length || 1) * PIECE_CHART_ROW_HEIGHT);
+      ctxP.style.maxHeight = 'none';
+      ctxP.style.height = pieceChartHeight + 'px';
       var pieceSort = _ncChartSettings.pieceSort || 'desc';
       pKeys.sort(function(a, b) {
         if (pieceSort === 'desc') return pieceCount[b] - pieceCount[a];
@@ -8374,7 +8380,7 @@ document.addEventListener("DOMContentLoaded", function() {
           },
           scales: {
             x:{ ticks:{ color:darkText, font:Object.assign({size:12},lightFont), precision:0 }, grid:{ color:lightGrid }, border:{ display:false } },
-            y:{ ticks:{ color:darkText, font:Object.assign({size:12},lightFont), padding:4 }, grid:{ display:false }, border:{ display:false } }
+            y:{ ticks:{ color:darkText, font:Object.assign({size:12},lightFont), padding:4, autoSkip:false }, grid:{ display:false }, border:{ display:false } }
           },
           responsive: true, maintainAspectRatio: false
         }
@@ -9026,16 +9032,23 @@ document.addEventListener("DOMContentLoaded", function() {
       var y = getNcRecordYear(nc);
       if (y) yearsSet[y] = true;
     });
+    // Keep current year available even before the first NC of that year is registered.
+    var currentYear = String(new Date().getFullYear());
+    yearsSet[currentYear] = true;
     var years = Object.keys(yearsSet).sort(function(a, b) { return b.localeCompare(a); });
     var previous = _ncYearFilter || '';
     select.innerHTML = '<option value="">Todos os anos</option>' +
       years.map(function(y) { return '<option value="' + y + '">' + y + '</option>'; }).join('');
     if (previous && yearsSet[previous]) {
       select.value = previous;
+    } else if (!_ncYearFilterInitialized && yearsSet[currentYear]) {
+      _ncYearFilter = currentYear;
+      select.value = currentYear;
     } else {
       _ncYearFilter = null;
       select.value = '';
     }
+    _ncYearFilterInitialized = true;
   }
 
   function isNcCostPaymentCompleted(cost) {
