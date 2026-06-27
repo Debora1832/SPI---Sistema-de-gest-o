@@ -1189,8 +1189,36 @@
     .nc-detail-obs-contencao-btn.active:hover { background:#1e40af; }
 
     /* ── NC cost negotiation detail popup ─────────────────────────────────── */
+    .nc-cost-card-list { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:12px; }
+    .nc-cost-item-card {
+      border:1px solid #e5e7eb; border-radius:12px; background:#fff; padding:14px;
+      display:flex; flex-direction:column; gap:12px; box-shadow:0 2px 8px rgba(15,23,42,.04);
+      transition:transform .15s, box-shadow .15s, border-color .15s;
+    }
     .nc-cost-row-clickable { cursor:pointer; }
-    .nc-cost-row-clickable:hover td { background:#f8fafc; }
+    .nc-cost-item-card.nc-cost-row-clickable:hover {
+      transform:translateY(-2px);
+      border-color:#cbd5e1;
+      box-shadow:0 8px 20px rgba(15,23,42,.08);
+    }
+    .nc-cost-item-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px 14px; }
+    .nc-cost-item-field { display:flex; flex-direction:column; gap:4px; min-width:0; }
+    .nc-cost-item-field.full { grid-column:1 / -1; }
+    .nc-cost-item-field label {
+      font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:#64748b;
+    }
+    .nc-cost-item-value {
+      font-size:13px; color:#0f172a; font-weight:500; white-space:pre-wrap; word-break:break-word;
+    }
+    .nc-cost-item-actions { display:flex; gap:8px; flex-wrap:wrap; padding-top:2px; }
+    .nc-cost-empty {
+      border:1px dashed #d1d5db; border-radius:12px; background:#f8fafc;
+      color:#9ca3af; text-align:center; padding:22px 16px; font-size:13px; font-weight:600;
+    }
+    @media(max-width:760px){
+      .nc-cost-card-list { grid-template-columns:1fr; }
+      .nc-cost-item-grid { grid-template-columns:1fr; }
+    }
     .nc-cost-detail-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:3600; align-items:flex-start; justify-content:center; overflow-y:auto; padding:30px 16px; }
     .nc-cost-detail-backdrop.open { display:flex; }
     .nc-cost-detail-modal { background:#fff; border-radius:16px; width:100%; max-width:1080px; margin:auto; box-shadow:0 24px 64px rgba(0,0,0,.36); overflow:hidden; }
@@ -2031,25 +2059,8 @@
     </div>
 
     <div class="card">
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Data</th>
-              <th>Tipo</th>
-              <th>NC vinculada</th>
-              <th>Descrição</th>
-              <th>Valor cobrado</th>
-              <th>Valor negociado</th>
-              <th>Status negociação</th>
-              <th>Evidências</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody id="ncCostTableBody">
-            <tr><td colspan="9" style="text-align:center;color:#9ca3af;padding:16px;">Nenhum registro de custo cadastrado.</td></tr>
-          </tbody>
-        </table>
+      <div id="ncCostTableBody" class="nc-cost-card-list">
+        <div class="nc-cost-empty">Nenhum registro de custo cadastrado.</div>
       </div>
     </div>
   </div>
@@ -9793,10 +9804,10 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   function renderNcCostPage() {
-    var tbody = document.getElementById('ncCostTableBody');
+    var listBody = document.getElementById('ncCostTableBody');
     var monthSelect = document.getElementById('ncCostMonthFilter');
     var yearSelect = document.getElementById('ncCostYearFilter');
-    if (!tbody || !monthSelect || !yearSelect) return;
+    if (!listBody || !monthSelect || !yearSelect) return;
 
     var allRecords = withNcCostTenantLabel(ncCostRecords || [], currentTenant);
     var availableYears = Array.from(new Set(allRecords.map(function(rec) {
@@ -9841,44 +9852,50 @@ document.addEventListener("DOMContentLoaded", function() {
     renderNcCostBarChart(summary);
 
     if (!filteredRecords.length) {
-      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#9ca3af;padding:16px;">Nenhum registro encontrado para os filtros selecionados.</td></tr>';
+      listBody.innerHTML = '<div class="nc-cost-empty">Nenhum registro encontrado para os filtros selecionados.</div>';
       return;
     }
 
-    tbody.innerHTML = '';
+    listBody.innerHTML = '';
     filteredRecords.slice().sort(function(a, b) {
       return (b.date || '').localeCompare(a.date || '');
     }).forEach(function(rec) {
-      var tr = document.createElement('tr');
-      tr.className = 'nc-cost-row-clickable';
+      var card = document.createElement('article');
+      card.className = 'nc-cost-item-card nc-cost-row-clickable';
       var negotiationStatus = getNcCostNegotiationStatus(rec);
       var statusBadgeClass = rec.finalizationType ? rec.finalizationType : (rec.negotiationOpen ? 'open' : (rec.negotiatedValue != null ? 'closed' : 'none'));
       var statusCellHtml = '<span class="nc-cost-detail-badge ' + statusBadgeClass + '">' + escHtml(negotiationStatus) + '</span>' +
         (rec.finalizationDate ? '<div class="nc-cost-payment-date">Pago em: ' + escHtml(ncFmtDate(rec.finalizationDate)) + '</div>' : '');
-      tr.innerHTML =
-        '<td>' + escHtml(rec.date || '—') + '</td>' +
-        '<td>' + escHtml(getNcCostKindLabel(rec)) + '</td>' +
-        '<td>' + escHtml(getNcCostLinkedLabel(rec)) + '</td>' +
-        '<td>' + escHtml(rec.description || '—') + '</td>' +
-        '<td>' + escHtml(formatCurrencyBRL(rec.chargedValue)) + '</td>' +
-        '<td>' + escHtml(rec.negotiatedValue != null ? formatCurrencyBRL(rec.negotiatedValue) : '—') + '</td>' +
-        '<td>' + statusCellHtml + '</td>' +
-        '<td>' + escHtml(String((rec.evidences || []).length)) + '</td>' +
-        '<td><button type="button" class="btn-icon btn-edit" data-nccost-edit="' + escHtml(rec.id) + '" title="Editar">Editar</button> <button type="button" class="btn-icon btn-delete" data-nccost-del="' + escHtml(rec.id) + '" title="Excluir">Excluir</button> <button type="button" class="btn-icon ' + (rec.finalizationType ? 'btn-edit' : '') + '" data-nccost-finalize="' + escHtml(rec.id) + '" title="Marcar como finalizada (paga/reembolsada)">' + (rec.finalizationType ? 'Alterar' : 'Finalizar') + '</button></td>';
-      tr.addEventListener('click', function(e) {
+      card.innerHTML =
+        '<div class="nc-cost-item-grid">' +
+          '<div class="nc-cost-item-field"><label>Data</label><div class="nc-cost-item-value">' + escHtml(rec.date || '—') + '</div></div>' +
+          '<div class="nc-cost-item-field"><label>Tipo</label><div class="nc-cost-item-value">' + escHtml(getNcCostKindLabel(rec)) + '</div></div>' +
+          '<div class="nc-cost-item-field"><label>NC vinculada</label><div class="nc-cost-item-value">' + escHtml(getNcCostLinkedLabel(rec)) + '</div></div>' +
+          '<div class="nc-cost-item-field"><label>Evidências</label><div class="nc-cost-item-value">' + escHtml(String((rec.evidences || []).length)) + '</div></div>' +
+          '<div class="nc-cost-item-field full"><label>Descrição</label><div class="nc-cost-item-value">' + escHtml(rec.description || '—') + '</div></div>' +
+          '<div class="nc-cost-item-field"><label>Valor cobrado</label><div class="nc-cost-item-value">' + escHtml(formatCurrencyBRL(rec.chargedValue)) + '</div></div>' +
+          '<div class="nc-cost-item-field"><label>Valor negociado</label><div class="nc-cost-item-value">' + escHtml(rec.negotiatedValue != null ? formatCurrencyBRL(rec.negotiatedValue) : '—') + '</div></div>' +
+          '<div class="nc-cost-item-field full"><label>Status negociação</label><div class="nc-cost-item-value">' + statusCellHtml + '</div></div>' +
+        '</div>' +
+        '<div class="nc-cost-item-actions">' +
+          '<button type="button" class="btn-icon btn-edit" data-nccost-edit="' + escHtml(rec.id) + '" title="Editar">Editar</button>' +
+          '<button type="button" class="btn-icon btn-delete" data-nccost-del="' + escHtml(rec.id) + '" title="Excluir">Excluir</button>' +
+          '<button type="button" class="btn-icon ' + (rec.finalizationType ? 'btn-edit' : '') + '" data-nccost-finalize="' + escHtml(rec.id) + '" title="Marcar como finalizada (paga/reembolsada)">' + (rec.finalizationType ? 'Alterar' : 'Finalizar') + '</button>' +
+        '</div>';
+      card.addEventListener('click', function(e) {
         if (e.target.closest('.btn-icon')) return;
         openNcCostDetailModal(rec.id);
       });
-      tbody.appendChild(tr);
+      listBody.appendChild(card);
     });
 
-    tbody.querySelectorAll('[data-nccost-edit]').forEach(function(btn) {
+    listBody.querySelectorAll('[data-nccost-edit]').forEach(function(btn) {
       btn.addEventListener('click', function(e) {
         e.stopPropagation();
         openNcCostModal(btn.getAttribute('data-nccost-edit'));
       });
     });
-    tbody.querySelectorAll('[data-nccost-del]').forEach(function(btn) {
+    listBody.querySelectorAll('[data-nccost-del]').forEach(function(btn) {
       btn.addEventListener('click', async function(e) {
         e.stopPropagation();
         var id = btn.getAttribute('data-nccost-del');
@@ -9889,7 +9906,7 @@ document.addEventListener("DOMContentLoaded", function() {
         renderHomePage();
       });
     });
-    tbody.querySelectorAll('[data-nccost-finalize]').forEach(function(btn) {
+    listBody.querySelectorAll('[data-nccost-finalize]').forEach(function(btn) {
       btn.addEventListener('click', function(e) {
         e.stopPropagation();
         openNcFinalizeModal(btn.getAttribute('data-nccost-finalize'));
