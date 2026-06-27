@@ -2063,8 +2063,8 @@
     </div>
 
     <div class="card">
-      <div id="ncCostCardContainer" class="nc-cost-card-list">
-        <div class="nc-cost-empty" role="status" aria-live="polite">Nenhum registro de custo cadastrado.</div>
+      <div id="ncCostCardContainer" class="nc-cost-card-list" aria-live="polite">
+        <div class="nc-cost-empty" role="status">Nenhum registro de custo cadastrado.</div>
       </div>
     </div>
   </div>
@@ -9856,7 +9856,7 @@ document.addEventListener("DOMContentLoaded", function() {
     renderNcCostBarChart(summary);
 
     if (!filteredRecords.length) {
-      listBody.innerHTML = '<div class="nc-cost-empty" role="status" aria-live="polite">Nenhum registro encontrado para os filtros selecionados.</div>';
+      listBody.innerHTML = '<div class="nc-cost-empty" role="status">Nenhum registro encontrado para os filtros selecionados.</div>';
       return;
     }
 
@@ -9901,7 +9901,7 @@ document.addEventListener("DOMContentLoaded", function() {
       });
       card.addEventListener('keydown', function(e) {
         if (e.target !== card) return;
-        if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+        if (e.key !== 'Enter' && e.key !== ' ') return;
         e.preventDefault();
         openNcCostDetailModal(rec.id);
       });
