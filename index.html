@@ -9454,7 +9454,6 @@ document.addEventListener("DOMContentLoaded", function() {
       if (nc.rncAberta)    statusBadges += '<span class="nc-detail-status-badge nc-detail-status-open">✔ RNC Aberta</span> ';
       if (nc.d8Finalizado) statusBadges += '<span class="nc-detail-status-badge nc-detail-status-8d">✔ 8D Finalizado</span>';
       if (!nc.rncAberta && !nc.d8Finalizado) statusBadges = '<span class="nc-detail-status-badge nc-detail-status-none">○ Em aberto</span>';
-      var sitDetailLabel = nc.situacao === 'finalizado' ? '🟢 Finalizado' : nc.situacao === 'alerta' ? '🔴 Alerta' : nc.situacao === 'aberto' ? '🟠 Em aberto' : '—';
       var ncNegotiationSummary = getNcNegotiationSummaryByNcId(nc.id);
       var negotiationStatusClass = ncNegotiationSummary.paymentStatus === 'Pago' ? 'paid' : 'pending';
       var negotiationCardsHtml = ncNegotiationSummary.records.length
