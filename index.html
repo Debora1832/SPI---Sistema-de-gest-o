@@ -2117,12 +2117,6 @@
       </div>
     </div>
 
-    <div class="kpi-grid kpi-grid-unified" style="margin-bottom:14px;">
-      <div class="kpi-card"><h4>Total Cobrado</h4><div class="kpi-value" id="ncCostTotalCharged">R$ 0,00</div></div>
-      <div class="kpi-card"><h4>Total Negociado</h4><div class="kpi-value" id="ncCostTotalNegotiated">R$ 0,00</div></div>
-      <div class="kpi-card"><h4>Economia</h4><div class="kpi-value" id="ncCostTotalSavings">R$ 0,00</div></div>
-    </div>
-
     <div id="ncCostSummaryCard" style="margin-bottom:14px;"></div>
 
     <div class="card">
@@ -5510,8 +5504,11 @@ document.addEventListener("DOMContentLoaded", function() {
     var cfg = Object.assign({
       title: 'Economia negociada',
       subtitle: 'Comparativo entre o valor projetado e o valor atual após as negociações.',
+      projectedLabel: 'Projetado',
+      projectedSubLabel: 'Valor originalmente cobrado',
       periodLabel: '',
       currentLabel: 'Atual / negociado',
+      currentSubLabel: 'Valor atual depois das tratativas',
       emptyText: 'Nenhum registro de custo disponível para exibir o comparativo.',
       records: [],
       scopeLabel: 'Negociações',
@@ -5551,8 +5548,8 @@ document.addEventListener("DOMContentLoaded", function() {
             '</div>' +
           '</div>' +
           '<div class="savings-summary-metrics">' +
-            '<div class="savings-summary-metric clickable" role="button" tabindex="0" data-summary-kind="projected"><span class="savings-summary-metric-label">Projetado</span><strong class="savings-summary-metric-value">' + escHtml(formatCurrencyBRL(summary.projected)) + '</strong><span class="savings-summary-metric-sub">Valor originalmente cobrado</span></div>' +
-            '<div class="savings-summary-metric clickable" role="button" tabindex="0" data-summary-kind="current"><span class="savings-summary-metric-label">' + escHtml(cfg.currentLabel) + '</span><strong class="savings-summary-metric-value">' + escHtml(formatCurrencyBRL(summary.current)) + '</strong><span class="savings-summary-metric-sub">Valor atual depois das tratativas</span></div>' +
+            '<div class="savings-summary-metric clickable" role="button" tabindex="0" data-summary-kind="projected"><span class="savings-summary-metric-label">' + escHtml(cfg.projectedLabel) + '</span><strong class="savings-summary-metric-value">' + escHtml(formatCurrencyBRL(summary.projected)) + '</strong><span class="savings-summary-metric-sub">' + escHtml(cfg.projectedSubLabel) + '</span></div>' +
+            '<div class="savings-summary-metric clickable" role="button" tabindex="0" data-summary-kind="current"><span class="savings-summary-metric-label">' + escHtml(cfg.currentLabel) + '</span><strong class="savings-summary-metric-value">' + escHtml(formatCurrencyBRL(summary.current)) + '</strong><span class="savings-summary-metric-sub">' + escHtml(cfg.currentSubLabel) + '</span></div>' +
             '<div class="savings-summary-metric clickable" role="button" tabindex="0" data-summary-kind="savings"><span class="savings-summary-metric-label">Economizado</span><strong class="savings-summary-metric-value">' + escHtml(formatCurrencyBRL(summary.savings)) + '</strong><span class="savings-summary-metric-sub">' + escHtml(formatPercentPtBr(summary.savingsRate)) + ' do total projetado</span></div>' +
             '<div class="savings-summary-metric clickable" role="button" tabindex="0" data-summary-kind="closed"><span class="savings-summary-metric-label">Negociações fechadas</span><strong class="savings-summary-metric-value">' + escHtml(String(summary.closedCount)) + '</strong><span class="savings-summary-metric-sub">' + escHtml(formatCurrencyBRL(summary.negotiated)) + ' negociados</span></div>' +
           '</div>' +
@@ -10127,7 +10124,11 @@ document.addEventListener("DOMContentLoaded", function() {
     renderNcCostSummaryCard(document.getElementById('ncCostSummaryCard'), summary, {
       title: 'Visual de economia das negociações',
       subtitle: 'Compare o valor projetado para gastar com o valor atual negociado e a economia já conquistada nesta página.',
+      projectedLabel: 'Total cobrado',
+      projectedSubLabel: 'Valor originalmente cobrado',
       periodLabel: getNcCostPeriodLabel(ncCostPageFilters.month, ncCostPageFilters.year),
+      currentLabel: 'Custo real a ser pago após negociação',
+      currentSubLabel: 'Valor atual depois das tratativas',
       emptyText: 'Cadastre registros de custo para visualizar o gráfico de rosca desta página.',
       records: filteredRecords,
       scopeLabel: (TENANTS[currentTenant] && TENANTS[currentTenant].label) || 'Cliente atual',
