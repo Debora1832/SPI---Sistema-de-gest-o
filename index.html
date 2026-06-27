@@ -1254,6 +1254,13 @@
       font-size:13px; color:#0f172a; font-weight:500; white-space:pre-wrap; word-break:break-word;
     }
     .nc-cost-item-actions { display:flex; gap:8px; flex-wrap:wrap; padding-top:2px; }
+    .nc-cost-item-card.nc-cost-finalizado { border-width:2px; border-color:#16a34a; box-shadow:0 4px 16px rgba(22,163,74,.25); }
+    .nc-cost-item-card.nc-cost-aberto     { border-width:2px; border-color:#f97316; box-shadow:0 4px 16px rgba(249,115,22,.25); }
+    .nc-cost-item-card.nc-cost-alerta     { border-width:2px; border-color:#ef4444; box-shadow:0 4px 16px rgba(239,68,68,.3); }
+    .btn-icon.btn-alerta { background:#fef2f2; border:1.5px solid #fca5a5; color:#b91c1c; }
+    .btn-icon.btn-alerta.active { background:#ef4444; border-color:#ef4444; color:#fff; font-weight:800; }
+    .btn-icon.btn-alerta:hover { background:#fee2e2; }
+    .btn-icon.btn-alerta.active:hover { background:#dc2626; }
     .nc-cost-empty {
       border:1px dashed #d1d5db; border-radius:12px; background:#f8fafc;
       color:#9ca3af; text-align:center; padding:22px 16px; font-size:13px; font-weight:600;
@@ -9070,32 +9077,18 @@ document.addEventListener("DOMContentLoaded", function() {
           var allPaid = linkedCosts.every(function(c) { return c.finalizationType === 'paga' || c.finalizationType === 'reembolsada' || c.finalizationType === 'assumido_cliente'; });
           if (allPaid) {
             payClass = ' nc-pay-pago';
-            payBadgeHtml = '<span class="nc-card-payment-status pago">💰 Pagamento Fechado</span>';
+            payBadgeHtml = '<span class="nc-card-payment-status pago">💰 Pagamento de custo NC concluído</span>';
           } else {
             payClass = ' nc-pay-aberto';
-            payBadgeHtml = '<span class="nc-card-payment-status aberto">💰 Pagamento Aberto</span>';
+            payBadgeHtml = '<span class="nc-card-payment-status aberto">💰 Pagamento de custo NC pendente</span>';
           }
         }
       }
-      // Situação (card status): finalizado → green, aberto → orange, alerta → red
-      var sit = nc.situacao || '';
-      var sitClass = sit ? ' nc-sit-' + sit : '';
-      var sitSelectClass = sit ? ' sit-' + sit : '';
-      var sitSelectHtml =
-        '<div class="nc-situacao-wrap">' +
-          '<select class="nc-situacao-select' + sitSelectClass + '" data-action="situacao" aria-label="Situação da NC">' +
-            '<option value="">— Situação —</option>' +
-            '<option value="aberto"'     + (sit === 'aberto'     ? ' selected' : '') + '>🟠 Em aberto</option>' +
-            '<option value="finalizado"' + (sit === 'finalizado' ? ' selected' : '') + '>🟢 Finalizado</option>' +
-            '<option value="alerta"'     + (sit === 'alerta'     ? ' selected' : '') + '>🔴 Alerta</option>' +
-          '</select>' +
-        '</div>';
-      return '<div class="nc-card' + naoProcClass + payClass + sitClass + '" data-nc-id="' + nc.id + '">' +
+      return '<div class="nc-card' + naoProcClass + payClass + '" data-nc-id="' + nc.id + '">' +
         naoProcBadge +
         atencaoBadge +
         contencaoBadge +
         photoHtml +
-        sitSelectHtml +
         '<div class="nc-card-body">' +
           '<div class="nc-card-num">' + escHtml(nc.ncNumber || 'NC') + '</div>' +
           '<div class="nc-card-piece">' + escHtml(nc.piece || '—') + '</div>' +
@@ -9159,26 +9152,6 @@ document.addEventListener("DOMContentLoaded", function() {
         });
       });
 
-      // Situação select — change handler
-      var sitSelectEl = card.querySelector('.nc-situacao-select');
-      if (sitSelectEl) {
-        sitSelectEl.addEventListener('change', async function(e) {
-          e.stopPropagation();
-          var idx = ncRecords.findIndex(function(r){ return r.id === id; });
-          if (idx === -1) return;
-          var newSit = sitSelectEl.value;
-          ncRecords[idx].situacao = newSit;
-          // Update card classes immediately without full re-render
-          card.classList.remove('nc-sit-finalizado', 'nc-sit-aberto', 'nc-sit-alerta');
-          if (newSit) card.classList.add('nc-sit-' + newSit);
-          // Update select styling
-          sitSelectEl.className = 'nc-situacao-select' + (newSit ? ' sit-' + newSit : '');
-          await saveNcRecords();
-        });
-        // Prevent card-body click from firing when interacting with select
-        sitSelectEl.addEventListener('click', function(e) { e.stopPropagation(); });
-      }
-
       // Action buttons — stop propagation so card-body click doesn't also fire
       card.querySelectorAll('button[data-action]').forEach(function(btn) {
         btn.addEventListener('click', async function(e) {
@@ -9234,7 +9207,7 @@ document.addEventListener("DOMContentLoaded", function() {
       // Click anywhere on the card (except action buttons and lightbox triggers) → open detail popup
       card.addEventListener('click', function(e) {
         // Ignore if a button or interactive element was clicked
-        if (e.target.closest('button, a, [data-photonav], .nc-card-actions, .nc-situacao-wrap')) return;
+        if (e.target.closest('button, a, [data-photonav], .nc-card-actions')) return;
         var idx = ncRecords.findIndex(function(r){ return r.id === id; });
         if (idx !== -1) openNcDetailModal(ncRecords[idx]);
       });
@@ -10081,7 +10054,9 @@ document.addEventListener("DOMContentLoaded", function() {
       return (b.date || '').localeCompare(a.date || '');
     }).forEach(function(rec) {
       var card = document.createElement('div');
-      card.className = 'nc-cost-item-card nc-cost-row-clickable';
+      // Determine card color class: alerta (red) > finalizado/payment done (green) > aberto (orange)
+      var costColorClass = rec.alerta ? ' nc-cost-alerta' : (rec.finalizationType ? ' nc-cost-finalizado' : ' nc-cost-aberto');
+      card.className = 'nc-cost-item-card nc-cost-row-clickable' + costColorClass;
       card.setAttribute('role', 'button');
       card.setAttribute('tabindex', '0');
       var paymentStatus = getNcCostPaymentStatus(rec);
@@ -10102,6 +10077,7 @@ document.addEventListener("DOMContentLoaded", function() {
         : '';
 
       var gridExtraClass = firstPhotoSrc ? ' nc-cost-item-grid-has-thumb' : '';
+      var alertaBtnClass = 'btn-icon btn-alerta' + (rec.alerta ? ' active' : '');
       card.innerHTML =
         thumbHtml +
         '<div class="nc-cost-item-grid' + gridExtraClass + '">' +
@@ -10121,6 +10097,7 @@ document.addEventListener("DOMContentLoaded", function() {
           '<button type="button" class="btn-icon btn-edit" data-nccost-edit="' + escHtml(rec.id) + '" title="Editar">Editar</button>' +
           '<button type="button" class="btn-icon btn-delete" data-nccost-del="' + escHtml(rec.id) + '" title="Excluir">Excluir</button>' +
           '<button type="button" class="btn-icon ' + ((rec.finalizationType || rec.paymentScheduledDate) ? 'btn-edit' : '') + '" data-nccost-finalize="' + escHtml(rec.id) + '" title="Atualizar pagamento">Pagamento</button>' +
+          '<button type="button" class="' + alertaBtnClass + '" data-nccost-alerta="' + escHtml(rec.id) + '" title="' + (rec.alerta ? 'Remover alerta' : 'Marcar como alerta') + '">⚠ Alerta</button>' +
         '</div>';
       card.addEventListener('click', function(e) {
         if (e.target.closest('.btn-icon') || e.target.closest('.nc-cost-card-nc-thumb')) return;
@@ -10170,6 +10147,17 @@ document.addEventListener("DOMContentLoaded", function() {
       btn.addEventListener('click', function(e) {
         e.stopPropagation();
         openNcFinalizeModal(btn.getAttribute('data-nccost-finalize'));
+      });
+    });
+    listBody.querySelectorAll('[data-nccost-alerta]').forEach(function(btn) {
+      btn.addEventListener('click', async function(e) {
+        e.stopPropagation();
+        var id = btn.getAttribute('data-nccost-alerta');
+        var idx = (ncCostRecords || []).findIndex(function(item) { return item.id === id; });
+        if (idx === -1) return;
+        ncCostRecords[idx].alerta = !ncCostRecords[idx].alerta;
+        await saveNcCostRecords();
+        renderNcCostPage();
       });
     });
   }
