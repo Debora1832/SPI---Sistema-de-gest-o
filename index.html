@@ -5310,7 +5310,7 @@ document.addEventListener("DOMContentLoaded", function() {
     } catch(e) { return []; }
   }
 
-  function getNcCostLaunchDate(rec) {
+  function getNcCostEffectiveDate(rec) {
     if (!rec) return '';
     var finalizedDate = rec.finalizationDate ? String(rec.finalizationDate) : '';
     var scheduledDate = rec.paymentScheduledDate ? String(rec.paymentScheduledDate) : '';
@@ -5321,7 +5321,7 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   function getNcCostRecordPeriod(rec) {
-    var value = getNcCostLaunchDate(rec);
+    var value = getNcCostEffectiveDate(rec);
     var match = value.match(/^(\d{4})-(\d{2})-\d{2}$/);
     return match ? { year: match[1], month: match[2] } : null;
   }
@@ -5405,7 +5405,7 @@ document.addEventListener("DOMContentLoaded", function() {
       var savings = Math.max(0, charged - current);
       return '<tr class="nc-cost-row-clickable" data-metricpopup-costid="' + escHtml(rec.id || '') + '">' +
         '<td>' + (idx + 1) + '</td>' +
-        '<td>' + escHtml(getNcCostLaunchDate(rec) ? ncFmtDate(getNcCostLaunchDate(rec)) : '—') + '</td>' +
+        '<td>' + escHtml(getNcCostEffectiveDate(rec) ? ncFmtDate(getNcCostEffectiveDate(rec)) : '—') + '</td>' +
         '<td>' + escHtml(rec._tenantLabel || ((TENANTS[currentTenant] && TENANTS[currentTenant].label) || '—')) + '</td>' +
         '<td>' + escHtml(getNcCostLinkedLabel(rec)) + '</td>' +
         '<td>' + escHtml(getNcCostKindLabel(rec)) + '</td>' +
@@ -6933,10 +6933,12 @@ document.addEventListener("DOMContentLoaded", function() {
     r.negotiatedValue = Number.isFinite(negotiated) ? negotiated : null;
     r.negotiationOpen = !!r.negotiationOpen;
     r.finalizationType = (r.finalizationType === 'paga' || r.finalizationType === 'reembolsada' || r.finalizationType === 'assumido_cliente') ? r.finalizationType : null;
+    // Migra registros antigos que usavam finalizationDate mesmo sem um desfecho de pagamento definido.
     var legacyPendingPaymentDate = !r.finalizationType && r.finalizationDate ? r.finalizationDate : null;
     r.paymentScheduledDate = r.paymentScheduledDate || legacyPendingPaymentDate || (r.finalizationType ? (r.finalizationDate || null) : null);
     r.finalizationDate = r.finalizationType ? (r.finalizationDate || r.paymentScheduledDate || null) : null;
     var hasClosedNegotiation = !r.negotiationOpen && r.negotiatedValue != null;
+    // Mantém compatibilidade com registros anteriores ao novo fluxo, inferindo etapas já concluídas quando havia avanço financeiro salvo.
     r.missionFinalizedStatus = normalizeNcCostWorkflowStatus(r.missionFinalizedStatus || (hasClosedNegotiation ? 'completed' : 'open'));
     r.missionFinalizedDate = r.missionFinalizedDate || null;
     var hasGedProgress = !!(r.gedDate || r.paymentScheduledDate || r.finalizationDate || r.finalizationType);
@@ -9758,7 +9760,7 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   function getNcCostCurrentStageInfo(cost) {
-    if (!cost) return { label: 'Missão aberta', status: 'Registrada', className: 'completed' };
+    if (!cost) return { label: 'Missão aberta', status: 'Registrada', className: 'open' };
     if (cost.missionFinalizedStatus !== 'completed') {
       return {
         label: 'Missão finalizada / Pedido enviado',
@@ -9786,6 +9788,7 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   function getNcCostWorkflowSteps(cost) {
+    // A etapa inicial mostra somente a data de abertura, conforme solicitado pelo fluxo financeiro.
     return [
       { label: 'Missão aberta', date: cost && cost.date, hideStatus: true },
       {
@@ -9896,7 +9899,7 @@ document.addEventListener("DOMContentLoaded", function() {
         '<div class="nc-cost-detail-card-body">' +
           '<div class="nc-cost-detail-fields">' +
             '<div class="nc-cost-detail-field"><label>Data do registro</label><span>' + escHtml(ncFmtDate(rec.date) || '—') + '</span></div>' +
-            '<div class="nc-cost-detail-field"><label>Data do lançamento</label><span class="nc-cost-payment-date-value">' + escHtml(getNcCostLaunchDate(rec) ? ncFmtDate(getNcCostLaunchDate(rec)) : '—') + '</span></div>' +
+            '<div class="nc-cost-detail-field"><label>Data do lançamento</label><span class="nc-cost-payment-date-value">' + escHtml(getNcCostEffectiveDate(rec) ? ncFmtDate(getNcCostEffectiveDate(rec)) : '—') + '</span></div>' +
             '<div class="nc-cost-detail-field"><label>Tipo</label><span>' + escHtml(getNcCostKindLabel(rec)) + '</span></div>' +
             '<div class="nc-cost-detail-field"><label>Valor cobrado</label><span>' + escHtml(formatCurrencyBRL(rec.chargedValue)) + '</span></div>' +
             '<div class="nc-cost-detail-field"><label>Valor negociado</label><span>' + escHtml(rec.negotiatedValue != null ? formatCurrencyBRL(rec.negotiatedValue) : '—') + '</span></div>' +
@@ -10111,7 +10114,7 @@ document.addEventListener("DOMContentLoaded", function() {
           '<div class="nc-cost-item-field"><label>Valor negociado</label><div class="nc-cost-item-value">' + escHtml(rec.negotiatedValue != null ? formatCurrencyBRL(rec.negotiatedValue) : '—') + '</div></div>' +
           '<div class="nc-cost-item-field"><label>Etapa atual</label><div class="nc-cost-item-value"><span class="nc-cost-stage-status ' + currentStage.className + '">' + escHtml(currentStage.label) + '</span></div></div>' +
           '<div class="nc-cost-item-field"><label>Status pagamento</label><div class="nc-cost-item-value"><span class="nc-cost-payment-badge ' + paymentBadgeClass + '">' + escHtml(paymentStatus) + '</span></div></div>' +
-          '<div class="nc-cost-item-field full"><label>Data do lançamento</label><div class="nc-cost-item-value">' + (getNcCostLaunchDate(rec) ? '<span class="nc-cost-payment-date-value">' + escHtml(ncFmtDate(getNcCostLaunchDate(rec))) + '</span>' : '<span style="color:#9ca3af">—</span>') + '</div></div>' +
+          '<div class="nc-cost-item-field full"><label>Data do lançamento</label><div class="nc-cost-item-value">' + (getNcCostEffectiveDate(rec) ? '<span class="nc-cost-payment-date-value">' + escHtml(ncFmtDate(getNcCostEffectiveDate(rec))) + '</span>' : '<span style="color:#9ca3af">—</span>') + '</div></div>' +
           '<div class="nc-cost-item-field full"><label>Fluxo da solicitação de pagamento</label>' + renderNcCostWorkflowHtml(rec) + '</div>' +
         '</div>' +
         '<div class="nc-cost-item-actions">' +
@@ -10177,8 +10180,8 @@ document.addEventListener("DOMContentLoaded", function() {
     _finalizingNcCostId = costId;
     backdrop.classList.add('open');
     var rec = (ncCostRecords || []).find(function(item) { return item.id === costId; });
-    var desfinBtn = document.getElementById('ncFinalizeBtnDesfinalizar');
-    if (desfinBtn) desfinBtn.style.display = '';
+    var pendingBtn = document.getElementById('ncFinalizeBtnPending');
+    if (pendingBtn) pendingBtn.style.display = '';
     var dateInput = document.getElementById('ncFinalizeDateInput');
     if (dateInput) dateInput.value = (rec && (rec.finalizationType ? rec.finalizationDate : rec.paymentScheduledDate)) || new Date().toISOString().slice(0, 10);
   }
@@ -10276,7 +10279,7 @@ document.addEventListener("DOMContentLoaded", function() {
       var savings = Math.max(0, charged - current);
       return '<tr>' +
         '<td>' + (idx + 1) + '</td>' +
-        '<td>' + escHtml(getNcCostLaunchDate(rec) ? ncFmtDate(getNcCostLaunchDate(rec)) : '—') + '</td>' +
+        '<td>' + escHtml(getNcCostEffectiveDate(rec) ? ncFmtDate(getNcCostEffectiveDate(rec)) : '—') + '</td>' +
         '<td>' + escHtml(getNcCostLinkedLabel(rec)) + '</td>' +
         '<td>' + escHtml(getNcCostKindLabel(rec)) + '</td>' +
         '<td>' + escHtml(getNcCostCurrentStageDisplay(rec)) + '</td>' +
@@ -10504,14 +10507,14 @@ document.addEventListener("DOMContentLoaded", function() {
     var finalizePaga = document.getElementById('ncFinalizeBtnPaga');
     var finalizeReembolsada = document.getElementById('ncFinalizeBtnReembolsada');
     var finalizeAssumidoCliente = document.getElementById('ncFinalizeBtnAssumidoCliente');
-    var finalizeDesfinalizar = document.getElementById('ncFinalizeBtnDesfinalizar');
+    var finalizePending = document.getElementById('ncFinalizeBtnPending');
     if (finalizeClose) finalizeClose.addEventListener('click', closeNcFinalizeModal);
     if (finalizeCancel) finalizeCancel.addEventListener('click', closeNcFinalizeModal);
     if (finalizeBackdrop) finalizeBackdrop.addEventListener('click', function(e) { if (e.target === finalizeBackdrop) closeNcFinalizeModal(); });
     if (finalizePaga) finalizePaga.addEventListener('click', function() { applyNcFinalizationType('paga'); });
     if (finalizeReembolsada) finalizeReembolsada.addEventListener('click', function() { applyNcFinalizationType('reembolsada'); });
     if (finalizeAssumidoCliente) finalizeAssumidoCliente.addEventListener('click', function() { applyNcFinalizationType('assumido_cliente'); });
-    if (finalizeDesfinalizar) finalizeDesfinalizar.addEventListener('click', function() { applyNcFinalizationType(null); });
+    if (finalizePending) finalizePending.addEventListener('click', function() { applyNcFinalizationType(null); });
 
     var openChk = document.getElementById('ncCostNegotiationOpen');
     if (openChk) openChk.addEventListener('change', syncNcCostNegotiatedFieldState);
@@ -11677,13 +11680,13 @@ document.addEventListener("DOMContentLoaded", function() {
     <div class="nc-finalize-body">
       <p>Selecione o andamento do pagamento desta solicitação:</p>
       <div class="nc-finalize-date-group">
-        <label for="ncFinalizeDateInput">Data do pagamento programado/realizado</label>
+        <label for="ncFinalizeDateInput">Data do pagamento</label>
         <input type="date" id="ncFinalizeDateInput">
       </div>
       <button type="button" class="nc-finalize-btn paga" id="ncFinalizeBtnPaga">Paga</button>
       <button type="button" class="nc-finalize-btn reembolsada" id="ncFinalizeBtnReembolsada">Reembolsada</button>
       <button type="button" class="nc-finalize-btn assumido_cliente" id="ncFinalizeBtnAssumidoCliente">Custo assumido pelo cliente</button>
-      <button type="button" class="nc-finalize-btn desfinalizar" id="ncFinalizeBtnDesfinalizar">Salvar como pendente</button>
+      <button type="button" class="nc-finalize-btn desfinalizar" id="ncFinalizeBtnPending">Salvar pagamento pendente</button>
     </div>
     <div class="nc-finalize-footer">
       <button class="nc-finalize-cancel" id="ncFinalizeCancelBtn">Cancelar</button>
