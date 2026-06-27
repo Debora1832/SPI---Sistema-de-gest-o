@@ -1272,9 +1272,9 @@
       font-size:13px; color:#0f172a; font-weight:500; white-space:pre-wrap; word-break:break-word;
     }
     .nc-cost-item-actions { display:flex; gap:8px; flex-wrap:wrap; padding-top:2px; }
-    .nc-cost-item-card.nc-cost-finalizado { border-width:2px; border-color:#16a34a; box-shadow:0 4px 16px rgba(22,163,74,.25); }
-    .nc-cost-item-card.nc-cost-aberto     { border-width:2px; border-color:#f97316; box-shadow:0 4px 16px rgba(249,115,22,.25); }
-    .nc-cost-item-card.nc-cost-alerta     { border-width:2px; border-color:#ef4444; box-shadow:0 4px 16px rgba(239,68,68,.3); }
+    .nc-cost-item-card.nc-cost-finalizado { border-width:2px; border-color:#16a34a; box-shadow:0 4px 16px rgba(22,163,74,.25); background:rgba(22,163,74,.07); }
+    .nc-cost-item-card.nc-cost-aberto     { border-width:2px; border-color:#f97316; box-shadow:0 4px 16px rgba(249,115,22,.25); background:rgba(249,115,22,.07); }
+    .nc-cost-item-card.nc-cost-alerta     { border-width:2px; border-color:#ef4444; box-shadow:0 4px 16px rgba(239,68,68,.3);  background:rgba(239,68,68,.07); }
     .btn-icon.btn-alerta { background:#fef2f2; border:1.5px solid #fca5a5; color:#b91c1c; }
     .btn-icon.btn-alerta.active { background:#ef4444; border-color:#ef4444; color:#fff; font-weight:800; }
     .btn-icon.btn-alerta:hover { background:#fee2e2; }
@@ -2121,17 +2121,9 @@
       <div class="kpi-card"><h4>Total Cobrado</h4><div class="kpi-value" id="ncCostTotalCharged">R$ 0,00</div></div>
       <div class="kpi-card"><h4>Total Negociado</h4><div class="kpi-value" id="ncCostTotalNegotiated">R$ 0,00</div></div>
       <div class="kpi-card"><h4>Economia</h4><div class="kpi-value" id="ncCostTotalSavings">R$ 0,00</div></div>
-      <div class="kpi-card delayed"><h4>Débitos em aberto</h4><div class="kpi-value" id="ncCostOpenCount">0</div><div class="kpi-sub" id="ncCostOpenValue">R$ 0,00 pendentes</div></div>
     </div>
 
     <div id="ncCostSummaryCard" style="margin-bottom:14px;"></div>
-    <div class="nc-cost-chart-card">
-      <h4>Comparativo financeiro</h4>
-      <p>Total projetado vs total economizado nos filtros selecionados.</p>
-      <div class="nc-cost-chart-wrap">
-        <canvas id="ncCostSavingsBarChart"></canvas>
-      </div>
-    </div>
 
     <div class="card">
       <div id="ncCostCardContainer" class="nc-cost-card-list">
