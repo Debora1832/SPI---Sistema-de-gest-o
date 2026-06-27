@@ -961,6 +961,14 @@
     .nc-cards-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:16px; }
     .nc-card { background:#1c1c1e; border-radius:14px; overflow:hidden; border:1px solid #2f2f33; box-shadow:0 4px 14px rgba(0,0,0,.22); transition:transform .15s, box-shadow .15s; display:flex; flex-direction:column; position:relative; }
     .nc-card:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,.3); }
+    /* Payment status border highlight */
+    .nc-card.nc-pay-alerta { border-width:2px; border-color:#ef4444; box-shadow:0 4px 16px rgba(239,68,68,.35); }
+    .nc-card.nc-pay-pago   { border-width:2px; border-color:#16a34a; box-shadow:0 4px 16px rgba(22,163,74,.3); }
+    .nc-card.nc-pay-aberto { border-width:2px; border-color:#f97316; box-shadow:0 4px 16px rgba(249,115,22,.3); }
+    /* Payment status mini-badge inside NC card */
+    .nc-card-payment-status { display:inline-block; margin-top:6px; font-size:10px; font-weight:800; padding:2px 8px; border-radius:99px; letter-spacing:.04em; }
+    .nc-card-payment-status.pago   { background:rgba(22,163,74,.2); color:#4ade80; border:1px solid rgba(22,163,74,.45); }
+    .nc-card-payment-status.aberto { background:rgba(249,115,22,.2); color:#fb923c; border:1px solid rgba(249,115,22,.45); }
     /* Atenção badge — shown on NC card when attention flag is set */
     .nc-card-atencao-badge { position:absolute; top:8px; right:8px; background:#f97316; color:#fff; border-radius:20px; font-size:11px; font-weight:800; padding:3px 8px; display:flex; align-items:center; gap:4px; box-shadow:0 2px 8px rgba(249,115,22,.5); z-index:10; letter-spacing:.04em; pointer-events:none; animation:nc-atencao-pulse 2s infinite; }
     /* Evidências de contenção badge — shown on NC card when contencaoEnviada flag is set */
@@ -1193,8 +1201,21 @@
     .nc-cost-item-card {
       border:1px solid #e5e7eb; border-radius:12px; background:#fff; padding:14px;
       display:flex; flex-direction:column; gap:12px; box-shadow:0 2px 8px rgba(15,23,42,.04);
-      transition:transform .15s, box-shadow .15s, border-color .15s;
+      transition:transform .15s, box-shadow .15s, border-color .15s; position:relative;
     }
+    .nc-cost-card-nc-thumb {
+      position:absolute; top:10px; right:10px; width:60px; height:60px;
+      object-fit:cover; border-radius:8px; border:2px solid #e5e7eb;
+      background:#f3f4f6; cursor:zoom-in; z-index:1;
+    }
+    .nc-cost-item-grid-has-thumb { padding-right:72px; }
+    .nc-cost-payment-badge { display:inline-flex; align-items:center; border-radius:999px; padding:4px 10px; font-size:11px; font-weight:700; }
+    .nc-cost-payment-badge.paga { background:#d1fae5; border:1px solid #6ee7b7; color:#065f46; }
+    .nc-cost-payment-badge.reembolsada { background:#dbeafe; border:1px solid #93c5fd; color:#1e40af; }
+    .nc-cost-payment-badge.pendente { background:#f3f4f6; border:1px solid #e5e7eb; color:#6b7280; }
+    .nc-finalize-date-group { display:flex; flex-direction:column; gap:4px; margin-bottom:2px; }
+    .nc-finalize-date-group label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#374151; }
+    .nc-finalize-date-group input[type=date] { border:1px solid #d1d5db; border-radius:8px; padding:7px 10px; font-size:13px; color:#111827; width:100%; box-sizing:border-box; }
     .nc-cost-row-clickable { cursor:pointer; }
     .nc-cost-item-card.nc-cost-row-clickable:hover {
       transform:translateY(-2px);
@@ -5258,7 +5279,7 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   function getNcCostRecordPeriod(rec) {
-    var value = String((rec && rec.date) || '');
+    var value = String((rec && (rec.finalizationDate || rec.date)) || '');
     var match = value.match(/^(\d{4})-(\d{2})-\d{2}$/);
     return match ? { year: match[1], month: match[2] } : null;
   }
@@ -5346,7 +5367,7 @@ document.addEventListener("DOMContentLoaded", function() {
         '<td>' + escHtml(rec._tenantLabel || ((TENANTS[currentTenant] && TENANTS[currentTenant].label) || '—')) + '</td>' +
         '<td>' + escHtml(getNcCostLinkedLabel(rec)) + '</td>' +
         '<td>' + escHtml(getNcCostKindLabel(rec)) + '</td>' +
-        '<td>' + escHtml(getNcCostNegotiationStatus(rec)) + '</td>' +
+        '<td>' + escHtml(getNcCostNegotiationStatus(rec) + (rec.finalizationType ? ' / ' + getNcCostPaymentStatus(rec) : '')) + '</td>' +
         '<td>' + escHtml(formatCurrencyBRL(charged)) + '</td>' +
         '<td>' + escHtml(formatCurrencyBRL(current)) + '</td>' +
         '<td>' + escHtml(formatCurrencyBRL(savings)) + '</td>' +
@@ -8980,7 +9001,26 @@ document.addEventListener("DOMContentLoaded", function() {
       var contencaoBadge = nc.contencaoEnviada ? '<div class="nc-card-contencao-badge">📋 Contenção Enviada</div>' : '';
       var naoProcBadge = nc.naoProcedente ? '<div class="nc-nao-procedente-badge">✕ Não Procedente</div>' : '';
       var naoProcClass = nc.naoProcedente ? ' nc-nao-procedente' : '';
-      return '<div class="nc-card' + naoProcClass + '" data-nc-id="' + nc.id + '">' +
+      // Payment status: check linked cost records for this NC
+      // Alert flag (red) takes highest priority — short-circuit cost lookup when set
+      var payClass = '';
+      var payBadgeHtml = '';
+      if (nc.atencao) {
+        payClass = ' nc-pay-alerta';
+      } else {
+        var linkedCosts = (ncCostRecords || []).filter(function(c) { return c.linkedNcId === nc.id; });
+        if (linkedCosts.length) {
+          var allPaid = linkedCosts.every(function(c) { return c.finalizationType === 'paga' || c.finalizationType === 'reembolsada'; });
+          if (allPaid) {
+            payClass = ' nc-pay-pago';
+            payBadgeHtml = '<span class="nc-card-payment-status pago">💰 Pagamento Fechado</span>';
+          } else {
+            payClass = ' nc-pay-aberto';
+            payBadgeHtml = '<span class="nc-card-payment-status aberto">💰 Pagamento Aberto</span>';
+          }
+        }
+      }
+      return '<div class="nc-card' + naoProcClass + payClass + '" data-nc-id="' + nc.id + '">' +
         naoProcBadge +
         atencaoBadge +
         contencaoBadge +
@@ -8991,6 +9031,7 @@ document.addEventListener("DOMContentLoaded", function() {
           '<div class="nc-card-failure">' + escHtml(nc.failureMode || '—') + '</div>' +
           (nc.customer ? '<div class="nc-card-customer">Cliente: ' + escHtml(nc.customer) + '</div>' : '') +
           (nc.description ? '<div class="nc-card-desc" title="' + escHtml(nc.description) + '">' + escHtml(nc.description) + '</div>' : '') +
+          payBadgeHtml +
           '<div class="nc-card-date">📅 ' + dateStr + '</div>' +
           (nc.qty ? '<div class="nc-card-qty">📦 ' + nc.qty + ' peça' + (nc.qty !== 1 ? 's' : '') + '</div>' : '') +
           (Array.isArray(cleanNc.pdfs) && cleanNc.pdfs.length
@@ -9602,9 +9643,14 @@ document.addEventListener("DOMContentLoaded", function() {
 
   function getNcCostNegotiationStatus(cost) {
     if (!cost) return 'Sem negociação';
+    return cost.negotiationOpen ? 'Em aberto' : (cost.negotiatedValue != null ? 'Fechada' : 'Sem negociação');
+  }
+
+  function getNcCostPaymentStatus(cost) {
+    if (!cost) return 'Pendente';
     if (cost.finalizationType === 'paga') return 'Paga ✓';
     if (cost.finalizationType === 'reembolsada') return 'Reembolsada ✓';
-    return cost.negotiationOpen ? 'Em aberto' : (cost.negotiatedValue != null ? 'Fechada' : 'Sem negociação');
+    return 'Pendente';
   }
 
   function getNcCostEvidenceSrc(ev) {
@@ -9629,7 +9675,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
     var linkedNc = rec.linkedNcId ? (ncRecords || []).find(function(nc) { return nc.id === rec.linkedNcId; }) : null;
     var negotiationStatus = getNcCostNegotiationStatus(rec);
-    var statusClass = rec.finalizationType ? rec.finalizationType : (rec.negotiationOpen ? 'open' : (rec.negotiatedValue != null ? 'closed' : 'none'));
+    var statusClass = rec.negotiationOpen ? 'open' : (rec.negotiatedValue != null ? 'closed' : 'none');
     var savings = (rec.negotiatedValue != null && !rec.negotiationOpen)
       ? Math.max(0, (Number(rec.chargedValue) || 0) - (Number(rec.negotiatedValue) || 0))
       : 0;
@@ -9686,12 +9732,13 @@ document.addEventListener("DOMContentLoaded", function() {
         '<div class="nc-cost-detail-card-body">' +
           '<div class="nc-cost-detail-fields">' +
             '<div class="nc-cost-detail-field"><label>Data do registro</label><span>' + escHtml(ncFmtDate(rec.date) || '—') + '</span></div>' +
-            (rec.finalizationDate ? '<div class="nc-cost-detail-field"><label>Data do pagamento</label><span class="nc-cost-payment-date-value">' + escHtml(ncFmtDate(rec.finalizationDate)) + '</span></div>' : '') +
+            '<div class="nc-cost-detail-field"><label>Data de pagamento</label><span class="nc-cost-payment-date-value">' + escHtml(rec.finalizationDate ? ncFmtDate(rec.finalizationDate) : '—') + '</span></div>' +
             '<div class="nc-cost-detail-field"><label>Tipo</label><span>' + escHtml(getNcCostKindLabel(rec)) + '</span></div>' +
             '<div class="nc-cost-detail-field"><label>Valor cobrado</label><span>' + escHtml(formatCurrencyBRL(rec.chargedValue)) + '</span></div>' +
             '<div class="nc-cost-detail-field"><label>Valor negociado</label><span>' + escHtml(rec.negotiatedValue != null ? formatCurrencyBRL(rec.negotiatedValue) : '—') + '</span></div>' +
             '<div class="nc-cost-detail-field"><label>Economia</label><span>' + escHtml(formatCurrencyBRL(savings)) + '</span></div>' +
-            '<div class="nc-cost-detail-field"><label>Status</label><span><span class="nc-cost-detail-badge ' + statusClass + '">' + escHtml(negotiationStatus) + '</span></span></div>' +
+            '<div class="nc-cost-detail-field"><label>Status negociação</label><span><span class="nc-cost-detail-badge ' + statusClass + '">' + escHtml(negotiationStatus) + '</span></span></div>' +
+            '<div class="nc-cost-detail-field"><label>Status pagamento</label><span><span class="nc-cost-payment-badge ' + (rec.finalizationType || 'pendente') + '">' + escHtml(getNcCostPaymentStatus(rec)) + '</span></span></div>' +
             '<div class="nc-cost-detail-field full"><label>Descrição da negociação</label><span>' + escHtml(rec.description || '—') + '</span></div>' +
             '<div class="nc-cost-detail-field full"><label>Observações</label><span>' + escHtml(rec.notes || '—') + '</span></div>' +
             '<div class="nc-cost-detail-field full"><label>Evidências (' + evidences.length + ')</label><span>' + evidencesHtml + '</span></div>' +
@@ -9869,12 +9916,27 @@ document.addEventListener("DOMContentLoaded", function() {
       card.setAttribute('role', 'button');
       card.setAttribute('tabindex', '0');
       var negotiationStatus = getNcCostNegotiationStatus(rec);
+      var paymentStatus = getNcCostPaymentStatus(rec);
+      var paymentBadgeClass = rec.finalizationType || 'pendente';
       card.setAttribute('aria-label', 'Abrir detalhes de custo');
-      var statusBadgeClass = rec.finalizationType ? rec.finalizationType : (rec.negotiationOpen ? 'open' : (rec.negotiatedValue != null ? 'closed' : 'none'));
-      var statusCellHtml = '<span class="nc-cost-detail-badge ' + statusBadgeClass + '">' + escHtml(negotiationStatus) + '</span>' +
-        (rec.finalizationDate ? '<div class="nc-cost-payment-date">Pago em: ' + escHtml(ncFmtDate(rec.finalizationDate)) + '</div>' : '');
+      var negBadgeClass = rec.negotiationOpen ? 'open' : (rec.negotiatedValue != null ? 'closed' : 'none');
+
+      /* first photo of the linked NC */
+      var linkedNcForThumb = rec.linkedNcId ? (ncRecords || []).find(function(nc) { return nc.id === rec.linkedNcId; }) : null;
+      var firstPhotoSrc = '';
+      if (linkedNcForThumb) {
+        var normThumb = normalizeNcRecordAttachments(linkedNcForThumb);
+        var thumbList = (normThumb.photos && normThumb.photos.length) ? normThumb.photos : (normThumb.photo ? [normThumb.photo] : []);
+        firstPhotoSrc = thumbList.length ? thumbList[0] : '';
+      }
+      var thumbHtml = firstPhotoSrc
+        ? '<img class="nc-cost-card-nc-thumb" src="' + escHtml(firstPhotoSrc) + '" alt="Foto da NC" title="Foto da NC vinculada" data-nccost-thumb-src="' + escHtml(firstPhotoSrc) + '" data-nccost-thumb-alt="Foto da NC">'
+        : '';
+
+      var gridExtraClass = firstPhotoSrc ? ' nc-cost-item-grid-has-thumb' : '';
       card.innerHTML =
-        '<div class="nc-cost-item-grid">' +
+        thumbHtml +
+        '<div class="nc-cost-item-grid' + gridExtraClass + '">' +
           '<div class="nc-cost-item-field"><label>Data</label><div class="nc-cost-item-value">' + escHtml(rec.date || '—') + '</div></div>' +
           '<div class="nc-cost-item-field"><label>Tipo</label><div class="nc-cost-item-value">' + escHtml(getNcCostKindLabel(rec)) + '</div></div>' +
           '<div class="nc-cost-item-field"><label>NC vinculada</label><div class="nc-cost-item-value">' + escHtml(getNcCostLinkedLabel(rec)) + '</div></div>' +
@@ -9882,7 +9944,9 @@ document.addEventListener("DOMContentLoaded", function() {
           '<div class="nc-cost-item-field full"><label>Descrição</label><div class="nc-cost-item-value">' + escHtml(rec.description || '—') + '</div></div>' +
           '<div class="nc-cost-item-field"><label>Valor cobrado</label><div class="nc-cost-item-value">' + escHtml(formatCurrencyBRL(rec.chargedValue)) + '</div></div>' +
           '<div class="nc-cost-item-field"><label>Valor negociado</label><div class="nc-cost-item-value">' + escHtml(rec.negotiatedValue != null ? formatCurrencyBRL(rec.negotiatedValue) : '—') + '</div></div>' +
-          '<div class="nc-cost-item-field full"><label>Status negociação</label><div class="nc-cost-item-value">' + statusCellHtml + '</div></div>' +
+          '<div class="nc-cost-item-field"><label>Status negociação</label><div class="nc-cost-item-value"><span class="nc-cost-detail-badge ' + negBadgeClass + '">' + escHtml(negotiationStatus) + '</span></div></div>' +
+          '<div class="nc-cost-item-field"><label>Status pagamento</label><div class="nc-cost-item-value"><span class="nc-cost-payment-badge ' + paymentBadgeClass + '">' + escHtml(paymentStatus) + '</span></div></div>' +
+          '<div class="nc-cost-item-field full"><label>Data de pagamento</label><div class="nc-cost-item-value">' + (rec.finalizationDate ? '<span class="nc-cost-payment-date-value">' + escHtml(ncFmtDate(rec.finalizationDate)) + '</span>' : '<span style="color:#9ca3af">—</span>') + '</div></div>' +
         '</div>' +
         '<div class="nc-cost-item-actions">' +
           '<button type="button" class="btn-icon btn-edit" data-nccost-edit="' + escHtml(rec.id) + '" title="Editar">Editar</button>' +
@@ -9890,7 +9954,7 @@ document.addEventListener("DOMContentLoaded", function() {
           '<button type="button" class="btn-icon ' + (rec.finalizationType ? 'btn-edit' : '') + '" data-nccost-finalize="' + escHtml(rec.id) + '" title="Marcar como finalizada (paga/reembolsada)">' + (rec.finalizationType ? 'Alterar' : 'Finalizar') + '</button>' +
         '</div>';
       card.addEventListener('click', function(e) {
-        if (e.target.closest('.btn-icon')) return;
+        if (e.target.closest('.btn-icon') || e.target.closest('.nc-cost-card-nc-thumb')) return;
         openNcCostDetailModal(rec.id);
       });
       card.addEventListener('keydown', function(e) {
@@ -9906,6 +9970,14 @@ document.addEventListener("DOMContentLoaded", function() {
         openNcCostDetailModal(rec.id);
       });
       listBody.appendChild(card);
+    });
+
+    listBody.querySelectorAll('[data-nccost-thumb-src]').forEach(function(img) {
+      img.addEventListener('click', function(e) {
+        e.stopPropagation();
+        openLightbox(img.getAttribute('data-nccost-thumb-src'), img.getAttribute('data-nccost-thumb-alt') || 'Foto da NC');
+      });
+      img.addEventListener('error', function() { img.style.display = 'none'; });
     });
 
     listBody.querySelectorAll('[data-nccost-edit]').forEach(function(btn) {
@@ -9942,6 +10014,8 @@ document.addEventListener("DOMContentLoaded", function() {
     var hasFinalized = rec && rec.finalizationType;
     var desfinBtn = document.getElementById('ncFinalizeBtnDesfinalizar');
     if (desfinBtn) desfinBtn.style.display = hasFinalized ? '' : 'none';
+    var dateInput = document.getElementById('ncFinalizeDateInput');
+    if (dateInput) dateInput.value = (rec && rec.finalizationDate) || new Date().toISOString().slice(0, 10);
   }
 
   function closeNcFinalizeModal() {
@@ -9955,7 +10029,10 @@ document.addEventListener("DOMContentLoaded", function() {
     if (!costId) return;
     var idx = (ncCostRecords || []).findIndex(function(item) { return item.id === costId; });
     if (idx === -1) { closeNcFinalizeModal(); return; }
-    ncCostRecords[idx] = normalizeNcCostRecord(Object.assign({}, ncCostRecords[idx], { finalizationType: type, finalizationDate: type ? (ncCostRecords[idx].finalizationDate || new Date().toISOString().slice(0, 10)) : null }));
+    var dateInput = document.getElementById('ncFinalizeDateInput');
+    var manualDate = dateInput ? (dateInput.value || '') : '';
+    var finalDate = type ? (manualDate || ncCostRecords[idx].finalizationDate || new Date().toISOString().slice(0, 10)) : null;
+    ncCostRecords[idx] = normalizeNcCostRecord(Object.assign({}, ncCostRecords[idx], { finalizationType: type, finalizationDate: finalDate }));
     closeNcFinalizeModal();
     await saveNcCostRecords();
     renderNcCostPage();
@@ -10032,7 +10109,7 @@ document.addEventListener("DOMContentLoaded", function() {
         '<td>' + escHtml(rec.date || '—') + '</td>' +
         '<td>' + escHtml(getNcCostLinkedLabel(rec)) + '</td>' +
         '<td>' + escHtml(getNcCostKindLabel(rec)) + '</td>' +
-        '<td>' + escHtml(getNcCostNegotiationStatus(rec)) + '</td>' +
+        '<td>' + escHtml(getNcCostNegotiationStatus(rec) + (rec.finalizationType ? ' / ' + getNcCostPaymentStatus(rec) : '')) + '</td>' +
         '<td>' + escHtml(formatCurrencyBRL(charged)) + '</td>' +
         '<td>' + escHtml(formatCurrencyBRL(current)) + '</td>' +
         '<td>' + escHtml(formatCurrencyBRL(savings)) + '</td>' +
@@ -11372,6 +11449,10 @@ document.addEventListener("DOMContentLoaded", function() {
     </div>
     <div class="nc-finalize-body">
       <p>Selecione como esta negociação foi finalizada:</p>
+      <div class="nc-finalize-date-group">
+        <label for="ncFinalizeDateInput">Data de pagamento</label>
+        <input type="date" id="ncFinalizeDateInput">
+      </div>
       <button type="button" class="nc-finalize-btn paga" id="ncFinalizeBtnPaga">Paga</button>
       <button type="button" class="nc-finalize-btn reembolsada" id="ncFinalizeBtnReembolsada">Reembolsada</button>
       <button type="button" class="nc-finalize-btn desfinalizar" id="ncFinalizeBtnDesfinalizar">Desfinalizar (remover status)</button>
