@@ -10152,9 +10152,11 @@ document.addEventListener("DOMContentLoaded", function() {
     listBody.querySelectorAll('[data-nccost-alerta]').forEach(function(btn) {
       btn.addEventListener('click', async function(e) {
         e.stopPropagation();
+        if (btn.disabled) return;
         var id = btn.getAttribute('data-nccost-alerta');
         var idx = (ncCostRecords || []).findIndex(function(item) { return item.id === id; });
         if (idx === -1) return;
+        btn.disabled = true;
         ncCostRecords[idx].alerta = !ncCostRecords[idx].alerta;
         await saveNcCostRecords();
         renderNcCostPage();
