@@ -6826,6 +6826,7 @@ document.addEventListener("DOMContentLoaded", function() {
   var _ncCustomFilter  = { field: null, key: null, chartId: null }; // active custom chart filter
   var _ncAlertFilter   = false;   // show only cards with atencao flag
   var _ncSituacaoFilter = '';     // 'aberto' | 'finalizado' | 'alerta' | '' (all)
+  var NC_COST_STATUS_LABEL = 'Status custo NC: ';
   // Chart settings (bar color, meta color, meta value, title) — persisted to localStorage
   var _ncChartSettings = (function() {
     try { return JSON.parse(localStorage.getItem('spi_nc_chart_month_settings') || 'null') || {}; } catch(e) { return {}; }
@@ -9071,10 +9072,18 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   function getNcNegotiationSummaryByNcId(ncId) {
-    var records = (ncCostRecords || []).filter(function(rec) { return rec.linkedNcId === ncId; });
-    var totalCharged = records.reduce(function(sum, rec) { return sum + toValidNumber(rec.chargedValue); }, 0);
-    var totalNegotiated = records.reduce(function(sum, rec) { return sum + toValidNumber(rec.negotiatedValue); }, 0);
-    var allPaid = records.length > 0 && records.every(isNcCostPaymentCompleted);
+    var records = [];
+    var totalCharged = 0;
+    var totalNegotiated = 0;
+    var allPaid = true;
+    (ncCostRecords || []).forEach(function(rec) {
+      if (rec.linkedNcId !== ncId) return;
+      records.push(rec);
+      totalCharged += toValidNumber(rec.chargedValue);
+      totalNegotiated += toValidNumber(rec.negotiatedValue);
+      if (!isNcCostPaymentCompleted(rec)) allPaid = false;
+    });
+    if (!records.length) allPaid = false;
     return {
       records: records,
       count: records.length,
@@ -9128,7 +9137,7 @@ document.addEventListener("DOMContentLoaded", function() {
       // Alert flag (red) takes highest priority — short-circuit cost lookup when set
       var payClass = nc.atencao ? ' nc-pay-alerta' : '';
       var ncNegotiationSummary = getNcNegotiationSummaryByNcId(nc.id);
-      var payBadgeHtml = '<span class="nc-card-payment-status">Status custo NC: ' + escHtml(ncNegotiationSummary.paymentStatus) + '</span>';
+      var payBadgeHtml = '<span class="nc-card-payment-status">' + escHtml(NC_COST_STATUS_LABEL + ncNegotiationSummary.paymentStatus) + '</span>';
       return '<div class="nc-card' + naoProcClass + payClass + '" data-nc-id="' + nc.id + '">' +
         naoProcBadge +
         atencaoBadge +
@@ -9471,7 +9480,7 @@ document.addEventListener("DOMContentLoaded", function() {
         '<div class="nc-detail-section">' +
           '<button type="button" class="nc-detail-neg-toggle" id="ncDetailNegotiationToggle">' +
             '<span>Status de negociação</span>' +
-            '<span class="nc-detail-neg-status ' + negotiationStatusClass + '">Status custo NC: ' + escHtml(ncNegotiationSummary.paymentStatus) + '</span>' +
+            '<span class="nc-detail-neg-status ' + negotiationStatusClass + '">' + escHtml(NC_COST_STATUS_LABEL + ncNegotiationSummary.paymentStatus) + '</span>' +
           '</button>' +
           '<div class="nc-detail-neg-panel" id="ncDetailNegotiationPanel">' + negotiationCardsHtml + '</div>' +
         '</div>';
