@@ -2117,12 +2117,6 @@
       </div>
     </div>
 
-    <div class="kpi-grid kpi-grid-unified" style="margin-bottom:14px;">
-      <div class="kpi-card"><h4>Total Cobrado</h4><div class="kpi-value" id="ncCostTotalCharged">R$ 0,00</div></div>
-      <div class="kpi-card"><h4>Total Negociado</h4><div class="kpi-value" id="ncCostTotalNegotiated">R$ 0,00</div></div>
-      <div class="kpi-card"><h4>Economia</h4><div class="kpi-value" id="ncCostTotalSavings">R$ 0,00</div></div>
-    </div>
-
     <div id="ncCostSummaryCard" style="margin-bottom:14px;"></div>
 
     <div class="card">
@@ -5510,8 +5504,11 @@ document.addEventListener("DOMContentLoaded", function() {
     var cfg = Object.assign({
       title: 'Economia negociada',
       subtitle: 'Comparativo entre o valor projetado e o valor atual após as negociações.',
+      projectedLabel: 'Projetado',
+      projectedSubLabel: 'Valor originalmente cobrado',
       periodLabel: '',
       currentLabel: 'Atual / negociado',
+      currentSubLabel: 'Valor atual depois das tratativas',
       emptyText: 'Nenhum registro de custo disponível para exibir o comparativo.',
       records: [],
       scopeLabel: 'Negociações',
@@ -5551,8 +5548,8 @@ document.addEventListener("DOMContentLoaded", function() {
             '</div>' +
           '</div>' +
           '<div class="savings-summary-metrics">' +
-            '<div class="savings-summary-metric clickable" role="button" tabindex="0" data-summary-kind="projected"><span class="savings-summary-metric-label">Projetado</span><strong class="savings-summary-metric-value">' + escHtml(formatCurrencyBRL(summary.projected)) + '</strong><span class="savings-summary-metric-sub">Valor originalmente cobrado</span></div>' +
-            '<div class="savings-summary-metric clickable" role="button" tabindex="0" data-summary-kind="current"><span class="savings-summary-metric-label">' + escHtml(cfg.currentLabel) + '</span><strong class="savings-summary-metric-value">' + escHtml(formatCurrencyBRL(summary.current)) + '</strong><span class="savings-summary-metric-sub">Valor atual depois das tratativas</span></div>' +
+            '<div class="savings-summary-metric clickable" role="button" tabindex="0" data-summary-kind="projected"><span class="savings-summary-metric-label">' + escHtml(cfg.projectedLabel) + '</span><strong class="savings-summary-metric-value">' + escHtml(formatCurrencyBRL(summary.projected)) + '</strong><span class="savings-summary-metric-sub">' + escHtml(cfg.projectedSubLabel) + '</span></div>' +
+            '<div class="savings-summary-metric clickable" role="button" tabindex="0" data-summary-kind="current"><span class="savings-summary-metric-label">' + escHtml(cfg.currentLabel) + '</span><strong class="savings-summary-metric-value">' + escHtml(formatCurrencyBRL(summary.current)) + '</strong><span class="savings-summary-metric-sub">' + escHtml(cfg.currentSubLabel) + '</span></div>' +
             '<div class="savings-summary-metric clickable" role="button" tabindex="0" data-summary-kind="savings"><span class="savings-summary-metric-label">Economizado</span><strong class="savings-summary-metric-value">' + escHtml(formatCurrencyBRL(summary.savings)) + '</strong><span class="savings-summary-metric-sub">' + escHtml(formatPercentPtBr(summary.savingsRate)) + ' do total projetado</span></div>' +
             '<div class="savings-summary-metric clickable" role="button" tabindex="0" data-summary-kind="closed"><span class="savings-summary-metric-label">Negociações fechadas</span><strong class="savings-summary-metric-value">' + escHtml(String(summary.closedCount)) + '</strong><span class="savings-summary-metric-sub">' + escHtml(formatCurrencyBRL(summary.negotiated)) + ' negociados</span></div>' +
           '</div>' +
@@ -6819,6 +6816,7 @@ document.addEventListener("DOMContentLoaded", function() {
   var _ncAlertFilter   = false;   // show only cards with atencao flag
   var _ncSituacaoFilter = '';     // 'aberto' | 'finalizado' | 'alerta' | '' (all)
   var NC_COST_STATUS_LABEL = 'Status custo NC: ';
+  var NC_COST_STATUS_LABEL_NONE = 'SEM CUSTO ASSOCIADO A NC';
   // Chart settings (bar color, meta color, meta value, title) — persisted to localStorage
   var _ncChartSettings = (function() {
     try { return JSON.parse(localStorage.getItem('spi_nc_chart_month_settings') || 'null') || {}; } catch(e) { return {}; }
@@ -9129,7 +9127,10 @@ document.addEventListener("DOMContentLoaded", function() {
       // Alert flag (red) takes highest priority — short-circuit cost lookup when set
       var payClass = nc.atencao ? ' nc-pay-alerta' : '';
       var ncNegotiationSummary = getNcNegotiationSummaryByNcId(nc.id);
-      var payBadgeHtml = '<span class="nc-card-payment-status">' + escHtml(NC_COST_STATUS_LABEL + ncNegotiationSummary.paymentStatus) + '</span>';
+      var paymentStatusText = escHtml(ncNegotiationSummary.paymentStatus || '—');
+      var payBadgeHtml = ncNegotiationSummary.count === 0
+        ? '<span class="nc-card-payment-status">' + escHtml(NC_COST_STATUS_LABEL_NONE) + '</span>'
+        : '<span class="nc-card-payment-status">' + escHtml(NC_COST_STATUS_LABEL) + paymentStatusText + '</span>';
       return '<div class="nc-card' + naoProcClass + payClass + '" data-nc-id="' + nc.id + '">' +
         naoProcBadge +
         atencaoBadge +
@@ -9454,9 +9455,9 @@ document.addEventListener("DOMContentLoaded", function() {
       if (nc.rncAberta)    statusBadges += '<span class="nc-detail-status-badge nc-detail-status-open">✔ RNC Aberta</span> ';
       if (nc.d8Finalizado) statusBadges += '<span class="nc-detail-status-badge nc-detail-status-8d">✔ 8D Finalizado</span>';
       if (!nc.rncAberta && !nc.d8Finalizado) statusBadges = '<span class="nc-detail-status-badge nc-detail-status-none">○ Em aberto</span>';
-      var sitDetailLabel = nc.situacao === 'finalizado' ? '🟢 Finalizado' : nc.situacao === 'alerta' ? '🔴 Alerta' : nc.situacao === 'aberto' ? '🟠 Em aberto' : '—';
       var ncNegotiationSummary = getNcNegotiationSummaryByNcId(nc.id);
       var negotiationStatusClass = ncNegotiationSummary.paymentStatus === 'Pago' ? 'paid' : 'pending';
+      var negotiationStatusText = escHtml(ncNegotiationSummary.paymentStatus || '—');
       var negotiationCardsHtml = ncNegotiationSummary.records.length
         ? '<div class="nc-detail-neg-summary-cards">' +
             '<div class="nc-detail-neg-summary-card"><label>Status custo NC</label><strong>' + escHtml(ncNegotiationSummary.paymentStatus) + '</strong></div>' +
@@ -9471,8 +9472,8 @@ document.addEventListener("DOMContentLoaded", function() {
       var negotiationHtml =
         '<div class="nc-detail-section">' +
           '<button type="button" class="nc-detail-neg-toggle" id="ncDetailNegotiationToggle">' +
-            '<span>Status de negociação</span>' +
-            '<span class="nc-detail-neg-status ' + negotiationStatusClass + '">' + escHtml(NC_COST_STATUS_LABEL + ncNegotiationSummary.paymentStatus) + '</span>' +
+            '<span>Custo da não-conformidade</span>' +
+            '<span class="nc-detail-neg-status ' + negotiationStatusClass + '">' + escHtml(NC_COST_STATUS_LABEL) + negotiationStatusText + '</span>' +
           '</button>' +
           '<div class="nc-detail-neg-panel" id="ncDetailNegotiationPanel">' + negotiationCardsHtml + '</div>' +
         '</div>';
@@ -9487,9 +9488,8 @@ document.addEventListener("DOMContentLoaded", function() {
             '<div class="nc-detail-field"><label>Peça</label><span>' + escHtml(nc.piece || '—') + '</span></div>' +
             '<div class="nc-detail-field"><label>Modo de Falha</label><span>' + escHtml(nc.failureMode || '—') + '</span></div>' +
             '<div class="nc-detail-field"><label>Cliente</label><span>' + escHtml(nc.customer || '—') + '</span></div>' +
-            (nc.qty ? '<div class="nc-detail-field"><label>Qtd. de Peças</label><span>' + nc.qty + '</span></div>' : '') +
+            (nc.qty ? '<div class="nc-detail-field"><label>Qtd. de Peças</label><span>' + escHtml(nc.qty) + '</span></div>' : '') +
             '<div class="nc-detail-field"><label>Status</label><span><div class="nc-detail-status-row">' + statusBadges + '</div></span></div>' +
-            '<div class="nc-detail-field"><label>Situação</label><span>' + sitDetailLabel + '</span></div>' +
             (nc.description ? '<div class="nc-detail-field full"><label>Descrição</label><span>' + escHtml(nc.description) + '</span></div>' : '') +
             (Array.isArray(nc.pdfs) && nc.pdfs.length
               ? '<div class="nc-detail-field full"><label>Documentos PDF</label><span style="display:flex;flex-direction:column;gap:6px">' +
@@ -10126,7 +10126,11 @@ document.addEventListener("DOMContentLoaded", function() {
     renderNcCostSummaryCard(document.getElementById('ncCostSummaryCard'), summary, {
       title: 'Visual de economia das negociações',
       subtitle: 'Compare o valor projetado para gastar com o valor atual negociado e a economia já conquistada nesta página.',
+      projectedLabel: 'Total cobrado',
+      projectedSubLabel: 'Valor originalmente cobrado',
       periodLabel: getNcCostPeriodLabel(ncCostPageFilters.month, ncCostPageFilters.year),
+      currentLabel: 'Custo real a ser pago após negociação',
+      currentSubLabel: 'Valor atual depois das tratativas',
       emptyText: 'Cadastre registros de custo para visualizar o gráfico de rosca desta página.',
       records: filteredRecords,
       scopeLabel: (TENANTS[currentTenant] && TENANTS[currentTenant].label) || 'Cliente atual',
