@@ -2412,6 +2412,10 @@
         <option value="za">Z → A</option>
       </select>
     </div>
+    <div class="nc-builder-row" style="display:flex;align-items:center;gap:8px;">
+      <input type="checkbox" id="ncBuilderShowLabels" checked style="width:auto;margin:0;" />
+      <label for="ncBuilderShowLabels" style="margin:0;cursor:pointer;">Mostrar rótulos</label>
+    </div>
   </div>
   <div class="nc-builder-footer">
     <button class="nc-builder-cancel" id="ncBuilderCancel">Cancelar</button>
@@ -8316,15 +8320,7 @@ document.addEventListener("DOMContentLoaded", function() {
       var pKeys = Object.keys(pieceCount);
       var MIN_PIECE_CHART_HEIGHT = 220;
       var PIECE_CHART_ROW_HEIGHT = 24;
-      var PIECE_CHART_VISIBLE_ROWS = 10;
       var PIECE_CHART_AXIS_HEIGHT  = 40; // extra space for x-axis ticks
-      var pieceChartHeight = Math.max(MIN_PIECE_CHART_HEIGHT, (pKeys.length || 1) * PIECE_CHART_ROW_HEIGHT);
-      ctxP.style.maxHeight = 'none';
-      ctxP.style.height = pieceChartHeight + 'px';
-      // Fix scroll container to exactly 10 visible rows; canvas keeps full height
-      var pieceScrollEl = ctxP.parentNode;
-      var pieceScrollH = Math.min(pieceChartHeight, PIECE_CHART_VISIBLE_ROWS * PIECE_CHART_ROW_HEIGHT + PIECE_CHART_AXIS_HEIGHT);
-      pieceScrollEl.style.height = pieceScrollH + 'px';
       var pieceSort = _ncChartSettings.pieceSort || 'desc';
       pKeys.sort(function(a, b) {
         if (pieceSort === 'desc') return pieceCount[b] - pieceCount[a];
@@ -8333,6 +8329,14 @@ document.addEventListener("DOMContentLoaded", function() {
         if (pieceSort === 'za')   return b.localeCompare(a);
         return 0;
       });
+      // Show only the top 10 pieces (by the active sort order)
+      var MAX_PIECE_CHART_ROWS = 10;
+      pKeys = pKeys.slice(0, MAX_PIECE_CHART_ROWS);
+      var pieceChartHeight = Math.max(MIN_PIECE_CHART_HEIGHT, (pKeys.length || 1) * PIECE_CHART_ROW_HEIGHT);
+      ctxP.style.maxHeight = 'none';
+      ctxP.style.height = pieceChartHeight + 'px';
+      var pieceScrollEl = ctxP.parentNode;
+      pieceScrollEl.style.height = pieceChartHeight + 'px';
       var pVals = pKeys.map(function(k){ return pieceCount[k]; });
       // Highlight selected piece bar
       var pColors = pKeys.map(function(k) {
@@ -8833,6 +8837,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
     var config = {
       type: chartType,
+      plugins: [makeDataLabelsPlugin(def.showLabels !== false)],
       data: {
         labels: data.labels,
         datasets: [{
@@ -8941,6 +8946,8 @@ document.addEventListener("DOMContentLoaded", function() {
     var defaultBuilderColor = _ncThemePrimaryColor();
     document.getElementById('ncBuilderColor').value      = def ? (def.color || defaultBuilderColor) : defaultBuilderColor;
     document.getElementById('ncBuilderSort').value       = def ? (def.sort  || 'desc')  : 'desc';
+    var showLabelsChk = document.getElementById('ncBuilderShowLabels');
+    if (showLabelsChk) showLabelsChk.checked = def ? (def.showLabels !== false) : true;
     // Show/hide sort row depending on field (read from the select after setting its value)
     var sortRow = document.getElementById('ncBuilderSortRow');
     var fieldSel = document.getElementById('ncBuilderField');
@@ -11666,6 +11673,8 @@ document.addEventListener("DOMContentLoaded", function() {
         var type  = document.getElementById('ncBuilderType').value;
         var color = document.getElementById('ncBuilderColor').value;
         var sort  = document.getElementById('ncBuilderSort').value;
+        var showLabelsEl = document.getElementById('ncBuilderShowLabels');
+        var showLabels = showLabelsEl ? showLabelsEl.checked : true;
         if (!title) {
           alert('Por favor, insira um título para o gráfico.');
           document.getElementById('ncBuilderTitleInput').focus();
@@ -11674,10 +11683,10 @@ document.addEventListener("DOMContentLoaded", function() {
         if (_ncBuilderEditId) {
           var idx = _ncCustomCharts.findIndex(function(c) { return c.id === _ncBuilderEditId; });
           if (idx >= 0) {
-            _ncCustomCharts[idx] = { id: _ncBuilderEditId, title: title, field: field, type: type, color: color, sort: sort };
+            _ncCustomCharts[idx] = { id: _ncBuilderEditId, title: title, field: field, type: type, color: color, sort: sort, showLabels: showLabels };
           }
         } else {
-          _ncCustomCharts.push({ id: 'cc_' + Date.now() + '_' + Math.floor(Math.random() * 1e6), title: title, field: field, type: type, color: color, sort: sort });
+          _ncCustomCharts.push({ id: 'cc_' + Date.now() + '_' + Math.floor(Math.random() * 1e6), title: title, field: field, type: type, color: color, sort: sort, showLabels: showLabels });
         }
         saveNcCustomCharts();
         _closeNcBuilder();
