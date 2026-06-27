@@ -9051,13 +9051,29 @@ document.addEventListener("DOMContentLoaded", function() {
     return !!(cost && (cost.finalizationType === 'paga' || cost.finalizationType === 'reembolsada' || cost.finalizationType === 'assumido_cliente'));
   }
 
+  function toValidNumber(value) {
+    var num = Number(value);
+    return Number.isFinite(num) ? num : 0;
+  }
+
+  function renderNcNegotiationMiniCard(rec, index) {
+    var currentStage = getNcCostCurrentStageInfo(rec);
+    return '<div class="nc-detail-neg-mini-card">' +
+      '<div class="nc-detail-neg-mini-head"><strong>Negociação ' + (index + 1) + '</strong><span class="nc-cost-payment-badge ' + getNcCostPaymentBadgeClass(rec) + '">' + escHtml(getNcCostPaymentStatus(rec)) + '</span></div>' +
+      '<div class="nc-detail-neg-mini-grid">' +
+        '<div><label>Tipo</label><span>' + escHtml(getNcCostKindLabel(rec)) + '</span></div>' +
+        '<div><label>Lançamento</label><span>' + escHtml(getNcCostEffectiveDate(rec) ? ncFmtDate(getNcCostEffectiveDate(rec)) : '—') + '</span></div>' +
+        '<div><label>Valor cobrado</label><span>' + escHtml(formatCurrencyBRL(rec.chargedValue)) + '</span></div>' +
+        '<div><label>Valor negociado</label><span>' + escHtml(rec.negotiatedValue != null ? formatCurrencyBRL(rec.negotiatedValue) : '—') + '</span></div>' +
+        '<div class="full"><label>Status negociação</label><span>' + escHtml(currentStage.label + ' — ' + currentStage.status) + '</span></div>' +
+      '</div>' +
+    '</div>';
+  }
+
   function getNcNegotiationSummaryByNcId(ncId) {
     var records = (ncCostRecords || []).filter(function(rec) { return rec.linkedNcId === ncId; });
-    var totalCharged = records.reduce(function(sum, rec) { return sum + (Number(rec.chargedValue) || 0); }, 0);
-    var totalNegotiated = records.reduce(function(sum, rec) {
-      var value = rec.negotiatedValue != null ? Number(rec.negotiatedValue) : 0;
-      return sum + (Number.isFinite(value) ? value : 0);
-    }, 0);
+    var totalCharged = records.reduce(function(sum, rec) { return sum + toValidNumber(rec.chargedValue); }, 0);
+    var totalNegotiated = records.reduce(function(sum, rec) { return sum + toValidNumber(rec.negotiatedValue); }, 0);
     var allPaid = records.length > 0 && records.every(isNcCostPaymentCompleted);
     return {
       records: records,
@@ -9448,17 +9464,7 @@ document.addEventListener("DOMContentLoaded", function() {
             '<div class="nc-detail-neg-summary-card"><label>Economia</label><strong>' + escHtml(formatCurrencyBRL(ncNegotiationSummary.totalSavings)) + '</strong></div>' +
           '</div>' +
           '<div class="nc-detail-neg-mini-list">' + ncNegotiationSummary.records.map(function(rec, index) {
-            var currentStage = getNcCostCurrentStageInfo(rec);
-            return '<div class="nc-detail-neg-mini-card">' +
-              '<div class="nc-detail-neg-mini-head"><strong>Negociação ' + (index + 1) + '</strong><span class="nc-cost-payment-badge ' + getNcCostPaymentBadgeClass(rec) + '">' + escHtml(getNcCostPaymentStatus(rec)) + '</span></div>' +
-              '<div class="nc-detail-neg-mini-grid">' +
-                '<div><label>Tipo</label><span>' + escHtml(getNcCostKindLabel(rec)) + '</span></div>' +
-                '<div><label>Lançamento</label><span>' + escHtml(getNcCostEffectiveDate(rec) ? ncFmtDate(getNcCostEffectiveDate(rec)) : '—') + '</span></div>' +
-                '<div><label>Valor cobrado</label><span>' + escHtml(formatCurrencyBRL(rec.chargedValue)) + '</span></div>' +
-                '<div><label>Valor negociado</label><span>' + escHtml(rec.negotiatedValue != null ? formatCurrencyBRL(rec.negotiatedValue) : '—') + '</span></div>' +
-                '<div class="full"><label>Status negociação</label><span>' + escHtml(currentStage.label + ' — ' + currentStage.status) + '</span></div>' +
-              '</div>' +
-            '</div>';
+            return renderNcNegotiationMiniCard(rec, index);
           }).join('') + '</div>'
         : '<div class="nc-detail-neg-empty">Nenhuma negociação vinculada a esta NC.</div>';
       var negotiationHtml =
