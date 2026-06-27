@@ -1221,7 +1221,7 @@
     }
     @media (prefers-reduced-motion: reduce) {
       .nc-cost-item-card { transition:none; }
-      .nc-cost-item-card.nc-cost-row-clickable:hover { transform:none; }
+      .nc-cost-item-card.nc-cost-row-clickable:hover { transform:none; box-shadow:0 2px 8px rgba(15,23,42,.04); }
     }
     .nc-cost-detail-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:3600; align-items:flex-start; justify-content:center; overflow-y:auto; padding:30px 16px; }
     .nc-cost-detail-backdrop.open { display:flex; }
@@ -9895,10 +9895,6 @@ document.addEventListener("DOMContentLoaded", function() {
       });
       card.addEventListener('keydown', function(e) {
         if (e.target !== card) return;
-        if (e.key === ' ') {
-          e.preventDefault();
-          return;
-        }
         if (e.key !== 'Enter') return;
         e.preventDefault();
         openNcCostDetailModal(rec.id);
