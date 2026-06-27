@@ -2059,7 +2059,7 @@
     </div>
 
     <div class="card">
-      <div id="ncCostTableBody" class="nc-cost-card-list">
+      <div id="ncCostCardContainer" class="nc-cost-card-list">
         <div class="nc-cost-empty">Nenhum registro de custo cadastrado.</div>
       </div>
     </div>
@@ -9804,7 +9804,7 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   function renderNcCostPage() {
-    var listBody = document.getElementById('ncCostTableBody');
+    var listBody = document.getElementById('ncCostCardContainer');
     var monthSelect = document.getElementById('ncCostMonthFilter');
     var yearSelect = document.getElementById('ncCostYearFilter');
     if (!listBody || !monthSelect || !yearSelect) return;
@@ -9862,6 +9862,9 @@ document.addEventListener("DOMContentLoaded", function() {
     }).forEach(function(rec) {
       var card = document.createElement('article');
       card.className = 'nc-cost-item-card nc-cost-row-clickable';
+      card.setAttribute('role', 'button');
+      card.setAttribute('tabindex', '0');
+      card.setAttribute('aria-label', 'Abrir detalhes de custo da NC ' + (rec.date || 'sem data') + ', ' + getNcCostKindLabel(rec));
       var negotiationStatus = getNcCostNegotiationStatus(rec);
       var statusBadgeClass = rec.finalizationType ? rec.finalizationType : (rec.negotiationOpen ? 'open' : (rec.negotiatedValue != null ? 'closed' : 'none'));
       var statusCellHtml = '<span class="nc-cost-detail-badge ' + statusBadgeClass + '">' + escHtml(negotiationStatus) + '</span>' +
@@ -9884,6 +9887,12 @@ document.addEventListener("DOMContentLoaded", function() {
         '</div>';
       card.addEventListener('click', function(e) {
         if (e.target.closest('.btn-icon')) return;
+        openNcCostDetailModal(rec.id);
+      });
+      card.addEventListener('keydown', function(e) {
+        if (e.target.closest('.btn-icon')) return;
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
         openNcCostDetailModal(rec.id);
       });
       listBody.appendChild(card);
