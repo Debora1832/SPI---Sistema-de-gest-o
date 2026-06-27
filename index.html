@@ -1215,11 +1215,11 @@
       border:1px dashed #d1d5db; border-radius:12px; background:#f8fafc;
       color:#9ca3af; text-align:center; padding:22px 16px; font-size:13px; font-weight:600;
     }
-    @media(max-width:760px){
+    @media (max-width:760px) {
       .nc-cost-card-list { grid-template-columns:1fr; }
       .nc-cost-item-grid { grid-template-columns:1fr; }
     }
-    @media (prefers-reduced-motion: reduce){
+    @media (prefers-reduced-motion: reduce) {
       .nc-cost-item-card { transition:none; }
       .nc-cost-item-card.nc-cost-row-clickable:hover { transform:none; }
     }
@@ -9864,7 +9864,7 @@ document.addEventListener("DOMContentLoaded", function() {
     filteredRecords.slice().sort(function(a, b) {
       return (b.date || '').localeCompare(a.date || '');
     }).forEach(function(rec) {
-      var card = document.createElement('article');
+      var card = document.createElement('div');
       card.className = 'nc-cost-item-card nc-cost-row-clickable';
       card.setAttribute('role', 'button');
       card.setAttribute('tabindex', '0');
