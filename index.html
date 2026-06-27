@@ -855,7 +855,6 @@
     .nc-chart-card h4::before { content:''; display:inline-block; width:3px; height:12px; background:#1b4d8e; border-radius:2px; }
     .nc-chart-card canvas { max-height:220px; }
     .nc-piece-chart-scroll {
-      max-height:420px;
       overflow-y:auto;
       overflow-x:hidden;
       padding-right:6px;
@@ -865,9 +864,6 @@
     .nc-piece-chart-scroll::-webkit-scrollbar-track { background:#f3f4f6; border-radius:999px; }
     .nc-piece-chart-scroll::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:999px; }
     .nc-piece-chart-scroll::-webkit-scrollbar-thumb:hover { background:#94a3b8; }
-    @media (max-width:600px) {
-      .nc-piece-chart-scroll { max-height:320px; }
-    }
     /* Chart edit button */
     .nc-chart-edit-btn {
       margin-left:auto; background:none; border:1px solid #e5e7eb; border-radius:6px;
@@ -8320,9 +8316,15 @@ document.addEventListener("DOMContentLoaded", function() {
       var pKeys = Object.keys(pieceCount);
       var MIN_PIECE_CHART_HEIGHT = 220;
       var PIECE_CHART_ROW_HEIGHT = 24;
+      var PIECE_CHART_VISIBLE_ROWS = 10;
+      var PIECE_CHART_AXIS_HEIGHT  = 40; // extra space for x-axis ticks
       var pieceChartHeight = Math.max(MIN_PIECE_CHART_HEIGHT, (pKeys.length || 1) * PIECE_CHART_ROW_HEIGHT);
       ctxP.style.maxHeight = 'none';
       ctxP.style.height = pieceChartHeight + 'px';
+      // Fix scroll container to exactly 10 visible rows; canvas keeps full height
+      var pieceScrollEl = ctxP.parentNode;
+      var pieceScrollH = Math.min(pieceChartHeight, PIECE_CHART_VISIBLE_ROWS * PIECE_CHART_ROW_HEIGHT + PIECE_CHART_AXIS_HEIGHT);
+      pieceScrollEl.style.height = pieceScrollH + 'px';
       var pieceSort = _ncChartSettings.pieceSort || 'desc';
       pKeys.sort(function(a, b) {
         if (pieceSort === 'desc') return pieceCount[b] - pieceCount[a];
