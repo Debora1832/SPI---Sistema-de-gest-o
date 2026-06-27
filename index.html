@@ -5325,7 +5325,7 @@ document.addEventListener("DOMContentLoaded", function() {
       var charged = Number(rec && rec.chargedValue) || 0;
       var current = getNcCostCurrentValue(rec);
       var savings = Math.max(0, charged - current);
-      return '<tr>' +
+      return '<tr class="nc-cost-row-clickable" data-metricpopup-costid="' + escHtml(rec.id || '') + '">' +
         '<td>' + (idx + 1) + '</td>' +
         '<td>' + escHtml(rec.date || '—') + '</td>' +
         '<td>' + escHtml(rec._tenantLabel || ((TENANTS[currentTenant] && TENANTS[currentTenant].label) || '—')) + '</td>' +
@@ -5337,6 +5337,14 @@ document.addEventListener("DOMContentLoaded", function() {
         '<td>' + escHtml(formatCurrencyBRL(savings)) + '</td>' +
       '</tr>';
     }).join('') : '<tr><td colspan="9" style="text-align:center;color:#6b7280;">Nenhum registro encontrado para este indicador.</td></tr>';
+    tbody.querySelectorAll('[data-metricpopup-costid]').forEach(function(tr) {
+      var costId = tr.getAttribute('data-metricpopup-costid');
+      if (!costId) return;
+      tr.addEventListener('click', function() {
+        backdrop.classList.remove('open');
+        openNcCostDetailModal(costId);
+      });
+    });
     backdrop.classList.add('open');
   }
 
@@ -10032,9 +10040,26 @@ document.addEventListener("DOMContentLoaded", function() {
     _ncCostEvidence.forEach(function(ev, idx) {
       var row = document.createElement('div');
       row.className = 'attachment-item';
-      row.innerHTML = '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escHtml(ev.name || 'evidencia') + '</span>';
+      var src = getNcCostEvidenceSrc(ev);
+      var nameBtn = document.createElement('button');
+      nameBtn.type = 'button';
+      nameBtn.className = 'attachment-link';
+      nameBtn.title = src ? 'Clique para visualizar' : (ev.name || 'evidencia');
+      nameBtn.style.background = 'none';
+      nameBtn.style.border = 'none';
+      nameBtn.style.padding = '0';
+      nameBtn.style.textAlign = 'left';
+      nameBtn.style.cursor = src ? 'pointer' : 'default';
+      nameBtn.textContent = ev.name || 'evidencia';
+      if (src) {
+        nameBtn.addEventListener('click', function() {
+          if (window._openAlertViewer) window._openAlertViewer(src, ev.name || 'evidencia');
+        });
+      }
+      row.appendChild(nameBtn);
       var btn = document.createElement('button');
       btn.type = 'button';
+      btn.className = 'attachment-remove';
       btn.title = 'Remover';
       btn.textContent = '✕';
       btn.addEventListener('click', function() {
