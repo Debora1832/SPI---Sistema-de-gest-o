@@ -6948,9 +6948,12 @@ document.addEventListener("DOMContentLoaded", function() {
     // Mantém compatibilidade com registros anteriores ao novo fluxo, inferindo etapas já concluídas quando havia avanço financeiro salvo.
     r.missionFinalizedStatus = normalizeNcCostWorkflowStatus(r.missionFinalizedStatus || (hasClosedNegotiation ? 'completed' : 'open'));
     r.missionFinalizedDate = r.missionFinalizedDate || null;
-    var hasGedProgress = !!(r.gedDate || r.paymentScheduledDate || r.finalizationDate || r.finalizationType);
+    var hasGedProgress = !!(r.gedDate || r.notaEmitidaDate || r.paymentScheduledDate || r.finalizationDate || r.finalizationType);
     r.gedStatus = normalizeNcCostWorkflowStatus(r.gedStatus || (hasGedProgress ? 'completed' : 'open'));
     r.gedDate = r.gedDate || null;
+    var hasNotaProgress = !!(r.notaEmitidaDate || r.paymentScheduledDate || r.finalizationDate || r.finalizationType);
+    r.notaEmitidaStatus = normalizeNcCostWorkflowStatus(r.notaEmitidaStatus || (hasNotaProgress && r.gedStatus === 'completed' ? 'completed' : 'open'));
+    r.notaEmitidaDate = r.notaEmitidaDate || null;
     r.evidences = Array.isArray(r.evidences) ? r.evidences.map(function(ev) {
       if (!ev) return null;
       var data = typeof ev.data === 'string' ? ev.data : '';
@@ -9743,9 +9746,16 @@ document.addEventListener("DOMContentLoaded", function() {
     }
     if (cost.gedStatus !== 'completed') {
       return {
-        label: 'GED solicitado / Nota emitida',
+        label: 'GED solicitado',
         status: getNcCostWorkflowStatusLabel(cost.gedStatus),
         className: cost.gedStatus
+      };
+    }
+    if (cost.notaEmitidaStatus !== 'completed') {
+      return {
+        label: 'Nota emitida',
+        status: getNcCostWorkflowStatusLabel(cost.notaEmitidaStatus),
+        className: cost.notaEmitidaStatus
       };
     }
     return {
@@ -9771,10 +9781,16 @@ document.addEventListener("DOMContentLoaded", function() {
         className: (cost && cost.missionFinalizedStatus) || 'open'
       },
       {
-        label: 'GED solicitado / Nota emitida',
+        label: 'GED solicitado',
         date: cost && cost.gedDate,
         status: getNcCostWorkflowStatusLabel(cost && cost.gedStatus),
         className: (cost && cost.gedStatus) || 'open'
+      },
+      {
+        label: 'Nota emitida',
+        date: cost && cost.notaEmitidaDate,
+        status: getNcCostWorkflowStatusLabel(cost && cost.notaEmitidaStatus),
+        className: (cost && cost.notaEmitidaStatus) || 'open'
       },
       {
         label: 'Pagamento programado / realizado',
@@ -10384,6 +10400,8 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById('ncCostMissionFinalizedStatus').value = 'open';
     document.getElementById('ncCostGedDate').value = '';
     document.getElementById('ncCostGedStatus').value = 'open';
+    document.getElementById('ncCostNotaEmitidaDate').value = '';
+    document.getElementById('ncCostNotaEmitidaStatus').value = 'open';
     document.getElementById('ncCostModalTitle').textContent = costId ? 'Editar Registro de Custo' : 'Novo Registro de Custo';
     populateNcCostLinkedNcOptions('');
 
@@ -10402,6 +10420,8 @@ document.addEventListener("DOMContentLoaded", function() {
         document.getElementById('ncCostMissionFinalizedStatus').value = rec.missionFinalizedStatus || 'open';
         document.getElementById('ncCostGedDate').value = rec.gedDate || '';
         document.getElementById('ncCostGedStatus').value = rec.gedStatus || 'open';
+        document.getElementById('ncCostNotaEmitidaDate').value = rec.notaEmitidaDate || '';
+        document.getElementById('ncCostNotaEmitidaStatus').value = rec.notaEmitidaStatus || 'open';
         _ncCostEvidence = Array.isArray(rec.evidences) ? rec.evidences.slice() : [];
         populateNcCostLinkedNcOptions(rec.linkedNcId || '');
       }
@@ -10569,6 +10589,8 @@ document.addEventListener("DOMContentLoaded", function() {
           missionFinalizedStatus: document.getElementById('ncCostMissionFinalizedStatus').value || 'open',
           gedDate: document.getElementById('ncCostGedDate').value || null,
           gedStatus: document.getElementById('ncCostGedStatus').value || 'open',
+          notaEmitidaDate: document.getElementById('ncCostNotaEmitidaDate').value || null,
+          notaEmitidaStatus: document.getElementById('ncCostNotaEmitidaStatus').value || 'open',
           paymentScheduledDate: preservedPaymentScheduledDate,
           finalizationType: preservedFinalizationType,
           finalizationDate: preservedFinalizationDate,
@@ -11632,12 +11654,23 @@ document.addEventListener("DOMContentLoaded", function() {
           </select>
         </div>
         <div class="nc-field">
-          <label>GED solicitado / Nota emitida</label>
+          <label>GED solicitado</label>
           <input type="date" id="ncCostGedDate" />
         </div>
         <div class="nc-field">
-          <label>Status GED solicitado / Nota emitida</label>
+          <label>Status GED solicitado</label>
           <select id="ncCostGedStatus">
+            <option value="open">Em aberto</option>
+            <option value="completed">Concluído</option>
+          </select>
+        </div>
+        <div class="nc-field">
+          <label>Nota emitida</label>
+          <input type="date" id="ncCostNotaEmitidaDate" />
+        </div>
+        <div class="nc-field">
+          <label>Status Nota emitida</label>
+          <select id="ncCostNotaEmitidaStatus">
             <option value="open">Em aberto</option>
             <option value="completed">Concluído</option>
           </select>
