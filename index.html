@@ -2063,7 +2063,7 @@
     </div>
 
     <div class="card">
-      <div id="ncCostCardContainer" class="nc-cost-card-list" aria-live="polite">
+      <div id="ncCostCardContainer" class="nc-cost-card-list">
         <div class="nc-cost-empty" role="status">Nenhum registro de custo cadastrado.</div>
       </div>
     </div>
@@ -9869,13 +9869,7 @@ document.addEventListener("DOMContentLoaded", function() {
       card.setAttribute('role', 'button');
       card.setAttribute('tabindex', '0');
       var negotiationStatus = getNcCostNegotiationStatus(rec);
-      card.setAttribute(
-        'aria-label',
-        'Abrir detalhes de custo: data ' + (rec.date || 'sem data') +
-        ', tipo ' + getNcCostKindLabel(rec) +
-        ', valor cobrado ' + formatCurrencyBRL(rec.chargedValue) +
-        ', status ' + negotiationStatus
-      );
+      card.setAttribute('aria-label', 'Abrir detalhes de custo');
       var statusBadgeClass = rec.finalizationType ? rec.finalizationType : (rec.negotiationOpen ? 'open' : (rec.negotiatedValue != null ? 'closed' : 'none'));
       var statusCellHtml = '<span class="nc-cost-detail-badge ' + statusBadgeClass + '">' + escHtml(negotiationStatus) + '</span>' +
         (rec.finalizationDate ? '<div class="nc-cost-payment-date">Pago em: ' + escHtml(ncFmtDate(rec.finalizationDate)) + '</div>' : '');
@@ -9901,7 +9895,17 @@ document.addEventListener("DOMContentLoaded", function() {
       });
       card.addEventListener('keydown', function(e) {
         if (e.target !== card) return;
-        if (e.key !== 'Enter' && e.key !== ' ') return;
+        if (e.key === ' ') {
+          e.preventDefault();
+          return;
+        }
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        openNcCostDetailModal(rec.id);
+      });
+      card.addEventListener('keyup', function(e) {
+        if (e.target !== card) return;
+        if (e.key !== ' ') return;
         e.preventDefault();
         openNcCostDetailModal(rec.id);
       });
