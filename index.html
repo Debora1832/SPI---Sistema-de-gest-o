@@ -9047,7 +9047,7 @@ document.addEventListener("DOMContentLoaded", function() {
     }
   }
 
-  function isNcCostPaymentConcluded(cost) {
+  function isNcCostPaymentCompleted(cost) {
     return !!(cost && (cost.finalizationType === 'paga' || cost.finalizationType === 'reembolsada' || cost.finalizationType === 'assumido_cliente'));
   }
 
@@ -9058,7 +9058,7 @@ document.addEventListener("DOMContentLoaded", function() {
       var value = rec.negotiatedValue != null ? Number(rec.negotiatedValue) : 0;
       return sum + (Number.isFinite(value) ? value : 0);
     }, 0);
-    var allPaid = records.length > 0 && records.every(isNcCostPaymentConcluded);
+    var allPaid = records.length > 0 && records.every(isNcCostPaymentCompleted);
     return {
       records: records,
       count: records.length,
