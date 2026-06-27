@@ -1219,6 +1219,10 @@
       .nc-cost-card-list { grid-template-columns:1fr; }
       .nc-cost-item-grid { grid-template-columns:1fr; }
     }
+    @media (prefers-reduced-motion: reduce){
+      .nc-cost-item-card { transition:none; }
+      .nc-cost-item-card.nc-cost-row-clickable:hover { transform:none; }
+    }
     .nc-cost-detail-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:3600; align-items:flex-start; justify-content:center; overflow-y:auto; padding:30px 16px; }
     .nc-cost-detail-backdrop.open { display:flex; }
     .nc-cost-detail-modal { background:#fff; border-radius:16px; width:100%; max-width:1080px; margin:auto; box-shadow:0 24px 64px rgba(0,0,0,.36); overflow:hidden; }
@@ -2060,7 +2064,7 @@
 
     <div class="card">
       <div id="ncCostCardContainer" class="nc-cost-card-list">
-        <div class="nc-cost-empty" role="status">Nenhum registro de custo cadastrado.</div>
+        <div class="nc-cost-empty" role="status" aria-live="polite">Nenhum registro de custo cadastrado.</div>
       </div>
     </div>
   </div>
@@ -9852,7 +9856,7 @@ document.addEventListener("DOMContentLoaded", function() {
     renderNcCostBarChart(summary);
 
     if (!filteredRecords.length) {
-      listBody.innerHTML = '<div class="nc-cost-empty" role="status">Nenhum registro encontrado para os filtros selecionados.</div>';
+      listBody.innerHTML = '<div class="nc-cost-empty" role="status" aria-live="polite">Nenhum registro encontrado para os filtros selecionados.</div>';
       return;
     }
 
@@ -9897,7 +9901,7 @@ document.addEventListener("DOMContentLoaded", function() {
       });
       card.addEventListener('keydown', function(e) {
         if (e.target !== card) return;
-        if (e.key !== 'Enter' && e.key !== ' ') return;
+        if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
         e.preventDefault();
         openNcCostDetailModal(rec.id);
       });
