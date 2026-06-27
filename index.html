@@ -965,6 +965,17 @@
     .nc-card.nc-pay-alerta { border-width:2px; border-color:#ef4444; box-shadow:0 4px 16px rgba(239,68,68,.35); }
     .nc-card.nc-pay-pago   { border-width:2px; border-color:#16a34a; box-shadow:0 4px 16px rgba(22,163,74,.3); }
     .nc-card.nc-pay-aberto { border-width:2px; border-color:#f97316; box-shadow:0 4px 16px rgba(249,115,22,.3); }
+    /* Situação (card status) border — overrides payment status */
+    .nc-card.nc-sit-finalizado { border-width:2px; border-color:#16a34a; box-shadow:0 4px 16px rgba(22,163,74,.35); }
+    .nc-card.nc-sit-aberto     { border-width:2px; border-color:#f97316; box-shadow:0 4px 16px rgba(249,115,22,.35); }
+    .nc-card.nc-sit-alerta     { border-width:2px; border-color:#ef4444; box-shadow:0 4px 16px rgba(239,68,68,.4); }
+    /* Situação select inside card */
+    .nc-situacao-wrap { padding:0 16px 10px; }
+    .nc-situacao-select { width:100%; padding:5px 8px; border-radius:7px; border:1.5px solid #3f3f44; background:#2a2a2e; color:#d1d5db; font-size:11px; font-weight:700; cursor:pointer; outline:none; letter-spacing:.03em; transition:border-color .15s; }
+    .nc-situacao-select:focus { border-color:#6b7280; }
+    .nc-situacao-select.sit-finalizado { border-color:#16a34a; color:#4ade80; background:rgba(22,163,74,.15); }
+    .nc-situacao-select.sit-aberto     { border-color:#f97316; color:#fb923c; background:rgba(249,115,22,.15); }
+    .nc-situacao-select.sit-alerta     { border-color:#ef4444; color:#f87171; background:rgba(239,68,68,.15); }
     /* Payment status mini-badge inside NC card */
     .nc-card-payment-status { display:inline-block; margin-top:6px; font-size:10px; font-weight:800; padding:2px 8px; border-radius:99px; letter-spacing:.04em; }
     .nc-card-payment-status.pago   { background:rgba(22,163,74,.2); color:#4ade80; border:1px solid rgba(22,163,74,.45); }
@@ -2275,6 +2286,13 @@
         <option value="ncDesc">Nº NC (Z → A)</option>
         <option value="dateAsc">Data (↑)</option>
         <option value="dateDesc">Data (↓)</option>
+      </select>
+      <label for="ncSituacaoFilterSelect">Situação:</label>
+      <select id="ncSituacaoFilterSelect">
+        <option value="">Todas</option>
+        <option value="aberto">🟠 Em aberto</option>
+        <option value="finalizado">🟢 Finalizado</option>
+        <option value="alerta">🔴 Alerta</option>
       </select>
       <button class="nc-alert-filter-btn" id="ncAlertFilterBtn">⚠ Com alertas</button>
       <button class="nc-excel-btn" id="ncExcelExportBtn" title="Exportar para Excel">
@@ -6758,6 +6776,7 @@ document.addEventListener("DOMContentLoaded", function() {
   var _ncFailureFilter = null; // active failure mode filter, or null
   var _ncCustomFilter  = { field: null, key: null, chartId: null }; // active custom chart filter
   var _ncAlertFilter   = false;   // show only cards with atencao flag
+  var _ncSituacaoFilter = '';     // 'aberto' | 'finalizado' | 'alerta' | '' (all)
   // Chart settings (bar color, meta color, meta value, title) — persisted to localStorage
   var _ncChartSettings = (function() {
     try { return JSON.parse(localStorage.getItem('spi_nc_chart_month_settings') || 'null') || {}; } catch(e) { return {}; }
@@ -9020,11 +9039,25 @@ document.addEventListener("DOMContentLoaded", function() {
           }
         }
       }
-      return '<div class="nc-card' + naoProcClass + payClass + '" data-nc-id="' + nc.id + '">' +
+      // Situação (card status): finalizado → green, aberto → orange, alerta → red
+      var sit = nc.situacao || '';
+      var sitClass = sit ? ' nc-sit-' + sit : '';
+      var sitSelectClass = sit ? ' sit-' + sit : '';
+      var sitSelectHtml =
+        '<div class="nc-situacao-wrap">' +
+          '<select class="nc-situacao-select' + sitSelectClass + '" data-action="situacao">' +
+            '<option value="">— Situação —</option>' +
+            '<option value="aberto"'     + (sit === 'aberto'     ? ' selected' : '') + '>🟠 Em aberto</option>' +
+            '<option value="finalizado"' + (sit === 'finalizado' ? ' selected' : '') + '>🟢 Finalizado</option>' +
+            '<option value="alerta"'     + (sit === 'alerta'     ? ' selected' : '') + '>🔴 Alerta</option>' +
+          '</select>' +
+        '</div>';
+      return '<div class="nc-card' + naoProcClass + payClass + sitClass + '" data-nc-id="' + nc.id + '">' +
         naoProcBadge +
         atencaoBadge +
         contencaoBadge +
         photoHtml +
+        sitSelectHtml +
         '<div class="nc-card-body">' +
           '<div class="nc-card-num">' + escHtml(nc.ncNumber || 'NC') + '</div>' +
           '<div class="nc-card-piece">' + escHtml(nc.piece || '—') + '</div>' +
@@ -9088,6 +9121,26 @@ document.addEventListener("DOMContentLoaded", function() {
         });
       });
 
+      // Situação select — change handler
+      var sitSelectEl = card.querySelector('.nc-situacao-select');
+      if (sitSelectEl) {
+        sitSelectEl.addEventListener('change', async function(e) {
+          e.stopPropagation();
+          var idx = ncRecords.findIndex(function(r){ return r.id === id; });
+          if (idx === -1) return;
+          var newSit = sitSelectEl.value;
+          ncRecords[idx].situacao = newSit;
+          // Update card classes immediately without full re-render
+          card.classList.remove('nc-sit-finalizado', 'nc-sit-aberto', 'nc-sit-alerta');
+          if (newSit) card.classList.add('nc-sit-' + newSit);
+          // Update select styling
+          sitSelectEl.className = 'nc-situacao-select' + (newSit ? ' sit-' + newSit : '');
+          await saveNcRecords();
+        });
+        // Prevent card-body click from firing when interacting with select
+        sitSelectEl.addEventListener('click', function(e) { e.stopPropagation(); });
+      }
+
       // Action buttons — stop propagation so card-body click doesn't also fire
       card.querySelectorAll('button[data-action]').forEach(function(btn) {
         btn.addEventListener('click', async function(e) {
@@ -9143,7 +9196,7 @@ document.addEventListener("DOMContentLoaded", function() {
       // Click anywhere on the card (except action buttons and lightbox triggers) → open detail popup
       card.addEventListener('click', function(e) {
         // Ignore if a button or interactive element was clicked
-        if (e.target.closest('button, a, [data-photonav], .nc-card-actions')) return;
+        if (e.target.closest('button, a, [data-photonav], .nc-card-actions, .nc-situacao-wrap')) return;
         var idx = ncRecords.findIndex(function(r){ return r.id === id; });
         if (idx !== -1) openNcDetailModal(ncRecords[idx]);
       });
@@ -9344,6 +9397,7 @@ document.addEventListener("DOMContentLoaded", function() {
       if (nc.rncAberta)    statusBadges += '<span class="nc-detail-status-badge nc-detail-status-open">✔ RNC Aberta</span> ';
       if (nc.d8Finalizado) statusBadges += '<span class="nc-detail-status-badge nc-detail-status-8d">✔ 8D Finalizado</span>';
       if (!nc.rncAberta && !nc.d8Finalizado) statusBadges = '<span class="nc-detail-status-badge nc-detail-status-none">○ Em aberto</span>';
+      var sitDetailLabel = nc.situacao === 'finalizado' ? '🟢 Finalizado' : nc.situacao === 'alerta' ? '🔴 Alerta' : nc.situacao === 'aberto' ? '🟠 Em aberto' : '—';
 
       // Main info section
       var infoHtml =
@@ -9357,6 +9411,7 @@ document.addEventListener("DOMContentLoaded", function() {
             '<div class="nc-detail-field"><label>Cliente</label><span>' + escHtml(nc.customer || '—') + '</span></div>' +
             (nc.qty ? '<div class="nc-detail-field"><label>Qtd. de Peças</label><span>' + nc.qty + '</span></div>' : '') +
             '<div class="nc-detail-field"><label>Status</label><span><div class="nc-detail-status-row">' + statusBadges + '</div></span></div>' +
+            '<div class="nc-detail-field"><label>Situação</label><span>' + sitDetailLabel + '</span></div>' +
             (nc.description ? '<div class="nc-detail-field full"><label>Descrição</label><span>' + escHtml(nc.description) + '</span></div>' : '') +
             (Array.isArray(nc.pdfs) && nc.pdfs.length
               ? '<div class="nc-detail-field full"><label>Documentos PDF</label><span style="display:flex;flex-direction:column;gap:6px">' +
@@ -10967,6 +11022,8 @@ document.addEventListener("DOMContentLoaded", function() {
         }
         // Apply alert filter
         if (_ncAlertFilter && !nc.atencao) { card.classList.add('nc-hidden'); return; }
+        // Apply situacao filter
+        if (_ncSituacaoFilter && (nc.situacao || '') !== _ncSituacaoFilter) { card.classList.add('nc-hidden'); return; }
         if (!q) { card.classList.remove('nc-hidden'); shown++; return; }
         var haystack = [
           nc.ncNumber, nc.piece, nc.failureMode,
@@ -10979,7 +11036,7 @@ document.addEventListener("DOMContentLoaded", function() {
           card.classList.add('nc-hidden');
         }
       });
-      var activeFilters = q || _ncYearFilter || _ncMonthFilter || _ncPieceFilter || _ncFailureFilter || _ncAlertFilter || _ncCustomFilter.key;
+      var activeFilters = q || _ncYearFilter || _ncMonthFilter || _ncPieceFilter || _ncFailureFilter || _ncAlertFilter || _ncSituacaoFilter || _ncCustomFilter.key;
       if (activeFilters) {
         var filterDesc = [];
         if (_ncYearFilter) filterDesc.push('Ano: ' + _ncYearFilter);
@@ -10991,6 +11048,7 @@ document.addEventListener("DOMContentLoaded", function() {
         if (_ncFailureFilter) filterDesc.push('Falha: ' + _ncFailureFilter);
         if (_ncCustomFilter.key) filterDesc.push(_ncCustomFilter.key);
         if (_ncAlertFilter)   filterDesc.push('Com alertas');
+        if (_ncSituacaoFilter) filterDesc.push('Situação: ' + (_ncSituacaoFilter === 'finalizado' ? 'Finalizado' : _ncSituacaoFilter === 'alerta' ? 'Alerta' : 'Em aberto'));
         if (q) filterDesc.push('"'+q+'"');
         ncSearchCount.textContent = shown + (shown === 1 ? ' NC encontrada' : ' NCs encontradas') + ' para ' + filterDesc.join(' + ');
         ncSearchCount.style.display = '';
@@ -11088,6 +11146,14 @@ document.addEventListener("DOMContentLoaded", function() {
       });
     }
 
+    var situacaoFilterSelect = document.getElementById('ncSituacaoFilterSelect');
+    if (situacaoFilterSelect) {
+      situacaoFilterSelect.addEventListener('change', function() {
+        _ncSituacaoFilter = situacaoFilterSelect.value;
+        if (window._applyNcSearch) window._applyNcSearch();
+      });
+    }
+
     // ── Excel export ──────────────────────────────────────────────────────
     var NC_EXCEL_COLUMNS = [
       { key: 'ncNumber',    label: 'Nº NC' },
@@ -11098,6 +11164,7 @@ document.addEventListener("DOMContentLoaded", function() {
       { key: 'qty',         label: 'Qtd. de Peças' },
       { key: 'description', label: 'Descrição' },
       { key: 'status',      label: 'Status' },
+      { key: 'situacao',    label: 'Situação' },
       { key: 'rncNumber',   label: 'Nº RNC' },
       { key: 'observacoes', label: 'Observações' },
       { key: 'naoProcedente', label: 'Não Procedente' }
@@ -11158,8 +11225,10 @@ document.addEventListener("DOMContentLoaded", function() {
           var nc = ncRecords.find(function(r){ return r.id === id; });
           if (!nc) return;
           var status = nc.d8Finalizado ? '8D Finalizado' : nc.rncAberta ? 'RNC Aberta' : 'Em aberto';
+          var sit = nc.situacao === 'finalizado' ? 'Finalizado' : nc.situacao === 'alerta' ? 'Alerta' : nc.situacao === 'aberto' ? 'Em aberto' : '';
           var row = selected.map(function(col) {
             if (col.key === 'status') return status;
+            if (col.key === 'situacao') return sit;
             if (col.key === 'naoProcedente') return nc.naoProcedente ? 'Sim' : 'Não';
             var v = nc[col.key];
             return (v === undefined || v === null) ? '' : v;
