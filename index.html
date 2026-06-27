@@ -6816,6 +6816,7 @@ document.addEventListener("DOMContentLoaded", function() {
   var _ncAlertFilter   = false;   // show only cards with atencao flag
   var _ncSituacaoFilter = '';     // 'aberto' | 'finalizado' | 'alerta' | '' (all)
   var NC_COST_STATUS_LABEL = 'Status custo NC: ';
+  var NC_COST_STATUS_LABEL_NONE = 'SEM CUSTO ASSOCIADO A NC';
   // Chart settings (bar color, meta color, meta value, title) — persisted to localStorage
   var _ncChartSettings = (function() {
     try { return JSON.parse(localStorage.getItem('spi_nc_chart_month_settings') || 'null') || {}; } catch(e) { return {}; }
@@ -9127,7 +9128,7 @@ document.addEventListener("DOMContentLoaded", function() {
       var payClass = nc.atencao ? ' nc-pay-alerta' : '';
       var ncNegotiationSummary = getNcNegotiationSummaryByNcId(nc.id);
       var payBadgeHtml = ncNegotiationSummary.count === 0
-        ? '<span class="nc-card-payment-status">' + escHtml('SEM CUSTO ASSOCIADO A NC') + '</span>'
+        ? '<span class="nc-card-payment-status">' + escHtml(NC_COST_STATUS_LABEL_NONE) + '</span>'
         : '<span class="nc-card-payment-status">' + escHtml(NC_COST_STATUS_LABEL + ncNegotiationSummary.paymentStatus) + '</span>';
       return '<div class="nc-card' + naoProcClass + payClass + '" data-nc-id="' + nc.id + '">' +
         naoProcBadge +
@@ -9486,7 +9487,7 @@ document.addEventListener("DOMContentLoaded", function() {
             '<div class="nc-detail-field"><label>Peça</label><span>' + escHtml(nc.piece || '—') + '</span></div>' +
             '<div class="nc-detail-field"><label>Modo de Falha</label><span>' + escHtml(nc.failureMode || '—') + '</span></div>' +
             '<div class="nc-detail-field"><label>Cliente</label><span>' + escHtml(nc.customer || '—') + '</span></div>' +
-            (nc.qty ? '<div class="nc-detail-field"><label>Qtd. de Peças</label><span>' + nc.qty + '</span></div>' : '') +
+            (nc.qty ? '<div class="nc-detail-field"><label>Qtd. de Peças</label><span>' + escHtml(String(nc.qty)) + '</span></div>' : '') +
             '<div class="nc-detail-field"><label>Status</label><span><div class="nc-detail-status-row">' + statusBadges + '</div></span></div>' +
             (nc.description ? '<div class="nc-detail-field full"><label>Descrição</label><span>' + escHtml(nc.description) + '</span></div>' : '') +
             (Array.isArray(nc.pdfs) && nc.pdfs.length
