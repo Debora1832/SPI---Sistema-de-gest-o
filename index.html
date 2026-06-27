@@ -2060,7 +2060,7 @@
 
     <div class="card">
       <div id="ncCostCardContainer" class="nc-cost-card-list">
-        <div class="nc-cost-empty">Nenhum registro de custo cadastrado.</div>
+        <div class="nc-cost-empty" role="status">Nenhum registro de custo cadastrado.</div>
       </div>
     </div>
   </div>
@@ -9852,7 +9852,7 @@ document.addEventListener("DOMContentLoaded", function() {
     renderNcCostBarChart(summary);
 
     if (!filteredRecords.length) {
-      listBody.innerHTML = '<div class="nc-cost-empty">Nenhum registro encontrado para os filtros selecionados.</div>';
+      listBody.innerHTML = '<div class="nc-cost-empty" role="status">Nenhum registro encontrado para os filtros selecionados.</div>';
       return;
     }
 
@@ -9864,8 +9864,14 @@ document.addEventListener("DOMContentLoaded", function() {
       card.className = 'nc-cost-item-card nc-cost-row-clickable';
       card.setAttribute('role', 'button');
       card.setAttribute('tabindex', '0');
-      card.setAttribute('aria-label', 'Abrir detalhes de custo da NC ' + (rec.date || 'sem data') + ', ' + getNcCostKindLabel(rec));
       var negotiationStatus = getNcCostNegotiationStatus(rec);
+      card.setAttribute(
+        'aria-label',
+        'Abrir detalhes de custo: data ' + (rec.date || 'sem data') +
+        ', tipo ' + getNcCostKindLabel(rec) +
+        ', valor cobrado ' + formatCurrencyBRL(rec.chargedValue) +
+        ', status ' + negotiationStatus
+      );
       var statusBadgeClass = rec.finalizationType ? rec.finalizationType : (rec.negotiationOpen ? 'open' : (rec.negotiatedValue != null ? 'closed' : 'none'));
       var statusCellHtml = '<span class="nc-cost-detail-badge ' + statusBadgeClass + '">' + escHtml(negotiationStatus) + '</span>' +
         (rec.finalizationDate ? '<div class="nc-cost-payment-date">Pago em: ' + escHtml(ncFmtDate(rec.finalizationDate)) + '</div>' : '');
@@ -9890,7 +9896,7 @@ document.addEventListener("DOMContentLoaded", function() {
         openNcCostDetailModal(rec.id);
       });
       card.addEventListener('keydown', function(e) {
-        if (e.target.closest('.btn-icon')) return;
+        if (e.target !== card) return;
         if (e.key !== 'Enter' && e.key !== ' ') return;
         e.preventDefault();
         openNcCostDetailModal(rec.id);
