@@ -5312,7 +5312,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
   function getNcCostLaunchDate(rec) {
     if (!rec) return '';
-    if (rec.finalizationType && rec.finalizationDate) return String(rec.finalizationDate);
+    if (rec.finalizationType) return String(rec.finalizationDate || '');
     if (rec.missionFinalizedDate) return String(rec.missionFinalizedDate);
     if (rec.finalizationDate) return String(rec.finalizationDate);
     return String(rec.date || '');
@@ -6934,10 +6934,10 @@ document.addEventListener("DOMContentLoaded", function() {
     r.finalizationDate = r.finalizationDate || null;
     var hasClosedNegotiation = !r.negotiationOpen && r.negotiatedValue != null;
     r.missionFinalizedStatus = normalizeNcCostWorkflowStatus(r.missionFinalizedStatus || (hasClosedNegotiation ? 'completed' : 'open'));
-    r.missionFinalizedDate = r.missionFinalizedDate || ((r.missionFinalizedStatus === 'completed' || hasClosedNegotiation) ? r.date : null);
+    r.missionFinalizedDate = r.missionFinalizedDate || null;
     var hasGedProgress = !!(r.gedDate || r.finalizationDate || r.finalizationType);
     r.gedStatus = normalizeNcCostWorkflowStatus(r.gedStatus || (hasGedProgress ? 'completed' : 'open'));
-    r.gedDate = r.gedDate || ((r.gedStatus === 'completed' || hasGedProgress) ? (r.finalizationDate || r.missionFinalizedDate || r.date || null) : null);
+    r.gedDate = r.gedDate || null;
     r.evidences = Array.isArray(r.evidences) ? r.evidences.map(function(ev) {
       if (!ev) return null;
       var data = typeof ev.data === 'string' ? ev.data : '';
@@ -10549,7 +10549,15 @@ document.addEventListener("DOMContentLoaded", function() {
           negotiated = n;
         }
 
+        var missionFinalizedStatus = document.getElementById('ncCostMissionFinalizedStatus').value || 'open';
+        var gedStatus = document.getElementById('ncCostGedStatus').value || 'open';
         var existingRecord = _editingNcCostId ? ncCostRecords.find(function(item) { return item.id === _editingNcCostId; }) : null;
+        var preservedFinalizationType = existingRecord ? existingRecord.finalizationType : null;
+        var preservedFinalizationDate = existingRecord ? existingRecord.finalizationDate : null;
+        if (missionFinalizedStatus !== 'completed' || gedStatus !== 'completed') {
+          preservedFinalizationType = null;
+          preservedFinalizationDate = null;
+        }
         var record = normalizeNcCostRecord({
           id: _editingNcCostId || undefined,
           date: document.getElementById('ncCostDate').value || new Date().toISOString().slice(0, 10),
@@ -10562,11 +10570,11 @@ document.addEventListener("DOMContentLoaded", function() {
           negotiatedValue: negotiated,
           negotiationOpen: negotiationOpen,
           missionFinalizedDate: document.getElementById('ncCostMissionFinalizedDate').value || null,
-          missionFinalizedStatus: document.getElementById('ncCostMissionFinalizedStatus').value || 'open',
+          missionFinalizedStatus: missionFinalizedStatus,
           gedDate: document.getElementById('ncCostGedDate').value || null,
-          gedStatus: document.getElementById('ncCostGedStatus').value || 'open',
-          finalizationType: existingRecord ? existingRecord.finalizationType : null,
-          finalizationDate: existingRecord ? existingRecord.finalizationDate : null,
+          gedStatus: gedStatus,
+          finalizationType: preservedFinalizationType,
+          finalizationDate: preservedFinalizationDate,
           notes: document.getElementById('ncCostNotes').value.trim(),
           evidences: _ncCostEvidence.slice()
         });
