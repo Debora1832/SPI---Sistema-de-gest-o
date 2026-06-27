@@ -959,8 +959,16 @@
     .nc-sync-badge.syncing  { background:rgba(99,102,241,.15); color:#6366f1; border:1px solid rgba(99,102,241,.3); animation:fbpulse 1s infinite; }
     .nc-sync-badge.offline  { background:rgba(107,114,128,.12); color:#6b7280; border:1px solid rgba(107,114,128,.2); }
     .nc-cards-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:16px; }
-    .nc-card { background:#1c1c1e; border-radius:14px; overflow:hidden; border:1px solid #2f2f33; box-shadow:0 4px 14px rgba(0,0,0,.22); transition:transform .15s, box-shadow .15s; display:flex; flex-direction:column; position:relative; }
+    .nc-card { background:#1c1c1e; border-radius:14px; overflow:hidden; border:2px solid #2f2f33; box-shadow:0 4px 14px rgba(0,0,0,.22); transition:transform .15s, box-shadow .15s; display:flex; flex-direction:column; position:relative; }
     .nc-card:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,.3); }
+    /* Payment status border highlight */
+    .nc-card.nc-pay-alerta { border-color:#ef4444; box-shadow:0 4px 16px rgba(239,68,68,.35); }
+    .nc-card.nc-pay-pago   { border-color:#16a34a; box-shadow:0 4px 16px rgba(22,163,74,.3); }
+    .nc-card.nc-pay-aberto { border-color:#f97316; box-shadow:0 4px 16px rgba(249,115,22,.3); }
+    /* Payment status mini-badge inside NC card */
+    .nc-card-payment-status { display:inline-block; margin-top:6px; font-size:10px; font-weight:800; padding:2px 8px; border-radius:99px; letter-spacing:.04em; }
+    .nc-card-payment-status.pago   { background:rgba(22,163,74,.2); color:#4ade80; border:1px solid rgba(22,163,74,.45); }
+    .nc-card-payment-status.aberto { background:rgba(249,115,22,.2); color:#fb923c; border:1px solid rgba(249,115,22,.45); }
     /* Atenção badge — shown on NC card when attention flag is set */
     .nc-card-atencao-badge { position:absolute; top:8px; right:8px; background:#f97316; color:#fff; border-radius:20px; font-size:11px; font-weight:800; padding:3px 8px; display:flex; align-items:center; gap:4px; box-shadow:0 2px 8px rgba(249,115,22,.5); z-index:10; letter-spacing:.04em; pointer-events:none; animation:nc-atencao-pulse 2s infinite; }
     /* Evidências de contenção badge — shown on NC card when contencaoEnviada flag is set */
@@ -8993,7 +9001,23 @@ document.addEventListener("DOMContentLoaded", function() {
       var contencaoBadge = nc.contencaoEnviada ? '<div class="nc-card-contencao-badge">📋 Contenção Enviada</div>' : '';
       var naoProcBadge = nc.naoProcedente ? '<div class="nc-nao-procedente-badge">✕ Não Procedente</div>' : '';
       var naoProcClass = nc.naoProcedente ? ' nc-nao-procedente' : '';
-      return '<div class="nc-card' + naoProcClass + '" data-nc-id="' + nc.id + '">' +
+      // Payment status: check linked cost records for this NC
+      var linkedCosts = (ncCostRecords || []).filter(function(c) { return c.linkedNcId === nc.id; });
+      var payClass = '';
+      var payBadgeHtml = '';
+      if (linkedCosts.length) {
+        var allPaid = linkedCosts.every(function(c) { return c.finalizationType === 'paga' || c.finalizationType === 'reembolsada'; });
+        if (allPaid) {
+          payClass = ' nc-pay-pago';
+          payBadgeHtml = '<span class="nc-card-payment-status pago">💰 Pagamento Fechado</span>';
+        } else {
+          payClass = ' nc-pay-aberto';
+          payBadgeHtml = '<span class="nc-card-payment-status aberto">💰 Pagamento Aberto</span>';
+        }
+      }
+      // Alert flag overrides payment color (red = highest priority)
+      if (nc.atencao) payClass = ' nc-pay-alerta';
+      return '<div class="nc-card' + naoProcClass + payClass + '" data-nc-id="' + nc.id + '">' +
         naoProcBadge +
         atencaoBadge +
         contencaoBadge +
@@ -9004,6 +9028,7 @@ document.addEventListener("DOMContentLoaded", function() {
           '<div class="nc-card-failure">' + escHtml(nc.failureMode || '—') + '</div>' +
           (nc.customer ? '<div class="nc-card-customer">Cliente: ' + escHtml(nc.customer) + '</div>' : '') +
           (nc.description ? '<div class="nc-card-desc" title="' + escHtml(nc.description) + '">' + escHtml(nc.description) + '</div>' : '') +
+          payBadgeHtml +
           '<div class="nc-card-date">📅 ' + dateStr + '</div>' +
           (nc.qty ? '<div class="nc-card-qty">📦 ' + nc.qty + ' peça' + (nc.qty !== 1 ? 's' : '') + '</div>' : '') +
           (Array.isArray(cleanNc.pdfs) && cleanNc.pdfs.length
