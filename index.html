@@ -9488,7 +9488,7 @@ document.addEventListener("DOMContentLoaded", function() {
             '<div class="nc-detail-field"><label>Peça</label><span>' + escHtml(nc.piece || '—') + '</span></div>' +
             '<div class="nc-detail-field"><label>Modo de Falha</label><span>' + escHtml(nc.failureMode || '—') + '</span></div>' +
             '<div class="nc-detail-field"><label>Cliente</label><span>' + escHtml(nc.customer || '—') + '</span></div>' +
-            (nc.qty ? '<div class="nc-detail-field"><label>Qtd. de Peças</label><span>' + escHtml(String(nc.qty)) + '</span></div>' : '') +
+            (nc.qty ? '<div class="nc-detail-field"><label>Qtd. de Peças</label><span>' + escHtml(nc.qty) + '</span></div>' : '') +
             '<div class="nc-detail-field"><label>Status</label><span><div class="nc-detail-status-row">' + statusBadges + '</div></span></div>' +
             (nc.description ? '<div class="nc-detail-field full"><label>Descrição</label><span>' + escHtml(nc.description) + '</span></div>' : '') +
             (Array.isArray(nc.pdfs) && nc.pdfs.length
