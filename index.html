@@ -9104,7 +9104,7 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   function getNcCostFinalizeButtonTone(cost) {
-    if (isAdministrativeNcCost(cost) && cost && cost.paymentScheduledDate) return 'paga';
+    if (isAdministrativeNcCost(cost) && cost.paymentScheduledDate) return 'paga';
     var resolutionType = getNcCostPaymentResolutionType(cost);
     if (resolutionType) return resolutionType;
     return 'desfinalizar';
@@ -10371,7 +10371,7 @@ document.addEventListener("DOMContentLoaded", function() {
     var pagaBtn = document.getElementById('ncFinalizeBtnPaga');
     var reembolsadaBtn = document.getElementById('ncFinalizeBtnReembolsada');
     var assumidoClienteBtn = document.getElementById('ncFinalizeBtnAssumidoCliente');
-    if (title) title.textContent = isAdministrative ? 'Programar/atualizar pagamento' : 'Atualizar pagamento';
+    if (title) title.textContent = 'Programar/atualizar pagamento';
     if (description) description.textContent = isAdministrative ? 'Informe a data programada deste custo administrativo:' : 'Selecione o andamento do pagamento desta solicitação:';
     if (dateLabel) dateLabel.textContent = isAdministrative ? 'Data do pagamento/programado' : 'Data do pagamento';
     if (pendingBtn) {
