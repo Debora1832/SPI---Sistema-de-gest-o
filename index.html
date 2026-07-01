@@ -6927,6 +6927,11 @@ document.addEventListener("DOMContentLoaded", function() {
     return 'nccost_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
   }
 
+  function isAdministrativeNcCost(costOrType) {
+    if (costOrType && typeof costOrType === 'object') return costOrType.type === 'administrativo';
+    return costOrType === 'administrativo';
+  }
+
   var NC_COST_KIND_DEFAULT = 'administrativo';
   var NC_COST_KIND_LABELS = {
     administrativo: 'Administrativo',
@@ -6955,6 +6960,7 @@ document.addEventListener("DOMContentLoaded", function() {
     if (!r.id) r.id = generateNcCostId();
     if (!r.date) r.date = new Date().toISOString().slice(0, 10);
     r.type = r.type === 'administrativo' ? 'administrativo' : 'nc';
+    var isAdministrative = isAdministrativeNcCost(r);
     r.costKind = normalizeNcCostKind(r.costKind);
     r.linkedNcId = (r.linkedNcId || '').trim();
     r.linkedNcNumber = (r.linkedNcNumber || '').trim();
@@ -6965,10 +6971,11 @@ document.addEventListener("DOMContentLoaded", function() {
     r.chargedValue = Number.isFinite(charged) ? charged : 0;
     r.negotiatedValue = Number.isFinite(negotiated) ? negotiated : null;
     r.negotiationOpen = !!r.negotiationOpen;
-    r.finalizationType = (r.finalizationType === 'paga' || r.finalizationType === 'reembolsada' || r.finalizationType === 'assumido_cliente') ? r.finalizationType : null;
+    var normalizedFinalizationType = (r.finalizationType === 'paga' || r.finalizationType === 'reembolsada' || r.finalizationType === 'assumido_cliente') ? r.finalizationType : null;
     // Migra registros antigos que usavam finalizationDate mesmo sem um desfecho de pagamento definido.
-    var legacyPendingPaymentDate = !r.finalizationType && r.finalizationDate ? r.finalizationDate : null;
-    r.paymentScheduledDate = r.paymentScheduledDate || legacyPendingPaymentDate || (r.finalizationType ? (r.finalizationDate || null) : null);
+    var legacyPendingPaymentDate = !normalizedFinalizationType && r.finalizationDate ? r.finalizationDate : null;
+    r.paymentScheduledDate = r.paymentScheduledDate || legacyPendingPaymentDate || (normalizedFinalizationType ? (r.finalizationDate || null) : null);
+    r.finalizationType = isAdministrative ? null : normalizedFinalizationType;
     r.finalizationDate = r.finalizationType ? (r.finalizationDate || r.paymentScheduledDate || null) : null;
     var hasClosedNegotiation = !r.negotiationOpen && r.negotiatedValue != null;
     // Mantém compatibilidade com registros anteriores ao novo fluxo, inferindo etapas já concluídas quando havia avanço financeiro salvo.
@@ -6980,6 +6987,14 @@ document.addEventListener("DOMContentLoaded", function() {
     var hasNotaProgress = !!(r.notaEmitidaDate || r.paymentScheduledDate || r.finalizationDate || r.finalizationType);
     r.notaEmitidaStatus = normalizeNcCostWorkflowStatus(r.notaEmitidaStatus || (hasNotaProgress && r.gedStatus === 'completed' ? 'completed' : 'open'));
     r.notaEmitidaDate = r.notaEmitidaDate || null;
+    if (isAdministrative) {
+      r.missionFinalizedStatus = 'open';
+      r.missionFinalizedDate = null;
+      r.gedStatus = 'open';
+      r.gedDate = null;
+      r.notaEmitidaStatus = 'open';
+      r.notaEmitidaDate = null;
+    }
     r.evidences = Array.isArray(r.evidences) ? r.evidences.map(function(ev) {
       if (!ev) return null;
       var data = typeof ev.data === 'string' ? ev.data : '';
@@ -9077,7 +9092,28 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   function isNcCostPaymentCompleted(cost) {
-    return !!(cost && (cost.finalizationType === 'paga' || cost.finalizationType === 'reembolsada' || cost.finalizationType === 'assumido_cliente'));
+    if (!cost) return false;
+    return !!(getNcCostPaymentResolutionType(cost) || (isAdministrativeNcCost(cost) && cost.paymentScheduledDate));
+  }
+
+  function getNcCostPaymentResolutionType(cost) {
+    if (!cost) return null;
+    return (cost.finalizationType === 'paga' || cost.finalizationType === 'reembolsada' || cost.finalizationType === 'assumido_cliente')
+      ? cost.finalizationType
+      : null;
+  }
+
+  function getNcCostFinalizeButtonTone(cost) {
+    if (isAdministrativeNcCost(cost) && cost.paymentScheduledDate) return 'paga';
+    var resolutionType = getNcCostPaymentResolutionType(cost);
+    if (resolutionType) return resolutionType;
+    return 'desfinalizar';
+  }
+
+  function getNcCostPaymentStageClass(cost) {
+    var resolutionType = getNcCostPaymentResolutionType(cost);
+    if (resolutionType === 'assumido_cliente') return 'client';
+    return isNcCostPaymentCompleted(cost) ? 'payment' : 'open';
   }
 
   function toValidNumber(value) {
@@ -9833,22 +9869,32 @@ document.addEventListener("DOMContentLoaded", function() {
 
   function getNcCostPaymentStatus(cost) {
     if (!cost) return 'Pendente';
-    if (cost.finalizationType === 'paga') return 'Pago';
-    if (cost.finalizationType === 'reembolsada') return 'Pago (Reembolsada)';
-    if (cost.finalizationType === 'assumido_cliente') return 'Custo assumido pelo cliente';
+    var resolutionType = getNcCostPaymentResolutionType(cost);
+    if (resolutionType === 'paga') return 'Pago';
+    if (resolutionType === 'reembolsada') return 'Pago (Reembolsada)';
+    if (resolutionType === 'assumido_cliente') return 'Custo assumido pelo cliente';
+    if (isAdministrativeNcCost(cost) && cost.paymentScheduledDate) return 'Programado';
     return 'Pendente';
   }
 
   function getNcCostPaymentBadgeClass(cost) {
     if (!cost) return 'pendente';
-    if (cost.finalizationType === 'assumido_cliente') return 'assumido_cliente';
-    if (cost.finalizationType === 'paga' || cost.finalizationType === 'reembolsada') return cost.finalizationType;
+    var resolutionType = getNcCostPaymentResolutionType(cost);
+    if (resolutionType === 'assumido_cliente') return 'assumido_cliente';
+    if (resolutionType === 'paga' || resolutionType === 'reembolsada') return resolutionType;
     if (cost.paymentScheduledDate) return 'programado';
     return 'pendente';
   }
 
   function getNcCostCurrentStageInfo(cost) {
     if (!cost) return { label: 'Missão aberta', status: 'Registrada', className: 'open' };
+    if (isAdministrativeNcCost(cost)) {
+      return {
+        label: 'Pagamento programado / realizado',
+        status: getNcCostPaymentStatus(cost),
+        className: getNcCostPaymentStageClass(cost)
+      };
+    }
     if (cost.missionFinalizedStatus !== 'completed') {
       return {
         label: 'Missão finalizada / Pedido enviado',
@@ -9873,7 +9919,7 @@ document.addEventListener("DOMContentLoaded", function() {
     return {
       label: 'Pagamento programado / realizado',
       status: getNcCostPaymentStatus(cost),
-      className: cost.finalizationType === 'assumido_cliente' ? 'client' : (cost.finalizationType ? 'payment' : 'open')
+      className: getNcCostPaymentStageClass(cost)
     };
   }
 
@@ -9884,6 +9930,17 @@ document.addEventListener("DOMContentLoaded", function() {
 
   function getNcCostWorkflowSteps(cost) {
     // A etapa inicial mostra somente a data de abertura, conforme solicitado pelo fluxo financeiro.
+    if (isAdministrativeNcCost(cost)) {
+      return [
+        { label: 'Missão aberta', date: cost && cost.date, hideStatus: true },
+        {
+          label: 'Pagamento programado / realizado',
+          date: cost && cost.paymentScheduledDate,
+          status: getNcCostPaymentStatus(cost),
+          className: getNcCostPaymentStageClass(cost)
+        }
+      ];
+    }
     return [
       { label: 'Missão aberta', date: cost && cost.date, hideStatus: true },
       {
@@ -9908,7 +9965,7 @@ document.addEventListener("DOMContentLoaded", function() {
         label: 'Pagamento programado / realizado',
         date: cost && (cost.finalizationType ? cost.finalizationDate : cost.paymentScheduledDate),
         status: getNcCostPaymentStatus(cost),
-        className: cost && cost.finalizationType === 'assumido_cliente' ? 'client' : (cost && cost.finalizationType ? 'payment' : 'open')
+        className: getNcCostPaymentStageClass(cost)
       }
     ];
   }
@@ -9921,6 +9978,10 @@ document.addEventListener("DOMContentLoaded", function() {
         (step.hideStatus ? '' : '<span class="nc-cost-stage-status ' + step.className + '">' + escHtml(step.status) + '</span>') +
       '</div>';
     }).join('') + '</div>';
+  }
+
+  function getNcCostWorkflowTitle(cost) {
+    return isAdministrativeNcCost(cost) ? 'Programação de pagamento' : 'Fluxo da solicitação de pagamento';
   }
 
   function getNcCostEvidenceSrc(ev) {
@@ -10007,7 +10068,7 @@ document.addEventListener("DOMContentLoaded", function() {
             '<div class="nc-cost-detail-field"><label>Economia</label><span>' + escHtml(formatCurrencyBRL(savings)) + '</span></div>' +
             '<div class="nc-cost-detail-field"><label>Etapa atual</label><span><span class="nc-cost-stage-status ' + getNcCostCurrentStageInfo(rec).className + '">' + escHtml(getNcCostCurrentStageDisplay(rec)) + '</span></span></div>' +
             '<div class="nc-cost-detail-field"><label>Status pagamento</label><span><span class="nc-cost-payment-badge ' + getNcCostPaymentBadgeClass(rec) + '">' + escHtml(getNcCostPaymentStatus(rec)) + '</span></span></div>' +
-            '<div class="nc-cost-detail-field full"><label>Fluxo da solicitação de pagamento</label><div>' + renderNcCostWorkflowHtml(rec) + '</div></div>' +
+            '<div class="nc-cost-detail-field full"><label>' + escHtml(getNcCostWorkflowTitle(rec)) + '</label><div>' + renderNcCostWorkflowHtml(rec) + '</div></div>' +
             '<div class="nc-cost-detail-field full"><label>Descrição da negociação</label><span>' + escHtml(rec.description || '—') + '</span></div>' +
             '<div class="nc-cost-detail-field full"><label>Observações</label><span>' + escHtml(rec.notes || '—') + '</span></div>' +
             '<div class="nc-cost-detail-field full"><label>Evidências (' + evidences.length + ')</label><span>' + evidencesHtml + '</span></div>' +
@@ -10048,7 +10109,7 @@ document.addEventListener("DOMContentLoaded", function() {
         openNcFinalizeModal(costId);
       };
       detailFinalizeBtn.textContent = 'Atualizar pagamento';
-      detailFinalizeBtn.className = 'nc-finalize-btn ' + (rec.finalizationType === 'paga' ? 'paga' : rec.finalizationType === 'reembolsada' ? 'reembolsada' : rec.finalizationType === 'assumido_cliente' ? 'assumido_cliente' : 'desfinalizar');
+      detailFinalizeBtn.className = 'nc-finalize-btn ' + getNcCostFinalizeButtonTone(rec);
       detailFinalizeBtn.style.cssText = 'width:auto;padding:8px 16px;font-size:12px;';
     }
   }
@@ -10069,7 +10130,7 @@ document.addEventListener("DOMContentLoaded", function() {
       if (filters.status === 'paga' && rec.finalizationType !== 'paga') return false;
       if (filters.status === 'reembolsada' && rec.finalizationType !== 'reembolsada') return false;
       if (filters.status === 'assumido_cliente' && rec.finalizationType !== 'assumido_cliente') return false;
-      if (filters.status === 'finalizada' && !rec.finalizationType) return false;
+      if (filters.status === 'finalizada' && !isNcCostPaymentCompleted(rec)) return false;
       if (filters.type !== 'all' && rec.type !== filters.type) return false;
       if (filters.savingsOnly) {
         var charged = Number(rec && rec.chargedValue) || 0;
@@ -10187,7 +10248,7 @@ document.addEventListener("DOMContentLoaded", function() {
     }).forEach(function(rec) {
       var card = document.createElement('div');
       // Determine card color class: alerta (red) > finalizado/payment done (green) > aberto (orange)
-      var costColorClass = rec.alerta ? ' nc-cost-alerta' : (rec.finalizationType ? ' nc-cost-finalizado' : ' nc-cost-aberto');
+      var costColorClass = rec.alerta ? ' nc-cost-alerta' : (isNcCostPaymentCompleted(rec) ? ' nc-cost-finalizado' : ' nc-cost-aberto');
       card.className = 'nc-cost-item-card nc-cost-row-clickable' + costColorClass;
       card.setAttribute('role', 'button');
       card.setAttribute('tabindex', '0');
@@ -10223,7 +10284,7 @@ document.addEventListener("DOMContentLoaded", function() {
           '<div class="nc-cost-item-field"><label>Etapa atual</label><div class="nc-cost-item-value"><span class="nc-cost-stage-status ' + currentStage.className + '">' + escHtml(currentStage.label) + '</span></div></div>' +
           '<div class="nc-cost-item-field"><label>Status pagamento</label><div class="nc-cost-item-value"><span class="nc-cost-payment-badge ' + paymentBadgeClass + '">' + escHtml(paymentStatus) + '</span></div></div>' +
           '<div class="nc-cost-item-field full"><label>Data do lançamento</label><div class="nc-cost-item-value">' + (getNcCostEffectiveDate(rec) ? '<span class="nc-cost-payment-date-value">' + escHtml(ncFmtDate(getNcCostEffectiveDate(rec))) + '</span>' : '<span style="color:#9ca3af">—</span>') + '</div></div>' +
-          '<div class="nc-cost-item-field full"><label>Fluxo da solicitação de pagamento</label>' + renderNcCostWorkflowHtml(rec) + '</div>' +
+          '<div class="nc-cost-item-field full"><label>' + escHtml(getNcCostWorkflowTitle(rec)) + '</label>' + renderNcCostWorkflowHtml(rec) + '</div>' +
         '</div>' +
         '<div class="nc-cost-item-actions">' +
           '<button type="button" class="btn-icon btn-edit" data-nccost-edit="' + escHtml(rec.id) + '" title="Editar">Editar</button>' +
@@ -10302,8 +10363,24 @@ document.addEventListener("DOMContentLoaded", function() {
     _finalizingNcCostId = costId;
     backdrop.classList.add('open');
     var rec = (ncCostRecords || []).find(function(item) { return item.id === costId; });
+    var isAdministrative = isAdministrativeNcCost(rec);
+    var title = document.getElementById('ncFinalizeTitle');
+    var description = document.getElementById('ncFinalizeDescription');
+    var dateLabel = document.getElementById('ncFinalizeDateLabel');
     var pendingBtn = document.getElementById('ncFinalizeBtnPending');
-    if (pendingBtn) pendingBtn.style.display = '';
+    var pagaBtn = document.getElementById('ncFinalizeBtnPaga');
+    var reembolsadaBtn = document.getElementById('ncFinalizeBtnReembolsada');
+    var assumidoClienteBtn = document.getElementById('ncFinalizeBtnAssumidoCliente');
+    if (title) title.textContent = 'Programar/atualizar pagamento';
+    if (description) description.textContent = isAdministrative ? 'Informe a data programada deste custo administrativo:' : 'Selecione o andamento do pagamento desta solicitação:';
+    if (dateLabel) dateLabel.textContent = isAdministrative ? 'Data do pagamento/programado' : 'Data do pagamento';
+    if (pendingBtn) {
+      pendingBtn.style.display = '';
+      pendingBtn.textContent = isAdministrative ? 'Salvar data programada' : 'Salvar pagamento pendente';
+    }
+    if (pagaBtn) pagaBtn.style.display = isAdministrative ? 'none' : '';
+    if (reembolsadaBtn) reembolsadaBtn.style.display = isAdministrative ? 'none' : '';
+    if (assumidoClienteBtn) assumidoClienteBtn.style.display = isAdministrative ? 'none' : '';
     var dateInput = document.getElementById('ncFinalizeDateInput');
     if (dateInput) dateInput.value = (rec && (rec.finalizationType ? rec.finalizationDate : rec.paymentScheduledDate)) || new Date().toISOString().slice(0, 10);
   }
@@ -10319,13 +10396,14 @@ document.addEventListener("DOMContentLoaded", function() {
     if (!costId) return;
     var idx = (ncCostRecords || []).findIndex(function(item) { return item.id === costId; });
     if (idx === -1) { closeNcFinalizeModal(); return; }
+    var isAdministrative = isAdministrativeNcCost(ncCostRecords[idx]);
     var dateInput = document.getElementById('ncFinalizeDateInput');
     var manualDate = dateInput ? (dateInput.value || '') : '';
     var paymentDate = manualDate || ncCostRecords[idx].paymentScheduledDate || ncCostRecords[idx].finalizationDate || new Date().toISOString().slice(0, 10);
     ncCostRecords[idx] = normalizeNcCostRecord(Object.assign({}, ncCostRecords[idx], {
-      finalizationType: type,
+      finalizationType: isAdministrative ? null : type,
       paymentScheduledDate: paymentDate,
-      finalizationDate: type ? paymentDate : null
+      finalizationDate: isAdministrative ? null : (type ? paymentDate : null)
     }));
     closeNcFinalizeModal();
     await saveNcCostRecords();
@@ -10499,6 +10577,38 @@ document.addEventListener("DOMContentLoaded", function() {
     if (openChk.checked) valInput.value = '';
   }
 
+  function syncNcCostTypeFields() {
+    var typeSelect = document.getElementById('ncCostType');
+    var isAdministrative = typeSelect && typeSelect.value === 'administrativo';
+    var paymentWrap = document.getElementById('ncCostPaymentScheduledWrap');
+    var workflowFieldIds = [
+      'ncCostMissionFinalizedDateWrap',
+      'ncCostMissionFinalizedStatusWrap',
+      'ncCostGedDateWrap',
+      'ncCostGedStatusWrap',
+      'ncCostNotaEmitidaDateWrap',
+      'ncCostNotaEmitidaStatusWrap'
+    ];
+    if (paymentWrap) paymentWrap.style.display = isAdministrative ? '' : 'none';
+    workflowFieldIds.forEach(function(id) {
+      var field = document.getElementById(id);
+      if (field) field.style.display = isAdministrative ? 'none' : '';
+    });
+    if (isAdministrative) {
+      [
+        { id: 'ncCostMissionFinalizedDate', value: '' },
+        { id: 'ncCostMissionFinalizedStatus', value: 'open' },
+        { id: 'ncCostGedDate', value: '' },
+        { id: 'ncCostGedStatus', value: 'open' },
+        { id: 'ncCostNotaEmitidaDate', value: '' },
+        { id: 'ncCostNotaEmitidaStatus', value: 'open' }
+      ].forEach(function(entry) {
+        var field = document.getElementById(entry.id);
+        if (field) field.value = entry.value;
+      });
+    }
+  }
+
   function openNcCostModal(costId) {
     var backdrop = document.getElementById('ncCostModalBackdrop');
     if (!backdrop) return;
@@ -10511,6 +10621,7 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById('ncCostChargedValue').value = '';
     document.getElementById('ncCostNegotiatedValue').value = '';
     document.getElementById('ncCostNegotiationOpen').checked = false;
+    document.getElementById('ncCostPaymentScheduledDate').value = '';
     document.getElementById('ncCostNotes').value = '';
     document.getElementById('ncCostMissionFinalizedDate').value = '';
     document.getElementById('ncCostMissionFinalizedStatus').value = 'open';
@@ -10531,6 +10642,7 @@ document.addEventListener("DOMContentLoaded", function() {
         document.getElementById('ncCostChargedValue').value = rec.chargedValue != null ? rec.chargedValue : '';
         document.getElementById('ncCostNegotiatedValue').value = rec.negotiatedValue != null ? rec.negotiatedValue : '';
         document.getElementById('ncCostNegotiationOpen').checked = !!rec.negotiationOpen;
+        document.getElementById('ncCostPaymentScheduledDate').value = rec.paymentScheduledDate || '';
         document.getElementById('ncCostNotes').value = rec.notes || '';
         document.getElementById('ncCostMissionFinalizedDate').value = rec.missionFinalizedDate || '';
         document.getElementById('ncCostMissionFinalizedStatus').value = rec.missionFinalizedStatus || 'open';
@@ -10544,6 +10656,7 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     syncNcCostNegotiatedFieldState();
+    syncNcCostTypeFields();
     rebuildNcCostEvidenceList();
     backdrop.classList.add('open');
   }
@@ -10644,6 +10757,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
     var openChk = document.getElementById('ncCostNegotiationOpen');
     if (openChk) openChk.addEventListener('change', syncNcCostNegotiatedFieldState);
+    var costType = document.getElementById('ncCostType');
+    if (costType) costType.addEventListener('change', syncNcCostTypeFields);
 
     var fileInput = document.getElementById('ncCostEvidenceInput');
     if (fileInput) {
@@ -10672,6 +10787,8 @@ document.addEventListener("DOMContentLoaded", function() {
         }
         var selectedNcId = document.getElementById('ncCostLinkedNc').value || '';
         var linkedNc = selectedNcId ? ncRecords.find(function(nc) { return nc.id === selectedNcId; }) : null;
+        var selectedType = document.getElementById('ncCostType').value || 'nc';
+        var isAdministrative = isAdministrativeNcCost(selectedType);
         var negotiated = null;
         if (!negotiationOpen && negotiatedRaw !== '') {
           var n = Number(negotiatedRaw);
@@ -10693,7 +10810,7 @@ document.addEventListener("DOMContentLoaded", function() {
         var record = normalizeNcCostRecord({
           id: _editingNcCostId || undefined,
           date: document.getElementById('ncCostDate').value || new Date().toISOString().slice(0, 10),
-          type: document.getElementById('ncCostType').value || 'nc',
+          type: selectedType,
           costKind: document.getElementById('ncCostKind').value || NC_COST_KIND_DEFAULT,
           linkedNcId: selectedNcId,
           linkedNcNumber: linkedNc ? (linkedNc.ncNumber || linkedNc.id || '') : '',
@@ -10701,15 +10818,15 @@ document.addEventListener("DOMContentLoaded", function() {
           chargedValue: charged,
           negotiatedValue: negotiated,
           negotiationOpen: negotiationOpen,
-          missionFinalizedDate: document.getElementById('ncCostMissionFinalizedDate').value || null,
-          missionFinalizedStatus: document.getElementById('ncCostMissionFinalizedStatus').value || 'open',
-          gedDate: document.getElementById('ncCostGedDate').value || null,
-          gedStatus: document.getElementById('ncCostGedStatus').value || 'open',
-          notaEmitidaDate: document.getElementById('ncCostNotaEmitidaDate').value || null,
-          notaEmitidaStatus: document.getElementById('ncCostNotaEmitidaStatus').value || 'open',
-          paymentScheduledDate: preservedPaymentScheduledDate,
-          finalizationType: preservedFinalizationType,
-          finalizationDate: preservedFinalizationDate,
+          missionFinalizedDate: isAdministrative ? null : (document.getElementById('ncCostMissionFinalizedDate').value || null),
+          missionFinalizedStatus: isAdministrative ? 'open' : (document.getElementById('ncCostMissionFinalizedStatus').value || 'open'),
+          gedDate: isAdministrative ? null : (document.getElementById('ncCostGedDate').value || null),
+          gedStatus: isAdministrative ? 'open' : (document.getElementById('ncCostGedStatus').value || 'open'),
+          notaEmitidaDate: isAdministrative ? null : (document.getElementById('ncCostNotaEmitidaDate').value || null),
+          notaEmitidaStatus: isAdministrative ? 'open' : (document.getElementById('ncCostNotaEmitidaStatus').value || 'open'),
+          paymentScheduledDate: isAdministrative ? (document.getElementById('ncCostPaymentScheduledDate').value || null) : preservedPaymentScheduledDate,
+          finalizationType: isAdministrative ? null : preservedFinalizationType,
+          finalizationDate: isAdministrative ? null : preservedFinalizationDate,
           notes: document.getElementById('ncCostNotes').value.trim(),
           evidences: _ncCostEvidence.slice()
         });
@@ -11760,33 +11877,37 @@ document.addEventListener("DOMContentLoaded", function() {
             </span>
           </label>
         </div>
-        <div class="nc-field">
+        <div class="nc-field nc-field-full" id="ncCostPaymentScheduledWrap" style="display:none;">
+          <label>Data do pagamento programado</label>
+          <input type="date" id="ncCostPaymentScheduledDate" />
+        </div>
+        <div class="nc-field" id="ncCostMissionFinalizedDateWrap">
           <label>Missão finalizada / Pedido enviado</label>
           <input type="date" id="ncCostMissionFinalizedDate" />
         </div>
-        <div class="nc-field">
+        <div class="nc-field" id="ncCostMissionFinalizedStatusWrap">
           <label>Status missão finalizada / Pedido enviado</label>
           <select id="ncCostMissionFinalizedStatus">
             <option value="open">Em aberto</option>
             <option value="completed">Concluído</option>
           </select>
         </div>
-        <div class="nc-field">
+        <div class="nc-field" id="ncCostGedDateWrap">
           <label>GED solicitado</label>
           <input type="date" id="ncCostGedDate" />
         </div>
-        <div class="nc-field">
+        <div class="nc-field" id="ncCostGedStatusWrap">
           <label>Status GED solicitado</label>
           <select id="ncCostGedStatus">
             <option value="open">Em aberto</option>
             <option value="completed">Concluído</option>
           </select>
         </div>
-        <div class="nc-field">
+        <div class="nc-field" id="ncCostNotaEmitidaDateWrap">
           <label>Nota emitida</label>
           <input type="date" id="ncCostNotaEmitidaDate" />
         </div>
-        <div class="nc-field">
+        <div class="nc-field" id="ncCostNotaEmitidaStatusWrap">
           <label>Status Nota emitida</label>
           <select id="ncCostNotaEmitidaStatus">
             <option value="open">Em aberto</option>
@@ -11819,9 +11940,9 @@ document.addEventListener("DOMContentLoaded", function() {
       <button class="nc-finalize-close" id="ncFinalizeClose" aria-label="Fechar">✕</button>
     </div>
     <div class="nc-finalize-body">
-      <p>Selecione o andamento do pagamento desta solicitação:</p>
+      <p id="ncFinalizeDescription">Selecione o andamento do pagamento desta solicitação:</p>
       <div class="nc-finalize-date-group">
-        <label for="ncFinalizeDateInput">Data do pagamento</label>
+        <label for="ncFinalizeDateInput" id="ncFinalizeDateLabel">Data do pagamento</label>
         <input type="date" id="ncFinalizeDateInput">
       </div>
       <button type="button" class="nc-finalize-btn paga" id="ncFinalizeBtnPaga">Paga</button>
