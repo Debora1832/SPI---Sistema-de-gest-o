@@ -10353,7 +10353,7 @@ document.addEventListener("DOMContentLoaded", function() {
     var pagaBtn = document.getElementById('ncFinalizeBtnPaga');
     var reembolsadaBtn = document.getElementById('ncFinalizeBtnReembolsada');
     var assumidoClienteBtn = document.getElementById('ncFinalizeBtnAssumidoCliente');
-    if (title) title.textContent = isAdministrative ? 'Programar pagamento' : 'Atualizar pagamento';
+    if (title) title.textContent = isAdministrative ? 'Programar/atualizar pagamento' : 'Atualizar pagamento';
     if (description) description.textContent = isAdministrative ? 'Informe a data programada deste custo administrativo:' : 'Selecione o andamento do pagamento desta solicitação:';
     if (dateLabel) dateLabel.textContent = isAdministrative ? 'Data do pagamento/programado' : 'Data do pagamento';
     if (pendingBtn) {
@@ -10577,12 +10577,17 @@ document.addEventListener("DOMContentLoaded", function() {
       if (field) field.style.display = isAdministrative ? 'none' : '';
     });
     if (isAdministrative) {
-      document.getElementById('ncCostMissionFinalizedDate').value = '';
-      document.getElementById('ncCostMissionFinalizedStatus').value = 'open';
-      document.getElementById('ncCostGedDate').value = '';
-      document.getElementById('ncCostGedStatus').value = 'open';
-      document.getElementById('ncCostNotaEmitidaDate').value = '';
-      document.getElementById('ncCostNotaEmitidaStatus').value = 'open';
+      [
+        ['ncCostMissionFinalizedDate', ''],
+        ['ncCostMissionFinalizedStatus', 'open'],
+        ['ncCostGedDate', ''],
+        ['ncCostGedStatus', 'open'],
+        ['ncCostNotaEmitidaDate', ''],
+        ['ncCostNotaEmitidaStatus', 'open']
+      ].forEach(function(entry) {
+        var field = document.getElementById(entry[0]);
+        if (field) field.value = entry[1];
+      });
     }
   }
 
@@ -11855,7 +11860,7 @@ document.addEventListener("DOMContentLoaded", function() {
           </label>
         </div>
         <div class="nc-field nc-field-full" id="ncCostPaymentScheduledWrap" style="display:none;">
-          <label>Data de pagamento/programado</label>
+          <label>Data do pagamento programado</label>
           <input type="date" id="ncCostPaymentScheduledDate" />
         </div>
         <div class="nc-field" id="ncCostMissionFinalizedDateWrap">
