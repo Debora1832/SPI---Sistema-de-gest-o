@@ -789,6 +789,15 @@
     .nc-field label { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:#6b7280; }
     .nc-field input, .nc-field select, .nc-field textarea { border:1px solid #e5e7eb; border-radius:8px; padding:8px 10px; font-size:13px; background:#f9fafb; color:#1f2937; outline:none; transition:border-color .15s, box-shadow .15s; width:100%; }
     .nc-field input:focus, .nc-field select:focus, .nc-field textarea:focus { border-color:var(--tenant-sidebar-bg,#1E4D17); box-shadow:0 0 0 3px rgba(30,77,23,.12); background:#fff; }
+    .nc-inline-select-action { display:flex; align-items:center; gap:8px; }
+    .nc-inline-select-action select { flex:1; min-width:0; }
+    .nc-inline-add-btn {
+      border:1px solid #d1d5db; border-radius:8px; background:#fff; color:#1f2937;
+      font-size:12px; font-weight:700; white-space:nowrap; padding:8px 10px; cursor:pointer;
+      transition:border-color .15s, background .15s, color .15s;
+    }
+    .nc-inline-add-btn:hover { border-color:var(--tenant-sidebar-bg,#1E4D17); color:var(--tenant-sidebar-bg,#1E4D17); background:#f8fafc; }
+    .nc-inline-add-btn:focus { outline:none; box-shadow:0 0 0 3px rgba(30,77,23,.12); border-color:var(--tenant-sidebar-bg,#1E4D17); }
     .nc-field textarea { resize:vertical; min-height:72px; }
     .nc-photo-drop { border:2px dashed #d1d5db; border-radius:10px; padding:20px 14px; text-align:center; cursor:pointer; color:#9ca3af; font-size:12px; transition:border-color .2s, background .2s; display:flex; flex-direction:column; align-items:center; gap:6px; min-height:100px; justify-content:center; background:#f9fafb; }
     .nc-photo-drop:hover, .nc-photo-drop.dragover { border-color:var(--tenant-sidebar-bg,#1E4D17); background:#f0fdf4; color:var(--tenant-sidebar-bg,#1E4D17); }
@@ -1243,11 +1252,11 @@
       transition:transform .15s, box-shadow .15s, border-color .15s; position:relative;
     }
     .nc-cost-card-nc-thumb {
-      position:absolute; top:10px; right:10px; width:60px; height:60px;
+      position:absolute; top:10px; right:10px; width:78px; height:78px;
       object-fit:cover; border-radius:8px; border:2px solid #e5e7eb;
       background:#f3f4f6; cursor:zoom-in; z-index:1;
     }
-    .nc-cost-item-grid-has-thumb { padding-right:72px; }
+    .nc-cost-item-grid-has-thumb { padding-right:92px; }
     .nc-cost-payment-badge { display:inline-flex; align-items:center; border-radius:999px; padding:4px 10px; font-size:11px; font-weight:700; }
     .nc-cost-payment-badge.paga { background:#d1fae5; border:1px solid #6ee7b7; color:#065f46; }
     .nc-cost-payment-badge.reembolsada { background:#dbeafe; border:1px solid #93c5fd; color:#1e40af; }
@@ -6918,6 +6927,8 @@ document.addEventListener("DOMContentLoaded", function() {
   var _ncCostEvidence = [];
   var _editingNcCostId = null;
   var _finalizingNcCostId = null;
+  var _ncCostLinkedNcLookup = { byId: {}, byLabel: {}, byNcNumber: {} };
+  var ncCostCustomKinds = [];
 
   function ncCostStorageKey(tenantId) {
     return 'spi_nc_cost_records_' + (tenantId || currentTenant);
@@ -6933,7 +6944,7 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   var NC_COST_KIND_DEFAULT = 'administrativo';
-  var NC_COST_KIND_LABELS = {
+  var NC_COST_KIND_BASE_LABELS = {
     administrativo: 'Administrativo',
     contencao_retrabalho: 'Contenção / Retrabalho',
     reatividade: 'Reatividade',
@@ -6941,15 +6952,110 @@ document.addEventListener("DOMContentLoaded", function() {
     embarque_controlado: 'Embarque Controlado'
   };
 
+  function ncCostKindStorageKey(tenantId) {
+    return 'spi_nc_cost_custom_kinds_' + (tenantId || currentTenant);
+  }
+
+  function loadNcCostCustomKinds() {
+    try {
+      var raw = localStorage.getItem(ncCostKindStorageKey(currentTenant));
+      if (!raw) {
+        ncCostCustomKinds = [];
+        return;
+      }
+      var parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) {
+        ncCostCustomKinds = [];
+        return;
+      }
+      ncCostCustomKinds = parsed.map(function(item) {
+        var value = String((item && item.value) || '').trim().toLowerCase();
+        var label = String((item && item.label) || '').trim();
+        if (!value || !label) return null;
+        return { value: value, label: label };
+      }).filter(function(item) { return !!item; });
+    } catch (e) {
+      ncCostCustomKinds = [];
+    }
+  }
+
+  function saveNcCostCustomKinds() {
+    try {
+      localStorage.setItem(ncCostKindStorageKey(currentTenant), JSON.stringify(ncCostCustomKinds));
+    } catch (e) {}
+  }
+
+  function getNcCostKindLabels() {
+    var labels = Object.assign({}, NC_COST_KIND_BASE_LABELS);
+    (ncCostCustomKinds || []).forEach(function(kind) {
+      if (!kind || !kind.value || !kind.label) return;
+      labels[kind.value] = kind.label;
+    });
+    return labels;
+  }
+
+  function rebuildNcCostKindSelect(selectedValue) {
+    var select = document.getElementById('ncCostKind');
+    if (!select) return;
+    var labels = getNcCostKindLabels();
+    var options = [];
+    Object.keys(labels).forEach(function(value) {
+      options.push('<option value="' + escHtml(value) + '">' + escHtml(labels[value]) + '</option>');
+    });
+    select.innerHTML = options.join('');
+    if (selectedValue && labels[selectedValue]) select.value = selectedValue;
+    else select.value = NC_COST_KIND_DEFAULT;
+  }
+
+  function createNcCostCustomKindValue(label) {
+    var normalized = String(label || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '');
+    var base = 'custom_' + (normalized || 'tipo');
+    var candidate = base;
+    var i = 2;
+    var labels = getNcCostKindLabels();
+    while (labels[candidate]) {
+      candidate = base + '_' + i;
+      i += 1;
+    }
+    return candidate;
+  }
+
+  function addNcCostKindOptionFromPrompt() {
+    var label = prompt('Digite o nome do novo tipo de custo:');
+    if (label == null) return;
+    label = String(label).trim();
+    if (!label) {
+      alert('Informe um nome válido para o tipo de custo.');
+      return;
+    }
+    var existing = (ncCostCustomKinds || []).find(function(kind) {
+      return String(kind.label || '').trim().toLowerCase() === label.toLowerCase();
+    });
+    if (existing) {
+      rebuildNcCostKindSelect(existing.value);
+      return;
+    }
+    var value = createNcCostCustomKindValue(label);
+    ncCostCustomKinds.push({ value: value, label: label });
+    saveNcCostCustomKinds();
+    rebuildNcCostKindSelect(value);
+  }
+
   function normalizeNcCostKind(value) {
     var kind = String(value || '').trim().toLowerCase();
-    if (NC_COST_KIND_LABELS[kind]) return kind;
+    if (getNcCostKindLabels()[kind]) return kind;
     return NC_COST_KIND_DEFAULT;
   }
 
   function getNcCostKindLabel(rec) {
     var kind = normalizeNcCostKind(rec && rec.costKind);
-    return NC_COST_KIND_LABELS[kind] || NC_COST_KIND_LABELS[NC_COST_KIND_DEFAULT];
+    var labels = getNcCostKindLabels();
+    return labels[kind] || labels[NC_COST_KIND_DEFAULT];
   }
 
   function normalizeNcCostWorkflowStatus(value) {
@@ -10560,15 +10666,52 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   function populateNcCostLinkedNcOptions(selectedId) {
-    var select = document.getElementById('ncCostLinkedNc');
-    if (!select) return;
-    var options = ['<option value="">Sem NC vinculada</option>'];
+    var input = document.getElementById('ncCostLinkedNcSearch');
+    var hidden = document.getElementById('ncCostLinkedNc');
+    var list = document.getElementById('ncCostLinkedNcOptions');
+    if (!input || !hidden || !list) return;
+    var options = [];
+    var lookup = { byId: {}, byLabel: {}, byNcNumber: {} };
     (ncRecords || []).forEach(function(nc) {
-      var label = (nc.ncNumber || nc.id || 'NC') + ' — ' + (nc.description || nc.customer || 'Sem descrição');
-      options.push('<option value="' + escHtml(nc.id) + '">' + escHtml(label) + '</option>');
+      var id = String(nc.id || '').trim();
+      if (!id) return;
+      var number = String(nc.ncNumber || id).trim();
+      var label = number + ' — ' + (nc.description || nc.customer || 'Sem descrição');
+      var entry = { id: id, label: label, number: number };
+      options.push('<option value="' + escHtml(label) + '"></option>');
+      lookup.byId[id] = entry;
+      lookup.byLabel[label.toLowerCase()] = entry;
+      lookup.byNcNumber[number.toLowerCase()] = entry;
     });
-    select.innerHTML = options.join('');
-    select.value = selectedId || '';
+    _ncCostLinkedNcLookup = lookup;
+    list.innerHTML = options.join('');
+    var selected = selectedId && lookup.byId[selectedId] ? lookup.byId[selectedId] : null;
+    hidden.value = selected ? selected.id : '';
+    input.value = selected ? selected.label : '';
+  }
+
+  function syncNcCostLinkedNcSelectionFromInput() {
+    var input = document.getElementById('ncCostLinkedNcSearch');
+    var hidden = document.getElementById('ncCostLinkedNc');
+    if (!input || !hidden) return;
+    var raw = String(input.value || '').trim();
+    if (!raw) {
+      hidden.value = '';
+      return;
+    }
+    var exact = _ncCostLinkedNcLookup.byLabel[raw.toLowerCase()];
+    if (exact) {
+      hidden.value = exact.id;
+      input.value = exact.label;
+      return;
+    }
+    var byNumber = _ncCostLinkedNcLookup.byNcNumber[raw.toLowerCase()];
+    if (byNumber) {
+      hidden.value = byNumber.id;
+      input.value = byNumber.label;
+      return;
+    }
+    hidden.value = '';
   }
 
   function syncNcCostNegotiatedFieldState() {
@@ -10618,7 +10761,7 @@ document.addEventListener("DOMContentLoaded", function() {
     _ncCostEvidence = [];
     document.getElementById('ncCostDate').value = new Date().toISOString().slice(0, 10);
     document.getElementById('ncCostType').value = 'nc';
-    document.getElementById('ncCostKind').value = NC_COST_KIND_DEFAULT;
+    rebuildNcCostKindSelect(NC_COST_KIND_DEFAULT);
     document.getElementById('ncCostDescription').value = '';
     document.getElementById('ncCostChargedValue').value = '';
     document.getElementById('ncCostNegotiatedValue').value = '';
@@ -10639,7 +10782,7 @@ document.addEventListener("DOMContentLoaded", function() {
       if (rec) {
         document.getElementById('ncCostDate').value = rec.date || new Date().toISOString().slice(0, 10);
         document.getElementById('ncCostType').value = rec.type || 'nc';
-        document.getElementById('ncCostKind').value = rec.costKind || NC_COST_KIND_DEFAULT;
+        rebuildNcCostKindSelect(rec.costKind || NC_COST_KIND_DEFAULT);
         document.getElementById('ncCostDescription').value = rec.description || '';
         document.getElementById('ncCostChargedValue').value = rec.chargedValue != null ? rec.chargedValue : '';
         document.getElementById('ncCostNegotiatedValue').value = rec.negotiatedValue != null ? rec.negotiatedValue : '';
@@ -10671,6 +10814,8 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   function initNcCostPage() {
+    loadNcCostCustomKinds();
+    rebuildNcCostKindSelect(NC_COST_KIND_DEFAULT);
     loadNcCostRecordsAsync(currentTenant).then(function(records) {
       ncCostRecords = records;
       ncCostPageFilters.userTouched = false;
@@ -10761,6 +10906,23 @@ document.addEventListener("DOMContentLoaded", function() {
     if (openChk) openChk.addEventListener('change', syncNcCostNegotiatedFieldState);
     var costType = document.getElementById('ncCostType');
     if (costType) costType.addEventListener('change', syncNcCostTypeFields);
+    var linkedNcInput = document.getElementById('ncCostLinkedNcSearch');
+    if (linkedNcInput && !linkedNcInput.dataset.bound) {
+      linkedNcInput.dataset.bound = '1';
+      linkedNcInput.addEventListener('change', syncNcCostLinkedNcSelectionFromInput);
+      linkedNcInput.addEventListener('blur', syncNcCostLinkedNcSelectionFromInput);
+      linkedNcInput.addEventListener('input', function() {
+        if (!(linkedNcInput.value || '').trim()) {
+          var hidden = document.getElementById('ncCostLinkedNc');
+          if (hidden) hidden.value = '';
+        }
+      });
+    }
+    var addKindBtn = document.getElementById('ncCostKindAddBtn');
+    if (addKindBtn && !addKindBtn.dataset.bound) {
+      addKindBtn.dataset.bound = '1';
+      addKindBtn.addEventListener('click', addNcCostKindOptionFromPrompt);
+    }
 
     var fileInput = document.getElementById('ncCostEvidenceInput');
     if (fileInput) {
@@ -10787,7 +10949,13 @@ document.addEventListener("DOMContentLoaded", function() {
           alert('Informe um valor cobrado válido (número maior que zero).');
           return;
         }
+        syncNcCostLinkedNcSelectionFromInput();
+        var linkedNcInputValue = String((document.getElementById('ncCostLinkedNcSearch') || {}).value || '').trim();
         var selectedNcId = document.getElementById('ncCostLinkedNc').value || '';
+        if (linkedNcInputValue && !selectedNcId) {
+          alert('Selecione uma NC válida a partir da pesquisa para vincular o registro.');
+          return;
+        }
         var linkedNc = selectedNcId ? ncRecords.find(function(nc) { return nc.id === selectedNcId; }) : null;
         var selectedType = document.getElementById('ncCostType').value || 'nc';
         var isAdministrative = isAdministrativeNcCost(selectedType);
@@ -11848,17 +12016,22 @@ document.addEventListener("DOMContentLoaded", function() {
         </div>
         <div class="nc-field">
           <label>Tipo de custo</label>
-          <select id="ncCostKind">
-            <option value="administrativo">Administrativo</option>
-            <option value="contencao_retrabalho">Contenção / Retrabalho</option>
-            <option value="reatividade">Reatividade</option>
-            <option value="retrabalho">Retrabalho</option>
-            <option value="embarque_controlado">Embarque Controlado</option>
-          </select>
+          <div class="nc-inline-select-action">
+            <select id="ncCostKind">
+              <option value="administrativo">Administrativo</option>
+              <option value="contencao_retrabalho">Contenção / Retrabalho</option>
+              <option value="reatividade">Reatividade</option>
+              <option value="retrabalho">Retrabalho</option>
+              <option value="embarque_controlado">Embarque Controlado</option>
+            </select>
+            <button type="button" class="nc-inline-add-btn" id="ncCostKindAddBtn">+ Tipo</button>
+          </div>
         </div>
         <div class="nc-field nc-field-full">
           <label>NC vinculada (opcional)</label>
-          <select id="ncCostLinkedNc"><option value="">Sem NC vinculada</option></select>
+          <input type="text" id="ncCostLinkedNcSearch" list="ncCostLinkedNcOptions" placeholder="Digite para pesquisar a NC vinculada" autocomplete="off" />
+          <input type="hidden" id="ncCostLinkedNc" value="" />
+          <datalist id="ncCostLinkedNcOptions"></datalist>
         </div>
         <div class="nc-field nc-field-full">
           <label>Descrição da negociação/custo</label>
