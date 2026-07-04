@@ -8766,7 +8766,9 @@ document.addEventListener("DOMContentLoaded", function() {
         : mVals.reduce(function(a,b){ return a+b; }, 0);
       var hasData = totalNc > 0;
       var metaDivisor = useGroupedMonthYears
-        ? (selectedYears.length * displayKeys.length)
+        ? Math.max(1, datasets.reduce(function(sum, ds) {
+            return sum + ds.data.filter(function(val) { return val > 0; }).length;
+          }, 0))
         : (activeMonthKeys.length || displayKeys.length);
       var autoMetaVal = hasData ? Math.max(1, Math.round(totalNc / Math.max(1, metaDivisor))) : 0;
       var metaVal = _ncChartSettings.metaValue != null ? Number(_ncChartSettings.metaValue) : autoMetaVal;
@@ -8823,7 +8825,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 color:darkText, font:Object.assign({size:12},lightFont),
                 usePointStyle:true, pointStyleWidth:8, padding:16,
                 filter: function(item) {
-                  if (selectedYears.length > 1 && item.text !== monthMetaLegendLabel) return true;
+                  if (selectedYears.length > 1) return true;
                   return item.datasetIndex === 1;
                 }
               }
