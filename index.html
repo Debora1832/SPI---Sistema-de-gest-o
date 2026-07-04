@@ -7097,7 +7097,7 @@ document.addEventListener("DOMContentLoaded", function() {
     var hasGedProgress = !!(r.gedDate || r.notaEmitidaDate || r.paymentScheduledDate || r.finalizationDate || r.finalizationType);
     r.gedStatus = normalizeNcCostWorkflowStatus(r.gedStatus || (hasGedProgress ? 'completed' : 'open'));
     r.gedDate = r.gedDate || null;
-    var hasNotaProgress = !!(r.notaEmitidaDate || r.gedDate || r.gedStatus === 'completed' || r.paymentScheduledDate || r.finalizationDate || r.finalizationType);
+    var hasNotaProgress = !!(r.notaEmitidaDate || r.gedDate || r.paymentScheduledDate || r.finalizationDate || r.finalizationType);
     r.notaEmitidaStatus = normalizeNcCostWorkflowStatus(r.notaEmitidaStatus || (hasNotaProgress ? 'completed' : 'open'));
     r.notaEmitidaDate = r.notaEmitidaDate || null;
     if (isAdministrative) {
