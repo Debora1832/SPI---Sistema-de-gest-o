@@ -2202,7 +2202,7 @@
         </button>
         <div id="ncYearFilterPanel" class="nc-year-filter-panel">
           <div class="nc-year-filter-actions">
-            <button type="button" id="ncYearFilterClear" class="nc-year-filter-clear">Todos os anos</button>
+            <button type="button" id="ncYearFilterClear" class="nc-year-filter-clear">Limpar seleção</button>
             <span class="nc-year-filter-help">Escolha um ou mais anos</span>
           </div>
           <div id="ncYearFilterOptions" class="nc-year-filter-options"></div>
@@ -8710,24 +8710,15 @@ document.addEventListener("DOMContentLoaded", function() {
     if (ctxM) {
       // Filter to months that actually have data (or the last 3 if none)
       var useGroupedMonthYears = selectedYears.length > 1;
+      var activeMonthKeys = monthKeys.filter(function(k){ return monthCount[k] > 0; });
       var displayKeys = useGroupedMonthYears
         ? ['01','02','03','04','05','06','07','08','09','10','11','12']
-        : (function() {
-            var activeKeys = monthKeys.filter(function(k){ return monthCount[k] > 0; });
-            return activeKeys.length ? activeKeys : monthKeys.slice(-3);
-          })();
+        : (activeMonthKeys.length ? activeMonthKeys : monthKeys.slice(-3));
       var mLabels = displayKeys.map(function(k) {
         var monthPart = useGroupedMonthYears ? k : k.split('-')[1];
         return PT_MONTHS[parseInt(monthPart, 10) - 1];
       });
       var mVals = useGroupedMonthYears ? [] : displayKeys.map(function(k){ return monthCount[k]; });
-      // Reference line — use saved setting or auto-average
-      var totalNc = mVals.reduce(function(a,b){ return a+b; }, 0);
-      var hasData = totalNc > 0;
-      var metaVal = _ncChartSettings.metaValue != null
-        ? Number(_ncChartSettings.metaValue)
-        : (hasData ? Math.max(1, Math.round(totalNc / activeKeys.length)) : 0);
-      var metaColor = _ncChartSettings.metaColor || chartMetaDefaultColor;
 
       // Highlight the active-filter bar with lighter color (dim inactive bars)
       var datasets = [];
@@ -8753,9 +8744,6 @@ document.addEventListener("DOMContentLoaded", function() {
             order: 2
           };
         });
-        hasData = datasets.some(function(ds) {
-          return ds.data.some(function(val) { return val > 0; });
-        });
       } else {
         var barColors = displayKeys.map(function(k) {
           if (_ncMonthFilter && k === _ncMonthFilter) return navyBlue;
@@ -8771,10 +8759,23 @@ document.addEventListener("DOMContentLoaded", function() {
           order: 2
         }];
       }
+      var totalNc = useGroupedMonthYears
+        ? datasets.reduce(function(sum, ds) {
+            return sum + ds.data.reduce(function(inner, val) { return inner + val; }, 0);
+          }, 0)
+        : mVals.reduce(function(a,b){ return a+b; }, 0);
+      var hasData = totalNc > 0;
+      var metaDivisor = useGroupedMonthYears
+        ? (selectedYears.length * displayKeys.length)
+        : (activeMonthKeys.length || displayKeys.length);
+      var autoMetaVal = hasData ? Math.max(1, Math.round(totalNc / Math.max(1, metaDivisor))) : 0;
+      var metaVal = _ncChartSettings.metaValue != null ? Number(_ncChartSettings.metaValue) : autoMetaVal;
+      var metaColor = _ncChartSettings.metaColor || chartMetaDefaultColor;
+      var monthMetaLegendLabel = 'Meta mensal: ' + metaVal;
       if (hasData && metaVal > 0) {
         datasets.push({
           type: 'line',
-          label: 'Meta mensal: ' + metaVal,
+          label: monthMetaLegendLabel,
           data: mLabels.map(function(){ return metaVal; }),
           borderColor: metaColor,
           borderWidth: 2,
@@ -8822,7 +8823,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 color:darkText, font:Object.assign({size:12},lightFont),
                 usePointStyle:true, pointStyleWidth:8, padding:16,
                 filter: function(item) {
-                  if (selectedYears.length > 1 && item.text !== ('Meta mensal: ' + metaVal)) return true;
+                  if (selectedYears.length > 1 && item.text !== monthMetaLegendLabel) return true;
                   return item.datasetIndex === 1;
                 }
               }
@@ -9366,6 +9367,10 @@ document.addEventListener("DOMContentLoaded", function() {
     return selectedYears.indexOf(getNcRecordYear(nc)) !== -1;
   }
 
+  function getNcMonthFilterYear() {
+    return (typeof _ncMonthFilter === 'string' && /^\d{4}-\d{2}$/.test(_ncMonthFilter)) ? _ncMonthFilter.slice(0, 4) : '';
+  }
+
   function refreshNcYearFilterOptions() {
     var optionsWrap = document.getElementById('ncYearFilterOptions');
     var label = document.getElementById('ncYearFilterLabel');
@@ -9395,7 +9400,8 @@ document.addEventListener("DOMContentLoaded", function() {
         var nextYears = getSelectedNcYears().filter(function(y) { return y !== input.value; });
         if (input.checked) nextYears.push(input.value);
         _ncYearFilter = nextYears.sort(function(a, b) { return b.localeCompare(a); });
-        if (_ncMonthFilter && hasSelectedNcYears() && !isNcYearSelected(_ncMonthFilter.slice(0, 4))) {
+        var activeMonthYear = getNcMonthFilterYear();
+        if (activeMonthYear && hasSelectedNcYears() && !isNcYearSelected(activeMonthYear)) {
           _ncMonthFilter = null;
           _updateMonthFilterChip();
         }
@@ -9418,6 +9424,9 @@ document.addEventListener("DOMContentLoaded", function() {
     var wrap = document.getElementById('ncBuilderYearColors');
     var typeEl = document.getElementById('ncBuilderType');
     if (!row || !wrap || !typeEl) return;
+    if (!def && _ncBuilderEditId) {
+      def = _ncCustomCharts.find(function(chartDef) { return chartDef.id === _ncBuilderEditId; }) || null;
+    }
     var years = getSelectedNcYears();
     var supportsSeries = years.length > 1 && typeEl.value !== 'pie' && typeEl.value !== 'doughnut';
     row.style.display = supportsSeries ? '' : 'none';
