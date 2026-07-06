@@ -1031,6 +1031,9 @@
     .nc-situacao-select.sit-alerta     { border-color:#ef4444; color:#f87171; background:rgba(239,68,68,.15); }
     /* Payment status mini-badge inside NC card */
     .nc-card-payment-status { display:inline-block; margin-top:6px; font-size:10px; font-weight:800; padding:2px 8px; border-radius:99px; letter-spacing:.04em; background:rgba(255,255,255,.1); color:#e5e7eb; border:1px solid rgba(255,255,255,.2); }
+    .nc-card-payment-status.pay-status-paid    { background:rgba(22,163,74,.2);  color:#4ade80; border-color:rgba(22,163,74,.5); }
+    .nc-card-payment-status.pay-status-pending { background:rgba(249,115,22,.2); color:#fb923c; border-color:rgba(249,115,22,.5); }
+    .nc-card-payment-status.pay-status-none    { background:rgba(239,68,68,.2);  color:#f87171; border-color:rgba(239,68,68,.5); }
     /* Atenção badge — shown on NC card when attention flag is set */
     .nc-card-atencao-badge { position:absolute; top:8px; right:8px; background:#f97316; color:#fff; border-radius:20px; font-size:11px; font-weight:800; padding:3px 8px; display:flex; align-items:center; gap:4px; box-shadow:0 2px 8px rgba(249,115,22,.5); z-index:10; letter-spacing:.04em; pointer-events:none; animation:nc-atencao-pulse 2s infinite; }
     /* Evidências de contenção badge — shown on NC card when contencaoEnviada flag is set */
@@ -9554,8 +9557,8 @@ document.addEventListener("DOMContentLoaded", function() {
       var ncNegotiationSummary = getNcNegotiationSummaryByNcId(nc.id);
       var paymentStatusText = escHtml(ncNegotiationSummary.paymentStatus || '—');
       var payBadgeHtml = ncNegotiationSummary.count === 0
-        ? '<span class="nc-card-payment-status">' + escHtml(NC_COST_STATUS_LABEL_NONE) + '</span>'
-        : '<span class="nc-card-payment-status">' + escHtml(NC_COST_STATUS_LABEL) + paymentStatusText + '</span>';
+        ? '<span class="nc-card-payment-status pay-status-none">' + escHtml(NC_COST_STATUS_LABEL_NONE) + '</span>'
+        : '<span class="nc-card-payment-status ' + (ncNegotiationSummary.paymentStatus === 'Pago' ? 'pay-status-paid' : 'pay-status-pending') + '">' + escHtml(NC_COST_STATUS_LABEL) + paymentStatusText + '</span>';
       return '<div class="nc-card' + naoProcClass + payClass + '" data-nc-id="' + nc.id + '">' +
         naoProcBadge +
         atencaoBadge +
