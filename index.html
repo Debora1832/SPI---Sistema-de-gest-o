@@ -1284,12 +1284,25 @@
     /* ── NC cost negotiation detail popup ─────────────────────────────────── */
     .nc-cost-card-list { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:12px; }
     .nc-cost-item-card {
-      border:1px solid #e5e7eb; border-radius:12px; background:#fff; padding:14px;
+      border:1px solid #e5e7eb; border-radius:12px; background:#fff; padding:0;
       display:flex; flex-direction:column; gap:12px; box-shadow:0 2px 8px rgba(15,23,42,.04);
       transition:transform .15s, box-shadow .15s, border-color .15s; position:relative;
     }
+    .nc-cost-item-head {
+      display:flex; align-items:center; justify-content:space-between; gap:8px;
+      padding:10px 14px; border-radius:12px 12px 0 0; border-bottom:1px solid rgba(255,255,255,.35);
+      font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase;
+    }
+    .nc-cost-item-head-label { color:#fff; }
+    .nc-cost-item-head-status {
+      padding:2px 8px; border-radius:999px; font-size:10px; font-weight:800;
+      background:rgba(255,255,255,.9); color:#0f172a;
+    }
+    .nc-cost-item-card.nc-cost-finalizado .nc-cost-item-head { background:#16a34a; }
+    .nc-cost-item-card.nc-cost-aberto .nc-cost-item-head { background:#f97316; }
+    .nc-cost-item-card.nc-cost-alerta .nc-cost-item-head { background:#ef4444; }
     .nc-cost-card-nc-thumb {
-      position:absolute; top:10px; right:10px; width:78px; height:78px;
+      position:absolute; top:46px; right:10px; width:78px; height:78px;
       object-fit:cover; border-radius:8px; border:2px solid #e5e7eb;
       background:#f3f4f6; cursor:zoom-in; z-index:1;
     }
@@ -1318,7 +1331,7 @@
       border-color:#cbd5e1;
       box-shadow:0 8px 20px rgba(15,23,42,.08);
     }
-    .nc-cost-item-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px 14px; }
+    .nc-cost-item-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px 14px; padding:0 14px; }
     .nc-cost-item-field { display:flex; flex-direction:column; gap:4px; min-width:0; }
     .nc-cost-item-field.full { grid-column:1 / -1; }
     .nc-cost-item-field label {
@@ -1327,10 +1340,10 @@
     .nc-cost-item-value {
       font-size:13px; color:#0f172a; font-weight:500; white-space:pre-wrap; word-break:break-word;
     }
-    .nc-cost-item-actions { display:flex; gap:8px; flex-wrap:wrap; padding-top:2px; }
-    .nc-cost-item-card.nc-cost-finalizado { border-width:2px; border-color:#16a34a; box-shadow:0 4px 16px rgba(22,163,74,.25); background:rgba(22,163,74,.07); }
-    .nc-cost-item-card.nc-cost-aberto     { border-width:2px; border-color:#f97316; box-shadow:0 4px 16px rgba(249,115,22,.25); background:rgba(249,115,22,.07); }
-    .nc-cost-item-card.nc-cost-alerta     { border-width:2px; border-color:#ef4444; box-shadow:0 4px 16px rgba(239,68,68,.3);  background:rgba(239,68,68,.07); }
+    .nc-cost-item-actions { display:flex; gap:8px; flex-wrap:wrap; padding:2px 14px 14px; }
+    .nc-cost-item-card.nc-cost-finalizado { border-width:2px; border-color:#22c55e; box-shadow:0 4px 16px rgba(22,163,74,.18); }
+    .nc-cost-item-card.nc-cost-aberto     { border-width:2px; border-color:#fb923c; box-shadow:0 4px 16px rgba(249,115,22,.16); }
+    .nc-cost-item-card.nc-cost-alerta     { border-width:2px; border-color:#f87171; box-shadow:0 4px 16px rgba(239,68,68,.18); }
     .btn-icon {
       background:#f3f6f0; color:#374151; border:1px solid #c8ddc3;
       border-radius:6px; padding:4px 10px; font-size:11px; font-weight:600;
@@ -1646,6 +1659,12 @@
     }
     .home-cost-filters select:focus { border-color:#0D2461; box-shadow:0 0 0 3px rgba(13,36,97,.14); }
     .nc-cost-controls { display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; }
+    .nc-cost-search {
+      min-width:260px; padding:9px 12px; border-radius:10px; border:1px solid #cbd5e1;
+      background:#fff; color:#0f172a; font-size:13px; font-weight:500; outline:none;
+      box-shadow:0 1px 2px rgba(15,23,42,.04);
+    }
+    .nc-cost-search:focus { border-color:#0D2461; box-shadow:0 0 0 3px rgba(13,36,97,.14); }
     .nc-cost-filters { display:flex; gap:10px; flex-wrap:wrap; }
     .nc-cost-filters label { display:flex; flex-direction:column; gap:6px; font-size:12px; font-weight:700; color:#334155; }
     .nc-cost-filters select {
@@ -2168,6 +2187,7 @@
             </select>
           </label>
         </div>
+        <input type="text" id="ncCostSearchInput" class="nc-cost-search" placeholder="Pesquisar por NC, peça ou valor" autocomplete="off" />
         <button class="btn-primary" id="ncCostExportPdfBtn" style="margin-top:4px;">
           <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a6 6 0 00-6 6v3.586L2.293 13.293a1 1 0 101.414 1.414L5 13.414V16a2 2 0 002 2h6a2 2 0 002-2v-2.586l1.293 1.293a1 1 0 001.414-1.414L16 11.586V8a6 6 0 00-6-6zm1 8V5a1 1 0 10-2 0v5H6l4 4 4-4h-3z"/></svg>
           Exportar PDF
@@ -5070,6 +5090,7 @@ document.addEventListener("DOMContentLoaded", function() {
       ncCostPageFilters.userTouched = false;
       ncCostPageFilters.month = 'all';
       ncCostPageFilters.year = 'all';
+      ncCostPageFilters.search = '';
       renderNcCostPage();
       renderHomePage();
     }).catch(function(e) { console.warn('Erro ao carregar custos NC:', e); });
@@ -5490,14 +5511,13 @@ document.addEventListener("DOMContentLoaded", function() {
       return (b.date || '').localeCompare(a.date || '');
     });
     titleEl.textContent = (map[kind] || 'Detalhes') + ' — ' + (scopeLabel || 'Negociações');
-    thead.innerHTML = '<th>#</th><th>Data de lançamento</th><th>Cliente</th><th>NC</th><th>Tipo</th><th>Etapa atual</th><th>Valor cobrado</th><th>Atual / negociado</th><th>Economia</th>';
+    thead.innerHTML = '<th>#</th><th>Cliente</th><th>NC</th><th>Tipo</th><th>Etapa atual</th><th>Valor cobrado</th><th>Atual / negociado</th><th>Economia</th>';
     tbody.innerHTML = list.length ? list.map(function(rec, idx) {
       var charged = Number(rec && rec.chargedValue) || 0;
       var current = getNcCostCurrentValue(rec);
       var savings = Math.max(0, charged - current);
       return '<tr class="nc-cost-row-clickable" data-metricpopup-costid="' + escHtml(rec.id || '') + '">' +
         '<td>' + (idx + 1) + '</td>' +
-        '<td>' + escHtml(getNcCostEffectiveDate(rec) ? ncFmtDate(getNcCostEffectiveDate(rec)) : '—') + '</td>' +
         '<td>' + escHtml(rec._tenantLabel || ((TENANTS[currentTenant] && TENANTS[currentTenant].label) || '—')) + '</td>' +
         '<td>' + escHtml(getNcCostLinkedLabel(rec)) + '</td>' +
         '<td>' + escHtml(getNcCostKindLabel(rec)) + '</td>' +
@@ -5506,7 +5526,7 @@ document.addEventListener("DOMContentLoaded", function() {
         '<td>' + escHtml(formatCurrencyBRL(current)) + '</td>' +
         '<td>' + escHtml(formatCurrencyBRL(savings)) + '</td>' +
       '</tr>';
-    }).join('') : '<tr><td colspan="9" style="text-align:center;color:#6b7280;">Nenhum registro encontrado para este indicador.</td></tr>';
+    }).join('') : '<tr><td colspan="8" style="text-align:center;color:#6b7280;">Nenhum registro encontrado para este indicador.</td></tr>';
     tbody.querySelectorAll('[data-metricpopup-costid]').forEach(function(tr) {
       var costId = tr.getAttribute('data-metricpopup-costid');
       if (!costId) return;
@@ -6480,6 +6500,7 @@ document.addEventListener("DOMContentLoaded", function() {
           ncCostPageFilters.userTouched = false;
           ncCostPageFilters.month = 'all';
           ncCostPageFilters.year = 'all';
+          ncCostPageFilters.search = '';
           renderNcCostPage();
           renderHomePage();
         })
@@ -7029,7 +7050,7 @@ document.addEventListener("DOMContentLoaded", function() {
   var _ncDetailCurrent = null; // nc record shown in detail popup
   var _ncCurrentFilteredRecords = [];
   var ncCostRecords = [];
-  var ncCostPageFilters = { month:'all', year:'all', userTouched:false };
+  var ncCostPageFilters = { month:'all', year:'all', search:'', userTouched:false };
   var _ncCostBarChart = null;
   var _ncCostEvidence = [];
   var _editingNcCostId = null;
@@ -10256,18 +10277,18 @@ document.addEventListener("DOMContentLoaded", function() {
         className: cost.missionFinalizedStatus
       };
     }
-    if (cost.notaEmitidaStatus !== 'completed') {
-      return {
-        label: 'Nota emitida',
-        status: getNcCostWorkflowStatusLabel(cost.notaEmitidaStatus),
-        className: cost.notaEmitidaStatus
-      };
-    }
     if (cost.gedStatus !== 'completed') {
       return {
         label: 'GED solicitado',
         status: getNcCostWorkflowStatusLabel(cost.gedStatus),
         className: cost.gedStatus
+      };
+    }
+    if (cost.notaEmitidaStatus !== 'completed') {
+      return {
+        label: 'Nota emitida',
+        status: getNcCostWorkflowStatusLabel(cost.notaEmitidaStatus),
+        className: cost.notaEmitidaStatus
       };
     }
     return {
@@ -10304,16 +10325,16 @@ document.addEventListener("DOMContentLoaded", function() {
         className: (cost && cost.missionFinalizedStatus) || 'open'
       },
       {
-        label: 'Nota emitida',
-        date: cost && cost.notaEmitidaDate,
-        status: getNcCostWorkflowStatusLabel(cost && cost.notaEmitidaStatus),
-        className: (cost && cost.notaEmitidaStatus) || 'open'
-      },
-      {
         label: 'GED solicitado',
         date: cost && cost.gedDate,
         status: getNcCostWorkflowStatusLabel(cost && cost.gedStatus),
         className: (cost && cost.gedStatus) || 'open'
+      },
+      {
+        label: 'Nota emitida',
+        date: cost && cost.notaEmitidaDate,
+        status: getNcCostWorkflowStatusLabel(cost && cost.notaEmitidaStatus),
+        className: (cost && cost.notaEmitidaStatus) || 'open'
       },
       {
         label: 'Pagamento programado / realizado',
@@ -10415,7 +10436,6 @@ document.addEventListener("DOMContentLoaded", function() {
         '<div class="nc-cost-detail-card-body">' +
           '<div class="nc-cost-detail-fields">' +
             '<div class="nc-cost-detail-field"><label>Data do registro</label><span>' + escHtml(ncFmtDate(rec.date) || '—') + '</span></div>' +
-            '<div class="nc-cost-detail-field"><label>Data do lançamento</label><span class="nc-cost-payment-date-value">' + escHtml(getNcCostEffectiveDate(rec) ? ncFmtDate(getNcCostEffectiveDate(rec)) : '—') + '</span></div>' +
             '<div class="nc-cost-detail-field"><label>Tipo</label><span>' + escHtml(getNcCostKindLabel(rec)) + '</span></div>' +
             '<div class="nc-cost-detail-field"><label>Valor cobrado</label><span>' + escHtml(formatCurrencyBRL(rec.chargedValue)) + '</span></div>' +
             '<div class="nc-cost-detail-field"><label>Valor negociado</label><span>' + escHtml(rec.negotiatedValue != null ? formatCurrencyBRL(rec.negotiatedValue) : '—') + '</span></div>' +
@@ -10468,14 +10488,35 @@ document.addEventListener("DOMContentLoaded", function() {
     }
   }
 
+  function getNcCostSearchText(rec) {
+    var linkedNc = rec && rec.linkedNcId ? (ncRecords || []).find(function(nc) { return nc.id === rec.linkedNcId; }) : null;
+    var charged = Number(rec && rec.chargedValue);
+    var negotiated = rec && rec.negotiatedValue != null ? Number(rec.negotiatedValue) : null;
+    var numericTokens = [
+      Number.isFinite(charged) ? charged.toFixed(2) : '',
+      Number.isFinite(negotiated) ? negotiated.toFixed(2) : ''
+    ];
+    return [
+      getNcCostLinkedLabel(rec),
+      linkedNc ? (linkedNc.ncNumber || linkedNc.id || '') : '',
+      linkedNc ? (linkedNc.piece || '') : '',
+      rec ? (rec.linkedNcNumber || '') : '',
+      rec ? formatCurrencyBRL(rec.chargedValue) : '',
+      rec && rec.negotiatedValue != null ? formatCurrencyBRL(rec.negotiatedValue) : '',
+      numericTokens.join(' ')
+    ].join(' ').toLowerCase();
+  }
+
   function getFilteredNcCostRecords(extraFilters) {
     var filters = Object.assign({
       month: ncCostPageFilters.month || 'all',
       year: ncCostPageFilters.year || 'all',
+      search: ncCostPageFilters.search || '',
       status: 'all',
       type: 'all',
       savingsOnly: false
     }, extraFilters || {});
+    var searchQuery = String(filters.search || '').trim().toLowerCase();
     return (ncCostRecords || []).filter(function(rec) {
       if (!matchesNcCostPeriod(rec, filters.month, filters.year)) return false;
       if (filters.status === 'open' && !rec.negotiationOpen) return false;
@@ -10490,6 +10531,7 @@ document.addEventListener("DOMContentLoaded", function() {
         var charged = Number(rec && rec.chargedValue) || 0;
         if (charged <= getNcCostCurrentValue(rec)) return false;
       }
+      if (searchQuery && !getNcCostSearchText(rec).includes(searchQuery)) return false;
       return true;
     });
   }
@@ -10543,6 +10585,7 @@ document.addEventListener("DOMContentLoaded", function() {
     var listBody = document.getElementById('ncCostCardContainer');
     var monthSelect = document.getElementById('ncCostMonthFilter');
     var yearSelect = document.getElementById('ncCostYearFilter');
+    var searchInput = document.getElementById('ncCostSearchInput');
     if (!listBody || !monthSelect || !yearSelect) return;
 
     var allRecords = withNcCostTenantLabel(ncCostRecords || [], currentTenant);
@@ -10558,6 +10601,9 @@ document.addEventListener("DOMContentLoaded", function() {
     yearSelect.innerHTML = ['<option value="all">Todos</option>'].concat(availableYears.map(function(year) {
       return '<option value="' + year + '"' + (year === ncCostPageFilters.year ? ' selected' : '') + '>' + year + '</option>';
     })).join('');
+    if (searchInput && searchInput.value !== (ncCostPageFilters.search || '')) {
+      searchInput.value = ncCostPageFilters.search || '';
+    }
 
     var filteredRecords = getFilteredNcCostRecords();
     filteredRecords = withNcCostTenantLabel(filteredRecords, currentTenant);
@@ -10609,6 +10655,7 @@ document.addEventListener("DOMContentLoaded", function() {
       var paymentStatus = getNcCostPaymentStatus(rec);
       var paymentBadgeClass = getNcCostPaymentBadgeClass(rec);
       var currentStage = getNcCostCurrentStageInfo(rec);
+      var linkedLabel = getNcCostLinkedLabel(rec);
       card.setAttribute('aria-label', 'Abrir detalhes de custo');
 
       /* first photo of the linked NC */
@@ -10625,19 +10672,25 @@ document.addEventListener("DOMContentLoaded", function() {
 
       var gridExtraClass = firstPhotoSrc ? ' nc-cost-item-grid-has-thumb' : '';
       var alertaBtnClass = 'btn-icon btn-alerta' + (rec.alerta ? ' active' : '');
+      var headerLabel = isAdministrativeNcCost(rec)
+        ? 'Administrativo'
+        : ((linkedLabel && linkedLabel !== '—') ? ('NC ' + linkedLabel) : 'NC sem vínculo');
       card.innerHTML =
+        '<div class="nc-cost-item-head">' +
+          '<span class="nc-cost-item-head-label">' + escHtml(headerLabel) + '</span>' +
+          '<span class="nc-cost-item-head-status">' + escHtml(paymentStatus) + '</span>' +
+        '</div>' +
         thumbHtml +
         '<div class="nc-cost-item-grid' + gridExtraClass + '">' +
           '<div class="nc-cost-item-field"><label>Data</label><div class="nc-cost-item-value">' + escHtml(rec.date || '—') + '</div></div>' +
           '<div class="nc-cost-item-field"><label>Tipo</label><div class="nc-cost-item-value">' + escHtml(getNcCostKindLabel(rec)) + '</div></div>' +
-          '<div class="nc-cost-item-field"><label>NC vinculada</label><div class="nc-cost-item-value">' + escHtml(getNcCostLinkedLabel(rec)) + '</div></div>' +
+          '<div class="nc-cost-item-field"><label>NC vinculada</label><div class="nc-cost-item-value">' + escHtml(linkedLabel) + '</div></div>' +
           '<div class="nc-cost-item-field"><label>Evidências</label><div class="nc-cost-item-value">' + escHtml(String((rec.evidences || []).length)) + '</div></div>' +
           '<div class="nc-cost-item-field full"><label>Descrição</label><div class="nc-cost-item-value">' + escHtml(rec.description || '—') + '</div></div>' +
           '<div class="nc-cost-item-field"><label>Valor cobrado</label><div class="nc-cost-item-value">' + escHtml(formatCurrencyBRL(rec.chargedValue)) + '</div></div>' +
           '<div class="nc-cost-item-field"><label>Valor negociado</label><div class="nc-cost-item-value">' + escHtml(rec.negotiatedValue != null ? formatCurrencyBRL(rec.negotiatedValue) : '—') + '</div></div>' +
           '<div class="nc-cost-item-field"><label>Etapa atual</label><div class="nc-cost-item-value"><span class="nc-cost-stage-status ' + currentStage.className + '">' + escHtml(currentStage.label) + '</span></div></div>' +
           '<div class="nc-cost-item-field"><label>Status pagamento</label><div class="nc-cost-item-value"><span class="nc-cost-payment-badge ' + paymentBadgeClass + '">' + escHtml(paymentStatus) + '</span></div></div>' +
-          '<div class="nc-cost-item-field full"><label>Data do lançamento</label><div class="nc-cost-item-value">' + (getNcCostEffectiveDate(rec) ? '<span class="nc-cost-payment-date-value">' + escHtml(ncFmtDate(getNcCostEffectiveDate(rec))) + '</span>' : '<span style="color:#9ca3af">—</span>') + '</div></div>' +
           '<div class="nc-cost-item-field full"><label>' + escHtml(getNcCostWorkflowTitle(rec)) + '</label>' + renderNcCostWorkflowHtml(rec) + '</div>' +
         '</div>' +
         '<div class="nc-cost-item-actions">' +
@@ -10834,7 +10887,6 @@ document.addEventListener("DOMContentLoaded", function() {
       var savings = Math.max(0, charged - current);
       return '<tr>' +
         '<td>' + (idx + 1) + '</td>' +
-        '<td>' + escHtml(getNcCostEffectiveDate(rec) ? ncFmtDate(getNcCostEffectiveDate(rec)) : '—') + '</td>' +
         '<td>' + escHtml(getNcCostLinkedLabel(rec)) + '</td>' +
         '<td>' + escHtml(getNcCostKindLabel(rec)) + '</td>' +
         '<td>' + escHtml(getNcCostCurrentStageDisplay(rec)) + '</td>' +
@@ -10842,7 +10894,7 @@ document.addEventListener("DOMContentLoaded", function() {
         '<td>' + escHtml(formatCurrencyBRL(current)) + '</td>' +
         '<td>' + escHtml(formatCurrencyBRL(savings)) + '</td>' +
       '</tr>';
-    }).join('') : '<tr><td colspan="8" style="text-align:center;color:#6b7280;">Nenhum registro encontrado para os filtros selecionados.</td></tr>';
+    }).join('') : '<tr><td colspan="7" style="text-align:center;color:#6b7280;">Nenhum registro encontrado para os filtros selecionados.</td></tr>';
     var area = document.getElementById('nc-cost-print-area');
     if (!area) return;
     area.innerHTML =
@@ -10859,7 +10911,7 @@ document.addEventListener("DOMContentLoaded", function() {
           '<div class="ncp-box"><label>Fechadas</label><strong>' + escHtml(String(summary.closedCount)) + '</strong></div>' +
         '</div>' +
         '<table class="ncp-table">' +
-          '<thead><tr><th>#</th><th>Data de lançamento</th><th>NC</th><th>Tipo</th><th>Etapa atual</th><th>Valor cobrado</th><th>Atual / negociado</th><th>Economia</th></tr></thead>' +
+          '<thead><tr><th>#</th><th>NC</th><th>Tipo</th><th>Etapa atual</th><th>Valor cobrado</th><th>Atual / negociado</th><th>Economia</th></tr></thead>' +
           '<tbody>' + rowsHtml + '</tbody>' +
         '</table>' +
       '</div>' +
@@ -11076,6 +11128,7 @@ document.addEventListener("DOMContentLoaded", function() {
       ncCostPageFilters.userTouched = false;
       ncCostPageFilters.month = 'all';
       ncCostPageFilters.year = 'all';
+      ncCostPageFilters.search = '';
       renderNcCostPage();
       renderHomePage();
     });
@@ -11084,6 +11137,7 @@ document.addEventListener("DOMContentLoaded", function() {
     if (btnNew) btnNew.addEventListener('click', function() { openNcCostModal(null); });
     var monthFilter = document.getElementById('ncCostMonthFilter');
     var yearFilter = document.getElementById('ncCostYearFilter');
+    var searchFilter = document.getElementById('ncCostSearchInput');
     if (monthFilter && !monthFilter.dataset.bound) {
       monthFilter.dataset.bound = '1';
       monthFilter.addEventListener('change', function() {
@@ -11097,6 +11151,13 @@ document.addEventListener("DOMContentLoaded", function() {
       yearFilter.addEventListener('change', function() {
         ncCostPageFilters.year = yearFilter.value || 'all';
         ncCostPageFilters.userTouched = true;
+        renderNcCostPage();
+      });
+    }
+    if (searchFilter && !searchFilter.dataset.bound) {
+      searchFilter.dataset.bound = '1';
+      searchFilter.addEventListener('input', function() {
+        ncCostPageFilters.search = searchFilter.value || '';
         renderNcCostPage();
       });
     }
@@ -12359,17 +12420,6 @@ document.addEventListener("DOMContentLoaded", function() {
             <option value="completed">Concluído</option>
           </select>
         </div>
-        <div class="nc-field" id="ncCostNotaEmitidaDateWrap">
-          <label>Nota emitida</label>
-          <input type="date" id="ncCostNotaEmitidaDate" />
-        </div>
-        <div class="nc-field" id="ncCostNotaEmitidaStatusWrap">
-          <label>Status Nota emitida</label>
-          <select id="ncCostNotaEmitidaStatus">
-            <option value="open">Em aberto</option>
-            <option value="completed">Concluído</option>
-          </select>
-        </div>
         <div class="nc-field" id="ncCostGedDateWrap">
           <label>GED solicitado</label>
           <input type="date" id="ncCostGedDate" />
@@ -12377,6 +12427,17 @@ document.addEventListener("DOMContentLoaded", function() {
         <div class="nc-field" id="ncCostGedStatusWrap">
           <label>Status GED solicitado</label>
           <select id="ncCostGedStatus">
+            <option value="open">Em aberto</option>
+            <option value="completed">Concluído</option>
+          </select>
+        </div>
+        <div class="nc-field" id="ncCostNotaEmitidaDateWrap">
+          <label>Nota emitida</label>
+          <input type="date" id="ncCostNotaEmitidaDate" />
+        </div>
+        <div class="nc-field" id="ncCostNotaEmitidaStatusWrap">
+          <label>Status Nota emitida</label>
+          <select id="ncCostNotaEmitidaStatus">
             <option value="open">Em aberto</option>
             <option value="completed">Concluído</option>
           </select>
