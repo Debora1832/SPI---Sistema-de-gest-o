@@ -2187,7 +2187,7 @@
             </select>
           </label>
         </div>
-        <input type="text" id="ncCostSearchInput" class="nc-cost-search" placeholder="Pesquisar por NC, peça ou valor" autocomplete="off" aria-label="Pesquisar card de custo por NC, peça ou valor" />
+        <input type="text" id="ncCostSearchInput" class="nc-cost-search" placeholder="Pesquisar por NC, peça ou valor" autocomplete="off" aria-label="Campo de busca para filtrar cards de custo por número de NC, peça ou valor" />
         <button class="btn-primary" id="ncCostExportPdfBtn" style="margin-top:4px;">
           <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a6 6 0 00-6 6v3.586L2.293 13.293a1 1 0 101.414 1.414L5 13.414V16a2 2 0 002 2h6a2 2 0 002-2v-2.586l1.293 1.293a1 1 0 001.414-1.414L16 11.586V8a6 6 0 00-6-6zm1 8V5a1 1 0 10-2 0v5H6l4 4 4-4h-3z"/></svg>
           Exportar PDF
@@ -10512,7 +10512,7 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   function getNcCostCardHeaderLabel(rec, linkedLabel) {
-    // Exibe "Administrativo" para custos sem NC e "NC <número>" quando houver vínculo.
+    // Exibe "Administrativo" para custos sem NC e "NC <linkedLabel>" quando houver vínculo.
     if (isAdministrativeNcCost(rec)) return 'Administrativo';
     if (linkedLabel && linkedLabel !== '—') return 'NC ' + linkedLabel;
     return 'NC sem vínculo';
