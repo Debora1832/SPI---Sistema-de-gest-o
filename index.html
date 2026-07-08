@@ -10507,6 +10507,12 @@ document.addEventListener("DOMContentLoaded", function() {
     ].join(' ').toLowerCase();
   }
 
+  function getNcCostCardHeaderLabel(rec, linkedLabel) {
+    if (isAdministrativeNcCost(rec)) return 'Administrativo';
+    if (linkedLabel && linkedLabel !== '—') return 'NC ' + linkedLabel;
+    return 'NC sem vínculo';
+  }
+
   function getFilteredNcCostRecords(extraFilters) {
     var filters = Object.assign({
       month: ncCostPageFilters.month || 'all',
@@ -10601,9 +10607,7 @@ document.addEventListener("DOMContentLoaded", function() {
     yearSelect.innerHTML = ['<option value="all">Todos</option>'].concat(availableYears.map(function(year) {
       return '<option value="' + year + '"' + (year === ncCostPageFilters.year ? ' selected' : '') + '>' + year + '</option>';
     })).join('');
-    if (searchInput && searchInput.value !== (ncCostPageFilters.search || '')) {
-      searchInput.value = ncCostPageFilters.search || '';
-    }
+    if (searchInput) searchInput.value = ncCostPageFilters.search || '';
 
     var filteredRecords = getFilteredNcCostRecords();
     filteredRecords = withNcCostTenantLabel(filteredRecords, currentTenant);
@@ -10672,9 +10676,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
       var gridExtraClass = firstPhotoSrc ? ' nc-cost-item-grid-has-thumb' : '';
       var alertaBtnClass = 'btn-icon btn-alerta' + (rec.alerta ? ' active' : '');
-      var headerLabel = isAdministrativeNcCost(rec)
-        ? 'Administrativo'
-        : ((linkedLabel && linkedLabel !== '—') ? ('NC ' + linkedLabel) : 'NC sem vínculo');
+      var headerLabel = getNcCostCardHeaderLabel(rec, linkedLabel);
       card.innerHTML =
         '<div class="nc-cost-item-head">' +
           '<span class="nc-cost-item-head-label">' + escHtml(headerLabel) + '</span>' +
