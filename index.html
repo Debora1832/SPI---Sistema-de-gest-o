@@ -2187,7 +2187,7 @@
             </select>
           </label>
         </div>
-        <input type="text" id="ncCostSearchInput" class="nc-cost-search" placeholder="Pesquisar por NC, peça ou valor" autocomplete="off" />
+        <input type="text" id="ncCostSearchInput" class="nc-cost-search" placeholder="Pesquisar por NC, peça ou valor" autocomplete="off" aria-label="Pesquisar card de custo por NC, peça ou valor" />
         <button class="btn-primary" id="ncCostExportPdfBtn" style="margin-top:4px;">
           <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a6 6 0 00-6 6v3.586L2.293 13.293a1 1 0 101.414 1.414L5 13.414V16a2 2 0 002 2h6a2 2 0 002-2v-2.586l1.293 1.293a1 1 0 001.414-1.414L16 11.586V8a6 6 0 00-6-6zm1 8V5a1 1 0 10-2 0v5H6l4 4 4-4h-3z"/></svg>
           Exportar PDF
@@ -10494,7 +10494,9 @@ document.addEventListener("DOMContentLoaded", function() {
     var negotiated = rec && rec.negotiatedValue != null ? Number(rec.negotiatedValue) : null;
     var numericTokens = [
       Number.isFinite(charged) ? charged.toFixed(2) : '',
-      Number.isFinite(negotiated) ? negotiated.toFixed(2) : ''
+      Number.isFinite(charged) ? String(charged) : '',
+      Number.isFinite(negotiated) ? negotiated.toFixed(2) : '',
+      Number.isFinite(negotiated) ? String(negotiated) : ''
     ];
     return [
       getNcCostLinkedLabel(rec),
@@ -10522,7 +10524,6 @@ document.addEventListener("DOMContentLoaded", function() {
       type: 'all',
       savingsOnly: false
     }, extraFilters || {});
-    var searchQuery = String(filters.search || '').trim().toLowerCase();
     return (ncCostRecords || []).filter(function(rec) {
       if (!matchesNcCostPeriod(rec, filters.month, filters.year)) return false;
       if (filters.status === 'open' && !rec.negotiationOpen) return false;
@@ -10537,7 +10538,7 @@ document.addEventListener("DOMContentLoaded", function() {
         var charged = Number(rec && rec.chargedValue) || 0;
         if (charged <= getNcCostCurrentValue(rec)) return false;
       }
-      if (searchQuery && !getNcCostSearchText(rec).includes(searchQuery)) return false;
+      if (filters.search && !getNcCostSearchText(rec).includes(String(filters.search).trim().toLowerCase())) return false;
       return true;
     });
   }
@@ -10592,7 +10593,7 @@ document.addEventListener("DOMContentLoaded", function() {
     var monthSelect = document.getElementById('ncCostMonthFilter');
     var yearSelect = document.getElementById('ncCostYearFilter');
     var searchInput = document.getElementById('ncCostSearchInput');
-    if (!listBody || !monthSelect || !yearSelect) return;
+    if (!listBody || !monthSelect || !yearSelect || !searchInput) return;
 
     var allRecords = withNcCostTenantLabel(ncCostRecords || [], currentTenant);
     var availableYears = Array.from(new Set(allRecords.map(function(rec) {
@@ -10607,7 +10608,7 @@ document.addEventListener("DOMContentLoaded", function() {
     yearSelect.innerHTML = ['<option value="all">Todos</option>'].concat(availableYears.map(function(year) {
       return '<option value="' + year + '"' + (year === ncCostPageFilters.year ? ' selected' : '') + '>' + year + '</option>';
     })).join('');
-    if (searchInput) searchInput.value = ncCostPageFilters.search || '';
+    searchInput.value = ncCostPageFilters.search || '';
 
     var filteredRecords = getFilteredNcCostRecords();
     filteredRecords = withNcCostTenantLabel(filteredRecords, currentTenant);
