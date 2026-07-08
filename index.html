@@ -2186,6 +2186,16 @@
               <option value="all">Todos</option>
             </select>
           </label>
+          <label>Fluxo de pagamento
+            <select id="ncCostPaymentStatusFilter">
+              <option value="all">Todos</option>
+              <option value="Pendente">Pendente</option>
+              <option value="Programado">Programado</option>
+              <option value="Pago">Pago</option>
+              <option value="Pago (Reembolsada)">Pago (Reembolsada)</option>
+              <option value="Custo assumido pelo cliente">Assumido pelo cliente</option>
+            </select>
+          </label>
         </div>
         <input type="text" id="ncCostSearchInput" class="nc-cost-search" placeholder="Pesquisar por NC, peça ou valor" autocomplete="off" aria-label="Campo de busca para filtrar cards de custo por número de NC, peça ou valor" />
         <button class="btn-primary" id="ncCostExportPdfBtn" style="margin-top:4px;">
@@ -5091,6 +5101,7 @@ document.addEventListener("DOMContentLoaded", function() {
       ncCostPageFilters.month = 'all';
       ncCostPageFilters.year = 'all';
       ncCostPageFilters.search = '';
+      ncCostPageFilters.paymentStatus = 'all';
       renderNcCostPage();
       renderHomePage();
     }).catch(function(e) { console.warn('Erro ao carregar custos NC:', e); });
@@ -6501,6 +6512,7 @@ document.addEventListener("DOMContentLoaded", function() {
           ncCostPageFilters.month = 'all';
           ncCostPageFilters.year = 'all';
           ncCostPageFilters.search = '';
+          ncCostPageFilters.paymentStatus = 'all';
           renderNcCostPage();
           renderHomePage();
         })
@@ -7050,7 +7062,7 @@ document.addEventListener("DOMContentLoaded", function() {
   var _ncDetailCurrent = null; // nc record shown in detail popup
   var _ncCurrentFilteredRecords = [];
   var ncCostRecords = [];
-  var ncCostPageFilters = { month:'all', year:'all', search:'', userTouched:false };
+  var ncCostPageFilters = { month:'all', year:'all', search:'', paymentStatus:'all', userTouched:false };
   var _ncCostBarChart = null;
   var _ncCostEvidence = [];
   var _editingNcCostId = null;
@@ -9471,6 +9483,12 @@ document.addEventListener("DOMContentLoaded", function() {
     return !!(getNcCostPaymentResolutionType(cost) || (isAdministrativeNcCost(cost) && cost.paymentScheduledDate));
   }
 
+  function isNcCostPaymentDateFuture(cost) {
+    if (!cost || !cost.paymentScheduledDate) return false;
+    var today = new Date().toISOString().slice(0, 10);
+    return cost.paymentScheduledDate > today;
+  }
+
   function getNcCostPaymentResolutionType(cost) {
     if (!cost) return null;
     return (cost.finalizationType === 'paga' || cost.finalizationType === 'reembolsada' || cost.finalizationType === 'assumido_cliente')
@@ -10245,7 +10263,9 @@ document.addEventListener("DOMContentLoaded", function() {
   function getNcCostPaymentStatus(cost) {
     if (!cost) return 'Pendente';
     var resolutionType = getNcCostPaymentResolutionType(cost);
-    if (resolutionType === 'paga') return 'Pago';
+    if (resolutionType === 'paga') {
+      return isNcCostPaymentDateFuture(cost) ? 'Programado' : 'Pago';
+    }
     if (resolutionType === 'reembolsada') return 'Pago (Reembolsada)';
     if (resolutionType === 'assumido_cliente') return 'Custo assumido pelo cliente';
     if (isAdministrativeNcCost(cost) && cost.paymentScheduledDate) return 'Programado';
@@ -10523,6 +10543,7 @@ document.addEventListener("DOMContentLoaded", function() {
       month: ncCostPageFilters.month || 'all',
       year: ncCostPageFilters.year || 'all',
       search: ncCostPageFilters.search || '',
+      paymentStatus: ncCostPageFilters.paymentStatus || 'all',
       status: 'all',
       type: 'all',
       savingsOnly: false
@@ -10536,6 +10557,7 @@ document.addEventListener("DOMContentLoaded", function() {
       if (filters.status === 'reembolsada' && rec.finalizationType !== 'reembolsada') return false;
       if (filters.status === 'assumido_cliente' && rec.finalizationType !== 'assumido_cliente') return false;
       if (filters.status === 'finalizada' && !isNcCostPaymentCompleted(rec)) return false;
+      if (filters.paymentStatus !== 'all' && getNcCostPaymentStatus(rec) !== filters.paymentStatus) return false;
       if (filters.type !== 'all' && rec.type !== filters.type) return false;
       if (filters.savingsOnly) {
         var charged = Number(rec && rec.chargedValue) || 0;
@@ -10612,6 +10634,8 @@ document.addEventListener("DOMContentLoaded", function() {
       return '<option value="' + year + '"' + (year === ncCostPageFilters.year ? ' selected' : '') + '>' + year + '</option>';
     })).join('');
     searchInput.value = ncCostPageFilters.search || '';
+    var paymentStatusSelect = document.getElementById('ncCostPaymentStatusFilter');
+    if (paymentStatusSelect) paymentStatusSelect.value = ncCostPageFilters.paymentStatus || 'all';
 
     var filteredRecords = getFilteredNcCostRecords();
     filteredRecords = withNcCostTenantLabel(filteredRecords, currentTenant);
@@ -11135,6 +11159,7 @@ document.addEventListener("DOMContentLoaded", function() {
       ncCostPageFilters.month = 'all';
       ncCostPageFilters.year = 'all';
       ncCostPageFilters.search = '';
+      ncCostPageFilters.paymentStatus = 'all';
       renderNcCostPage();
       renderHomePage();
     });
@@ -11164,6 +11189,15 @@ document.addEventListener("DOMContentLoaded", function() {
       searchFilter.dataset.bound = '1';
       searchFilter.addEventListener('input', function() {
         ncCostPageFilters.search = searchFilter.value || '';
+        renderNcCostPage();
+      });
+    }
+    var paymentStatusFilter = document.getElementById('ncCostPaymentStatusFilter');
+    if (paymentStatusFilter && !paymentStatusFilter.dataset.bound) {
+      paymentStatusFilter.dataset.bound = '1';
+      paymentStatusFilter.addEventListener('change', function() {
+        ncCostPageFilters.paymentStatus = paymentStatusFilter.value || 'all';
+        ncCostPageFilters.userTouched = true;
         renderNcCostPage();
       });
     }
