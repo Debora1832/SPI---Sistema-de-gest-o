@@ -10492,11 +10492,13 @@ document.addEventListener("DOMContentLoaded", function() {
     var linkedNc = rec && rec.linkedNcId ? (ncRecords || []).find(function(nc) { return nc.id === rec.linkedNcId; }) : null;
     var charged = Number(rec && rec.chargedValue);
     var negotiated = rec && rec.negotiatedValue != null ? Number(rec.negotiatedValue) : null;
+    var chargedFixed = Number.isFinite(charged) ? charged.toFixed(2) : '';
+    var negotiatedFixed = Number.isFinite(negotiated) ? negotiated.toFixed(2) : '';
     var numericTokens = [
-      Number.isFinite(charged) ? charged.toFixed(2) : '',
-      Number.isFinite(charged) ? String(charged) : '',
-      Number.isFinite(negotiated) ? negotiated.toFixed(2) : '',
-      Number.isFinite(negotiated) ? String(negotiated) : ''
+      chargedFixed,
+      chargedFixed ? chargedFixed.replace('.', ',') : '',
+      negotiatedFixed,
+      negotiatedFixed ? negotiatedFixed.replace('.', ',') : ''
     ];
     return [
       getNcCostLinkedLabel(rec),
@@ -10510,6 +10512,7 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   function getNcCostCardHeaderLabel(rec, linkedLabel) {
+    // Exibe "Administrativo" para custos sem NC e "NC <número>" quando houver vínculo.
     if (isAdministrativeNcCost(rec)) return 'Administrativo';
     if (linkedLabel && linkedLabel !== '—') return 'NC ' + linkedLabel;
     return 'NC sem vínculo';
