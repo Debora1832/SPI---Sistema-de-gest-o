@@ -3111,29 +3111,51 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   }
 
-  // Reintegrate NC records that were added to ncRecords DURING an async Storage probe.
+  // Reintegrate NC records that were added or deleted DURING an async Storage probe.
   // Returns { records, changed } where records is a new array (does not mutate fbRecords).
+  //
+  // The async probe (recoverMissingNcPhotosFromStorage) can take several seconds.
+  // During that window the user may add or delete NCs. We reconcile those local
+  // changes against the Firebase snapshot so no edit is silently lost:
+  //   • Records added locally during the probe (in current but not in baseline/fb) are appended.
+  //   • Records deleted locally during the probe (in baseline but no longer in current) are
+  //     removed from the Firebase result even if Firebase still carries them (the delete write
+  //     may not have been acknowledged by Firestore yet).
   function reintegrateLocalNcRecords(fbRecords, currentNcRecords, baselineNcRecords) {
-    var merged = Array.isArray(fbRecords) ? fbRecords.slice() : [];
     var changed = false;
-    // Build the ID set directly to avoid an intermediate array from map().
-    var fbIds = new Set();
-    merged.forEach(function(r) { if (r && r.id) fbIds.add(r.id); });
-    // Only preserve records that appeared after the async probe started.
-    // This avoids reintroducing records that were deleted remotely on another device.
+
+    // Build ID sets up front.
     var baselineIds = new Set();
     (Array.isArray(baselineNcRecords) ? baselineNcRecords : []).forEach(function(baseRec) {
       if (baseRec && baseRec.id) baselineIds.add(baseRec.id);
     });
+    var currentIds = new Set();
+    (Array.isArray(currentNcRecords) ? currentNcRecords : []).forEach(function(r) {
+      if (r && r.id) currentIds.add(r.id);
+    });
+
+    // Start with Firebase records but drop any record that the user deleted locally
+    // during the async probe (present in baseline, absent from current in-memory list).
+    var merged = (Array.isArray(fbRecords) ? fbRecords : []).filter(function(r) {
+      if (!r || !r.id) return false;
+      if (baselineIds.has(r.id) && !currentIds.has(r.id)) {
+        changed = true;
+        return false; // deleted locally during the probe — exclude
+      }
+      return true;
+    });
+
+    // Add records created locally during the async probe (not in baseline, not already in fb).
+    var fbIds = new Set();
+    merged.forEach(function(r) { if (r && r.id) fbIds.add(r.id); });
     (Array.isArray(currentNcRecords) ? currentNcRecords : []).forEach(function(localRec) {
-      // fbIds.has() guards the changed flag; fbIds.add() prevents double-appending
-      // the same ID when currentNcRecords contains duplicates of each other.
       if (localRec && localRec.id && !fbIds.has(localRec.id) && !baselineIds.has(localRec.id)) {
         merged.push(localRec);
         fbIds.add(localRec.id);
         changed = true;
       }
     });
+
     return { records: merged, changed: changed };
   }
 
@@ -5857,7 +5879,7 @@ document.addEventListener("DOMContentLoaded", function() {
           : '<tr><td colspan="6" style="text-align:center;color:#6b7280;">Nenhuma ação cadastrada.</td></tr>';
       } else {
         // Show NC list
-        var records = loadNcRecords(tenantId);
+        var records = loadHomeNcRecords(tenantId);
         if (thead) thead.innerHTML =
           '<th>#</th><th>NC</th><th>Descrição</th><th>Data Abertura</th><th>Status</th>';
         tbody.innerHTML = records.length
