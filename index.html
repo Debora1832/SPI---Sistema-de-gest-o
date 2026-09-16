@@ -11466,12 +11466,12 @@ document.addEventListener("DOMContentLoaded", function() {
           return;
         }
         var previousLinkedNcId = '';
+        var previousRedirectedToThirdPartyInspection = false;
         if (_editingNcCostId) {
           var existingRecord = (ncCostRecords || []).find(function(item) { return item.id === _editingNcCostId; });
           previousLinkedNcId = existingRecord ? (existingRecord.linkedNcId || '') : '';
-          var previousRedirectedToThirdPartyInspection = !!(existingRecord && existingRecord.redirectedToThirdPartyInspection);
+          previousRedirectedToThirdPartyInspection = !!(existingRecord && existingRecord.redirectedToThirdPartyInspection);
         }
-        previousRedirectedToThirdPartyInspection = typeof previousRedirectedToThirdPartyInspection === 'boolean' ? previousRedirectedToThirdPartyInspection : false;
         var selectedNc = selectedNcId ? getLinkedNcRecord({ linkedNcId: selectedNcId }) : null;
         var linkedNcChanged = previousLinkedNcId !== selectedNcId;
         var selectedType = document.getElementById('ncCostType').value || 'nc';
