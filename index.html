@@ -3738,10 +3738,7 @@ document.addEventListener("DOMContentLoaded", function() {
     if (idx === -1) return false;
     ncRecords[idx].empresaTerceiraInspecaoManual = !!nextState;
     ncRecords[idx].empresaTerceiraInspecao = !!nextState;
-    (ncCostRecords || []).forEach(function(rec) {
-      if (rec && rec.linkedNcId === ncId) rec.redirectedToThirdPartyInspection = !!nextState;
-    });
-    await Promise.all([saveNcRecords(), saveNcCostRecords()]);
+    await saveNcRecords();
     renderNcCards();
     renderNcCostPage();
     renderHomePage();
@@ -11301,9 +11298,10 @@ document.addEventListener("DOMContentLoaded", function() {
   function initNcCostPage() {
     loadNcCostCustomKinds();
     rebuildNcCostKindSelect(NC_COST_KIND_DEFAULT);
-    loadNcCostRecordsAsync(currentTenant).then(function(records) {
+    loadNcCostRecordsAsync(currentTenant).then(async function(records) {
       ncCostRecords = records;
-      syncNcThirdPartyInspectionFlagsFromCosts();
+      var syncChanged = syncNcThirdPartyInspectionFlagsFromCosts();
+      if (syncChanged) await saveNcRecords();
       ncCostPageFilters.userTouched = false;
       ncCostPageFilters.month = 'all';
       ncCostPageFilters.year = 'all';
@@ -11478,6 +11476,7 @@ document.addEventListener("DOMContentLoaded", function() {
           previousLinkedNcId = existingRecord ? (existingRecord.linkedNcId || '') : '';
         }
         var linkedNc = selectedNcId ? ncRecords.find(function(nc) { return nc.id === selectedNcId; }) : null;
+        var linkedNcChanged = previousLinkedNcId !== selectedNcId;
         var selectedType = document.getElementById('ncCostType').value || 'nc';
         var isAdministrative = isAdministrativeNcCost(selectedType);
         var negotiated = null;
@@ -11539,7 +11538,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
         var thirdPartyChanged = syncNcThirdPartyInspectionFlagsFromCosts();
         await saveNcCostRecords();
-        if (thirdPartyChanged || linkedNc || previousLinkedNcId) await saveNcRecords();
+        if (thirdPartyChanged || linkedNcChanged) await saveNcRecords();
         renderNcCards();
         renderNcCostPage();
         renderHomePage();
