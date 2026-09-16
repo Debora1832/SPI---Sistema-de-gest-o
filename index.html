@@ -3698,13 +3698,16 @@ document.addEventListener("DOMContentLoaded", function() {
   function isNcThirdPartyInspection(nc){
     if (!nc) return false;
     if (nc.empresaTerceiraInspecaoManual || nc.empresaTerceiraInspecao) return true;
-    return !!(nc.id && (ncCostRecords || []).some(function(rec) {
-      return rec && rec.linkedNcId === nc.id && rec.redirectedToThirdPartyInspection;
-    }));
+    return hasThirdPartyCostForNc(nc.id);
   }
   function getLinkedNcRecord(cost) {
     if (!cost || !cost.linkedNcId) return null;
     return (ncRecords || []).find(function(nc) { return nc.id === cost.linkedNcId; }) || null;
+  }
+  function hasThirdPartyCostForNc(ncId) {
+    return !!(ncId && (ncCostRecords || []).some(function(rec) {
+      return rec && rec.linkedNcId === ncId && rec.redirectedToThirdPartyInspection;
+    }));
   }
   function isNcCostThirdPartyInspection(cost) {
     return !!(cost && cost.redirectedToThirdPartyInspection) || isNcThirdPartyInspection(getLinkedNcRecord(cost));
@@ -3732,7 +3735,7 @@ document.addEventListener("DOMContentLoaded", function() {
     var idx = (ncRecords || []).findIndex(function(nc) { return nc.id === ncId; });
     if (idx === -1) return false;
     ncRecords[idx].empresaTerceiraInspecaoManual = !!nextState;
-    ncRecords[idx].empresaTerceiraInspecao = !!nextState;
+    ncRecords[idx].empresaTerceiraInspecao = !!nextState || hasThirdPartyCostForNc(ncId);
     await saveNcRecords();
     renderNcCards();
     renderNcCostPage();
@@ -10899,8 +10902,8 @@ document.addEventListener("DOMContentLoaded", function() {
         var id = btn.getAttribute('data-nccost-del');
         if (!confirm('Excluir o registro de custo selecionado?')) return;
         ncCostRecords = ncCostRecords.filter(function(item) { return item.id !== id; });
-        var thirdPartyChanged = syncNcThirdPartyInspectionFlagsFromCosts();
         await saveNcCostRecords();
+        var thirdPartyChanged = syncNcThirdPartyInspectionFlagsFromCosts();
         if (thirdPartyChanged) await saveNcRecords();
         renderNcCards();
         renderNcCostPage();
@@ -11533,8 +11536,8 @@ document.addEventListener("DOMContentLoaded", function() {
         }
         ncCostRecords = nextNcCostRecords;
 
-        var thirdPartyChanged = syncNcThirdPartyInspectionFlagsFromCosts();
         await saveNcCostRecords();
+        var thirdPartyChanged = syncNcThirdPartyInspectionFlagsFromCosts();
         if (thirdPartyChanged || linkedNcChanged) await saveNcRecords();
         renderNcCards();
         renderNcCostPage();
