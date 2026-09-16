@@ -9714,7 +9714,7 @@ document.addEventListener("DOMContentLoaded", function() {
         '<div class="nc-card-actions">' +
           '<button class="nc-btn-status nc-btn-rnc ' + rncActive + '" data-action="rnc_aberta">RNC Aberta</button>' +
           '<button class="nc-btn-status nc-btn-8d '  + d8Active  + '" data-action="8d_finalizado">8D Finalizado</button>' +
-          '<button class="nc-btn-status nc-btn-thirdparty ' + thirdPartyActive + '" data-action="third_party">3ª Insp.</button>' +
+          '<button class="nc-btn-status nc-btn-thirdparty ' + thirdPartyActive + '" data-action="third_party" title="Empresa terceira de inspeção" aria-label="Empresa terceira de inspeção" aria-pressed="' + (isNcThirdPartyInspection(nc) ? 'true' : 'false') + '">3ª Insp.</button>' +
           '<button class="nc-btn-pdf" data-action="export_pdf" title="Exportar PDF">PDF</button>' +
           '<button class="nc-btn-edit" data-action="edit" title="Editar NC">✎</button>' +
           '<button class="nc-btn-del" data-action="delete" title="Excluir NC">✕</button>' +
@@ -10113,7 +10113,7 @@ document.addEventListener("DOMContentLoaded", function() {
             '<textarea class="nc-detail-obs-textarea" id="ncDetailObsTextarea" placeholder="Observações…" rows="3">' + escHtml(nc.observacoes || '') + '</textarea>' +
             '<button class="nc-detail-obs-atencao-btn' + atencaoActive + '" id="ncDetailAtencaoBtn" title="Marcar atenção">⚠ Atenção</button>' +
             '<button class="nc-detail-obs-contencao-btn' + contencaoActive + '" id="ncDetailContencaoBtn" title="Evidências de contenção enviadas">📋 Contenção Enviada</button>' +
-            '<button class="nc-detail-obs-thirdparty-btn' + terceiraActive + '" id="ncDetailTerceiraBtn" title="Marcar custo redirecionado para empresa terceira">🏭 Empresa terceira</button>' +
+            '<button class="nc-detail-obs-thirdparty-btn' + terceiraActive + '" id="ncDetailTerceiraBtn" title="Marcar custo redirecionado para empresa terceira" aria-pressed="' + (isNcThirdPartyInspection(nc) ? 'true' : 'false') + '">🏭 Empresa terceira</button>' +
           '</div>' +
         '</div>';
 
@@ -10252,6 +10252,7 @@ document.addEventListener("DOMContentLoaded", function() {
             nc.empresaTerceiraInspecaoManual = !!ncRecords[idx].empresaTerceiraInspecaoManual;
             nc.empresaTerceiraInspecao = !!ncRecords[idx].empresaTerceiraInspecao;
             terceiraBtn.classList.toggle('active', isNcThirdPartyInspection(nc));
+            terceiraBtn.setAttribute('aria-pressed', isNcThirdPartyInspection(nc) ? 'true' : 'false');
             var statusRow = document.getElementById('ncDetailStatusRow');
             if (statusRow) statusRow.innerHTML = buildNcDetailStatusBadges(nc);
           }
@@ -10275,6 +10276,13 @@ document.addEventListener("DOMContentLoaded", function() {
       statusBadges = '<span class="nc-detail-status-badge nc-detail-status-none">○ Em aberto</span>';
     }
     return statusBadges;
+  }
+  function getNcStatusSummaryText(nc) {
+    var labels = [];
+    if (nc && nc.rncAberta) labels.push('RNC Aberta');
+    if (nc && nc.d8Finalizado) labels.push('8D Finalizado');
+    if (isNcThirdPartyInspection(nc)) labels.push('Empresa terceira de inspeção');
+    return labels.length ? labels.join(' • ') : 'Em aberto';
   }
 
   // ── PDF export via window.print() ────────────────────────────────────────
@@ -10553,7 +10561,7 @@ document.addEventListener("DOMContentLoaded", function() {
               '<div class="nc-cost-detail-field"><label>Cliente</label><span>' + escHtml(linkedNc.customer || '—') + '</span></div>' +
               '<div class="nc-cost-detail-field"><label>Peça</label><span>' + escHtml(linkedNc.piece || '—') + '</span></div>' +
               '<div class="nc-cost-detail-field"><label>Modo de Falha</label><span>' + escHtml(linkedNc.failureMode || '—') + '</span></div>' +
-              '<div class="nc-cost-detail-field"><label>Status</label><span>' + escHtml(linkedNc.d8Finalizado ? '8D Finalizado' : (linkedNc.rncAberta ? 'RNC Aberta' : 'Em aberto')) + '</span></div>' +
+              '<div class="nc-cost-detail-field"><label>Status</label><span>' + escHtml(getNcStatusSummaryText(linkedNc)) + '</span></div>' +
               '<div class="nc-cost-detail-field"><label>Repasse</label><span>' + escHtml(isNcCostThirdPartyInspection(rec) ? 'Empresa terceira de inspeção' : 'Equipe interna') + '</span></div>' +
               '<div class="nc-cost-detail-field full"><label>Descrição</label><span>' + escHtml(linkedNc.description || '—') + '</span></div>' +
             '</div>' +
