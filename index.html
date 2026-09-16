@@ -3697,7 +3697,7 @@ document.addEventListener("DOMContentLoaded", function() {
   function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
   function isNcThirdPartyInspection(nc){
     if (!nc) return false;
-    if (nc.empresaTerceiraInspecao) return true;
+    if (nc.empresaTerceiraInspecaoManual || nc.empresaTerceiraInspecao) return true;
     return !!(nc.id && (ncCostRecords || []).some(function(rec) {
       return rec && rec.linkedNcId === nc.id && rec.redirectedToThirdPartyInspection;
     }));
@@ -3719,7 +3719,13 @@ document.addEventListener("DOMContentLoaded", function() {
     });
     var changed = false;
     (ncRecords || []).forEach(function(nc) {
-      var next = linkedByCost[nc.id] ? !!flaggedByCost[nc.id] : !!nc.empresaTerceiraInspecao;
+      var manualFlag = !!nc.empresaTerceiraInspecaoManual;
+      if (!manualFlag && typeof nc.empresaTerceiraInspecaoManual === 'undefined' && nc.empresaTerceiraInspecao) {
+        nc.empresaTerceiraInspecaoManual = true;
+        manualFlag = true;
+        changed = true;
+      }
+      var next = manualFlag || !!flaggedByCost[nc.id];
       if (!!nc.empresaTerceiraInspecao !== next) {
         nc.empresaTerceiraInspecao = next;
         changed = true;
@@ -3730,6 +3736,7 @@ document.addEventListener("DOMContentLoaded", function() {
   async function setNcThirdPartyInspectionState(ncId, nextState) {
     var idx = (ncRecords || []).findIndex(function(nc) { return nc.id === ncId; });
     if (idx === -1) return false;
+    ncRecords[idx].empresaTerceiraInspecaoManual = !!nextState;
     ncRecords[idx].empresaTerceiraInspecao = !!nextState;
     (ncCostRecords || []).forEach(function(rec) {
       if (rec && rec.linkedNcId === ncId) rec.redirectedToThirdPartyInspection = !!nextState;
@@ -12014,6 +12021,8 @@ document.addEventListener("DOMContentLoaded", function() {
           description: document.getElementById('ncDescription').value.trim(),
           rncAberta:    false,
           d8Finalizado: false,
+          empresaTerceiraInspecao: false,
+          empresaTerceiraInspecaoManual: false,
           contencaoEnviada: false,
           naoProcedente: document.getElementById('ncNaoProcedente').checked,
           photos:      _ncPhotos.slice(),
