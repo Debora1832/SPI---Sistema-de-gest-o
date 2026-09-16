@@ -3720,11 +3720,6 @@ document.addEventListener("DOMContentLoaded", function() {
     var changed = false;
     (ncRecords || []).forEach(function(nc) {
       var manualFlag = !!nc.empresaTerceiraInspecaoManual;
-      if (!manualFlag && typeof nc.empresaTerceiraInspecaoManual === 'undefined' && nc.empresaTerceiraInspecao) {
-        nc.empresaTerceiraInspecaoManual = true;
-        manualFlag = true;
-        changed = true;
-      }
       var next = manualFlag || !!flaggedByCost[nc.id];
       if (!!nc.empresaTerceiraInspecao !== next) {
         nc.empresaTerceiraInspecao = next;
@@ -11475,7 +11470,7 @@ document.addEventListener("DOMContentLoaded", function() {
           var existingRecord = (ncCostRecords || []).find(function(item) { return item.id === _editingNcCostId; });
           previousLinkedNcId = existingRecord ? (existingRecord.linkedNcId || '') : '';
         }
-        var linkedNc = selectedNcId ? ncRecords.find(function(nc) { return nc.id === selectedNcId; }) : null;
+        var selectedNc = selectedNcId ? getLinkedNcRecord({ linkedNcId: selectedNcId }) : null;
         var linkedNcChanged = previousLinkedNcId !== selectedNcId;
         var selectedType = document.getElementById('ncCostType').value || 'nc';
         var isAdministrative = isAdministrativeNcCost(selectedType);
@@ -11509,7 +11504,7 @@ document.addEventListener("DOMContentLoaded", function() {
           type: selectedType,
           costKind: document.getElementById('ncCostKind').value || NC_COST_KIND_DEFAULT,
           linkedNcId: selectedNcId,
-          linkedNcNumber: linkedNc ? (linkedNc.ncNumber || linkedNc.id || '') : '',
+          linkedNcNumber: selectedNc ? (selectedNc.ncNumber || selectedNc.id || '') : '',
           description: document.getElementById('ncCostDescription').value.trim(),
           chargedValue: charged,
           negotiatedValue: negotiated,
