@@ -7148,6 +7148,7 @@ document.addEventListener("DOMContentLoaded", function() {
   var _ncDetailCurrent = null; // nc record shown in detail popup
   var _ncCurrentFilteredRecords = [];
   var ncCostRecords = [];
+  var _ncCostRecordsHydrated = false;
   var ncCostPageFilters = { month:'all', year:'all', search:'', paymentStatus:'all', thirdParty:'all', userTouched:false };
   var _ncCostBarChart = null;
   var _ncCostEvidence = [];
@@ -11294,6 +11295,8 @@ document.addEventListener("DOMContentLoaded", function() {
     rebuildNcCostKindSelect(NC_COST_KIND_DEFAULT);
     loadNcCostRecordsAsync(currentTenant).then(function(records) {
       ncCostRecords = records;
+      _ncCostRecordsHydrated = true;
+      if ((ncRecords || []).length && syncNcThirdPartyInspectionFlagsFromCosts()) saveNcRecords();
       ncCostPageFilters.userTouched = false;
       ncCostPageFilters.month = 'all';
       ncCostPageFilters.year = 'all';
@@ -11466,7 +11469,9 @@ document.addEventListener("DOMContentLoaded", function() {
         if (_editingNcCostId) {
           var existingRecord = (ncCostRecords || []).find(function(item) { return item.id === _editingNcCostId; });
           previousLinkedNcId = existingRecord ? (existingRecord.linkedNcId || '') : '';
+          var previousRedirectedToThirdPartyInspection = !!(existingRecord && existingRecord.redirectedToThirdPartyInspection);
         }
+        previousRedirectedToThirdPartyInspection = typeof previousRedirectedToThirdPartyInspection === 'boolean' ? previousRedirectedToThirdPartyInspection : false;
         var selectedNc = selectedNcId ? getLinkedNcRecord({ linkedNcId: selectedNcId }) : null;
         var linkedNcChanged = previousLinkedNcId !== selectedNcId;
         var selectedType = document.getElementById('ncCostType').value || 'nc';
@@ -11491,6 +11496,7 @@ document.addEventListener("DOMContentLoaded", function() {
           ? paymentProgressStatus
           : null;
         var redirectedToThirdPartyInspection = !!document.getElementById('ncCostThirdPartyRedirect').checked;
+        var redirectedFlagChanged = previousRedirectedToThirdPartyInspection !== redirectedToThirdPartyInspection;
         if (!isAdministrative && paymentProgressType && !paymentProgressDate) {
           alert('Informe a data do pagamento para salvar uma conclusão de pagamento.');
           return;
@@ -11532,7 +11538,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
         await saveNcCostRecords();
         var thirdPartyChanged = recomputeNcThirdPartyInspectionForIds([previousLinkedNcId, selectedNcId]);
-        if (thirdPartyChanged || linkedNcChanged) await saveNcRecords();
+        if (thirdPartyChanged || linkedNcChanged || (!!selectedNcId && redirectedFlagChanged)) await saveNcRecords();
         renderNcCards();
         renderNcCostPage();
         renderHomePage();
@@ -11548,7 +11554,7 @@ document.addEventListener("DOMContentLoaded", function() {
     loadNcRecordsAsync(_initTenant).then(async function(records) {
       if (currentTenant !== _initTenant) return; // tenant changed while loading, discard
       ncRecords = records;
-      if (syncNcThirdPartyInspectionFlagsFromCosts()) await saveNcRecords();
+      if (_ncCostRecordsHydrated && syncNcThirdPartyInspectionFlagsFromCosts()) await saveNcRecords();
       syncNcsToGantt();
       renderNcCards();
       renderNcCharts();
