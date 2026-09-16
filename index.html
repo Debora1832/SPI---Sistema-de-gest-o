@@ -3711,12 +3711,15 @@ document.addEventListener("DOMContentLoaded", function() {
   }
   function syncNcThirdPartyInspectionFlagsFromCosts() {
     var flaggedByCost = {};
+    var linkedByCost = {};
     (ncCostRecords || []).forEach(function(rec) {
-      if (rec && rec.linkedNcId && rec.redirectedToThirdPartyInspection) flaggedByCost[rec.linkedNcId] = true;
+      if (!rec || !rec.linkedNcId) return;
+      linkedByCost[rec.linkedNcId] = true;
+      if (rec.redirectedToThirdPartyInspection) flaggedByCost[rec.linkedNcId] = true;
     });
     var changed = false;
     (ncRecords || []).forEach(function(nc) {
-      var next = !!flaggedByCost[nc.id];
+      var next = linkedByCost[nc.id] ? !!flaggedByCost[nc.id] : !!nc.empresaTerceiraInspecao;
       if (!!nc.empresaTerceiraInspecao !== next) {
         nc.empresaTerceiraInspecao = next;
         changed = true;
