@@ -3705,27 +3705,24 @@ document.addEventListener("DOMContentLoaded", function() {
       return rec && rec.linkedNcId === ncId && rec.redirectedToThirdPartyInspection;
     }));
   }
-  function isNcCostThirdPartyInspection(cost) {
-    return !!(cost && cost.redirectedToThirdPartyInspection);
-  }
-  function syncNcThirdPartyInspectionFlagsFromCosts() {
-    var flaggedByCost = {};
-    var linkedByCost = {};
-    (ncCostRecords || []).forEach(function(rec) {
-      if (!rec || !rec.linkedNcId) return;
-      linkedByCost[rec.linkedNcId] = true;
-      if (rec.redirectedToThirdPartyInspection) flaggedByCost[rec.linkedNcId] = true;
-    });
+  function recomputeNcThirdPartyInspectionForIds(ncIds) {
     var changed = false;
-    (ncRecords || []).forEach(function(nc) {
-      var manualFlag = !!nc.empresaTerceiraInspecaoManual;
-      var next = manualFlag || !!flaggedByCost[nc.id];
+    Array.from(new Set((ncIds || []).filter(Boolean))).forEach(function(ncId) {
+      var nc = (ncRecords || []).find(function(item) { return item.id === ncId; });
+      if (!nc) return;
+      var next = !!nc.empresaTerceiraInspecaoManual || hasThirdPartyCostForNc(ncId);
       if (!!nc.empresaTerceiraInspecao !== next) {
         nc.empresaTerceiraInspecao = next;
         changed = true;
       }
     });
     return changed;
+  }
+  function isNcCostThirdPartyInspection(cost) {
+    return !!(cost && cost.redirectedToThirdPartyInspection);
+  }
+  function syncNcThirdPartyInspectionFlagsFromCosts() {
+    return recomputeNcThirdPartyInspectionForIds((ncRecords || []).map(function(nc) { return nc.id; }));
   }
   async function setNcThirdPartyInspectionState(ncId, nextState) {
     var idx = (ncRecords || []).findIndex(function(nc) { return nc.id === ncId; });
@@ -10556,7 +10553,7 @@ document.addEventListener("DOMContentLoaded", function() {
               '<div class="nc-cost-detail-field"><label>Peça</label><span>' + escHtml(linkedNc.piece || '—') + '</span></div>' +
               '<div class="nc-cost-detail-field"><label>Modo de Falha</label><span>' + escHtml(linkedNc.failureMode || '—') + '</span></div>' +
               '<div class="nc-cost-detail-field"><label>Status</label><span>' + escHtml(linkedNc.d8Finalizado ? '8D Finalizado' : (linkedNc.rncAberta ? 'RNC Aberta' : 'Em aberto')) + '</span></div>' +
-              '<div class="nc-cost-detail-field"><label>Repasse</label><span>' + escHtml(isNcThirdPartyInspection(linkedNc) ? 'Empresa terceira de inspeção' : 'Equipe interna') + '</span></div>' +
+              '<div class="nc-cost-detail-field"><label>Repasse</label><span>' + escHtml(isNcCostThirdPartyInspection(rec) ? 'Empresa terceira de inspeção' : 'Equipe interna') + '</span></div>' +
               '<div class="nc-cost-detail-field full"><label>Descrição</label><span>' + escHtml(linkedNc.description || '—') + '</span></div>' +
             '</div>' +
           '</div>' +
@@ -10899,9 +10896,10 @@ document.addEventListener("DOMContentLoaded", function() {
         e.stopPropagation();
         var id = btn.getAttribute('data-nccost-del');
         if (!confirm('Excluir o registro de custo selecionado?')) return;
+        var deletedRecord = (ncCostRecords || []).find(function(item) { return item.id === id; });
         ncCostRecords = ncCostRecords.filter(function(item) { return item.id !== id; });
         await saveNcCostRecords();
-        var thirdPartyChanged = syncNcThirdPartyInspectionFlagsFromCosts();
+        var thirdPartyChanged = recomputeNcThirdPartyInspectionForIds([deletedRecord && deletedRecord.linkedNcId]);
         if (thirdPartyChanged) await saveNcRecords();
         renderNcCards();
         renderNcCostPage();
@@ -11533,7 +11531,7 @@ document.addEventListener("DOMContentLoaded", function() {
         ncCostRecords = nextNcCostRecords;
 
         await saveNcCostRecords();
-        var thirdPartyChanged = syncNcThirdPartyInspectionFlagsFromCosts();
+        var thirdPartyChanged = recomputeNcThirdPartyInspectionForIds([previousLinkedNcId, selectedNcId]);
         if (thirdPartyChanged || linkedNcChanged) await saveNcRecords();
         renderNcCards();
         renderNcCostPage();
