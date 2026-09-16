@@ -11523,13 +11523,15 @@ document.addEventListener("DOMContentLoaded", function() {
           evidences: _ncCostEvidence.slice()
         });
 
+        var nextNcCostRecords = (ncCostRecords || []).slice();
         if (_editingNcCostId) {
-          var idx = ncCostRecords.findIndex(function(item) { return item.id === _editingNcCostId; });
-          if (idx !== -1) ncCostRecords[idx] = record;
-          else ncCostRecords.push(record);
+          var idx = nextNcCostRecords.findIndex(function(item) { return item.id === _editingNcCostId; });
+          if (idx !== -1) nextNcCostRecords[idx] = record;
+          else nextNcCostRecords.push(record);
         } else {
-          ncCostRecords.push(record);
+          nextNcCostRecords.push(record);
         }
+        ncCostRecords = nextNcCostRecords;
 
         var thirdPartyChanged = syncNcThirdPartyInspectionFlagsFromCosts();
         await saveNcCostRecords();
