@@ -10254,8 +10254,9 @@ document.addEventListener("DOMContentLoaded", function() {
           if (idx !== -1) {
             var nextState = !isNcThirdPartyInspection(ncRecords[idx]);
             await setNcThirdPartyInspectionState(nc.id, nextState);
-            nc.empresaTerceiraInspecao = nextState;
-            terceiraBtn.classList.toggle('active', nextState);
+            nc.empresaTerceiraInspecaoManual = !!ncRecords[idx].empresaTerceiraInspecaoManual;
+            nc.empresaTerceiraInspecao = !!ncRecords[idx].empresaTerceiraInspecao;
+            terceiraBtn.classList.toggle('active', isNcThirdPartyInspection(nc));
             var statusRow = document.getElementById('ncDetailStatusRow');
             if (statusRow) statusRow.innerHTML = buildNcDetailStatusBadges(nc);
           }
@@ -11296,10 +11297,8 @@ document.addEventListener("DOMContentLoaded", function() {
   function initNcCostPage() {
     loadNcCostCustomKinds();
     rebuildNcCostKindSelect(NC_COST_KIND_DEFAULT);
-    loadNcCostRecordsAsync(currentTenant).then(async function(records) {
+    loadNcCostRecordsAsync(currentTenant).then(function(records) {
       ncCostRecords = records;
-      var syncChanged = syncNcThirdPartyInspectionFlagsFromCosts();
-      if (syncChanged) await saveNcRecords();
       ncCostPageFilters.userTouched = false;
       ncCostPageFilters.month = 'all';
       ncCostPageFilters.year = 'all';
@@ -11551,9 +11550,10 @@ document.addEventListener("DOMContentLoaded", function() {
     bindNcStatBalloonPopups();
     // Load NC records: try Firebase first, fall back to localStorage
     var _initTenant = currentTenant;
-    loadNcRecordsAsync(_initTenant).then(function(records) {
+    loadNcRecordsAsync(_initTenant).then(async function(records) {
       if (currentTenant !== _initTenant) return; // tenant changed while loading, discard
       ncRecords = records;
+      if (syncNcThirdPartyInspectionFlagsFromCosts()) await saveNcRecords();
       syncNcsToGantt();
       renderNcCards();
       renderNcCharts();
