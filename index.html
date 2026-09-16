@@ -1035,15 +1035,11 @@
     .nc-card-payment-status.pay-status-pending { background:rgba(249,115,22,.2); color:#fb923c; border-color:rgba(249,115,22,.5); }
     .nc-card-payment-status.pay-status-none    { background:rgba(239,68,68,.2);  color:#f87171; border-color:rgba(239,68,68,.5); }
     /* Atenção badge — shown on NC card when attention flag is set */
-    .nc-card-atencao-badge { position:absolute; top:8px; right:8px; background:#f97316; color:#fff; border-radius:20px; font-size:11px; font-weight:800; padding:3px 8px; display:flex; align-items:center; gap:4px; box-shadow:0 2px 8px rgba(249,115,22,.5); z-index:10; letter-spacing:.04em; pointer-events:none; animation:nc-atencao-pulse 2s infinite; }
+    .nc-card-badge-stack { position:absolute; top:8px; right:8px; display:flex; flex-direction:column; align-items:flex-end; gap:8px; z-index:10; }
+    .nc-card-atencao-badge { background:#f97316; color:#fff; border-radius:20px; font-size:11px; font-weight:800; padding:3px 8px; display:flex; align-items:center; gap:4px; box-shadow:0 2px 8px rgba(249,115,22,.5); letter-spacing:.04em; pointer-events:none; animation:nc-atencao-pulse 2s infinite; }
     /* Evidências de contenção badge — shown on NC card when contencaoEnviada flag is set */
-    .nc-card-contencao-badge { position:absolute; top:8px; right:8px; background:#1d4ed8; color:#fff; border-radius:20px; font-size:11px; font-weight:800; padding:3px 8px; display:flex; align-items:center; gap:4px; box-shadow:0 2px 8px rgba(29,78,216,.45); z-index:10; letter-spacing:.04em; pointer-events:none; }
-    .nc-card-terceira-badge { position:absolute; top:8px; right:8px; background:#7c3aed; color:#fff; border-radius:20px; font-size:11px; font-weight:800; padding:3px 8px; display:flex; align-items:center; gap:4px; box-shadow:0 2px 8px rgba(124,58,237,.45); z-index:10; letter-spacing:.04em; pointer-events:none; }
-    /* When both Atenção and Contenção badges are present, stack Contenção below */
-    .nc-card-atencao-badge ~ .nc-card-contencao-badge { top:44px; }
-    .nc-card-atencao-badge ~ .nc-card-terceira-badge,
-    .nc-card-contencao-badge ~ .nc-card-terceira-badge { top:44px; }
-    .nc-card-atencao-badge ~ .nc-card-contencao-badge ~ .nc-card-terceira-badge { top:80px; }
+    .nc-card-contencao-badge { background:#1d4ed8; color:#fff; border-radius:20px; font-size:11px; font-weight:800; padding:3px 8px; display:flex; align-items:center; gap:4px; box-shadow:0 2px 8px rgba(29,78,216,.45); letter-spacing:.04em; pointer-events:none; }
+    .nc-card-terceira-badge { background:#7c3aed; color:#fff; border-radius:20px; font-size:11px; font-weight:800; padding:3px 8px; display:flex; align-items:center; gap:4px; box-shadow:0 2px 8px rgba(124,58,237,.45); letter-spacing:.04em; pointer-events:none; }
     /* Não Procedente – card style */
     .nc-card.nc-nao-procedente { opacity:.55; filter:grayscale(1); }
     .nc-card.nc-nao-procedente .nc-card-body, .nc-card.nc-nao-procedente .nc-card-actions { pointer-events:auto; }
@@ -3710,7 +3706,7 @@ document.addEventListener("DOMContentLoaded", function() {
     }));
   }
   function isNcCostThirdPartyInspection(cost) {
-    return !!(cost && cost.redirectedToThirdPartyInspection) || isNcThirdPartyInspection(getLinkedNcRecord(cost));
+    return !!(cost && cost.redirectedToThirdPartyInspection);
   }
   function syncNcThirdPartyInspectionFlagsFromCosts() {
     var flaggedByCost = {};
@@ -9684,6 +9680,9 @@ document.addEventListener("DOMContentLoaded", function() {
       var atencaoBadge = nc.atencao ? '<div class="nc-card-atencao-badge">⚠ Atenção</div>' : '';
       var contencaoBadge = nc.contencaoEnviada ? '<div class="nc-card-contencao-badge">📋 Contenção Enviada</div>' : '';
       var terceiraBadge = isNcThirdPartyInspection(nc) ? '<div class="nc-card-terceira-badge">🏭 Empresa terceira</div>' : '';
+      var badgeStack = (atencaoBadge || contencaoBadge || terceiraBadge)
+        ? '<div class="nc-card-badge-stack">' + atencaoBadge + contencaoBadge + terceiraBadge + '</div>'
+        : '';
       var naoProcBadge = nc.naoProcedente ? '<div class="nc-nao-procedente-badge">✕ Não Procedente</div>' : '';
       var naoProcClass = nc.naoProcedente ? ' nc-nao-procedente' : '';
       // Payment status: check linked cost records for this NC
@@ -9696,9 +9695,7 @@ document.addEventListener("DOMContentLoaded", function() {
         : '<span class="nc-card-payment-status ' + (ncNegotiationSummary.paymentStatus === 'Pago' ? 'pay-status-paid' : 'pay-status-pending') + '">' + escHtml(NC_COST_STATUS_LABEL) + paymentStatusText + '</span>';
       return '<div class="nc-card' + naoProcClass + payClass + '" data-nc-id="' + nc.id + '">' +
         naoProcBadge +
-        atencaoBadge +
-        contencaoBadge +
-        terceiraBadge +
+        badgeStack +
         photoHtml +
         '<div class="nc-card-body">' +
           '<div class="nc-card-num">' + escHtml(nc.ncNumber || 'NC') + '</div>' +
