@@ -11538,7 +11538,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
         await saveNcCostRecords();
         var thirdPartyChanged = recomputeNcThirdPartyInspectionForIds([previousLinkedNcId, selectedNcId]);
-        if (thirdPartyChanged || linkedNcChanged || (!!selectedNcId && redirectedFlagChanged)) await saveNcRecords();
+        if (thirdPartyChanged || linkedNcChanged || (redirectedFlagChanged && (selectedNcId || previousLinkedNcId))) await saveNcRecords();
         renderNcCards();
         renderNcCostPage();
         renderHomePage();
