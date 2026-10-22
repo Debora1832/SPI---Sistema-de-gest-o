@@ -3383,6 +3383,13 @@ html body #ncStatusModalBackdrop .nc-btn-cancel-modal{background:transparent!imp
 .qxnd-aqe-hist{list-style:none;margin:0;padding:0;display:flex;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--qx-ink2)}
 .qxnd-aqe-hist li{background:var(--qx-card);border:1px solid var(--qx-line2);border-radius:6px;padding:2px 8px}
 @media (max-width:900px){.qxnd-aqe-g{grid-template-columns:1fr 1fr}}
+
+/* ── NC encerrada: card verde-claro ── */
+#ncPage .nc-card.qxc.qxc-fim{background:#14261d!important;border-color:#2c5a40!important;box-shadow:inset 0 3px 0 #5bc48c}
+#ncPage .nc-card.qxc.qxc-fim .nc-card-body,#ncPage .nc-card.qxc.qxc-fim .nc-card-actions{background:transparent!important}
+#ncPage .nc-card.qxc.qxc-fim .qxc-meta,#ncPage .nc-card.qxc.qxc-fim .qxc-custo>div,#ncPage .nc-card.qxc.qxc-fim .qxc-custo{border-color:#2c5a40!important}
+#ncPage .nc-card.qxc.qxc-fim .qxc-custo .vazio{background:rgba(91,196,140,.06)!important}
+#qxTabNc tr.qxt-fim td{background:rgba(91,196,140,.08)!important}
 </style>
 </head>
 <body>
@@ -16087,7 +16094,7 @@ async function semelhantes(nc,t,obj){
     const isk={};M6.forEach(([k])=>isk[k]=((o.d4.ishikawa||{})[k]||[]).filter(c=>c.st==="validada"||c.st==="investigar").map(c=>c.t));
     return {ncId:o.ncId,tenant:t,ncNumber:r.ncNumber||o.ncNumber,rnc:r.rncNumber||o.rncNumber,piece:r.piece||o.item,failureMode:r.failureMode,description:r.description,date:(r.date||"").slice(0,10),processo:o.d2.processo,maquina:o.d2.maquina,ishikawa:isk,porques:o.d4.porques,acoes:(o.d5.acoes||[]).filter(a=>a.acao).map(a=>({acao:a.acao,tipo:a.causa,resp:a.resp})),eficacia:o.d8&&o.d8.eficacia,fonte:"8D feito no site"}});
   const semRegistro=lista.filter(r=>r.id!==nc.id&&!hist.some(h=>h.ncId===r.id)&&!proprio.some(p=>p.ncId===r.id)).map(r=>({ncId:r.id,tenant:t,ncNumber:r.ncNumber,rnc:r.rncNumber,piece:r.piece,failureMode:r.failureMode,description:r.description,date:(r.date||"").slice(0,10),fonte:r.d8Finalizado?"8D finalizado (sem análise extraída)":"NC sem 8D registrado",semAnalise:true}));
-  const todos=[...hist.filter(h=>h.ncId!==nc.id),...proprio,...semRegistro].map(h=>{const s=similaridade(nc,ctx8,h);return Object.assign({},h,{sim:s.score,simPorque:s.porque})}).filter(h=>h.sim>=0.2);
+  const todos=[...hist.filter(h=>h.ncId!==nc.id&&!proprio.some(p=>p.ncId===h.ncId)),...proprio,...semRegistro].map(h=>{const s=similaridade(nc,ctx8,h);return Object.assign({},h,{sim:s.score,simPorque:s.porque})}).filter(h=>h.sim>=0.2);
   todos.sort((a,b)=>b.sim-a.sim);return todos;
 }
 /* biblioteca técnica por processo (hipóteses a investigar, nunca causas confirmadas) */
@@ -16263,7 +16270,7 @@ function desenhar8D(){
   const maq=ed8.maqs.find(m=>m.id===obj.d2.maquinaId);
   $("#ntxDrawerRoot").innerHTML=`<div class="scrim" data-8dfechar></div>
   <aside class="drawer ntx-8d" role="dialog" aria-modal="true" aria-label="Relatório 8D">
-   <div class="dhead d8-head"><div class="d8-id">${logo?`<span class="d8-logo" style="background:${esc(cli.logoBackground||(ed8.t==="cat"?"#202020":"#fff"))}"><img src="${e(logo)}" alt="${e(cli.label||"")}"></span>`:""}<div><div class="eyebrow">Relatório 8D · modelo oficial ${novo?"· rascunho automático":"· "+(obj.status==="concluido"?"concluído":"em andamento")}</div><h2>${e(nc.customer||cli.label||"")} · Q-note ${e(nc.ncNumber||"")}${nc.rncNumber?" · RNC "+e(nc.rncNumber):""}</h2><div class="chips" style="gap:6px"><span class="flag ${venc("d3")}">D3 até ${fdate(pz.d3)}</span><span class="flag ${venc("d4")}">D4 até ${fdate(pz.d4)}</span><span class="flag ${venc("d8")}">D8 até ${fdate(pz.d8)}</span></div></div></div><button class="ntx-btn small" type="button" data-8dfechar>Fechar</button></div>
+   <div class="dhead d8-head"><div class="d8-id">${logo?`<span class="d8-logo" style="background:${esc(cli.logoBackground||(ed8.t==="cat"?"#202020":"#fff"))}"><img src="${e(logo)}" alt="${e(cli.label||"")}"></span>`:""}<div><div class="eyebrow">Relatório 8D · modelo oficial ${novo?"· rascunho automático":"· "+(obj.status==="concluido"?"concluído":"em andamento")}</div><h2>${e(nc.customer||cli.label||"")} · Q-note ${e(nc.ncNumber||"")}${nc.rncNumber?" · RNC "+e(nc.rncNumber):""}</h2><div class="chips" style="gap:6px">${obj.status==="concluido"?`<span class="flag ok">8D concluído${obj.d8&&obj.d8.data?" em "+fdate(obj.d8.data):""}</span>${obj.importado?`<span class="flag info">Preenchido a partir do PDF do 8D finalizado</span>`:""}`:`<span class="flag ${venc("d3")}">D3 até ${fdate(pz.d3)}</span><span class="flag ${venc("d4")}">D4 até ${fdate(pz.d4)}</span><span class="flag ${venc("d8")}">D8 até ${fdate(pz.d8)}</span>`}</div></div></div><button class="ntx-btn small" type="button" data-8dfechar>Fechar</button></div>
    <nav class="d8-tabs" role="tablist">${[["d0","Capa · D0–D2"],["d3","D3 Contenção"],["d4","D4 Causa raiz"],["d5","D5–D6 Ações"],["d7","D7–D8"],["sim","Ocorrências semelhantes"]].map(([k,l])=>`<button type="button" role="tab" aria-selected="${ed8.aba===k}" data-8daba="${k}">${l}${k==="sim"&&ed8.sem.length?` <span class="d8-badge">${Math.min(8,ed8.sem.length)}</span>`:""}</button>`).join("")}</nav>
    <div class="dbody">
     <section class="sec" ${ed8.aba!=="d0"?"hidden":""}>
@@ -17016,7 +17023,7 @@ function qxCards(){
       ut.querySelectorAll("button").forEach(btn=>{const a=btn.dataset.action;if(a==="export_pdf"){btn.title="Exportar PDF";btn.innerHTML='<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm7 1.5V9h5.5zM8 13v5h1.5v-1.6h.9a1.7 1.7 0 0 0 0-3.4zm1.5 1.2h.8a.5.5 0 0 1 0 1h-.8zM13 13v5h1.6a2.5 2.5 0 0 0 0-5zm1.5 1.2h.1a1.3 1.3 0 0 1 0 2.6h-.1z"/></svg>'}if(a==="edit"){btn.title="Editar NC";btn.innerHTML='<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M3 17.3V21h3.8L17.8 9.9l-3.7-3.7zM20.7 7a1 1 0 0 0 0-1.4l-2.3-2.3a1 1 0 0 0-1.4 0l-1.8 1.8 3.7 3.7z"/></svg>'}if(a==="delete"){btn.title="Excluir NC";btn.innerHTML='<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6zM19 4h-3.5l-1-1h-5l-1 1H5v2h14z"/></svg>'}});
       tg.querySelectorAll("button").forEach(btn=>{btn.textContent={rnc_aberta:"RNC",["8d_finalizado"]:"8D",third_party:"3ª"}[btn.dataset.action]||btn.textContent;btn.title={rnc_aberta:"Marcar RNC aberta",["8d_finalizado"]:"Marcar 8D finalizado",third_party:"Sinalizar desconto da terceira"}[btn.dataset.action]||""})}
   });
-  qxTabelaNc();
+  qxTabelaNc();qxMarcarFim(k);
 }
 function qxTabelaNc(){
   const reg=document.querySelector("#ncPage .ncp-registers"),grid=document.getElementById("ncCardsGrid");if(!reg||!grid||!site())return;
@@ -17028,7 +17035,7 @@ function qxTabelaNc(){
   const ids=[...grid.querySelectorAll(".nc-card[data-nc-id]")].map(c=>c.dataset.ncId);
   if(!tb){tb=document.createElement("div");tb.id="qxTabNc";tb.className="qx-card";grid.after(tb)}
   tb.innerHTML=`<div class="qx-tabwrap"><table class="qx-tab"><thead><tr><th>NC / RNC</th><th>Peça</th><th>Modo de falha</th><th>Abertura</th><th>Situação</th><th>Prazo</th><th>Responsável</th><th class="r">Custo final</th><th class="r">Economia</th><th></th></tr></thead><tbody>${ids.map(id=>{const r=rs.find(x=>x.id===id);if(!r)return "";const I=qxNcInfo(k,r);
-    return `<tr data-qxncrow="${esc(id)}" class="${I.atraso?"late":""}"><td><b class="mono">${esc(r.ncNumber||"")}</b><div class="hint">${esc(r.rncNumber||"")}</div></td><td class="mono">${esc(r.piece||"")}</td><td>${esc(r.failureMode||"")}</td><td>${fdate(I.data)}</td><td><span class="qx-tag ${I.st[1]}">${I.st[0]}</span>${I.atraso?` <span class="qx-tag crit">${I.atraso}d atraso</span>`:""}</td><td>${I.fim?"—":fdate(I.prazo)}</td><td>${esc(I.resp)}</td><td class="r mono">${I.nts.length?brl(I.fin):"—"}</td><td class="r mono">${I.eco?brl(I.eco):"—"}</td><td><button type="button" class="qx-btn sm" data-qx8d="${k}|${esc(id)}">8D</button></td></tr>`}).join("")||`<tr><td colspan="10" class="qx-vazio">Nenhuma NC no filtro.</td></tr>`}</tbody></table></div>`;
+    return `<tr data-qxncrow="${esc(id)}" class="${I.atraso?"late":""}${I.fim&&!r.naoProcedente?" qxt-fim":""}"><td><b class="mono">${esc(r.ncNumber||"")}</b><div class="hint">${esc(r.rncNumber||"")}</div></td><td class="mono">${esc(r.piece||"")}</td><td>${esc(r.failureMode||"")}</td><td>${fdate(I.data)}</td><td><span class="qx-tag ${I.st[1]}">${I.st[0]}</span>${I.atraso?` <span class="qx-tag crit">${I.atraso}d atraso</span>`:""}</td><td>${I.fim?"—":fdate(I.prazo)}</td><td>${esc(I.resp)}</td><td class="r mono">${I.nts.length?brl(I.fin):"—"}</td><td class="r mono">${I.eco?brl(I.eco):"—"}</td><td><button type="button" class="qx-btn sm" data-qx8d="${k}|${esc(id)}">8D</button></td></tr>`}).join("")||`<tr><td colspan="10" class="qx-vazio">Nenhuma NC no filtro.</td></tr>`}</tbody></table></div>`;
 }
 document.addEventListener("click",e=>{const v=e.target.closest("[data-qxvnc]");if(v){QX.vistaNc=v.dataset.qxvnc;try{localStorage.setItem("qx-vista-nc",QX.vistaNc)}catch(err){}qxTabelaNc();return}
   const row=e.target.closest("[data-qxncrow]");if(row&&!e.target.closest("button")){const k=site().current();const r=(ncCache[k]||[]).find(x=>x.id===row.dataset.qxncrow);if(r&&window._openNcDetailModalFn)window._openNcDetailModalFn(r)}});
@@ -17127,6 +17134,26 @@ function qxAqeBloco(a){
    ${h.length?`<ul class="qxnd-aqe-hist">${h.map(x=>`<li><b>${fdate(x.quando)}</b> ${esc(x.status)}</li>`).join("")}</ul>`:""}
    ${a.atualizadoEm?`<div class="hint">Atualizado automaticamente pelo e-mail em ${fdate(a.atualizadoEm.slice(0,10))}</div>`:""}</section>`;
 }
+
+/* ── NC encerrada: card verde-claro; 8D concluído no site dispensa o anexo ── */
+function qxMarcarFim(k){
+  const grid=document.getElementById("ncCardsGrid");if(!grid||!k)return;
+  const apply=()=>{const rs=ncCache[k]||[],D=d8Cache[k]||{};
+    grid.querySelectorAll(".nc-card[data-nc-id]").forEach(card=>{const r=rs.find(x=>x.id===card.dataset.ncId);if(!r)return;
+      const o=D[r.id],sis=!!(o&&o.status==="concluido"),fim=!r.naoProcedente&&!!(r.d8Finalizado||sis);
+      card.classList.toggle("qxc-fim",fim);
+      const b=card.querySelector(".nc-btn-8d");if(!b)return;
+      if(sis){b.classList.add("active");b.dataset.qx8d="1";b.title="8D concluído no site — clique para abrir"}
+      else{delete b.dataset.qx8d}});
+  };
+  if(d8Cache[k])apply();else carregar8D(k).then(apply).catch(()=>{});
+}
+document.addEventListener("click",e=>{
+  const b=e.target.closest(".nc-btn-8d[data-qx8d]");if(!b)return;
+  e.stopImmediatePropagation();e.preventDefault();
+  const card=b.closest(".nc-card[data-nc-id]");if(!card)return;
+  try{abrir8D(card.dataset.ncId)}catch(err){console.error(err)}
+},true);
 
 /* =====================================================================
    CLIENTES — cadastro em cards + ficha por seções
