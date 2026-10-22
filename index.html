@@ -17007,6 +17007,7 @@ function qxCards(){
     const head=document.createElement("div");head.className="qxc-head";
     head.innerHTML=`${qxLogo(k,"mini")}<span class="qxc-cli">${esc(r.customer||qxCli(k).nome)}</span><span class="qxc-dt">${fdate(I.data)}</span>`;
     body.prepend(head);
+    if(r.qnote&&!r.aqe){const q=document.createElement("div");q.className="qxc-aqe";q.innerHTML=`<b class="qx-aqe-st ${/maior|major|crit/i.test(r.qnote.impacto||"")?"warn":"info"}">Q-note ${esc(r.qnote.impacto||"")}</b>${r.qnote.status?`<span>${esc(r.qnote.status)}</span>`:""}<span title="Criada automaticamente a partir do e-mail da John Deere">via e-mail</span>`;head.after(q)}
     if(r.aqe){const q=document.createElement("div");q.className="qxc-aqe";q.innerHTML=qxAqeChip(r.aqe)+(r.aqe.prioridade?`<span>${esc(qxAqePri(r.aqe.prioridade))}</span>`:"")+(r.importadoEmail?`<span title="Criada automaticamente a partir do e-mail da CAT">via e-mail</span>`:"");head.after(q)}
     if(flags.length){const fl=document.createElement("div");fl.className="qxc-flags";flags.forEach(f=>fl.appendChild(f));head.after(fl)}
     card.querySelectorAll(":scope > .nc-card-badge-stack").forEach(x=>x.remove());
@@ -17054,6 +17055,7 @@ async function qxAbasNc(nc){
     <div class="qxnd-k"><div><span>Prazo de encerramento</span><b class="${I.atraso?"late":""}">${I.fim?"Encerrada":fdate(I.prazo)}</b>${I.atraso?`<small class="late">${I.atraso} dias de atraso</small>`:""}</div><div><span>Responsável</span><b>${esc(I.resp||"—")}</b></div><div><span>Quantidade</span><b>${esc(nc.qty||"—")}</b></div><div><span>Custo final</span><b>${I.nts.length?brl(I.fin):"—"}</b>${I.eco?`<small class="pos">economia ${brl(I.eco)}</small>`:""}</div><div><span>8D</span><b>${o?(o.status==="concluido"?"Concluído":"Em andamento"):nc.d8Finalizado?"Finalizado (PDF)":"Não iniciado"}</b></div></div>`;
   P.geral.appendChild(sum);
   if(nc.aqe)P.geral.insertAdjacentHTML("beforeend",qxAqeBloco(nc.aqe));
+  if(nc.qnote)P.geral.insertAdjacentHTML("beforeend",qxQnoteBloco(nc.qnote));
   const strip=body.querySelector(":scope > .nc-detail-photo-strip");
   const secs=[...body.querySelectorAll(":scope > .nc-detail-section, :scope > .nc-detail-rnc-section, :scope > .nc-detail-obs-section")];
   const info=secs.find(s=>/Informações da NC/i.test(s.textContent.slice(0,40)));
@@ -17154,6 +17156,15 @@ document.addEventListener("click",e=>{
   const card=b.closest(".nc-card[data-nc-id]");if(!card)return;
   try{abrir8D(card.dataset.ncId)}catch(err){console.error(err)}
 },true);
+
+function qxQnoteBloco(a){
+  const L=(l,v)=>v||v===0?`<div><span>${l}</span><b>${esc(String(v))}</b></div>`:"";
+  const h=(a.historico||[]).slice().reverse();
+  return `<section class="qxnd-aqe"><div class="qxnd-aqe-h"><h4>Q-note · John Deere</h4><b class="qx-aqe-st ${/maior|major|crit/i.test(a.impacto||"")?"warn":"info"}">${esc(a.impacto||"Q-note")}</b>${a.emailLink?`<a class="qx-btn sm ghost" href="${esc(a.emailLink)}" target="_blank" rel="noopener">Abrir e-mail</a>`:""}${a.portal?`<a class="qx-btn sm ghost" href="${esc(a.portal)}" target="_blank" rel="noopener">Portal DNCM</a>`:""}</div>
+   <div class="qxnd-aqe-g">${L("Unidade",a.unidade)}${L("Tipo",a.tipo)}${L("Peça",a.nomePeca)}${L("Qtd. rejeitada",a.qtdRejeitada)}${L("Inspecionadas no ponto de uso",a.inspecionadas)}${L("Disposição",a.disposicao)}${L("Contato JD",a.contato)}${L("Status",a.status)}</div>
+   ${h.length?`<ul class="qxnd-aqe-hist">${h.map(x=>`<li><b>${fdate(x.quando)}</b> ${esc(x.status)}</li>`).join("")}</ul>`:""}
+   ${a.atualizadoEm?`<div class="hint">Atualizado automaticamente pelo e-mail em ${fdate(a.atualizadoEm.slice(0,10))}</div>`:""}</section>`;
+}
 
 /* =====================================================================
    CLIENTES — cadastro em cards + ficha por seções
