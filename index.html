@@ -3378,6 +3378,13 @@ html body #ncStatusModalBackdrop .nc-btn-cancel-modal{background:transparent!imp
 .qxnd-fbox h4 i{font-style:normal;font-size:11px;background:var(--qx-sunk);border:1px solid var(--qx-line);border-radius:20px;padding:0 7px;color:var(--qx-ink2)}
 .qxnd-fbox .qxnd-al{margin-top:10px}
 #ncPage .nc-card.nc-hidden,#ncPage .nc-card.qxc.nc-hidden{display:none!important}
+#ncPage .nc-card.qxc.qxc-np{background:#2a2e34!important;border-color:#5a616b!important;box-shadow:inset 0 3px 0 #9aa3ad}
+#ncPage .nc-card.qxc.qxc-np .nc-card-body,#ncPage .nc-card.qxc.qxc-np .nc-card-actions{background:transparent!important}
+#ncPage .nc-card.qxc.qxc-np .qxc-meta,#ncPage .nc-card.qxc.qxc-np .qxc-custo>div,#ncPage .nc-card.qxc.qxc-np .qxc-custo{border-color:#4a515b!important}
+#ncPage .nc-card.qxc.qxc-np .nc-card-photo-strip img{filter:grayscale(1) brightness(.8)}
+#ncPage .nc-card.qxc.qxc-np .nc-card-body>*{filter:saturate(.35)}
+#ncPage .nc-card.qxc.qxc-np .qxc-atraso{display:none!important}
+#qxTabNc tr.qxt-np td{background:rgba(139,147,157,.08)!important;color:var(--qx-muted)}
 </style>
 </head>
 <body>
@@ -17024,7 +17031,7 @@ function qxTabelaNc(){
   const ids=[...grid.querySelectorAll(".nc-card[data-nc-id]")].map(c=>c.dataset.ncId);
   if(!tb){tb=document.createElement("div");tb.id="qxTabNc";tb.className="qx-card";grid.after(tb)}
   tb.innerHTML=`<div class="qx-tabwrap"><table class="qx-tab"><thead><tr><th>NC / RNC</th><th>Peça</th><th>Modo de falha</th><th>Abertura</th><th>Situação</th><th>Prazo</th><th>Responsável</th><th class="r">Custo final</th><th class="r">Economia</th><th></th></tr></thead><tbody>${ids.map(id=>{const r=rs.find(x=>x.id===id);if(!r)return "";const I=qxNcInfo(k,r);
-    return `<tr data-qxncrow="${esc(id)}" class="${I.atraso?"late":""}${I.fim&&!r.naoProcedente?" qxt-fim":""}"><td><b class="mono">${esc(r.ncNumber||"")}</b><div class="hint">${esc(r.rncNumber||"")}</div></td><td class="mono">${esc(r.piece||"")}</td><td>${esc(r.failureMode||"")}</td><td>${fdate(I.data)}</td><td><span class="qx-tag ${I.st[1]}">${I.st[0]}</span>${I.atraso?` <span class="qx-tag crit">${I.atraso}d atraso</span>`:""}</td><td>${I.fim?"—":fdate(I.prazo)}</td><td>${esc(I.resp)}</td><td class="r mono">${I.nts.length?brl(I.fin):"—"}</td><td class="r mono">${I.eco?brl(I.eco):"—"}</td><td><button type="button" class="qx-btn sm" data-qx8d="${k}|${esc(id)}">8D</button></td></tr>`}).join("")||`<tr><td colspan="10" class="qx-vazio">Nenhuma NC no filtro.</td></tr>`}</tbody></table></div>`;
+    return `<tr data-qxncrow="${esc(id)}" class="${I.atraso?"late":""}${I.fim&&!r.naoProcedente?" qxt-fim":""}${r.naoProcedente?" qxt-np":""}"><td><b class="mono">${esc(r.ncNumber||"")}</b><div class="hint">${esc(r.rncNumber||"")}</div></td><td class="mono">${esc(r.piece||"")}</td><td>${esc(r.failureMode||"")}</td><td>${fdate(I.data)}</td><td><span class="qx-tag ${I.st[1]}">${I.st[0]}</span>${I.atraso?` <span class="qx-tag crit">${I.atraso}d atraso</span>`:""}</td><td>${I.fim?"—":fdate(I.prazo)}</td><td>${esc(I.resp)}</td><td class="r mono">${I.nts.length?brl(I.fin):"—"}</td><td class="r mono">${I.eco?brl(I.eco):"—"}</td><td><button type="button" class="qx-btn sm" data-qx8d="${k}|${esc(id)}">8D</button></td></tr>`}).join("")||`<tr><td colspan="10" class="qx-vazio">Nenhuma NC no filtro.</td></tr>`}</tbody></table></div>`;
 }
 document.addEventListener("click",e=>{const v=e.target.closest("[data-qxvnc]");if(v){QX.vistaNc=v.dataset.qxvnc;try{localStorage.setItem("qx-vista-nc",QX.vistaNc)}catch(err){}qxTabelaNc();return}
   const row=e.target.closest("[data-qxncrow]");if(row&&!e.target.closest("button")){const k=site().current();const r=(ncCache[k]||[]).find(x=>x.id===row.dataset.qxncrow);if(r&&window._openNcDetailModalFn)window._openNcDetailModalFn(r)}});
@@ -17134,7 +17141,7 @@ function qxMarcarFim(k){
   const apply=()=>{const rs=ncCache[k]||[],D=d8Cache[k]||{};
     grid.querySelectorAll(".nc-card[data-nc-id]").forEach(card=>{const r=rs.find(x=>x.id===card.dataset.ncId);if(!r)return;
       const o=D[r.id],sis=!!(o&&o.status==="concluido"),fim=!r.naoProcedente&&!!(r.d8Finalizado||sis);
-      card.classList.toggle("qxc-fim",fim);
+      card.classList.toggle("qxc-fim",fim);card.classList.toggle("qxc-np",!!r.naoProcedente);
       const b=card.querySelector(".nc-btn-8d");if(!b)return;
       if(sis){b.classList.add("active");b.dataset.qx8d="1";b.title="8D concluído no site — clique para abrir"}
       else{delete b.dataset.qx8d}});
