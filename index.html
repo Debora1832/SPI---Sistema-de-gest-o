@@ -3377,6 +3377,7 @@ html body #ncStatusModalBackdrop .nc-btn-cancel-modal{background:transparent!imp
 .qxnd-fbox h4{margin:0 0 10px;color:#fff;font-size:14px;display:flex;align-items:center;gap:8px}
 .qxnd-fbox h4 i{font-style:normal;font-size:11px;background:var(--qx-sunk);border:1px solid var(--qx-line);border-radius:20px;padding:0 7px;color:var(--qx-ink2)}
 .qxnd-fbox .qxnd-al{margin-top:10px}
+#ncPage .nc-card.nc-hidden,#ncPage .nc-card.qxc.nc-hidden{display:none!important}
 </style>
 </head>
 <body>
@@ -17155,6 +17156,12 @@ function qxQnoteBloco(a){
    ${h.length?`<ul class="qxnd-aqe-hist">${h.map(x=>`<li><b>${fdate(x.quando)}</b> ${esc(x.status)}</li>`).join("")}</ul>`:""}
    ${a.atualizadoEm?`<div class="hint">Atualizado automaticamente pelo e-mail em ${fdate(a.atualizadoEm.slice(0,10))}</div>`:""}</section>`;
 }
+
+/* Busca: a visão Tabela segue os mesmos filtros dos cards */
+function qxSyncTabBusca(){const tb=document.getElementById("qxTabNc");if(!tb)return;tb.querySelectorAll("tr[data-qxncrow]").forEach(tr=>{const c=document.querySelector(`.nc-card[data-nc-id="${CSS.escape(tr.dataset.qxncrow)}"]`);tr.style.display=c&&c.classList.contains("nc-hidden")?"none":""})}
+document.addEventListener("input",e=>{if(e.target&&e.target.id==="ncSearchInput")setTimeout(qxSyncTabBusca,120)});
+document.addEventListener("click",e=>{if(e.target.closest("#ncSearchClear,.nc-cards-toolbar,.ncp-view,[data-qxview]"))setTimeout(qxSyncTabBusca,300)});
+new MutationObserver(()=>{clearTimeout(window.__qxTb);window.__qxTb=setTimeout(qxSyncTabBusca,150)}).observe(document.documentElement,{childList:true,subtree:true});
 
 /* =====================================================================
    CLIENTES — cadastro em cards + ficha por seções
