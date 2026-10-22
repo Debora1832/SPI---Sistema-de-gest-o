@@ -16869,7 +16869,6 @@ function qxCustoPg(host,D){
      <input type="search" data-qcf="nc" value="${esc(f.nc)}" placeholder="Nº NC / RNC" class="qc-nc">
      ${sel("tipo",CAT_CUSTO.filter(c=>ALL.some(x=>x.cat===c[0])),"Tipo de custo")}
      ${sel("stNc",[["aberta","Aberta"],["andamento","Em andamento"],["encerrada","Encerrada"]],"Status da NC")}
-     ${sel("stNeg",[["sem","Sem negociação"],["aberta","Em negociação"],["fechada","Negociada"]],"Negociação")}
      ${sel("stFin",[["requisicao","Em requisição"],["aguardaNf","Aguardando NF"],["nf","NF recebida"],["vencida","NF vencida"],["lancada","Lançada"],["negociando","Em negociação"]],"Status financeiro")}
      <label class="qc-chk"><input type="checkbox" data-qcf="nfPend" ${f.nfPend?"checked":""}> NF pendente ou vencida</label>
      <input type="search" data-qcf="q" value="${esc(f.q)}" placeholder="Pesquisar fornecedor, descrição, pedido, NF…" class="qc-q">
