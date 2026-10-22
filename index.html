@@ -3149,7 +3149,7 @@ html body{background:var(--qx-bg)!important;color:var(--qx-ink)!important;color-
 .qxnd-sum-h{display:flex;gap:12px;align-items:center}
 .qxnd-sum-h>div{flex:1}
 .qxnd-sum h3{margin:2px 0;font-size:18px;color:#fff}.qxnd-sum h3 span{font-weight:400;color:var(--qx-ink2);font-size:15px}
-.qxnd-k{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-top:14px}
+.qxnd-k{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-top:14px}
 .qxnd-k span{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--qx-muted)}
 .qxnd-k b{font-size:14px;color:var(--qx-ink)}.qxnd-k b.late,.qxnd-k small.late{color:#ff8a87}.qxnd-k small{display:block;font-size:11.5px}.qxnd-k small.pos{color:#7ddba4}
 .qxnd-fotos{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;height:auto!important;overflow:visible!important}
@@ -3372,6 +3372,11 @@ html body #ncStatusModalBackdrop .nc-btn-cancel-modal{background:transparent!imp
 #ncPage .nc-card.qxc.qxc-fim .qxc-meta,#ncPage .nc-card.qxc.qxc-fim .qxc-custo>div,#ncPage .nc-card.qxc.qxc-fim .qxc-custo{border-color:#2c5a40!important}
 #ncPage .nc-card.qxc.qxc-fim .qxc-custo .vazio{background:rgba(91,196,140,.06)!important}
 #qxTabNc tr.qxt-fim td{background:rgba(91,196,140,.08)!important}
+
+.qxnd-fbox{margin-top:14px;background:var(--qx-card);border:1px solid var(--qx-line2);border-radius:12px;padding:14px 16px}
+.qxnd-fbox h4{margin:0 0 10px;color:#fff;font-size:14px;display:flex;align-items:center;gap:8px}
+.qxnd-fbox h4 i{font-style:normal;font-size:11px;background:var(--qx-sunk);border:1px solid var(--qx-line);border-radius:20px;padding:0 7px;color:var(--qx-ink2)}
+.qxnd-fbox .qxnd-al{margin-top:10px}
 </style>
 </head>
 <body>
@@ -17024,7 +17029,7 @@ document.addEventListener("click",e=>{const v=e.target.closest("[data-qxvnc]");i
 function qxObservarCards(){const g=document.getElementById("ncCardsGrid");if(!g||g.__qxobs)return;g.__qxobs=true;let t;new MutationObserver(()=>{clearTimeout(t);t=setTimeout(async()=>{const k=site()&&site().current();if(k&&!ncCache[k])await recarregarNCs(k);if(k)await carregar8D(k);qxCards()},120)}).observe(g,{childList:true});setTimeout(qxCards,500)}
 
 /* ---------- NC por dentro: abas ---------- */
-const ABAS_NC=[["geral","Visão geral"],["fotos","Fotos e evidências"],["analise","Contenção e causa raiz"],["plano","Plano de ações"],["custos","Custos e negociações"],["docs","Documentos"],["hist","Histórico e encerramento"]];
+const ABAS_NC=[["geral","Visão geral"],["analise","Contenção e causa raiz"],["plano","Plano de ações"],["custos","Custos e negociações"],["docs","Documentos"],["hist","Histórico e encerramento"]];
 async function qxAbasNc(nc){
   const body=document.getElementById("ncDetailBody");if(!body||!site())return;const k=site().current();
   const modal=body.closest(".nc-detail-modal");if(!modal)return;if(QX._ndId!==nc.id){QX.ndAba="geral";QX._ndId=nc.id}
@@ -17033,17 +17038,20 @@ async function qxAbasNc(nc){
   /* visão geral: resumo gerencial + informações */
   const sum=document.createElement("div");sum.className="qxnd-sum";
   sum.innerHTML=`<div class="qxnd-sum-h">${qxLogo(k,"big")}<div><div class="qx-eye">${esc(nc.customer||qxCli(k).nome)}</div><h3>${esc(nc.piece||"")} <span>· ${esc(nc.failureMode||"")}</span></h3><div class="hint">Q-note ${esc(nc.ncNumber||"")}${nc.rncNumber?" · RNC "+esc(nc.rncNumber):""} · aberta em ${fdate(I.data)}</div></div><span class="qx-tag ${I.st[1]}">${I.st[0]}</span></div>
-    <div class="qxnd-k"><div><span>Prazo de encerramento</span><b class="${I.atraso?"late":""}">${I.fim?"Encerrada":fdate(I.prazo)}</b>${I.atraso?`<small class="late">${I.atraso} dias de atraso</small>`:""}</div><div><span>Responsável</span><b>${esc(I.resp||"—")}</b></div><div><span>Quantidade</span><b>${esc(nc.qty||"—")}</b></div><div><span>Custo final</span><b>${I.nts.length?brl(I.fin):"—"}</b>${I.eco?`<small class="pos">economia ${brl(I.eco)}</small>`:""}</div><div><span>8D</span><b>${o?(o.status==="concluido"?"Concluído":"Em andamento"):nc.d8Finalizado?"Finalizado (PDF)":"Não iniciado"}</b></div></div>`;
+    <div class="qxnd-k"><div><span>Nº da RNC</span><b>${nc.rncNumber?esc(String(nc.rncNumber).replace(/^RNC\s*/i,"")):"—"}</b></div><div><span>Prazo de encerramento</span><b class="${I.atraso?"late":""}">${I.fim?"Encerrada":fdate(I.prazo)}</b>${I.atraso?`<small class="late">${I.atraso} dias de atraso</small>`:""}</div><div><span>Responsável</span><b>${esc(I.resp||"—")}</b></div><div><span>Quantidade</span><b>${esc(nc.qty||"—")}</b></div><div><span>Custo final</span><b>${I.nts.length?brl(I.fin):"—"}</b>${I.eco?`<small class="pos">economia ${brl(I.eco)}</small>`:""}</div><div><span>8D</span><b>${o?(o.status==="concluido"?"Concluído":"Em andamento"):nc.d8Finalizado?"Finalizado (PDF)":"Não iniciado"}</b></div></div>`;
   P.geral.appendChild(sum);
   if(nc.aqe)P.geral.insertAdjacentHTML("beforeend",qxAqeBloco(nc.aqe));
   if(nc.qnote)P.geral.insertAdjacentHTML("beforeend",qxQnoteBloco(nc.qnote));
   const strip=body.querySelector(":scope > .nc-detail-photo-strip");
   const secs=[...body.querySelectorAll(":scope > .nc-detail-section, :scope > .nc-detail-rnc-section, :scope > .nc-detail-obs-section")];
   const info=secs.find(s=>/Informações da NC/i.test(s.textContent.slice(0,40)));
+  if(info&&!info.querySelector(".qxnd-rncf")){const f0=[...info.querySelectorAll(".nc-detail-field")].find(f=>/Nº da NC/i.test(f.textContent));if(f0)f0.insertAdjacentHTML("afterend",`<div class="nc-detail-field qxnd-rncf"><label>Nº da RNC</label><span>${nc.rncNumber?esc(String(nc.rncNumber).replace(/^RNC\s*/i,"")):"—"}</span></div>`)}
   if(info){const docs=[...info.querySelectorAll(".nc-detail-field")].find(f=>/Documentos PDF/i.test(f.textContent));if(docs)P.docs.appendChild(docs);P.geral.appendChild(info)}
   /* fotos */
-  if(strip){strip.classList.add("qxnd-fotos");P.fotos.appendChild(strip)}else P.fotos.innerHTML=`<div class="qx-vazio">A NC não tem fotos.</div>`;
-  if(nc.alertFileUrl)P.fotos.insertAdjacentHTML("beforeend",`<div class="qxnd-al"><span>Alerta da Qualidade</span><a class="qx-btn sm ghost" href="${esc(nc.alertFileUrl)}" target="_blank" rel="noopener">Abrir ${esc(nc.alertFileName||"alerta")}</a></div>`);
+  const fbox=document.createElement("section");fbox.className="qxnd-fbox";fbox.innerHTML=`<h4>Fotos e evidências${strip?` <i>${strip.querySelectorAll("img").length}</i>`:""}</h4>`;
+  if(strip){strip.classList.add("qxnd-fotos");fbox.appendChild(strip)}else fbox.insertAdjacentHTML("beforeend",`<div class="hint">A NC não tem fotos.</div>`);
+  sum.after(fbox);
+  if(nc.alertFileUrl)fbox.insertAdjacentHTML("beforeend",`<div class="qxnd-al"><span>Alerta da Qualidade</span><a class="qx-btn sm ghost" href="${esc(nc.alertFileUrl)}" target="_blank" rel="noopener">Abrir ${esc(nc.alertFileName||"alerta")}</a></div>`);
   /* análise e plano a partir do 8D */
   const abrir=(aba,txt)=>`<button type="button" class="qx-btn sm" data-qxnd8="${esc(nc.id)}" data-aba="${aba}">${txt}</button>`;
   if(o){const raiz=c=>((o.d4.porques||{})[c]||[]).filter(Boolean).slice(-1)[0]||"";
@@ -17060,7 +17068,7 @@ async function qxAbasNc(nc){
   if(!P.docs.children.length)P.docs.innerHTML=`<div class="qx-vazio">Nenhum documento anexado.</div>`;
   const rest=[...body.children];body.innerHTML="";ABAS_NC.forEach(([id])=>body.appendChild(P[id]));rest.forEach(x=>{if(x.textContent.trim())P.geral.appendChild(x)});
   const tabs=document.createElement("nav");tabs.className="qxnd-tabs";tabs.setAttribute("role","tablist");
-  tabs.innerHTML=ABAS_NC.map(([id,l])=>`<button type="button" role="tab" data-qxnd="${id}">${l}${id==="plano"&&o&&(o.d5.acoes||[]).filter(a=>a.acao).length?` <i>${o.d5.acoes.filter(a=>a.acao).length}</i>`:""}${id==="fotos"&&strip?` <i>${strip.querySelectorAll("img").length}</i>`:""}</button>`).join("");
+  tabs.innerHTML=ABAS_NC.map(([id,l])=>`<button type="button" role="tab" data-qxnd="${id}">${l}${id==="plano"&&o&&(o.d5.acoes||[]).filter(a=>a.acao).length?` <i>${o.d5.acoes.filter(a=>a.acao).length}</i>`:""}</button>`).join("");
   body.before(tabs);qxNdAba(QX.ndAba||"geral");
 }
 function qxNdAba(id){QX.ndAba=id;document.querySelectorAll(".qxnd-tabs [data-qxnd]").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.qxnd===id)));document.querySelectorAll("#ncDetailBody .qxnd-pane").forEach(p=>p.hidden=p.dataset.pane!==id);const b=document.getElementById("ncDetailBody");if(b)b.scrollTop=0}
