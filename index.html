@@ -3341,31 +3341,6 @@ html body #ncStatusModalBackdrop .nc-btn-status-save{background:#ffcd11!importan
 html body #ncStatusModalBackdrop .qx-st8d{color:#c3cbd6!important}
 html body #ncStatusModalBackdrop .nc-btn-cancel-modal{background:transparent!important;border:1px solid var(--qx-line)!important;color:var(--qx-ink2)!important;border-radius:9px!important}
 
-/* ── NCMs da CAT ── */
-.qxncm{background:var(--qx-card);border:1px solid var(--qx-line2);border-radius:14px;padding:18px 20px;margin:16px 0;display:flex;flex-direction:column;gap:14px}
-.qxncm-h{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
-.qxncm-h h2{margin:2px 0 4px;font-size:20px;color:#fff}
-.qxncm-h .hint{max-width:720px;margin:0}
-.qxncm-k{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) minmax(0,2fr);gap:10px}
-.qxncm-k>div{background:var(--qx-sunk);border:1px solid var(--qx-line2);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
-.qxncm-k span{font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--qx-muted);font-weight:700}
-.qxncm-k b{font-size:24px;color:var(--qx-ink);font-variant-numeric:tabular-nums}
-.qxncm-k .warn b{color:#f2b544}
-.qxncm-k small{color:var(--qx-muted);font-size:11.5px}
-.qxncm-k ul{list-style:none;margin:4px 0 0;padding:0;display:flex;flex-direction:column;gap:4px}
-.qxncm-k li{display:flex;align-items:center;gap:8px;font-size:12.5px}
-.qxncm-k li b{font-size:13px}.qxncm-k li i{font-style:normal;color:var(--qx-ink2);margin-left:auto}
-.qxncm-k li em{font-style:normal;font-size:10.5px;font-weight:700;color:#f2b544;background:rgba(242,181,68,.12);border-radius:5px;padding:1px 6px}
-.qxncm-f{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.qxncm-f input,.qxncm-f select{background:var(--qx-bg2);border:1px solid var(--qx-line);color:var(--qx-ink);border-radius:8px;padding:7px 10px;font:inherit;font-size:13px}
-.qxncm-f input{flex:1;min-width:200px}
-.qxncm-t td{vertical-align:middle}
-.qxncm-obs{max-width:340px;color:var(--qx-ink2);font-size:12.5px;white-space:normal}
-.qxncm-a{white-space:nowrap;text-align:right}.qxncm-a .qx-btn{margin-left:4px;text-decoration:none}
-.qxncm-st{background:var(--qx-bg2);border:1px solid var(--qx-line);border-radius:20px;padding:3px 8px;font:inherit;font-size:12px;font-weight:600;color:var(--qx-ink)}
-.qxncm-st.warn{border-color:rgba(242,181,68,.5);color:#f2b544}.qxncm-st.info{border-color:rgba(110,168,240,.5);color:#8fbcf5}.qxncm-st.ok{border-color:rgba(91,196,140,.5);color:#5bc48c}.qxncm-st.mut{color:var(--qx-muted)}
-.qxncm-mais{align-self:center}
-@media (max-width:900px){.qxncm-k{grid-template-columns:1fr 1fr}.qxncm-k .wide{grid-column:1/-1}.qxncm-h{flex-direction:column}}
 /* ── AQE no card e na NC ── */
 .qxc-aqe{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:-2px 0 2px}
 .qxc-aqe span{font-size:10.5px;color:var(--qx-muted);border:1px solid var(--qx-line);border-radius:5px;padding:1px 6px}
@@ -16666,7 +16641,7 @@ function qxHero(){
        <div class="qx-hero-a"><button type="button" class="qx-btn" data-qxnav="qx8d" data-qxcli8="${k}">Análises 8D</button><button type="button" class="qx-btn ghost" data-qxnav="qxHist" data-qxclih="${k}">Histórico de causas</button><button type="button" class="qx-btn ghost" data-qxnav="ncCostPage">Custos do cliente</button></div></div>
        ${im.length?`<div class="qx-hero-img">${im.slice(0,2).map(s=>`<img src="${esc(s)}" alt="Equipamento ${esc(c.nome)}">`).join("")}</div>`:`<label class="qx-cc-up">+ imagem do equipamento<input type="file" accept="image/*" hidden data-qxvis="${k}"></label>`}</div>
        <div class="qx-hero-k six">${[[L.length,"NCs na carteira","procedentes",""],[ab,"Em aberto","sem 8D finalizado","warn"],[at,"Atrasadas","+30 dias sem encerrar","crit"],[brlK(custo),"Custo acumulado","notas de terceiros",""],[brlK(eco),"Economia obtida","em negociações","ok"],[enc+"%","Encerramento","NCs com 8D finalizado",enc>=70?"ok":enc>=40?"warn":"crit"]].map(([v,l,s,c2])=>`<div class="${c2}"><span>${l}</span><b>${v}</b><small>${s}</small></div>`).join("")}</div>`;
-    qxCliAnalise();qxObservarCards();if(typeof qxNcmCat==="function")qxNcmCat();
+    qxCliAnalise();qxObservarCards();
     /* junta as duas barras (páginas de NC + ano/nova NC) numa linha só */
     const tb=document.getElementById("npToolbar"),cmd=pg.querySelector(":scope > .ncp-command, .ncp-row > .ncp-command");
     if(tb&&cmd&&!document.getElementById("qxNcRow")){const row=document.createElement("div");row.id="qxNcRow";row.className="ncp-row";tb.before(row);row.appendChild(tb);row.appendChild(cmd)}
@@ -17234,113 +17209,6 @@ function qxNtModal(){
   return true;
 }
 (function esperaNt(n){if(!qxNtModal()&&n<40)setTimeout(()=>esperaNt(n+1),250)})(0);
-
-/* ── NCMs da Caterpillar (página da CAT) — fonte: cat_ncm/all {itens, cfg} ── */
-const NCM_ST=[["aberta","Aberta","warn"],["analise","Em análise","info"],["respondida","Respondida","ok"],["cancelada","Cancelada","mut"]];
-const ncmSt=k=>NCM_ST.find(s=>s[0]===k)||NCM_ST[0];
-const ncmPn=s=>{const d=digits(s);return d.length===7?d.slice(0,3)+"-"+d.slice(3):(s||"")};
-QX.ncmF=QX.ncmF||{q:"",st:"",mes:"",todas:false};
-async function ncmCarregar(force){
-  if(QX.ncm&&!force)return QX.ncm;
-  if(!fdb)return QX.ncm={itens:[],cfg:{}};
-  const s=await fdb.collection("cat_ncm").doc("all").get();
-  QX.ncm=s.exists?Object.assign({itens:[],cfg:{}},s.data()):{itens:[],cfg:{}};return QX.ncm;
-}
-async function ncmSalvarItem(item,novo){
-  const ref=fdb.collection("cat_ncm").doc("all");
-  await fdb.runTransaction(async tx=>{const s=await tx.get(ref);const d=s.exists?s.data():{itens:[],cfg:{}};const I=d.itens||[];
-    const i=I.findIndex(x=>x.id===item.id);
-    if(i>=0)I[i]=Object.assign({},I[i],item);else if(novo)I.push(item);
-    tx.set(ref,{itens:I,cfg:d.cfg||{}})});
-  QX.ncm=null;
-}
-async function qxNcmCat(tries){
-  const pg=document.getElementById("ncPage");const k=site()&&site().current();
-  const old=document.getElementById("qxNcm");
-  if(!pg||k!=="cat"){if(old)old.remove();return}
-  const anc=document.getElementById("qxCliA");
-  if(!anc){if((tries||0)<20)setTimeout(()=>qxNcmCat((tries||0)+1),300);return}
-  let box=old;if(!box){box=document.createElement("section");box.id="qxNcm";box.className="qxncm"}
-  if(box.previousElementSibling!==anc)anc.after(box);
-  if(!box.innerHTML)box.innerHTML=`<div class="qx-load">Carregando NCMs…</div>`;
-  const D=await ncmCarregar();ncmDesenhar(box,D);
-}
-function ncmDesenhar(box,D){
-  const F=QX.ncmF,hoje=isoToday(),ano=hoje.slice(0,4),mes=hoje.slice(0,7);
-  const I=(D.itens||[]).slice().sort((a,b)=>String(b.data||"").localeCompare(String(a.data||""))||String(b.numero).localeCompare(String(a.numero)));
-  const val=I.filter(x=>x.status!=="cancelada");
-  const noMes=val.filter(x=>(x.data||"").startsWith(mes)).length,noAno=val.filter(x=>(x.data||"").startsWith(ano)).length,abertas=I.filter(x=>!x.status||x.status==="aberta"||x.status==="analise").length;
-  const porPn={};val.filter(x=>(x.data||"").startsWith(ano)).forEach(x=>{const p=ncmPn(x.pn);if(p)porPn[p]=(porPn[p]||0)+1});
-  const top=Object.entries(porPn).sort((a,b)=>b[1]-a[1]).slice(0,3);
-  const aqePorPn={};(ncCache.cat||[]).forEach(r=>{const p=digits(r.piece);if(p)aqePorPn[p]=(aqePorPn[p]||0)+1});
-  const meses=[...new Set(I.map(x=>(x.data||"").slice(0,7)).filter(Boolean))].sort().reverse();
-  const q=norm(F.q||"");
-  const L=I.filter(x=>(!F.st||(x.status||"aberta")===F.st)&&(!F.mes||(x.data||"").startsWith(F.mes))&&(!q||norm([x.numero,x.pn,ncmPn(x.pn),x.obs].join(" ")).includes(q)));
-  const vis=F.todas?L:L.slice(0,12);
-  const ult=(D.cfg||{}).ultimaVerificacao;
-  box.innerHTML=`<div class="qxncm-h"><div><div class="qx-eye">Caterpillar · não conformidades de material</div><h2>NCMs</h2>
-     <p class="hint">Entram sozinhas a partir dos e-mails da CAT. O e-mail vem criptografado, então chegam só com número, PN e data — complete status e observação aqui.${ult?` Última leitura do e-mail: ${fdate(ult.slice(0,10))} ${ult.slice(11,16)} (UTC).`:""}</p></div>
-     <button type="button" class="qx-btn" data-ncmnovo>+ Registrar NCM</button></div>
-   <div class="qxncm-k">
-     <div><span>Neste mês</span><b>${noMes}</b><small>${fdate(mes+"-01").slice(3)}</small></div>
-     <div><span>No ano</span><b>${noAno}</b><small>registradas no site</small></div>
-     <div class="${abertas?"warn":""}"><span>Em aberto</span><b>${abertas}</b><small>abertas ou em análise</small></div>
-     <div class="wide"><span>PNs com mais NCMs no ano</span>${top.length?`<ul>${top.map(([p,n])=>`<li><b class="mono">${esc(p)}</b><i>${n}</i>${aqePorPn[digits(p)]?`<em title="AQEs desta peça no site">${aqePorPn[digits(p)]} AQE</em>`:""}</li>`).join("")}</ul>`:`<small>—</small>`}</div>
-   </div>
-   <div class="qxncm-f"><input type="search" placeholder="Buscar NCM, PN ou observação…" value="${esc(F.q||"")}" data-ncmf="q">
-     <select data-ncmf="st"><option value="">Todos os status</option>${NCM_ST.map(s=>`<option value="${s[0]}" ${F.st===s[0]?"selected":""}>${s[1]}</option>`).join("")}</select>
-     <select data-ncmf="mes"><option value="">Todos os meses</option>${meses.map(m=>`<option value="${m}" ${F.mes===m?"selected":""}>${fdate(m+"-01").slice(3)}</option>`).join("")}</select>
-     <span class="hint">${L.length} de ${I.length}</span></div>
-   ${I.length?`<div class="qx-tabwrap"><table class="qx-tab qxncm-t"><thead><tr><th>NCM</th><th>Data</th><th>PN</th><th>AQEs da peça</th><th>Status</th><th>Observação</th><th></th></tr></thead><tbody>
-     ${vis.map(x=>{const s=ncmSt(x.status||"aberta"),n=aqePorPn[digits(x.pn)]||0;return `<tr><td><b class="mono">${esc(x.numero)}</b></td><td>${fdate(x.data)}</td><td class="mono">${esc(ncmPn(x.pn))||"—"}</td>
-       <td>${n?`<span class="qx-tag warn">${n}</span>`:`<span class="hint">—</span>`}</td>
-       <td><select class="qxncm-st ${s[2]}" data-ncmst="${esc(x.id)}">${NCM_ST.map(o=>`<option value="${o[0]}" ${o[0]===s[0]?"selected":""}>${o[1]}</option>`).join("")}</select></td>
-       <td class="qxncm-obs">${esc(x.obs||"")||'<span class="hint">—</span>'}</td>
-       <td class="qxncm-a">${x.emailLink?`<a class="qx-btn sm ghost" href="${esc(x.emailLink)}" target="_blank" rel="noopener" title="Abrir e-mail da CAT">E-mail</a>`:""}<button type="button" class="qx-btn sm ghost" data-ncmed="${esc(x.id)}">Editar</button></td></tr>`}).join("")}
-   </tbody></table></div>${L.length>12?`<button type="button" class="qx-btn sm ghost qxncm-mais" data-ncmtodas>${F.todas?"Mostrar menos":`Ver todas (${L.length})`}</button>`:""}`
-   :`<div class="qx-vazio">Nenhuma NCM registrada ainda. A leitura automática do e-mail preenche esta lista.</div>`}`;
-}
-function ncmForm(id){
-  const D=QX.ncm||{itens:[]};const x=id?D.itens.find(i=>i.id===id):null;const n=x||{numero:"",data:isoToday(),pn:"",status:"aberta",obs:"",qtd:""};
-  const dr=document.getElementById("ntxDrawerRoot");if(!dr)return;
-  dr.innerHTML=`<div class="scrim" data-ncmfecha></div><aside class="drawer qxncm-dr" role="dialog" aria-modal="true">
-   <div class="dhead"><div><div class="eyebrow">${x?"Editar NCM":"Registrar NCM"}</div><h2>${x?"NCM "+esc(x.numero):"Nova NCM"}</h2></div><button class="ntx-btn small" type="button" data-ncmfecha>Fechar</button></div>
-   <div class="dbody"><section class="sec"><div class="grid">
-     <div class="f"><label for="ncm-n">Nº da NCM</label><input id="ncm-n" class="mono" value="${esc(n.numero)}" ${x?"readonly":""} placeholder="292864"></div>
-     <div class="f"><label for="ncm-d">Data</label><input id="ncm-d" type="date" value="${esc(n.data||"")}"></div>
-     <div class="f"><label for="ncm-p">PN</label><input id="ncm-p" class="mono" value="${esc(ncmPn(n.pn))}" placeholder="585-9717"></div>
-     <div class="f"><label for="ncm-q">Quantidade</label><input id="ncm-q" type="number" min="0" value="${esc(n.qtd||"")}"></div>
-     <div class="f"><label for="ncm-s">Status</label><select id="ncm-s">${NCM_ST.map(o=>`<option value="${o[0]}" ${o[0]===(n.status||"aberta")?"selected":""}>${o[1]}</option>`).join("")}</select></div>
-    </div><div class="f"><label for="ncm-o">Observação</label><textarea id="ncm-o" rows="4" placeholder="Defeito, disposição, resposta enviada…">${esc(n.obs||"")}</textarea></div>
-    ${x&&x.emailLink?`<a class="ntx-btn small" href="${esc(x.emailLink)}" target="_blank" rel="noopener">Abrir e-mail da CAT</a>`:""}</section></div>
-   <div class="dfoot"><span></span><div class="ntx-actions"><button class="ntx-btn" type="button" data-ncmfecha>Cancelar</button><button class="ntx-btn primary" type="button" data-ncmsalva="${esc(x?x.id:"")}">Salvar</button></div></div></aside>`;
-}
-document.addEventListener("click",async e=>{
-  const t=e.target.closest("[data-ncmnovo],[data-ncmed],[data-ncmfecha],[data-ncmsalva],[data-ncmtodas]");if(!t)return;
-  if(t.matches("[data-ncmnovo]"))return ncmForm(null);
-  if(t.matches("[data-ncmed]"))return ncmForm(t.dataset.ncmed);
-  if(t.matches("[data-ncmfecha]")){document.getElementById("ntxDrawerRoot").innerHTML="";return}
-  if(t.matches("[data-ncmtodas]")){QX.ncmF.todas=!QX.ncmF.todas;const b=document.getElementById("qxNcm");if(b)ncmDesenhar(b,QX.ncm);return}
-  if(t.matches("[data-ncmsalva]")){
-    const g=id=>(document.getElementById(id)||{}).value||"";const num=digits(g("ncm-n"));
-    if(!num){toast("Informe o número da NCM");return}
-    const id=t.dataset.ncmsalva||("ncm-"+num);
-    if(!t.dataset.ncmsalva&&(QX.ncm||{itens:[]}).itens.some(i=>digits(i.numero)===num)){toast("Essa NCM já está registrada");return}
-    const item={id,numero:num,data:g("ncm-d"),pn:digits(g("ncm-p"))||g("ncm-p"),qtd:g("ncm-q"),status:g("ncm-s"),obs:g("ncm-o").trim(),atualizadoEm:new Date().toISOString()};
-    if(!t.dataset.ncmsalva){item.origem="manual";item.criadoEm=item.atualizadoEm}
-    t.disabled=true;
-    try{await ncmSalvarItem(item,!t.dataset.ncmsalva);document.getElementById("ntxDrawerRoot").innerHTML="";toast("NCM salva");qxNcmCat()}
-    catch(err){t.disabled=false;toast("Não foi possível salvar ("+((err&&(err.code||err.message))||"erro")+")")}
-  }
-});
-document.addEventListener("change",async e=>{
-  const t=e.target;
-  if(t.matches("[data-ncmst]")){const id=t.dataset.ncmst;t.disabled=true;
-    try{await ncmSalvarItem({id,status:t.value,atualizadoEm:new Date().toISOString()});toast("Status atualizado");qxNcmCat()}
-    catch(err){t.disabled=false;toast("Não foi possível salvar")}}
-  if(t.matches("select[data-ncmf]")){QX.ncmF[t.dataset.ncmf]=t.value;const b=document.getElementById("qxNcm");if(b)ncmDesenhar(b,QX.ncm)}
-});
-let ncmDeb;document.addEventListener("input",e=>{const t=e.target;if(!t.matches('input[data-ncmf="q"]'))return;clearTimeout(ncmDeb);ncmDeb=setTimeout(()=>{QX.ncmF.q=t.value;const b=document.getElementById("qxNcm");if(b){ncmDesenhar(b,QX.ncm);const i=b.querySelector('input[data-ncmf="q"]');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}},300)});
 
 document.addEventListener("click",e=>{const t=e.target.closest('[data-nt8d],[data-8dppt],[data-8dfechar],[data-8dadd],[data-8drm],[data-8dsuga],[data-8daba],[data-fbst],[data-fbrm],[data-fbsug],[data-w5sug],[data-8dplano],[data-evrm],[data-alpg],[data-8dpptgo],[data-8dsalvar],[data-8dconcluir]');if(t){e.preventDefault();clique8D(t)}});
 function boot(){
