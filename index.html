@@ -3983,7 +3983,7 @@ html body #ncStatusModalBackdrop .nc-btn-cancel-modal{background:transparent!imp
     <div class="nc-section-title" style="margin-bottom:14px">NCs Cadastradas</div>
     <div class="nc-search-bar">
       <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 20 20" stroke="currentColor" stroke-width="2"><circle cx="9" cy="9" r="6"/><path stroke-linecap="round" d="M15 15l-3.5-3.5"/></svg>
-      <input type="text" id="ncSearchInput" placeholder="Pesquisar por peça, NC, modo de falha, descrição…" autocomplete="off" />
+      <input type="text" id="ncSearchInput" placeholder="Pesquisar por peça, NC, RNC, modo de falha, descrição…" autocomplete="off" />
       <button class="nc-search-clear" id="ncSearchClear" title="Limpar pesquisa" style="display:none">✕</button>
     </div>
     <!-- Sort + alert-filter toolbar -->
@@ -11673,7 +11673,7 @@ document.addEventListener("DOMContentLoaded", function() {
             '<div class="nc-detail-field"><label>Modo de Falha</label><span>' + escHtml(nc.failureMode || '—') + '</span></div>' +
             '<div class="nc-detail-field"><label>Cliente</label><span>' + escHtml(nc.customer || '—') + '</span></div>' +
             (nc.qty ? '<div class="nc-detail-field"><label>Qtd. de Peças</label><span>' + escHtml(nc.qty) + '</span></div>' : '') +
-            '<div class="nc-detail-field"><label>Status</label><span><div class="nc-detail-status-row" id="ncDetailStatusRow">' + statusBadges + '</div></span></div>' +
+            '<div class="nc-detail-status-row" id="ncDetailStatusRow" style="display:none">' + statusBadges + '</div>' +
             (nc.description ? '<div class="nc-detail-field full"><label>Descrição</label><span>' + escHtml(nc.description) + '</span></div>' : '') +
             (Array.isArray(nc.pdfs) && nc.pdfs.length
               ? '<div class="nc-detail-field full"><label>Documentos PDF</label><span style="display:flex;flex-direction:column;gap:6px">' +
@@ -13695,7 +13695,8 @@ document.addEventListener("DOMContentLoaded", function() {
         if (!q) { card.classList.remove('nc-hidden'); shown++; return; }
         var haystack = [
           nc.ncNumber, nc.piece, nc.failureMode,
-          nc.customer, nc.description, nc.date
+          nc.customer, nc.description, nc.date,
+          nc.rncNumber, String(nc.rncNumber||'').replace(/^RNC\s*/i,''), 'RNC '+String(nc.rncNumber||'').replace(/^RNC\s*/i,'')
         ].join(' ').toLowerCase();
         if (haystack.includes(q)) {
           card.classList.remove('nc-hidden');
