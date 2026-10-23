@@ -15151,6 +15151,14 @@ const STEPS=[
  {k:"ged",t:"E-mail de GED enviado",h:"PDF salvo só com os números do pedido · recbtofacil + recebimento.fiscal"},
  {k:"lanc",t:"NF lançada pelo fiscal",h:"Fiscal responde \"Lançada\" ou aponta erro"}
 ];
+/* Custo administrativo: sem fornecedor e sem NF; desconto direto do cliente no fluxo de caixa.
+   Fluxo: assinaturas da gerência -> entregar ao fiscal (usa as chaves aprov/lanc para "finalizada" funcionar igual). */
+const STEPS_ADM=[
+ {k:"aprov",t:"Assinaturas da gerência coletadas",h:"Coletar as assinaturas da gerência no documento do custo administrativo"},
+ {k:"lanc",t:"Entregue ao fiscal",h:"Entregar ao fiscal somente as assinaturas · não há fornecedor nem NF: o desconto é direto do cliente no fluxo de caixa"}
+];
+const ehAdm=n=>!!(n&&(n.adm===true||(n.adm!==false&&n.tipoCusto==="administrativo"&&!n.fornecedor)));
+const stepsDe=n=>ehAdm(n)?STEPS_ADM:STEPS;
 const COLL="notas_terceiros", DOC="all", LKEY="ntx-notas-cache-v1";
 let notas=[], cfg={nome:"Débora Cristina",migrados:[]}, filtro="abertas", busca="", fdb=null, fst=null, mode="loading", loaded=false, serverOk=false, lastErr="", migrando=false;
 
@@ -15198,6 +15206,13 @@ function ehProjeto(T,k){return !!(T[k]&&(T[k].isProject===true||T[k].isClient===
 function alertas(n){
   const out=[], hoje=today0(), A=(lv,m)=>out.push({lv,m});
   const fim=et(n,"lanc");
+  if(ehAdm(n)){
+    if(n.origem==="tela-antiga"&&!n.conferido&&!fim) A("info","Trazida da tela antiga: confira as etapas e salve");
+    if(n.vinculo==="nc"&&!n.ncNumero) A("warn","Vinculada a NC, mas falta o número da NC");
+    if(!Number(n.valor)&&!fim) A("info","Informe o valor descontado pelo cliente");
+    if(et(n,"aprov")&&!fim){const a=pd(n.etapas.aprov);if(a){const b=bizDays(a,hoje);if(b>=2) A("warn",`Assinaturas coletadas há ${b} dias úteis e ainda não entregues ao fiscal`)}}
+    return out;
+  }
   if(n.importado&&!n.conferido&&!fim) A("info","Importada do e-mail: confira tipo de serviço, valor e vínculo e salve");
   if(n.origem==="tela-antiga"&&!n.conferido&&!fim) A("info","Trazida da tela antiga: confira fornecedor, etapas e datas e salve");
   if(n.vinculo==="nc"&&!n.ncNumero) A("warn","Vinculada a NC, mas falta o número da NC");
@@ -15224,7 +15239,7 @@ function alertas(n){
 }
 const rank={crit:0,warn:1,info:2};
 const worst=a=>a.length?a.slice().sort((x,y)=>rank[x.lv]-rank[y.lv])[0].lv:null;
-function etapaAtual(n){for(let i=0;i<STEPS.length;i++){if(!et(n,STEPS[i].k))return i}return STEPS.length}
+function etapaAtual(n){const S=stepsDe(n);for(let i=0;i<S.length;i++){if(!et(n,S[i].k))return i}return S.length}
 
 /* ---------- textos padrão ---------- */
 function motivo(n){
@@ -15430,17 +15445,17 @@ function render(){
   if(!L.length){$("#ntxList").innerHTML=`<div class="ntx-emptystate">${base.length?"Nada neste filtro.":`Nenhuma nota de ${esc(t?t.label:"este cliente")} ainda. A visão geral de todos os clientes fica na página Início.`}</div>`;return}
   $("#ntxList").innerHTML=`<div class="ntx-row head"><div>Fornecedor / Cliente</div><div>Serviço</div><div>Relatório / vínculo</div><div>Valor</div><div>Etapa</div><div>Vencimento</div></div>`+
    L.map(n=>{
-     const i=etapaAtual(n), fim=i===STEPS.length, al=alertas(n), w=worst(al);
+     const S=stepsDe(n), i=etapaAtual(n), fim=i===S.length, al=alertas(n), w=worst(al), adm=ehAdm(n);
      const vinc=n.vinculo==="nc"?`<span class="chip nc">NC ${esc(n.ncNumero||"?")}</span>`:n.vinculo==="emb"?`<span class="chip emb">Embarque controlado</span>`:"";
      const conferir=(n.importado||n.origem==="tela-antiga")&&!n.conferido;
      const ncr=n.vinculo==="nc"?ncDaNota(n):null, ncInfo=ncr?` · <span title="Do card da NC">NC: ${ncFotos(ncr).length} foto${ncFotos(ncr).length===1?"":"s"}, ${ncArquivos(ncr).length} relatório${ncArquivos(ncr).length===1?"":"s"}</span>`:"";
      const negChip=negAberta(n)?'<span class="chip neg">Em negociação</span>':negTem(n)?'<span class="chip neg">Negociada</span>':"";
      return `<button class="ntx-row" type="button" data-ntopen="${esc(n.id)}">
-      <div class="cell"><div class="t">${esc(n.fornecedor||"Sem fornecedor")} ${conferir?`<span class="chip ex">${n.importado?"Do e-mail":"Tela antiga"} · conferir</span>`:""}</div><div class="s">${esc(n.cliente||"—")}${n.pedido?` · <span class="mono">PC ${esc(digits(n.pedido))}</span>`:""}${n.nfNumero?` · NF ${esc(n.nfNumero)}`:""}${(n.anexos||[]).length?` · ${n.anexos.length} anexo${n.anexos.length>1?"s":""}`:""}${ncInfo}</div></div>
+      <div class="cell"><div class="t">${adm?"Custo administrativo":esc(n.fornecedor||"Sem fornecedor")} ${conferir?`<span class="chip ex">${n.importado?"Do e-mail":"Tela antiga"} · conferir</span>`:""}</div><div class="s">${esc(n.cliente||"—")}${n.pedido?` · <span class="mono">PC ${esc(digits(n.pedido))}</span>`:""}${n.nfNumero?` · NF ${esc(n.nfNumero)}`:""}${(n.anexos||[]).length?` · ${n.anexos.length} anexo${n.anexos.length>1?"s":""}`:""}${ncInfo}</div></div>
       <div class="cell chips">${(n.servicos||[]).map(s=>`<span class="chip">${esc(servLabel(s))}</span>`).join("")||'<span class="s">—</span>'}</div>
       <div class="cell"><div class="s ${n.relatorio?"mono":""}">${esc(n.relatorio||n.descricao||"—")}</div><div class="chips">${vinc}${negChip}</div></div>
       <div class="cell"><div class="mono">${brl(n.valor)}</div>${negTem(n)?`<div class="s">${economia(n)?`<span class="ntx-eco">−${brl(economia(n))}</span> de ${brl(n.valorOriginal)}`:`cobrado ${brl(n.valorOriginal)}`}</div>`:""}</div>
-      <div class="cell c-steps"><div class="steps ${fim?"done":""}">${STEPS.map(s=>`<i class="${et(n,s.k)?"on":""}"></i>`).join("")}</div><div class="status ${fim?"done":""}">${fim?"Finalizada · lançada "+fdate(n.etapas.lanc):(i+1)+"/7 · "+esc(STEPS[i].t)}</div></div>
+      <div class="cell c-steps"><div class="steps ${fim?"done":""}">${S.map(s=>`<i class="${et(n,s.k)?"on":""}"></i>`).join("")}</div><div class="status ${fim?"done":""}">${fim?(adm?"Finalizada · entregue ao fiscal ":"Finalizada · lançada ")+fdate(n.etapas.lanc):(i+1)+"/"+S.length+" · "+esc(S[i].t)}</div></div>
       <div class="cell"><div class="mono">${fdate(n.nfVenc)}</div>${w?`<span class="flag ${w}">${al.length} alerta${al.length>1?"s":""}</span>`:fim?'<span class="flag ok">OK</span>':""}</div>
      </button>`}).join("")+
    `<div class="ntx-listfoot"><span>${L.length} nota${L.length===1?"":"s"} neste filtro</span><span class="mono">Total ${brl(L.reduce((s,n)=>s+(Number(n.valor)||0),0))}</span></div>`;
@@ -15563,7 +15578,7 @@ function preencherCustoNoCard(nc){
       <div class="ntx-kpi total"><b>${brl(tot)}</b><span>Custo de não qualidade</span></div>
       <div class="ntx-kpi ok"><b>${brl(eco)}</b><span>Economia negociada</span></div>
       <div class="ntx-kpi"><b>${ab.length}</b><span>Notas em andamento</span></div></div>
-    <ul class="ntx-alist">${L.map(n=>{const i=etapaAtual(n),fim=i===STEPS.length;return `<li class="ntx-aitem ${fim?"":"info"}"><span class="bar" style="background:${fim?"var(--ok)":"var(--info)"}"></span><div><div class="who">${esc(n.fornecedor||"Sem fornecedor")} · <span class="mono">${esc(n.relatorio||n.descricao||"")}</span> · ${brl(n.valor)}</div><div class="msg">${fim?"Lançada "+fdate(n.etapas.lanc):(i+1)+"/7 · "+esc(STEPS[i].t)}${n.pedido?" · PC "+esc(digits(n.pedido)):""}${n.nfNumero?" · NF "+esc(n.nfNumero):""}</div></div><button class="ntx-btn small" type="button" data-ntopen="${esc(n.id)}">Abrir nota</button></li>`}).join("")}</ul>`
+    <ul class="ntx-alist">${L.map(n=>{const S=stepsDe(n),i=etapaAtual(n),fim=i===S.length;return `<li class="ntx-aitem ${fim?"":"info"}"><span class="bar" style="background:${fim?"var(--ok)":"var(--info)"}"></span><div><div class="who">${ehAdm(n)?"Custo administrativo":esc(n.fornecedor||"Sem fornecedor")} · <span class="mono">${esc(n.relatorio||n.descricao||"")}</span> · ${brl(n.valor)}</div><div class="msg">${fim?(ehAdm(n)?"Entregue ao fiscal ":"Lançada ")+fdate(n.etapas.lanc):(i+1)+"/"+S.length+" · "+esc(S[i].t)}${n.pedido?" · PC "+esc(digits(n.pedido)):""}${n.nfNumero?" · NF "+esc(n.nfNumero):""}</div></div><button class="ntx-btn small" type="button" data-ntopen="${esc(n.id)}">Abrir nota</button></li>`}).join("")}</ul>`
     :`<div class="ntx-empty-al">Nenhuma nota de custo ligada a esta NC. Na página Custo de Não Qualidade, marque "Vinculado a NC" e informe a Q-note ${esc(nc.ncNumber||"")}.</div>`}
     <div style="margin-top:8px"><button class="ntx-btn small primary" type="button" data-ntnovanc="${esc(nc.id)}">+ Nova nota de custo para esta NC</button></div></div>`;
 }
@@ -15581,19 +15596,26 @@ function drawEditor(isNew){
     :n.origem==="tela-antiga"?`Trazida da tela antiga de custos${n.descricao?`: "<b>${esc(n.descricao)}</b>"`:""}. As etapas foram deduzidas do status antigo: confira e salve.`:"";
   $("#ntxDrawerRoot").innerHTML=`<div class="scrim" data-ntclose></div>
   <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="ntxDtitle">
-   <div class="dhead"><div><div class="eyebrow">${isNew?"Nova nota":"Editar nota"}</div><h2 id="ntxDtitle">${esc(n.fornecedor||"Custo de não qualidade")}</h2></div><button class="ntx-btn small" type="button" data-ntclose>Fechar</button></div>
+   <div class="dhead"><div><div class="eyebrow">${isNew?"Nova nota":"Editar nota"}</div><h2 id="ntxDtitle">${ehAdm(n)?"Custo administrativo":esc(n.fornecedor||"Custo de não qualidade")}</h2></div><button class="ntx-btn small" type="button" data-ntclose>Fechar</button></div>
    <div class="dbody">
     <div class="inline-alerts" id="ntxEAlerts"></div>
     ${origemTxt?`<div class="tier">${origemTxt}</div>`:""}
-    <section class="sec"><h3>Serviço</h3>
-     <div class="f"><span class="lbl">Tipo de serviço (pode marcar mais de um)</span>
+    <section class="sec"><h3>Tipo de lançamento</h3>
+     <div class="pickgrid">
+      <label class="pick"><input type="radio" name="ntxmodo" value="terceira" ${ehAdm(n)?"":"checked"}><span>Nota de empresa terceira</span></label>
+      <label class="pick"><input type="radio" name="ntxmodo" value="adm" ${ehAdm(n)?"checked":""}><span>Custo administrativo</span></label>
+     </div>
+     <div class="tier ntx-adm-info" id="ntxAdmInfo" ${ehAdm(n)?"":"hidden"}><b>Custo administrativo:</b> não é fornecedor e não tem emissão de nota fiscal. O valor é descontado direto pelo cliente, no fluxo de caixa. O fluxo é só: <b>1)</b> coletar as assinaturas da gerência e <b>2)</b> entregar ao fiscal somente essas assinaturas.</div>
+    </section>
+    <section class="sec"><h3 id="ntxSecServH">${ehAdm(n)?"Custo":"Serviço"}</h3>
+     <div class="f" data-ntterc><span class="lbl">Tipo de serviço (pode marcar mais de um)</span>
       <div class="pickgrid">${SERV.map(([k,l])=>`<label class="pick"><input type="checkbox" id="ntx-sv-${k}" value="${k}" ${(n.servicos||[]).includes(k)?"checked":""}><span>${l}</span></label>`).join("")}</div></div>
      <div class="grid">
-      <div class="f"><label for="ntx-forn">Empresa terceira</label><input id="ntx-forn" value="${v("fornecedor")}" placeholder="Ex.: Trigo Brasil" list="ntx-dl-forn"></div>
-      <div class="f"><label for="ntx-cli">Cliente onde foi feito o serviço</label><input id="ntx-cli" value="${v("cliente")}" placeholder="Ex.: John Deere Indaiatuba" list="ntx-dl-cli"></div>
-      <div class="f"><label for="ntx-rel">Nº do relatório</label><input id="ntx-rel" class="mono" value="${v("relatorio")}" placeholder="Ex.: JDEERE-CAM.26.0790.AA"></div>
-      <div class="f"><label for="ntx-dserv">Data do serviço</label><input id="ntx-dserv" type="date" value="${v("dataServico")}"></div>
-      <div class="f" style="grid-column:1/-1"><label for="ntx-desc">Descrição</label><input id="ntx-desc" value="${v("descricao")}" placeholder="Ex.: inspeção 100% do lote 4521, peça 611-7044"></div>
+      <div class="f" data-ntterc><label for="ntx-forn">Empresa terceira</label><input id="ntx-forn" value="${v("fornecedor")}" placeholder="Ex.: Trigo Brasil" list="ntx-dl-forn"></div>
+      <div class="f"><label for="ntx-cli" id="ntxCliLbl">${ehAdm(n)?"Cliente que fez o desconto":"Cliente onde foi feito o serviço"}</label><input id="ntx-cli" value="${v("cliente")}" placeholder="Ex.: John Deere Indaiatuba" list="ntx-dl-cli"></div>
+      <div class="f" data-ntterc><label for="ntx-rel">Nº do relatório</label><input id="ntx-rel" class="mono" value="${v("relatorio")}" placeholder="Ex.: JDEERE-CAM.26.0790.AA"></div>
+      <div class="f"><label for="ntx-dserv" id="ntxDservLbl">${ehAdm(n)?"Data do custo":"Data do serviço"}</label><input id="ntx-dserv" type="date" value="${v("dataServico")}"></div>
+      <div class="f" style="grid-column:1/-1"><label for="ntx-desc">Descrição</label><input id="ntx-desc" value="${v("descricao")}" placeholder="${ehAdm(n)?"Ex.: custo administrativo das NCMs AL-2026.00892 e AL-2026.00652":"Ex.: inspeção 100% do lote 4521, peça 611-7044"}"></div>
      </div>
      <datalist id="ntx-dl-forn">${[...new Set(notas.map(x=>x.fornecedor).filter(Boolean))].map(x=>`<option value="${esc(x)}">`).join("")}</datalist>
      <datalist id="ntx-dl-cli">${[...new Set(notas.map(x=>x.cliente).filter(Boolean))].map(x=>`<option value="${esc(x)}">`).join("")}</datalist>
@@ -15606,26 +15628,26 @@ function drawEditor(isNew){
      <div class="f" id="ntxNcWrap" ${n.vinculo==="nc"?"":"hidden"}><label for="ntx-nc">Nº da NC / RNC</label><input id="ntx-nc" class="mono" value="${v("ncNumero")}" placeholder="Q-note, ex.: 222771172"></div>
      <div id="ntxNcBox" hidden></div>
     </section>
-    <section class="sec"><h3>Valores e documentos</h3>
+    <section class="sec"><h3 id="ntxSecValH">${ehAdm(n)?"Valor":"Valores e documentos"}</h3>
      <div class="grid three">
-      <div class="f"><label for="ntx-valor">Valor total da NF (R$)</label><input id="ntx-valor" class="mono" type="number" step="0.01" min="0" inputmode="decimal" value="${v("valor")}" placeholder="498.85"></div>
-      <div class="f"><label for="ntx-req">Nº solicitação compras</label><input id="ntx-req" class="mono" value="${v("requisicao")}" placeholder="732.620"></div>
-      <div class="f"><label for="ntx-ped">Nº do pedido</label><input id="ntx-ped" class="mono" value="${v("pedido")}" placeholder="106.203"><span class="hint">Arquivo e GED usam só os números</span></div>
-      <div class="f"><label for="ntx-nf">Nº da NF</label><input id="ntx-nf" class="mono" value="${v("nfNumero")}"></div>
-      <div class="f"><label for="ntx-emis">Emissão da NF</label><input id="ntx-emis" type="date" value="${v("nfEmissao")}"></div>
-      <div class="f"><label for="ntx-venc">Vencimento da NF</label><input id="ntx-venc" type="date" value="${v("nfVenc")}"></div>
+      <div class="f"><label for="ntx-valor" id="ntxValorLbl">${ehAdm(n)?"Valor descontado pelo cliente (R$)":"Valor total da NF (R$)"}</label><input id="ntx-valor" class="mono" type="number" step="0.01" min="0" inputmode="decimal" value="${v("valor")}" placeholder="498.85"></div>
+      <div class="f" data-ntterc><label for="ntx-req">Nº solicitação compras</label><input id="ntx-req" class="mono" value="${v("requisicao")}" placeholder="732.620"></div>
+      <div class="f" data-ntterc><label for="ntx-ped">Nº do pedido</label><input id="ntx-ped" class="mono" value="${v("pedido")}" placeholder="106.203"><span class="hint">Arquivo e GED usam só os números</span></div>
+      <div class="f" data-ntterc><label for="ntx-nf">Nº da NF</label><input id="ntx-nf" class="mono" value="${v("nfNumero")}"></div>
+      <div class="f" data-ntterc><label for="ntx-emis">Emissão da NF</label><input id="ntx-emis" type="date" value="${v("nfEmissao")}"></div>
+      <div class="f" data-ntterc><label for="ntx-venc">Vencimento da NF</label><input id="ntx-venc" type="date" value="${v("nfVenc")}"></div>
      </div>
      <div id="ntxNegZone">${negBlock(n)}</div>
-     <div class="tier" id="ntxTier"></div>
+     <div class="tier" id="ntxTier" data-ntterc></div>
     </section>
     <section class="sec"><h3>Etapas</h3>
-     <ol class="checklist">${STEPS.map((s,i)=>`<li class="ck"><input type="checkbox" id="ntx-ck-${s.k}" ${et(n,s.k)?"checked":""} aria-label="${esc(s.t)}"><label for="ntx-ck-${s.k}"><div class="tt">${i+1}. ${esc(s.t)}</div><div class="hh">${esc(s.h)}</div></label><input type="date" id="ntx-dt-${s.k}" value="${esc(n.etapas?.[s.k]||"")}" aria-label="Data: ${esc(s.t)}"></li>`).join("")}</ol>
+     <ol class="checklist" id="ntxChecklist">${stepsDe(n).map((s,i)=>`<li class="ck"><input type="checkbox" id="ntx-ck-${s.k}" ${et(n,s.k)?"checked":""} aria-label="${esc(s.t)}"><label for="ntx-ck-${s.k}"><div class="tt">${i+1}. ${esc(s.t)}</div><div class="hh">${esc(s.h)}</div></label><input type="date" id="ntx-dt-${s.k}" value="${esc(n.etapas?.[s.k]||"")}" aria-label="Data: ${esc(s.t)}"></li>`).join("")}</ol>
     </section>
-    <section class="sec"><h3>Anexos do relatório</h3>
+    <section class="sec"><h3>Anexos</h3>
      <ul class="anexos" id="ntxAnexos"></ul>
-     <div class="anexo-add" id="ntxAnexoAdd"><label class="ntx-btn small" for="ntx-file">+ Adicionar arquivo</label><input id="ntx-file" type="file" multiple accept=".pdf,image/*,.csv,.txt,.xlsx" hidden><span class="hint">PDF ou imagem do relatório (vai para o Storage do Firebase). Salve a nota para manter.</span></div>
+     <div class="anexo-add" id="ntxAnexoAdd"><label class="ntx-btn small" for="ntx-file">+ Adicionar arquivo</label><input id="ntx-file" type="file" multiple accept=".pdf,image/*,.csv,.txt,.xlsx" hidden><span class="hint">PDF ou imagem (relatório, ou as assinaturas da gerência no custo administrativo) (vai para o Storage do Firebase). Salve a nota para manter.</span></div>
     </section>
-    <section class="sec"><h3>Textos prontos</h3>
+    <section class="sec" data-ntterc><h3>Textos prontos</h3>
      <div class="f"><label for="ntx-nome">Nome do solicitante (vale para todas as notas)</label><input id="ntx-nome" value="${esc(pendingNome)}"></div>
      ${["narr","ped","env","ged"].map(k=>`<div class="copy"><header><span class="lbl">${{narr:"Narrativa da requisição (passos 3 e 5)",ped:"E-mail pedindo nº do pedido a Compras (passo 9)",env:"E-mail enviando o pedido ao fornecedor (passo 10)",ged:"E-mail de GED (passo 13)"}[k]}</span><button class="ntx-btn small" type="button" data-ntcopy="${k}">Copiar</button></header><pre id="ntx-cp-${k}"></pre></div>`).join("")}
     </section>
@@ -15644,12 +15666,14 @@ function drawEditor(isNew){
     const t=e.target;
     if(t.id&&t.id.startsWith("ntx-ck-")){const k=t.id.slice(7),d=$("#ntx-dt-"+k);if(t.checked&&!d.value)d.value=isoToday();if(!t.checked)d.value=""}
     if(t.id&&t.id.startsWith("ntx-dt-")){const k=t.id.slice(7);$("#ntx-ck-"+k).checked=!!t.value}
+    if(t.name==="ntxmodo"){readForm();editing.adm=t.value==="adm";if(editing.adm)editing.tipoCusto="administrativo";else if(editing.tipoCusto==="administrativo")editing.tipoCusto="";drawChecklist()}
     syncEditor();
   });
   $("#ntx-file").addEventListener("change",addFiles);
   drawAnexos();syncEditor._nc=null;syncEditor();
   setTimeout(()=>$("#ntx-forn")?.focus(),30);
 }
+function drawChecklist(){const n=editing;$("#ntxChecklist").innerHTML=stepsDe(n).map((s,i)=>`<li class="ck"><input type="checkbox" id="ntx-ck-${s.k}" ${et(n,s.k)?"checked":""} aria-label="${esc(s.t)}"><label for="ntx-ck-${s.k}"><div class="tt">${i+1}. ${esc(s.t)}</div><div class="hh">${esc(s.h)}</div></label><input type="date" id="ntx-dt-${s.k}" value="${esc(n.etapas?.[s.k]||"")}" aria-label="Data: ${esc(s.t)}"></li>`).join("")}
 function redrawNeg(){readForm();$("#ntxNegZone").innerHTML=negBlock(editing);syncEditor();if(negVisivel)setTimeout(()=>$("#ntx-negorig")?.focus(),20)}
 function drawAnexos(){
   const a=editing.anexos||[];
@@ -15670,6 +15694,8 @@ async function addFiles(e){
 }
 function readForm(){
   const n=editing, g=id=>($("#"+id)?.value||"").trim();
+  const modo=(document.querySelector('input[name="ntxmodo"]:checked')||{}).value;
+  if(modo){const adm=modo==="adm";if(adm!==ehAdm(n)||n.adm!==undefined||adm){n.adm=adm}if(adm)n.tipoCusto="administrativo";}
   n.servicos=SERV.map(s=>s[0]).filter(k=>$("#ntx-sv-"+k).checked);
   n.fornecedor=g("ntx-forn");n.cliente=g("ntx-cli");n.relatorio=g("ntx-rel");n.dataServico=g("ntx-dserv");n.descricao=g("ntx-desc");
   n.vinculo=(document.querySelector('input[name="ntxvinc"]:checked')||{}).value||"nenhum";
@@ -15677,12 +15703,16 @@ function readForm(){
   n.valor=g("ntx-valor");n.requisicao=g("ntx-req");n.pedido=g("ntx-ped");n.nfNumero=g("ntx-nf");n.nfEmissao=g("ntx-emis");n.nfVenc=g("ntx-venc");n.obs=$("#ntx-obs").value;
   if(negVisivel&&$("#ntx-negorig")){n.valorOriginal=g("ntx-negorig");n.negStatus=$("#ntx-negaberta").checked?"aberta":"fechada";n.negCom=g("ntx-negcom");n.negData=g("ntx-negdata");n.negObs=$("#ntx-negobs").value}
   else if(!negVisivel){delete n.valorOriginal;delete n.negStatus;delete n.negCom;delete n.negData;delete n.negObs}
-  n.etapas={};STEPS.forEach(s=>{const d=$("#ntx-dt-"+s.k).value;if($("#ntx-ck-"+s.k).checked)n.etapas[s.k]=d||isoToday()});
+  {const old=n.etapas||{},S=stepsDe(n);n.etapas={};Object.keys(old).forEach(k=>{if(!S.some(s=>s.k===k)&&!ehAdm(n))n.etapas[k]=old[k]});if(ehAdm(n))Object.keys(old).forEach(k=>{if(!S.some(s=>s.k===k))n.etapas[k]=old[k]});
+   S.forEach(s=>{const c=$("#ntx-ck-"+s.k),d=$("#ntx-dt-"+s.k);if(c&&c.checked)n.etapas[s.k]=(d&&d.value)||isoToday()})}
   return n;
 }
 function syncEditor(){
   const n=readForm();
   $("#ntxNcWrap").hidden=n.vinculo!=="nc";
+  {const adm=ehAdm(n);document.querySelectorAll("#ntxDrawerRoot [data-ntterc]").forEach(e=>e.hidden=adm);$("#ntxAdmInfo").hidden=!adm;
+   $("#ntxSecServH").textContent=adm?"Custo":"Serviço";$("#ntxSecValH").textContent=adm?"Valor":"Valores e documentos";$("#ntxValorLbl").textContent=adm?"Valor descontado pelo cliente (R$)":"Valor total da NF (R$)";
+   $("#ntxCliLbl").textContent=adm?"Cliente que fez o desconto":"Cliente onde foi feito o serviço";$("#ntxDservLbl").textContent=adm?"Data do custo":"Data do serviço"}
   const ncKey=n.vinculo+"|"+digits(n.ncNumero);if(syncEditor._nc!==ncKey){syncEditor._nc=ncKey;drawNc()}
   pendingNome=$("#ntx-nome").value.trim();
   $("#ntx-cp-narr").textContent=narrativa(n,pendingNome);$("#ntx-cp-ped").textContent=pedidoEmail(n);$("#ntx-cp-env").textContent=envioEmail(n);$("#ntx-cp-ged").textContent=gedEmail(n);
@@ -15691,7 +15721,7 @@ function syncEditor(){
   if(ne){const o=Number(n.valorOriginal),e=economia(n);
     ne.textContent=!o?"Informe o valor cobrado inicialmente. Sem esse valor a negociação não é registrada.":negAberta(n)?`Cobrado ${brl(o)}. A economia entra nos indicadores quando desmarcar "Ainda em negociação".`:e?`Economia de ${brl(e)} (${(e/o*100).toLocaleString("pt-BR",{maximumFractionDigits:1})}% de ${brl(o)}).`:"Valor da NF igual ou maior que o cobrado: sem economia.";}
   $("#ntxEAlerts").innerHTML=alertas(n).map(a=>`<span class="flag ${a.lv}">${esc(a.m)}</span>`).join("");
-  $("#ntxDtitle").textContent=n.fornecedor||"Custo de não qualidade";
+  $("#ntxDtitle").textContent=ehAdm(n)?"Custo administrativo":(n.fornecedor||"Custo de não qualidade");
 }
 async function doSave(){
   const n=readForm();
@@ -15701,7 +15731,7 @@ async function doSave(){
   if(!n.tenant){const tt=tenantAtual();if(tt)n.tenant=tt.key}
   if(n.vinculo==="nc"){const r=ncDaNota({...n,ncId:""});n.ncId=r?r.id:""}else delete n.ncId;
   const btn=$("#ntxBtnSave");btn.disabled=true;btn.textContent="Salvando…";
-  try{await salvar(n,pendingNome!==cfg.nome?pendingNome:null);closeEditor();toast(et(n,"lanc")?"Nota finalizada":"Nota salva")}
+  try{await salvar(n,pendingNome!==cfg.nome?pendingNome:null);closeEditor();toast(et(n,"lanc")?(ehAdm(n)?"Custo administrativo finalizado (entregue ao fiscal)":"Nota finalizada"):"Nota salva")}
   catch(e){btn.disabled=false;btn.textContent="Salvar";toast("Não foi possível salvar no Firebase ("+((e&&e.code)||"erro")+"). Ficou salvo neste navegador.")}
 }
 function closeEditor(){$("#ntxDrawerRoot").innerHTML="";editing=null}
@@ -16801,8 +16831,8 @@ QX.fc={clis:[],de:"",ate:"",nc:"",tipo:"",stNc:"",stNeg:"",stFin:"",nfPend:false
 const CAT_CUSTO=[["inspecao","Inspeção terceirizada"],["retrabalho","Retrabalho"],["contencao","Seleção e contenção"],["sucateamento","Sucateamento"],["embarque_controlado","Embarque controlado"],["administrativo","Administrativo"],["reatividade","Reatividade"],["outros","Outros"]];
 const catNome=k=>(CAT_CUSTO.find(c=>c[0]===k)||["","Outros"])[1];
 const SERIE=["#2a78d6","#eb6834","#1baf7a","#eda100","#e87ba4","#6250d6"];
-function qcCat(n){const s=(n.servicos||[])[0];if(s)return s;const t=n.tipoCusto||"";if(/embarque/.test(t))return "embarque_controlado";if(/administr/.test(t))return "administrativo";if(/contencao|retrabalho/.test(t))return "contencao";if(/reativ/.test(t))return "reatividade";return "outros"}
-function qcFin(n,hoje){if(negAberta(n))return ["negociando","Em negociação","warn"];if(et(n,"lanc"))return ["lancada","Lançada (fiscal)","ok"];if(n.nfVenc&&n.nfVenc<hoje)return ["vencida","NF vencida","crit"];if(et(n,"nf"))return ["nf","NF recebida","info"];if(et(n,"pedido")||n.pedido)return ["aguardaNf","Aguardando NF","info"];return ["requisicao","Em requisição",""]}
+function qcCat(n){if(ehAdm(n))return "administrativo";const s=(n.servicos||[])[0];if(s)return s;const t=n.tipoCusto||"";if(/embarque/.test(t))return "embarque_controlado";if(/administr/.test(t))return "administrativo";if(/contencao|retrabalho/.test(t))return "contencao";if(/reativ/.test(t))return "reatividade";return "outros"}
+function qcFin(n,hoje){if(ehAdm(n)){if(et(n,"lanc"))return ["lancada","Entregue ao fiscal","ok"];if(et(n,"aprov"))return ["aguardaNf","Assinado · entregar ao fiscal","info"];return ["requisicao","Coletar assinaturas","warn"]}if(negAberta(n))return ["negociando","Em negociação","warn"];if(et(n,"lanc"))return ["lancada","Lançada (fiscal)","ok"];if(n.nfVenc&&n.nfVenc<hoje)return ["vencida","NF vencida","crit"];if(et(n,"nf"))return ["nf","NF recebida","info"];if(et(n,"pedido")||n.pedido)return ["aguardaNf","Aguardando NF","info"];return ["requisicao","Em requisição",""]}
 function qcNeg(n){return negAberta(n)?"aberta":negTem(n)?"fechada":"sem"}
 function qcOriginal(n){return negTem(n)?Number(n.valorOriginal)||0:Number(n.valor)||0}
 function qcLinhas(D){
@@ -16818,7 +16848,7 @@ function qcFiltrar(L){const f=QX.fc;return L.filter(x=>{
   if(f.de&&x.data<f.de)return false;if(f.ate&&x.data>f.ate)return false;
   if(f.nc&&!digits(x.ncTxt+" "+x.rnc).includes(digits(f.nc)))return false;
   if(f.tipo&&x.cat!==f.tipo)return false;if(f.stNc&&x.stNc!==f.stNc)return false;if(f.stNeg&&x.neg!==f.stNeg)return false;if(f.stFin&&x.fin[0]!==f.stFin)return false;
-  if(f.nfPend&&!(x.fin[0]==="vencida"||(!et(x.n,"lanc")&&!et(x.n,"nf"))))return false;
+  if(f.nfPend&&!ehAdm(x.n)&&!(x.fin[0]==="vencida"||(!et(x.n,"lanc")&&!et(x.n,"nf"))))return false;
   if(f.q){const q=norm(f.q);if(!norm([x.n.fornecedor,x.n.descricao,x.n.relatorio,x.n.cliente,x.ncTxt,x.rnc,x.n.pedido,x.n.nfNumero,x.n.obs].join(" ")).includes(q))return false}
   return true})}
 const brlK=v=>Math.abs(v)>=10000?v.toLocaleString("pt-BR",{style:"currency",currency:"BRL",notation:"compact",maximumFractionDigits:1}):brl(v);
@@ -16844,18 +16874,18 @@ function qcAnexos(x){
     ${L.length?`<div class="qca-grid">${cards}</div>`:`<div class="qca-vazio">Nenhum anexo nesta nota. Anexe o relatório, a nota fiscal ou fotos do serviço.</div>`}</section>`;
 }
 function qcDetalhe(x){
-  const n=x.n,hoje=isoToday();const i=STEPS.findIndex(s=>!et(n,s.k));const cur=i<0?STEPS.length:i;
+  const n=x.n,hoje=isoToday(),adm=ehAdm(n),STEPS=stepsDe(n);const i=STEPS.findIndex(s=>!et(n,s.k));const cur=i<0?STEPS.length:i;
   const al=(typeof alertas==="function"?alertas(n):[]).filter(a=>a.lv!=="info");
   const linha=(l,v)=>v?`<div><span>${l}</span><b>${v}</b></div>`:"";
   return `<div class="qcd">
-   <div class="qcd-h"><div><div class="qx-eye">${esc(qxCli(x.k).nome)}${x.ncTxt?" · NC "+esc(x.ncTxt):""}</div><h4>${esc(n.fornecedor||"Sem fornecedor")} · ${esc((n.servicos||[]).map(servLabel).join(" / ")||catNome(x.cat))}</h4><div class="hint">${esc(n.relatorio||"")}${n.descricao?" — "+esc(n.descricao.slice(0,160)):""}</div></div>
+   <div class="qcd-h"><div><div class="qx-eye">${esc(qxCli(x.k).nome)}${x.ncTxt?" · NC "+esc(x.ncTxt):""}</div><h4>${adm?"Custo administrativo · desconto direto do cliente":esc(n.fornecedor||"Sem fornecedor")+" · "+esc((n.servicos||[]).map(servLabel).join(" / ")||catNome(x.cat))}</h4><div class="hint">${esc(n.relatorio||"")}${n.descricao?" — "+esc(n.descricao.slice(0,160)):""}</div></div>
     <div class="qcd-acts">${x.nc?`<button type="button" class="qx-btn sm ghost" data-qxnc="${esc(x.k)}|${esc(x.nc.r.id)}">Abrir NC</button>`:""}<button type="button" class="qx-btn sm" data-qcedit="${esc(x.k)}|${esc(n.id)}">Editar nota</button></div></div>
    <ol class="qcd-steps">${STEPS.map((s,j)=>{const d=n.etapas&&n.etapas[s.k];const st=d?"done":j===cur?"now":"";return `<li class="${st}"><i>${d?"✓":j+1}</i><b>${esc(s.t)}</b><small>${d?fdate(d):j===cur?"etapa atual":"—"}</small></li>`}).join("")}</ol>
-   ${cur<STEPS.length?`<div class="qcd-next"><b>Próximo passo:</b> ${esc(STEPS[cur].t)} — <span>${esc(STEPS[cur].h)}</span></div>`:`<div class="qcd-next ok"><b>Nota concluída</b> — lançada pelo fiscal em ${fdate(n.etapas.lanc)}.</div>`}
+   ${cur<STEPS.length?`<div class="qcd-next"><b>Próximo passo:</b> ${esc(STEPS[cur].t)} — <span>${esc(STEPS[cur].h)}</span></div>`:(adm?`<div class="qcd-next ok"><b>Custo administrativo concluído</b> — assinaturas entregues ao fiscal em ${fdate(n.etapas.lanc)}.</div>`:`<div class="qcd-next ok"><b>Nota concluída</b> — lançada pelo fiscal em ${fdate(n.etapas.lanc)}.</div>`)}
    ${al.length?`<ul class="qcd-al">${al.map(a=>`<li class="${a.lv}">${esc(a.m)}</li>`).join("")}</ul>`:""}
    <div class="qcd-grid">
     <section><h5>Valores</h5>${linha("Valor original",brl(x.orig))}${linha("Valor final",brl(x.val))}${linha("Economia",x.eco?brl(x.eco):"—")}${linha("Negociação",{sem:"Sem negociação",aberta:"Em negociação",fechada:"Negociada"}[x.neg])}</section>
-    <section><h5>Fiscal</h5>${linha("Requisição",esc(n.requisicao||"—"))}${linha("Pedido",n.pedido?esc(digits(n.pedido)):"—")}${linha("Nota fiscal",esc(n.nfNumero||(et(n,"nf")?"recebida":"—")))}${linha("Emissão",n.nfEmissao?fdate(n.nfEmissao):"—")}${linha("Vencimento",x.venc?fdate(x.venc):"—")}${linha("Status",`<span class="qx-tag ${x.fin[2]}">${x.fin[1]}</span>`)}</section>
+    ${adm?`<section><h5>Fiscal</h5>${linha("Tipo","Custo administrativo")}${linha("Nota fiscal","Não se aplica (desconto no fluxo de caixa)")}${linha("Assinaturas da gerência",et(n,"aprov")?fdate(n.etapas.aprov):"pendentes")}${linha("Entregue ao fiscal",et(n,"lanc")?fdate(n.etapas.lanc):"—")}${linha("Status",`<span class="qx-tag ${x.fin[2]}">${x.fin[1]}</span>`)}</section>`:`<section><h5>Fiscal</h5>${linha("Requisição",esc(n.requisicao||"—"))}${linha("Pedido",n.pedido?esc(digits(n.pedido)):"—")}${linha("Nota fiscal",esc(n.nfNumero||(et(n,"nf")?"recebida":"—")))}${linha("Emissão",n.nfEmissao?fdate(n.nfEmissao):"—")}${linha("Vencimento",x.venc?fdate(x.venc):"—")}${linha("Status",`<span class="qx-tag ${x.fin[2]}">${x.fin[1]}</span>`)}</section>`}
     <section><h5>Serviço</h5>${linha("Data do serviço",fdate(x.data))}${linha("Vínculo",n.vinculo==="nc"?"NC "+esc(x.ncTxt||""):n.vinculo==="emb"?"Embarque controlado":"Sem vínculo")}${linha("Responsável",esc(x.resp))}${n.obs?`<p class="qcd-obs">${esc(n.obs)}</p>`:""}</section>
    </div>
    ${qcAnexos(x)}
@@ -16925,13 +16955,13 @@ function qxCustoPg(host,D){
     const prev=new Date(y,mo-1,1),next=new Date(y,mo+1,1),mk=d=>d.getFullYear()+"-"+pad(d.getMonth()+1);
     reg=`<div class="qc-cal"><div class="qc-calh"><button type="button" class="qx-btn sm ghost" data-qccal="${mk(prev)}">‹</button><b>${MESN[mo]} ${y}</b><button type="button" class="qx-btn sm ghost" data-qccal="${mk(next)}">›</button><span class="hint"><i class="cd s"></i>serviço <i class="cd v"></i>vencimento NF <i class="cd l"></i>lançada</span></div>
      <div class="qc-grid">${["seg","ter","qua","qui","sex","sáb","dom"].map(d=>`<div class="wd">${d}</div>`).join("")}${Array(off).fill('<div class="dd vazio"></div>').join("")}${[...Array(dias).keys()].map(i=>{const iso=m+"-"+pad(i+1),E=ev[iso]||[];return `<div class="dd ${iso===hoje?"hoje":""}"><span class="n">${i+1}</span>${E.slice(0,4).map(([t,x])=>`<button type="button" class="ce ${t}" data-qcopen="${esc(x.k)}|${esc(x.n.id)}" data-tip="${esc((t==="s"?"Serviço":t==="v"?"Vencimento NF":"Lançada")+" · "+qxCli(x.k).nome+" · "+(x.n.fornecedor||"")+" · "+brl(x.val))}">${esc((x.n.fornecedor||qxCli(x.k).nome).slice(0,16))}</button>`).join("")}${E.length>4?`<small>+${E.length-4}</small>`:""}</div>`}).join("")}</div></div>`}
-  else reg=`<div class="qx-tabwrap"><table class="qx-tab qc-tab"><thead><tr>${th("cli","Cliente")}<th>NC / RNC</th><th>Descrição</th>${th("data","Data")}${th("orig","Valor original","r")}${th("valor","Valor negociado","r")}${th("eco","Economia","r")}<th>Nota fiscal</th>${th("venc","Vencimento")}<th>Status financeiro</th><th>Responsável</th></tr></thead><tbody>${L.map(x=>`<tr data-qcrow="${esc(x.n.id)}" class="${x.fin[0]==="vencida"?"late":""} ${QX.qcAberto===x.n.id?"open":""}"><td class="cli">${qxLogo(x.k,"mini")} ${esc(qxCli(x.k).nome)}</td><td><b class="mono">${esc(x.ncTxt||"—")}</b>${x.rnc?`<div class="hint">${esc(x.rnc)}</div>`:""}${x.stNc?`<div><span class="qx-tag ${x.stNc==="encerrada"?"ok":x.stNc==="andamento"?"warn":"info"}">NC ${x.stNc}</span></div>`:""}</td><td class="desc"><b>${esc(x.n.fornecedor||"Sem fornecedor")}</b> · ${esc((x.n.servicos||[]).map(servLabel).join("/")||catNome(x.cat))}<div class="hint">${esc((x.n.descricao||x.n.relatorio||"").slice(0,110))}</div></td><td>${fdate(x.data)}</td><td class="r mono">${brl(x.orig)}</td><td class="r mono">${brl(x.val)}</td><td class="r mono ${x.eco?"pos":""}">${x.eco?brl(x.eco):"—"}</td><td>${x.n.nfNumero?`<b class="mono">${esc(x.n.nfNumero)}</b>`:et(x.n,"nf")?"recebida":"—"}${x.n.pedido?`<div class="hint">PC ${esc(digits(x.n.pedido))}</div>`:""}</td><td>${x.venc?fdate(x.venc):"—"}</td><td>${chipFin(x)}</td><td>${esc(x.resp)}</td></tr>${QX.qcAberto===x.n.id?`<tr class="qc-detrow"><td colspan="11">${qcDetalhe(x)}</td></tr>`:""}`).join("")||`<tr><td colspan="11" class="qx-vazio">Nenhum registro no filtro.</td></tr>`}</tbody>${L.length?`<tfoot><tr><td colspan="4">${L.length} registros</td><td class="r mono">${brl(org)}</td><td class="r mono">${brl(tot)}</td><td class="r mono pos">${brl(eco)}</td><td colspan="4"></td></tr></tfoot>`:""}</table></div>`;
-  host.innerHTML=qxHead("Visão geral · todos os clientes","Custos da não qualidade","Custos de contenção, inspeção, retrabalho e negociações de todos os clientes, com notas fiscais, vencimentos e situação financeira.",`<button type="button" class="qx-btn" data-qcnova>+ Lançar custo</button>`)+filtros+kpis+
+  else reg=`<div class="qx-tabwrap"><table class="qx-tab qc-tab"><thead><tr>${th("cli","Cliente")}<th>NC / RNC</th><th>Descrição</th>${th("data","Data")}${th("orig","Valor original","r")}${th("valor","Valor negociado","r")}${th("eco","Economia","r")}<th>Nota fiscal</th>${th("venc","Vencimento")}<th>Status financeiro</th><th>Responsável</th></tr></thead><tbody>${L.map(x=>`<tr data-qcrow="${esc(x.n.id)}" class="${x.fin[0]==="vencida"?"late":""} ${QX.qcAberto===x.n.id?"open":""}"><td class="cli">${qxLogo(x.k,"mini")} ${esc(qxCli(x.k).nome)}</td><td><b class="mono">${esc(x.ncTxt||"—")}</b>${x.rnc?`<div class="hint">${esc(x.rnc)}</div>`:""}${x.stNc?`<div><span class="qx-tag ${x.stNc==="encerrada"?"ok":x.stNc==="andamento"?"warn":"info"}">NC ${x.stNc}</span></div>`:""}</td><td class="desc">${ehAdm(x.n)?`<b>Custo administrativo</b> · desconto direto do cliente`:`<b>${esc(x.n.fornecedor||"Sem fornecedor")}</b> · ${esc((x.n.servicos||[]).map(servLabel).join("/")||catNome(x.cat))}`}<div class="hint">${esc((x.n.descricao||x.n.relatorio||"").slice(0,110))}</div></td><td>${fdate(x.data)}</td><td class="r mono">${brl(x.orig)}</td><td class="r mono">${brl(x.val)}</td><td class="r mono ${x.eco?"pos":""}">${x.eco?brl(x.eco):"—"}</td><td>${ehAdm(x.n)?`<span class="hint">Sem NF</span>`:x.n.nfNumero?`<b class="mono">${esc(x.n.nfNumero)}</b>`:et(x.n,"nf")?"recebida":"—"}${x.n.pedido?`<div class="hint">PC ${esc(digits(x.n.pedido))}</div>`:""}</td><td>${x.venc?fdate(x.venc):"—"}</td><td>${chipFin(x)}</td><td>${esc(x.resp)}</td></tr>${QX.qcAberto===x.n.id?`<tr class="qc-detrow"><td colspan="11">${qcDetalhe(x)}</td></tr>`:""}`).join("")||`<tr><td colspan="11" class="qx-vazio">Nenhum registro no filtro.</td></tr>`}</tbody>${L.length?`<tfoot><tr><td colspan="4">${L.length} registros</td><td class="r mono">${brl(org)}</td><td class="r mono">${brl(tot)}</td><td class="r mono pos">${brl(eco)}</td><td colspan="4"></td></tr></tfoot>`:""}</table></div>`;
+  host.innerHTML=qxHead("Visão geral · todos os clientes","Custos da não qualidade","Custos de contenção, inspeção, retrabalho e negociações de todos os clientes, com notas fiscais, vencimentos e situação financeira.",`<button type="button" class="qx-btn" data-qcnova>+ Lançar custo</button>`)+kpis+
    `<section class="qx-grid qc-graf"><div class="qx-card span2"><div class="qx-ch"><h3>Custo mensal por cliente</h3><span class="hint">12 meses até ${mesLbl(ultMes[11])}</span></div>${gMes}</div>
      <div class="qx-card"><div class="qx-ch"><h3>Ranking de clientes</h3><span class="hint">maior custo</span></div>${gRank}</div>
      <div class="qx-card"><div class="qx-ch"><h3>Distribuição por categoria</h3><span class="hint">clique para filtrar</span></div>${gCat}</div>
      <div class="qx-card span2"><div class="qx-ch"><h3>Original × final — economia das negociações</h3><span class="hint">${negs.length} ${negs.length===1?"negociação":"negociações"} · ${brl(eco)} economizados</span></div>${gNeg}</div></section>
-   <section class="qx-card qc-reg"><div class="qx-ch"><h3>Cronograma de custos · todos os clientes</h3><div class="qx-seg">${[["tabela","Tabela"],["lista","Lista cronológica"],["calendario","Calendário"]].map(([v,l])=>`<button type="button" aria-pressed="${f.vista===v}" data-qcvista="${v}">${l}</button>`).join("")}</div></div>${reg}</section>`;
+   ${filtros}<section class="qx-card qc-reg"><div class="qx-ch"><h3>Cronograma de custos · todos os clientes</h3><div class="qx-seg">${[["tabela","Tabela"],["lista","Lista cronológica"],["calendario","Calendário"]].map(([v,l])=>`<button type="button" aria-pressed="${f.vista===v}" data-qcvista="${v}">${l}</button>`).join("")}</div></div>${reg}</section>`;
   QX._qcL=L;QX._qcK={tot,org,eco,pEco,n:L.length};
 }
 function qcExportar(tipo){
