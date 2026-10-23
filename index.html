@@ -17030,7 +17030,7 @@ function qxNcInfo(k,r){
 }
 function qxCards(){
   const grid=document.getElementById("ncCardsGrid");if(!grid||!site())return;const k=site().current();const rs=ncCache[k]||[];
-  grid.querySelectorAll(".nc-card[data-nc-id]:not([data-qx])").forEach(card=>{const r=rs.find(x=>x.id===card.dataset.ncId);if(!r)return;card.dataset.qx="1";card.classList.add("qxc");
+  grid.querySelectorAll(".nc-card[data-nc-id]:not([data-qx])").forEach(card=>{const r=rs.find(x=>String(x.id)===card.dataset.ncId)||(typeof ncRecords!=="undefined"&&Array.isArray(ncRecords)?ncRecords.find(x=>String(x.id)===card.dataset.ncId):null);if(!r)return;card.dataset.qx="1";card.classList.add("qxc");
     const I=qxNcInfo(k,r),body=card.querySelector(".nc-card-body");if(!body)return;
     const foto=card.querySelector(".nc-card-photo-strip,.nc-card-photo-placeholder");const nf=foto?foto.querySelectorAll("img").length:0;
     const ov=document.createElement("div");ov.className="qxc-ov";
@@ -17068,7 +17068,7 @@ function qxTabelaNc(){
   grid.style.display="none";const k=site().current(),rs=ncCache[k]||[];
   const ids=[...grid.querySelectorAll(".nc-card[data-nc-id]")].map(c=>c.dataset.ncId);
   if(!tb){tb=document.createElement("div");tb.id="qxTabNc";tb.className="qx-card";grid.after(tb)}
-  tb.innerHTML=`<div class="qx-tabwrap"><table class="qx-tab"><thead><tr><th>NC / RNC</th><th>Peça</th><th>Modo de falha</th><th>Abertura</th><th>Situação</th><th>Prazo</th><th>Responsável</th><th class="r">Custo final</th><th class="r">Economia</th><th></th></tr></thead><tbody>${ids.map(id=>{const r=rs.find(x=>x.id===id);if(!r)return "";const I=qxNcInfo(k,r);
+  tb.innerHTML=`<div class="qx-tabwrap"><table class="qx-tab"><thead><tr><th>NC / RNC</th><th>Peça</th><th>Modo de falha</th><th>Abertura</th><th>Situação</th><th>Prazo</th><th>Responsável</th><th class="r">Custo final</th><th class="r">Economia</th><th></th></tr></thead><tbody>${ids.map(id=>{const r=rs.find(x=>String(x.id)===id)||(typeof ncRecords!=="undefined"&&Array.isArray(ncRecords)?ncRecords.find(x=>String(x.id)===id):null);if(!r)return "";const I=qxNcInfo(k,r);
     return `<tr data-qxncrow="${esc(id)}" class="${I.atraso?"late":""}${I.fim&&!r.naoProcedente?" qxt-fim":""}${r.naoProcedente?" qxt-np":""}"><td><b class="mono">${esc(r.ncNumber||"")}</b><div class="hint">${esc(r.rncNumber||"")}</div></td><td class="mono">${esc(r.piece||"")}</td><td>${esc(r.failureMode||"")}</td><td>${fdate(I.data)}</td><td><span class="qx-tag ${I.st[1]}">${I.st[0]}</span>${I.atraso?` <span class="qx-tag crit">${I.atraso}d atraso</span>`:""}</td><td>${I.fim?"—":fdate(I.prazo)}</td><td>${esc(I.resp)}</td><td class="r mono">${I.nts.length?brl(I.fin):"—"}</td><td class="r mono">${I.eco?brl(I.eco):"—"}</td><td><button type="button" class="qx-btn sm" data-qx8d="${k}|${esc(id)}">8D</button></td></tr>`}).join("")||`<tr><td colspan="10" class="qx-vazio">Nenhuma NC no filtro.</td></tr>`}</tbody></table></div>`;
 }
 document.addEventListener("click",e=>{const v=e.target.closest("[data-qxvnc]");if(v){QX.vistaNc=v.dataset.qxvnc;try{localStorage.setItem("qx-vista-nc",QX.vistaNc)}catch(err){}qxTabelaNc();return}
@@ -17177,7 +17177,7 @@ function qxAqeBloco(a){
 function qxMarcarFim(k){
   const grid=document.getElementById("ncCardsGrid");if(!grid||!k)return;
   const apply=()=>{const rs=ncCache[k]||[],D=d8Cache[k]||{};
-    grid.querySelectorAll(".nc-card[data-nc-id]").forEach(card=>{const r=rs.find(x=>x.id===card.dataset.ncId);if(!r)return;
+    grid.querySelectorAll(".nc-card[data-nc-id]").forEach(card=>{const r=rs.find(x=>String(x.id)===card.dataset.ncId)||(typeof ncRecords!=="undefined"&&Array.isArray(ncRecords)?ncRecords.find(x=>String(x.id)===card.dataset.ncId):null);if(!r)return;
       const o=D[r.id],sis=!!(o&&o.status==="concluido"),fim=!r.naoProcedente&&!!(r.d8Finalizado||sis);
       card.classList.toggle("qxc-fim",fim);card.classList.toggle("qxc-np",!!r.naoProcedente);
       const b=card.querySelector(".nc-btn-8d");if(!b)return;
