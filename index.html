@@ -4008,9 +4008,9 @@ html body #ncStatusModalBackdrop .nc-btn-cancel-modal{background:transparent!imp
       <label for="ncSituacaoFilterSelect">Situação:</label>
       <select id="ncSituacaoFilterSelect">
         <option value="">Todas</option>
-        <option value="aberto">🟠 Em aberto</option>
-        <option value="finalizado">🟢 Finalizado</option>
-        <option value="alerta">🔴 Alerta</option>
+        <option value="analise">🟠 Em análise</option>
+        <option value="finalizado">🟢 Finalizadas</option>
+        <option value="improcedente">⚪ Improcedentes</option>
       </select>
       <button class="nc-alert-filter-btn" id="ncAlertFilterBtn">⚠ Com alertas</button>
       <button class="nc-excel-btn" id="ncExcelExportBtn" title="Exportar para Excel">
@@ -13699,7 +13699,7 @@ document.addEventListener("DOMContentLoaded", function() {
         // Apply alert filter
         if (_ncAlertFilter && !nc.atencao) { card.classList.add('nc-hidden'); return; }
         // Apply situacao filter
-        if (_ncSituacaoFilter && (nc.situacao || '') !== _ncSituacaoFilter) { card.classList.add('nc-hidden'); return; }
+        if (_ncSituacaoFilter) { var _sitNc = nc.naoProcedente ? 'improcedente' : (nc.d8Finalizado || nc.situacao === 'finalizado') ? 'finalizado' : 'analise'; if (_sitNc !== _ncSituacaoFilter) { card.classList.add('nc-hidden'); return; } }
         if (!q) { card.classList.remove('nc-hidden'); shown++; return; }
         var haystack = [
           nc.ncNumber, nc.piece, nc.failureMode,
@@ -13726,7 +13726,7 @@ document.addEventListener("DOMContentLoaded", function() {
         if (_ncFailureFilter) filterDesc.push('Falha: ' + _ncFailureFilter);
         if (_ncCustomFilter.key) filterDesc.push(_ncCustomFilter.key);
         if (_ncAlertFilter)   filterDesc.push('Com alertas');
-        if (_ncSituacaoFilter) filterDesc.push('Situação: ' + (_ncSituacaoFilter === 'finalizado' ? 'Finalizado' : _ncSituacaoFilter === 'alerta' ? 'Alerta' : 'Em aberto'));
+        if (_ncSituacaoFilter) filterDesc.push('Situação: ' + (_ncSituacaoFilter === 'finalizado' ? 'Finalizadas' : _ncSituacaoFilter === 'improcedente' ? 'Improcedentes' : 'Em análise'));
         if (q) filterDesc.push('"'+q+'"');
         ncSearchCount.textContent = shown + (shown === 1 ? ' NC encontrada' : ' NCs encontradas') + ' para ' + filterDesc.join(' + ');
         ncSearchCount.style.display = '';
