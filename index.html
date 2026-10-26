@@ -17073,7 +17073,13 @@ function qxTabelaNc(){
 }
 document.addEventListener("click",e=>{const v=e.target.closest("[data-qxvnc]");if(v){QX.vistaNc=v.dataset.qxvnc;try{localStorage.setItem("qx-vista-nc",QX.vistaNc)}catch(err){}qxTabelaNc();return}
   const row=e.target.closest("[data-qxncrow]");if(row&&!e.target.closest("button")){const k=site().current();const r=(ncCache[k]||[]).find(x=>x.id===row.dataset.qxncrow);if(r&&window._openNcDetailModalFn)window._openNcDetailModalFn(r)}});
-function qxObservarCards(){const g=document.getElementById("ncCardsGrid");if(!g||g.__qxobs)return;g.__qxobs=true;let t;new MutationObserver(()=>{clearTimeout(t);t=setTimeout(async()=>{const k=site()&&site().current();if(k&&!ncCache[k])await recarregarNCs(k);if(k)await carregar8D(k);qxCards()},120)}).observe(g,{childList:true});setTimeout(qxCards,500)}
+/* card recém-criado/salvo pode chegar antes do registro no Firebase: tenta de novo algumas vezes */
+function qxCardsPendentes(n){const g=document.getElementById("ncCardsGrid");if(!g||n>4)return;const falta=g.querySelector(".nc-card[data-nc-id]:not([data-qx])");if(!falta)return;
+  setTimeout(async()=>{const k=site()&&site().current();if(!k)return;await recarregarNCs(k);await carregar8D(k);QX.dados=null;qxCards();try{qxHero()}catch(e){}qxCardsPendentes(n+1)},1500)}
+function qxObservarCards(){const g=document.getElementById("ncCardsGrid");if(!g||g.__qxobs)return;g.__qxobs=true;let t;new MutationObserver(()=>{clearTimeout(t);t=setTimeout(async()=>{const k=site()&&site().current();if(k){const antes=JSON.stringify(ncCache[k]||null);await recarregarNCs(k);await carregar8D(k);
+  /* registros mudaram (NC nova, editada, marcada não procedente…): refaz indicadores com os dados novos */
+  if(antes!=="null"&&antes!==JSON.stringify(ncCache[k]||null)){QX.dados=null;try{qxHero()}catch(e){console.error(e)}}}
+  qxCards();qxCardsPendentes(0)},150)}).observe(g,{childList:true});setTimeout(qxCards,500)}
 
 /* ---------- NC por dentro: abas ---------- */
 const ABAS_NC=[["geral","Visão geral"],["analise","Contenção e causa raiz"],["plano","Plano de ações"],["custos","Custos e negociações"],["docs","Documentos"],["hist","Histórico e encerramento"]];
