@@ -17214,6 +17214,14 @@ document.addEventListener("input",e=>{if(e.target&&e.target.id==="ncSearchInput"
 document.addEventListener("click",e=>{if(e.target.closest("#ncSearchClear,.nc-cards-toolbar,.ncp-view,[data-qxview]"))setTimeout(qxSyncTabBusca,300)});
 new MutationObserver(()=>{clearTimeout(window.__qxTb);window.__qxTb=setTimeout(qxSyncTabBusca,150)}).observe(document.documentElement,{childList:true,subtree:true});
 
+/* 8D finalizado por anexo (janela "8D Finalizado"): pinta o card de verde na hora, sem esperar a releitura do Firebase */
+let qxSt8dPend=null;
+document.addEventListener("click",e=>{const b=e.target.closest('.nc-card [data-action="8d_finalizado"],.nc-card [data-action="rnc_aberta"]');if(b){const c=b.closest(".nc-card[data-nc-id]");qxSt8dPend=c?{id:c.dataset.ncId,a:b.dataset.action}:null}},true);
+document.addEventListener("click",e=>{if(e.target.closest("#ncStatusModalCancel,#ncStatusModalClose")){qxSt8dPend=null;return}if(!e.target.closest("#ncStatusModalSave")||!qxSt8dPend)return;const p=qxSt8dPend;qxSt8dPend=null;let n=0;
+  const tick=()=>{const bd=document.getElementById("ncStatusModalBackdrop");if(bd&&bd.classList.contains("open")){if(++n<40)setTimeout(tick,500);return}
+    const k=site()&&site().current();if(!k||p.a!=="8d_finalizado")return;const r=(ncCache[k]||[]).find(x=>x.id===p.id);if(r){r.d8Finalizado=true;QX.dados=null;qxMarcarFim(k);try{qxHero()}catch(_){}}};
+  setTimeout(tick,400)},true);
+
 /* =====================================================================
    CLIENTES — cadastro em cards + ficha por seções
    Perfil complementar em cliente_perfil/<chave> (não mexe no cadastro
