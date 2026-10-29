@@ -3385,6 +3385,17 @@ html body #ncStatusModalBackdrop .nc-btn-cancel-modal{background:transparent!imp
 #ncPage .nc-card.qxc.qxc-np .nc-card-body>*{filter:saturate(.35)}
 #ncPage .nc-card.qxc.qxc-np .qxc-atraso{display:none!important}
 #qxTabNc tr.qxt-np td{background:rgba(139,147,157,.08)!important;color:var(--qx-muted)}
+#newTenantBackdrop .qx-ntmaq{margin:14px 0 6px;padding-top:12px;border-top:1px solid var(--qx-line2)}
+#newTenantBackdrop .qx-ntmaq h3{margin:4px 0 2px}
+#newTenantBackdrop .qx-ntmaq-g{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px}
+#newTenantBackdrop .qx-ntmaq figure{margin:0;background:var(--qx-sunk);border:1px solid var(--qx-line);border-radius:10px;overflow:hidden}
+#newTenantBackdrop .qx-ntmaq figure img{display:block;width:100%;height:88px;object-fit:contain;background:#0d1116}
+#newTenantBackdrop .qx-ntmaq figcaption{display:flex;gap:6px;justify-content:center;padding:6px}
+#newTenantBackdrop .qx-ntmaq figcaption .nt-upload.sm,#newTenantBackdrop .qx-ntmaq figcaption button{font-size:11px;padding:4px 8px;border-radius:6px;cursor:pointer;margin:0}
+#newTenantBackdrop .qx-ntmaq figcaption button{background:transparent;border:1px solid var(--qx-line);color:var(--qx-ink2)}
+#newTenantBackdrop .qx-ntmaq-add{display:flex;align-items:center;justify-content:center;min-height:120px;border:1px dashed var(--qx-line);border-radius:10px;color:var(--qx-muted);cursor:pointer;font-size:12px}
+#newTenantBackdrop .qx-ntmaq-add:hover{border-color:#ffcd11;color:#ffcd11}
+#newTenantBackdrop .qx-ntmaq-st{font-size:11px;color:var(--qx-muted);margin-top:6px;min-height:14px}
 </style>
 </head>
 <body>
@@ -16520,7 +16531,7 @@ async function qxRender(id){
 const qxHead=(eyebrow,titulo,sub,dir)=>`<header class="qx-head"><div><div class="qx-eye">${eyebrow}</div><h1>${titulo}</h1>${sub?`<p>${sub}</p>`:""}</div>${dir?`<div class="qx-head-r">${dir}</div>`:""}</header>`;
 const chipSt={aberta:["Aberta","info"],andamento:["Em andamento","warn"],concluida:["Concluída","ok"]};
 const qxLogo=(k,cls)=>{const c=qxCli(k);return c.logo?`<span class="qx-mlogo ${cls||""}" style="background:${c.bg}"><img src="${esc(c.logo)}" alt="${esc(c.nome)}"></span>`:`<span class="qx-mlogo ${cls||""}"><i>${esc(c.sigla)}</i></span>`};
-function qxMaqImgs(k,D){return k==="jd2"?QX_MAQ_JD:((D.vis[k]&&D.vis[k].maquinas)||[]).map(m=>m.src||m)}
+function qxMaqImgs(k,D){const v=D&&D.vis&&D.vis[k];if(v&&Array.isArray(v.maquinas))return v.maquinas.map(m=>m.src||m).filter(Boolean);return k==="jd2"?QX_MAQ_JD:[]}
 
 /* ---------- 1. DASHBOARD EXECUTIVO ---------- */
 function qxDash(host,D){
@@ -17290,6 +17301,35 @@ function qxNtModal(){
   return true;
 }
 (function esperaNt(n){if(!qxNtModal()&&n<40)setTimeout(()=>esperaNt(n+1),250)})(0);
+
+/* ---------- janela Editar cliente: imagens do equipamento (até 2) junto da logo ---------- */
+const QXNM={key:"",list:[],dirty:false,keysAntes:null};
+function qxNtMaqBloco(){
+  const side=document.querySelector("#newTenantBackdrop .nt-brand-side");if(!side)return null;let b=document.getElementById("qxNtMaq");if(b)return b;
+  b=document.createElement("div");b.id="qxNtMaq";b.className="qx-ntmaq";
+  const prev=[...side.querySelectorAll(".nt-overline")].find(o=>/PRÉVIA/i.test(o.textContent));side.insertBefore(b,prev||null);
+  b.addEventListener("click",e=>{const r=e.target.closest("[data-qxnmrm]");if(r){QXNM.list.splice(+r.dataset.qxnmrm,1);QXNM.dirty=true;qxNtMaqDesenha()}});
+  b.addEventListener("change",async e=>{const i=e.target.closest("input[data-qxnmfile]");if(!i||!i.files[0])return;const f=i.files[0],pos=i.dataset.qxnmfile;i.value="";
+    const st=b.querySelector(".qx-ntmaq-st");if(!/^image\//.test(f.type)){st.textContent="Escolha um arquivo de imagem (PNG, JPG ou WebP).";return}
+    st.textContent="Preparando a imagem…";try{const im=await comprimir(f,900,0.8);const it={src:im.src,w:im.w,h:im.h};if(pos==="novo")QXNM.list.push(it);else QXNM.list[+pos]=it;QXNM.list=QXNM.list.slice(0,2);QXNM.dirty=true;qxNtMaqDesenha();b.querySelector(".qx-ntmaq-st").textContent="Imagem pronta. Salve para aplicar ao cliente."}catch(err){st.textContent="Não foi possível abrir esta imagem."}});
+  return b}
+function qxNtMaqDesenha(){const b=qxNtMaqBloco();if(!b)return;const L=QXNM.list;
+  b.innerHTML=`<span class="nt-overline">IMAGEM DO EQUIPAMENTO</span><h3>Máquina / produto do cliente</h3><p>Aparece no topo do painel do cliente e no card da página inicial. Até 2 imagens.</p>
+   <div class="qx-ntmaq-g">${L.map((m,i)=>`<figure><img src="${esc(m.src||m)}" alt="Equipamento ${i+1}"><figcaption><label class="nt-upload sm">Trocar<input type="file" accept="image/*" data-qxnmfile="${i}" hidden></label><button type="button" data-qxnmrm="${i}">Remover</button></figcaption></figure>`).join("")}
+   ${L.length<2?`<label class="qx-ntmaq-add">+ Adicionar imagem<input type="file" accept="image/*" data-qxnmfile="novo" hidden></label>`:""}</div>
+   <p class="qx-ntmaq-st" role="status">${QXNM.dirty?"Alterações prontas. Salve para aplicar ao cliente.":QXNM.key?"":"As imagens são gravadas junto com o cliente ao salvar."}</p>`}
+async function qxNtMaqAbrir(){
+  const key=(document.getElementById("nt-editing-key")||{}).value||"";QXNM.key=key;QXNM.dirty=false;QXNM.list=[];qxNtMaqDesenha();
+  if(!key)return;const v=await carregarVisualCliente(key);if(QXNM.key!==key)return;
+  QXNM.list=Array.isArray(v.maquinas)?v.maquinas.slice(0,2):(key==="jd2"?QX_MAQ_JD.map(s=>({src:s})):[]);qxNtMaqDesenha()}
+async function qxNtMaqSalvar(key){if(!key||!QXNM.dirty)return;const L=QXNM.list.slice(0,2);QXNM.dirty=false;
+  try{const ref=fdb.collection("cliente_visual").doc(key);const s=await ref.get();const cur=(s.exists&&s.data())||{};cur.maquinas=L;await ref.set(cur);QX.dados=null;toast("Imagem do equipamento salva");try{qxHero()}catch(_){}if(QX.pagina)try{qxRender(QX.pagina)}catch(_){}}
+  catch(e){toast("Não foi possível salvar a imagem do equipamento")}}
+(function qxNtMaqLiga(n){const bd=document.getElementById("newTenantBackdrop");if(!bd||!document.querySelector("#newTenantBackdrop .nt-brand-side")){if(n<60)setTimeout(()=>qxNtMaqLiga(n+1),300);return}
+  let aberto=false;new MutationObserver(()=>{const ab=bd.classList.contains("open");if(ab&&!aberto)qxNtMaqAbrir();aberto=ab}).observe(bd,{attributes:true,attributeFilter:["class"]});
+  document.addEventListener("click",e=>{if(!e.target.closest("#newTenantSave")||!QXNM.dirty)return;const key=QXNM.key;const antes=Object.keys((site()&&site().tenants())||{});
+    let t=0;const espera=()=>{if(bd.classList.contains("open")){if(++t<40)setTimeout(espera,400);return}
+      let k=key;if(!k){const novos=Object.keys((site()&&site().tenants())||{}).filter(x=>!antes.includes(x));k=novos[0]||""}qxNtMaqSalvar(k)};setTimeout(espera,500)},true)})(0);
 
 document.addEventListener("click",e=>{const t=e.target.closest('[data-nt8d],[data-8dppt],[data-8dfechar],[data-8dadd],[data-8drm],[data-8dsuga],[data-8daba],[data-fbst],[data-fbrm],[data-fbsug],[data-w5sug],[data-8dplano],[data-evrm],[data-alpg],[data-8dpptgo],[data-8dsalvar],[data-8dconcluir]');if(t){e.preventDefault();clique8D(t)}});
 function boot(){
