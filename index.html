@@ -3396,6 +3396,11 @@ html body #ncStatusModalBackdrop .nc-btn-cancel-modal{background:transparent!imp
 #newTenantBackdrop .qx-ntmaq-add{display:flex;align-items:center;justify-content:center;min-height:120px;border:1px dashed var(--qx-line);border-radius:10px;color:var(--qx-muted);cursor:pointer;font-size:12px}
 #newTenantBackdrop .qx-ntmaq-add:hover{border-color:#ffcd11;color:#ffcd11}
 #newTenantBackdrop .qx-ntmaq-st{font-size:11px;color:var(--qx-muted);margin-top:6px;min-height:14px}
+#ntxDrawerRoot .ntx-wa .ntx-btn.off{opacity:.45;pointer-events:none}
+#ntxDrawerRoot .ntx-wa header .ntx-actions{display:flex;gap:6px}
+#ntxDrawerRoot .ntx-wa #ntxWaBtn{background:#1f9d55;border-color:#1f9d55;color:#fff;text-decoration:none}
+#ntxDrawerRoot .ntx-wa .grid{margin:8px 0}
+#ntxDrawerRoot .ntx-wa .hint{display:block;margin-top:6px}
 </style>
 </head>
 <body>
@@ -15267,6 +15272,14 @@ function narrativa(n,nome){
 4 – Quantidade comprada: Custo do Serviço realizado R$ ${brlPlain(n.valor)}
 5 – Por que está sendo comprado? ${motivo(n)}`;
 }
+/* WhatsApp para o gerente quando a solicitação de compras é aberta */
+function waNum(v){let d=digits(v);if(!d)return "";if(d.length<=11)d="55"+d;return d}
+function gerenteMsg(n,ger){const serv=(n.servicos||[]).map(servLabel).join(" / ")||"serviço";const t=tier(n.valor);
+  return `Olá${ger&&ger.nome?", "+ger.nome:""}! Abri a solicitação de compras nº ${n.requisicao||"___"} no Totvs para aprovação.
+Serviço de ${serv}${n.fornecedor?" – "+n.fornecedor:""} – cliente ${n.cliente||"___"}${n.relatorio?"\nRelatório: "+n.relatorio:""}${n.vinculo==="nc"&&n.ncNumero?"\nNC: "+n.ncNumero:""}
+Valor: R$ ${brlPlain(n.valor)}${t?"\nAprovação: "+t:""}
+Pode aprovar, por favor? Obrigada!`}
+function waLink(n,ger){const num=waNum(ger&&ger.wa);return num?`https://wa.me/${num}?text=${encodeURIComponent(gerenteMsg(n,ger))}`:""}
 function anexosTxt(n){const a=(n.anexos||[]).map(x=>x.nome);return a.length?a.join(", "):"(anexar o relatório)"}
 function pedidoEmail(n){
   const serv=(n.servicos||[]).map(servLabel).join("/")||"Serviço";
@@ -15317,7 +15330,7 @@ async function mutate(fn){
   });
 }
 function upsert(list,n){const i=list.findIndex(x=>x.id===n.id);if(i>=0)list[i]=n;else list.push(n);return list}
-async function salvar(n,nome){n.atualizado=new Date().toISOString();await mutate(st=>{st.notas=upsert(st.notas,clone(n));if(nome!=null)st.cfg.nome=nome;return st})}
+async function salvar(n,nome,cfgPatch){n.atualizado=new Date().toISOString();await mutate(st=>{st.notas=upsert(st.notas,clone(n));if(nome!=null)st.cfg.nome=nome;if(cfgPatch)Object.assign(st.cfg,cfgPatch);return st})}
 async function excluir(id){await mutate(st=>{st.notas=st.notas.filter(x=>x.id!==id);return st})}
 
 function connect(tries){
@@ -15514,12 +15527,12 @@ function updateNavBadge(){
 }
 
 /* ---------- editor ---------- */
-let editing=null, pendingNome=null, negVisivel=false;
+let editing=null, pendingNome=null, pendingGer=null, negVisivel=false;
 function openEditor(id){
   const base=id?notas.find(n=>n.id===id):null;
   const t=tenantAtual();
   editing=base?clone(base):{id:newId(),servicos:[],vinculo:"nenhum",etapas:{},tenant:t?t.key:"",cliente:""};
-  pendingNome=cfg.nome||"";negVisivel=negTem(editing);
+  pendingNome=cfg.nome||"";pendingGer={nome:cfg.gerenteNome||"",wa:cfg.gerenteWhats||""};negVisivel=negTem(editing);
   drawEditor(!base);
 }
 function negBlock(n){
@@ -15660,6 +15673,9 @@ function drawEditor(isNew){
     </section>
     <section class="sec" data-ntterc><h3>Textos prontos</h3>
      <div class="f"><label for="ntx-nome">Nome do solicitante (vale para todas as notas)</label><input id="ntx-nome" value="${esc(pendingNome)}"></div>
+     <div class="copy ntx-wa"><header><span class="lbl">WhatsApp para o gerente (abre sozinho ao salvar com a requisição aberta)</span><span class="ntx-actions"><button class="ntx-btn small" type="button" data-ntcopy="wa">Copiar</button><a class="ntx-btn small primary" id="ntxWaBtn" href="#" target="_blank" rel="noopener">Enviar no WhatsApp</a></span></header>
+      <div class="grid"><div class="f"><label for="ntx-gnome">Nome do gerente</label><input id="ntx-gnome" value="${esc(pendingGer.nome)}" placeholder="Ex.: Patrick"></div><div class="f"><label for="ntx-gwa">WhatsApp do gerente (com DDD)</label><input id="ntx-gwa" class="mono" inputmode="tel" value="${esc(pendingGer.wa)}" placeholder="(41) 99999-9999"></div></div>
+      <pre id="ntx-cp-wa"></pre><span class="hint" id="ntxWaHint"></span></div>
      ${["narr","ped","env","ged"].map(k=>`<div class="copy"><header><span class="lbl">${{narr:"Narrativa da requisição (passos 3 e 5)",ped:"E-mail pedindo nº do pedido a Compras (passo 9)",env:"E-mail enviando o pedido ao fornecedor (passo 10)",ged:"E-mail de GED (passo 13)"}[k]}</span><button class="ntx-btn small" type="button" data-ntcopy="${k}">Copiar</button></header><pre id="ntx-cp-${k}"></pre></div>`).join("")}
     </section>
     <section class="sec"><h3>Observações</h3>
@@ -15726,6 +15742,9 @@ function syncEditor(){
    $("#ntxCliLbl").textContent=adm?"Cliente que fez o desconto":"Cliente onde foi feito o serviço";$("#ntxDservLbl").textContent=adm?"Data do custo":"Data do serviço"}
   const ncKey=n.vinculo+"|"+digits(n.ncNumero);if(syncEditor._nc!==ncKey){syncEditor._nc=ncKey;drawNc()}
   pendingNome=$("#ntx-nome").value.trim();
+  pendingGer={nome:$("#ntx-gnome").value.trim(),wa:$("#ntx-gwa").value.trim()};
+  {const l=waLink(n,pendingGer),b=$("#ntxWaBtn");$("#ntx-cp-wa").textContent=gerenteMsg(n,pendingGer);b.href=l||"#";b.classList.toggle("off",!l);
+   $("#ntxWaHint").textContent=!waNum(pendingGer.wa)?"Informe o WhatsApp do gerente uma vez; fica salvo para todas as notas.":n.whatsGerente?`Mensagem já enviada em ${fdate(n.whatsGerente)}. Ao salvar de novo não abre outra vez.`:!n.requisicao||!et(n,"req")?"Abre sozinho quando você marcar \"Requisição aberta\", preencher o nº da solicitação e salvar.":"Ao salvar, o WhatsApp abre com esta mensagem pronta: é só enviar."}
   $("#ntx-cp-narr").textContent=narrativa(n,pendingNome);$("#ntx-cp-ped").textContent=pedidoEmail(n);$("#ntx-cp-env").textContent=envioEmail(n);$("#ntx-cp-ged").textContent=gedEmail(n);
   const t=tier(n.valor);$("#ntxTier").textContent=t?`Aprovação da requisição: ${t} (até R$ 2.000 Supervisão + Gerência · R$ 2.001 a 10.000 Gerência · acima Gerência + Direção)`:"Informe o valor para ver quem aprova a requisição.";
   const ne=$("#ntxNegEco");
@@ -15741,8 +15760,11 @@ async function doSave(){
   if(n.importado||n.origem)n.conferido=true;
   if(!n.tenant){const tt=tenantAtual();if(tt)n.tenant=tt.key}
   if(n.vinculo==="nc"){const r=ncDaNota({...n,ncId:""});n.ncId=r?r.id:""}else delete n.ncId;
+  /* abre o WhatsApp do gerente aqui, ainda dentro do clique (o navegador bloqueia se for depois de salvar) */
+  if(!ehAdm(n)&&et(n,"req")&&n.requisicao&&!n.whatsGerente){const l=waLink(n,pendingGer);if(l){const w=window.open(l,"_blank","noopener");n.whatsGerente=isoToday();if(!w)toast("O navegador bloqueou a janela do WhatsApp: use o botão Enviar no WhatsApp da nota")}}
+  const gerPatch=(pendingGer&&(pendingGer.nome!==(cfg.gerenteNome||"")||pendingGer.wa!==(cfg.gerenteWhats||"")))?{gerenteNome:pendingGer.nome,gerenteWhats:pendingGer.wa}:null;
   const btn=$("#ntxBtnSave");btn.disabled=true;btn.textContent="Salvando…";
-  try{await salvar(n,pendingNome!==cfg.nome?pendingNome:null);closeEditor();toast(et(n,"lanc")?(ehAdm(n)?"Custo administrativo finalizado (entregue ao fiscal)":"Nota finalizada"):"Nota salva")}
+  try{await salvar(n,pendingNome!==cfg.nome?pendingNome:null,gerPatch);closeEditor();toast(et(n,"lanc")?(ehAdm(n)?"Custo administrativo finalizado (entregue ao fiscal)":"Nota finalizada"):"Nota salva")}
   catch(e){btn.disabled=false;btn.textContent="Salvar";toast("Não foi possível salvar no Firebase ("+((e&&e.code)||"erro")+"). Ficou salvo neste navegador.")}
 }
 function closeEditor(){$("#ntxDrawerRoot").innerHTML="";editing=null}
