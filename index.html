@@ -3424,6 +3424,41 @@ html body #ncStatusModalBackdrop .nc-btn-cancel-modal{background:transparent!imp
 .qxp-av8d{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:-2px 0 10px}
 .qxp-av8d:empty{display:none}
 #qxpRoot .drawer{z-index:6001;width:min(560px,100%)}#qxpRoot .scrim{z-index:6000}
+.qxca-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-bottom:14px}
+@media (max-width:1100px){.qxca-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.qxca-k{display:flex;flex-direction:column;gap:2px;align-items:flex-start;text-align:left;background:var(--qx-card);border:1px solid var(--qx-line);border-top:3px solid var(--qx-line2);border-radius:12px;padding:12px 14px;cursor:pointer;color:var(--qx-ink)}
+.qxca-k b{font-size:28px;line-height:1.1}.qxca-k span{font-weight:600;font-size:13px}.qxca-k i{font-style:normal;font-size:11px;color:var(--qx-muted)}
+.qxca-k.ok{border-top-color:#3fb97a}.qxca-k.warn{border-top-color:#f0b429}.qxca-k.crit{border-top-color:#e85a4f}.qxca-k.info{border-top-color:#5aa9ff}
+.qxca-k.crit b{color:#ff8a80}.qxca-k.warn b{color:#ffd166}
+.qxca-k[aria-pressed="true"]{outline:2px solid #ffcd11;outline-offset:1px}
+.qxca-alert{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.qxca-alert button{background:var(--qx-sunk);border:1px solid var(--qx-line);color:var(--qx-ink2);border-radius:10px;padding:8px 12px;cursor:pointer;font-size:13px}
+.qxca-alert button:hover{border-color:#ffcd11}
+.qxca-list li{display:grid;grid-template-columns:auto 1fr auto;gap:4px 8px;align-items:start}
+.qxca-list li .hint{grid-column:2}.qxca-list li .qx-btn{grid-row:1/span 2;grid-column:3}
+.qxca-ac{grid-column:2}
+.qxca-tab td:first-child{white-space:nowrap}
+.qxh-resumo{display:flex;gap:18px;flex-wrap:wrap;margin:0 0 14px;color:var(--qx-ink2);font-size:13px}
+.qxh-resumo b{font-size:18px;color:var(--qx-ink);margin-right:4px}
+.qxh-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(440px,1fr));gap:14px;margin-bottom:14px}
+.qxh-g{padding:14px 16px}
+.qxh-g>header{display:grid;grid-template-columns:auto 1fr auto auto;gap:12px;align-items:center;padding-bottom:12px;border-bottom:1px solid var(--qx-line);margin-bottom:10px}
+.qxh-g>header h3{margin:0;font-size:17px}
+.qxh-av{width:42px;height:42px;border-radius:50%;background:#ffcd11;color:#111;display:grid;place-items:center;font-weight:800}
+.qxh-sem .qxh-av{background:var(--qx-sunk);color:var(--qx-muted);border:1px dashed var(--qx-line)}
+.qxh-n{font-size:12px;color:var(--qx-muted)}
+.qxh-niv{margin-top:8px}.qxh-nl{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#ffcd11;font-weight:700;margin-bottom:4px}
+.qxh-niv ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.qxh-p{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--qx-line2)}
+.qxh-p>div{display:flex;flex-direction:column;min-width:0}.qxh-p .hint{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qxh-vazio{padding:6px 0}
+@media (max-width:700px){.qxh-grid{grid-template-columns:1fr}.qxh-p{grid-template-columns:1fr auto}.qxh-p>.mono{display:none}}
+#qxCliAcoes .qxca-tab{table-layout:auto;width:100%}
+#qxCliAcoes .qxca-tab td,#qxCliAcoes .qxca-tab th{white-space:normal;vertical-align:top}
+#qxCliAcoes .qxca-tab td:nth-child(2){min-width:320px;max-width:520px}
+#qxCliAcoes .qxca-tab td:first-child,#qxCliAcoes .qxca-tab td:nth-child(5){white-space:nowrap}
+#qxCliAcoes .qx-head .qx-mlogo.qxca-logo{width:120px;height:56px;padding:8px}
+#qxCliAcoes .qx-head .qx-mlogo.qxca-logo img{max-height:40px;width:auto;object-fit:contain}
 </style>
 </head>
 <body>
@@ -16553,20 +16588,20 @@ function qxMontarNav(){
   document.querySelectorAll(".main > .page").forEach(p=>obs.observe(p,{attributes:true,attributeFilter:["class"]}));
 }
 function qxNav(){
-  const nav=document.getElementById("qxNav");if(!nav)return;const cur=site()&&site().current();const naCli=QX.pagina&&!QX.pagina.startsWith("qx");
+  const nav=document.getElementById("qxNav");if(!nav)return;const cur=site()&&site().current();const naCli=QX.pagina&&(!QX.pagina.startsWith("qx")||QX.pagina==="qxCliAcoes");
   const item=(id,ic,l,extra)=>`<button type="button" class="qx-ni" data-qxnav="${id}" ${extra||""}>${svgI(ic)}<span>${l}</span></button>`;
   const cls=qxClientes();
   nav.innerHTML=`
    <div class="qx-ng"><div class="qx-nh">Visão geral</div>${item("qxDash","dash","Dashboard executivo")}${item("qxCusto","custo","Custo de não qualidade")}
     <details class="qx-det" ${naCli?"open":""}><summary class="qx-ni">${svgI("cli")}<span>Painéis dos clientes</span></summary>${cls.map(k=>{const c=qxCli(k);return `<button type="button" class="qx-ni qx-cli ${naCli&&cur===k?"on":""}" data-qxcli="${k}" style="--c:${c.acc}">${c.logo?`<img src="${esc(c.logo)}" alt="" style="background:${c.bg}">`:`<i>${esc(c.sigla)}</i>`}<span>${esc(c.nome)}</span></button>`}).join("")}</details></div>
-   ${naCli&&cur&&cls.includes(cur)?`<div class="qx-ng qx-ativo" style="--c:${qxCli(cur).acc}"><div class="qx-nh">${esc(qxCli(cur).nome)}</div>${item("ncPage","nc","NCs do cliente")}${item("ncCostPage","custo","Custo de não qualidade")}</div>`:""}
+   ${naCli&&cur&&cls.includes(cur)?`<div class="qx-ng qx-ativo" style="--c:${qxCli(cur).acc}"><div class="qx-nh">${esc(qxCli(cur).nome)}</div>${item("ncPage","nc","NCs do cliente")}${item("qxCliAcoes","d8","Plano de ações")}${item("ncCostPage","custo","Custo de não qualidade")}</div>`:""}
    <div class="qx-ng"><div class="qx-nh">Não conformidades</div>${item("qxNcs","nc","Todas as NCs")}</div>
    <div class="qx-ng"><div class="qx-nh">Análise 8D</div>${item("qx8d","d8","Análises 8D")}${item("qxAcoes","nc","Plano de ações")}${item("qxHist","hist","Histórico e consulta")}</div>
    <div class="qx-ng"><div class="qx-nh">Cadastros</div>${item("qxClientesPg","cli","Clientes")}${item("qxPessoas","cli","Pessoas")}</div>`;
   qxMarcar(QX.pagina);
 }
 function qxMarcar(id){if(!id)return;QX.pagina=id;document.querySelectorAll("#qxNav [data-qxnav]").forEach(b=>{const v=b.dataset.qxnav;const base=v.split(":")[0];const sub=v.split(":")[1];b.classList.toggle("on",base===id)});
-  document.querySelectorAll("#qxNav [data-qxcli]").forEach(b=>b.classList.toggle("on",!id.startsWith("qx")&&site()&&site().current()===b.dataset.qxcli))}
+  document.querySelectorAll("#qxNav [data-qxcli]").forEach(b=>b.classList.toggle("on",(!id.startsWith("qx")||id==="qxCliAcoes")&&site()&&site().current()===b.dataset.qxcli))}
 function qxMostrar(id){
   document.querySelectorAll(".main > .page").forEach(p=>p.classList.toggle("active",p.id===id));
   document.querySelectorAll(".sidebar-nav li[data-page]").forEach(i=>i.classList.remove("active"));
@@ -16581,8 +16616,8 @@ async function qxAbrir8D(k,ncId){if(site()&&site().current()!==k){site().go(k);a
 async function qxRender(id){
   const host=document.getElementById(id);if(!host||!id.startsWith("qx"))return;
   if(!QX.dados)host.innerHTML=`<div class="qx-load">Carregando dados de todos os clientes…</div>`;
-  const D=await qxCarregar();if(id==="qxAcoes"&&typeof qxCarregarPessoas==="function")await qxCarregarPessoas();
-  ({qxClientesPg:qxClientesPg,qxCusto:qxCustoPg,qxDash:qxDash,qxNcs:qxNcs,qx8d:qx8d,qxHist:qxHist,qxAcoes:qxAcoes,qxMaq:qxMaqPg,qxPessoas:qxPessoasPg})[id](host,D);
+  const D=await qxCarregar();if((id==="qxAcoes"||id==="qxCliAcoes")&&typeof qxCarregarPessoas==="function")await qxCarregarPessoas();
+  ({qxClientesPg:qxClientesPg,qxCusto:qxCustoPg,qxDash:qxDash,qxNcs:qxNcs,qx8d:qx8d,qxHist:qxHist,qxAcoes:qxAcoes,qxMaq:qxMaqPg,qxPessoas:qxPessoasPg,qxCliAcoes:qxCliAcoesPg})[id](host,D);
 }
 
 /* ---------- cabeçalho de página padrão ---------- */
@@ -17408,6 +17443,8 @@ function qxPessoasDL(){let dl=document.getElementById("qxPessoasDL");if(!dl){dl=
 const qxNorm=s=>String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/\s+/g," ").trim();
 function qxPessoaDe(resp){const r=qxNorm(resp);if(!r)return null;const L=QX.pessoas||[];
   return L.find(p=>qxNorm(p.nome)===r)||L.find(p=>p.email&&r.includes(qxNorm(p.email)))||L.find(p=>qxNorm(p.nome).length>4&&r.includes(qxNorm(p.nome)))||(()=>{const pal=new Set(r.split(/[^a-z0-9]+/));const c=L.filter(p=>{const pn=qxNorm(p.nome).split(" ")[0];return pn.length>2&&pal.has(pn)});return c.length===1?c[0]:null})()}
+const QX_NIVEIS=[["gerente","Gerente"],["supervisor","Supervisor / Coordenador"],["analista","Analista / Engenheiro"],["demais","Demais"]];
+function qxNivel(p){if(!p)return "demais";if(p.nivel)return p.nivel;const c=qxNorm(p.cargo);return /gerente|gerencia|diretor/.test(c)?"gerente":/supervis|coorden|lider/.test(c)?"supervisor":/analista|engenheir|tecnic|especialista/.test(c)?"analista":"demais"}
 function qxGerencia(p){if(!p)return {nome:"",email:""};const g=p.gestorId&&(QX.pessoas||[]).find(x=>x.id===p.gestorId);
   return g?{nome:g.nome,email:g.email||""}:{nome:p.gestorNome||"",email:p.gestorEmail||""}}
 const qxChaveAcao=(k,ncId,a)=>{let h=0;const s=String(a.acao||"");for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return `${k}|${ncId}|${(h>>>0).toString(36)}`};
@@ -17447,51 +17484,91 @@ Att;`;
 
 /* ---------- página ---------- */
 async function qxPessoasPg(host,D){
-  await qxCarregarPessoas(true);const L=QX.pessoas.slice().sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));const AV=QX.avisos||{};
+  await qxCarregarPessoas(true);const L=QX.pessoas.slice().sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));
   const abertas=D.AC.filter(x=>!x.conc&&x.a.resp);const por={},semCad={};
   abertas.forEach(x=>{const p=qxPessoaDe(x.a.resp);if(p)(por[p.id]=por[p.id]||[]).push(x);else{const n=x.a.resp.trim();(semCad[n]=semCad[n]||[]).push(x)}});
-  const venc=Object.entries(por).map(([id,xs])=>[L.find(p=>p.id===id),xs.filter(x=>x.vencida).sort((a,b)=>a.a.prazo.localeCompare(b.a.prazo))]).filter(([p,xs])=>p&&xs.length);
-  const naoAvisadas=abertas.filter(x=>{const p=qxPessoaDe(x.a.resp);return p&&p.email&&!(AV[qxChaveAcao(x.k,x.r.id,x.a)]||{}).avisado});
-  host.innerHTML=qxHead("Cadastros","Pessoas e avisos de ações","Cadastre quem recebe ações do 8D. Ao colocar a pessoa como responsável, o aviso sai para ela com a gerência em cópia; ações vencidas sem conclusão entram na cobrança da gerência.",
+  const ger=L.filter(p=>qxNivel(p)==="gerente");const ids=new Set(ger.map(g=>g.id));
+  const pessoa=p=>{const xs=por[p.id]||[];return `<li class="qxh-p"><div><b>${esc(p.nome)}</b><span class="hint">${esc([p.cargo,p.area].filter(Boolean).join(" · ")||"cargo e área não informados")}</span></div><span class="mono hint">${p.email?esc(p.email):'<span class="qx-tag warn">sem e-mail</span>'}</span><span class="qxh-ac">${xs.length?`<span class="qx-tag info">${xs.length} ${xs.length===1?"ação":"ações"}</span>`:""}</span><button type="button" class="qx-btn sm ghost" data-qxped="${esc(p.id)}">Editar</button></li>`};
+  const niveis=time=>QX_NIVEIS.filter(([n])=>n!=="gerente").map(([n,l])=>{const g=time.filter(p=>qxNivel(p)===n);return g.length?`<div class="qxh-niv"><div class="qxh-nl">${l} <span class="hint">${g.length}</span></div><ul>${g.map(pessoa).join("")}</ul></div>`:""}).join("");
+  const blocos=ger.map(g=>{const time=L.filter(p=>p.gestorId===g.id&&p.id!==g.id);return `<article class="qx-card qxh-g"><header><div class="qxh-av">${esc(g.nome.split(" ").map(w=>w[0]).slice(0,2).join(""))}</div><div><div class="qx-eye">Gerente${g.area?" · "+esc(g.area):""}</div><h3>${esc(g.nome)}</h3><span class="hint mono">${esc(g.email||"sem e-mail")}${g.cargo?" · "+esc(g.cargo):""}</span></div><span class="qxh-n">${time.length} pessoa${time.length===1?"":"s"}</span><button type="button" class="qx-btn sm ghost" data-qxped="${esc(g.id)}">Editar</button></header>
+     ${time.length?niveis(time):`<p class="hint qxh-vazio">Ninguém ligado a esta gerência ainda.</p>`}</article>`}).join("");
+  const sem=L.filter(p=>qxNivel(p)!=="gerente"&&!(p.gestorId&&ids.has(p.gestorId)));
+  host.innerHTML=qxHead("Cadastros","Pessoas","Organizado por gerência e nível. A gerência de cada pessoa vai em cópia nos avisos das ações e recebe a cobrança quando atrasa; as pendências ficam na página de cada cliente, na aba Plano de ações.",
     `<button type="button" class="qx-btn" data-qxpnova>${svgI("novo")} Nova pessoa</button>`)+
-   (venc.length?`<section class="qx-card qxp-cob"><header class="qxp-h"><div><h2>Cobrança da gerência</h2><p class="hint">Ações com prazo vencido e não concluídas. O e-mail vai para a gerência com a pessoa em cópia, listando todas as ações dela.</p></div></header>
-     <div class="qxp-cobl">${venc.map(([p,xs])=>{const g=qxGerencia(p);const ult=xs.map(x=>(AV[qxChaveAcao(x.k,x.r.id,x.a)]||{}).cobrado).filter(Boolean).sort().pop();
-       return `<article class="qxp-cobi"><div class="qxp-cobt"><b>${esc(p.nome)}</b><span class="hint">${esc([p.cargo,p.area].filter(Boolean).join(" · "))}</span><span class="hint">Gerência: ${g.email?esc(g.nome||g.email):'<span class="qx-tag crit">sem e-mail da gerência</span>'}</span></div>
-        <ul>${xs.map(x=>`<li><span class="qx-tag crit">${qxDiasAtraso(x.a.prazo)}d</span> NC <span class="mono">${esc(x.r.ncNumber||"")}</span> · ${esc(x.a.acao)} <span class="hint">prazo ${fdate(x.a.prazo)}</span></li>`).join("")}</ul>
-        <div class="qxp-cobf">${ult?`<span class="hint">Última cobrança: ${fdate(ult)}</span>`:`<span class="hint">Gerência ainda não avisada</span>`}${g.email?`<a class="qx-btn sm qxp-ol" href="${esc(qxMailCobranca(p,xs))}" data-qxpcob="${esc(xs.map(x=>qxChaveAcao(x.k,x.r.id,x.a)).join(","))}">Avisar gerência no Outlook</a>`:`<button type="button" class="qx-btn sm ghost" data-qxped="${esc(p.id)}">Informar gerência</button>`}</div></article>`}).join("")}</div></section>`:"")+
-   (naoAvisadas.length?`<section class="qx-card qxp-pend"><header class="qxp-h"><div><h2>Avisos pendentes</h2><p class="hint">Ações em aberto com responsável cadastrado que ainda não receberam o e-mail de atribuição.</p></div></header>
-     <div class="qx-tabwrap"><table class="qx-tab"><thead><tr><th>Responsável</th><th>Ação</th><th>NC</th><th>Prazo</th><th></th></tr></thead><tbody>${naoAvisadas.map(x=>{const m=qxMailAtribuicao(x.k,x.r,x.a);return `<tr><td>${esc(m.p.nome)}<div class="hint">cópia: ${esc(m.g.nome||m.g.email||"sem gerência")}</div></td><td>${esc(x.a.acao)}</td><td>${qxLogo(x.k,"mini")} <span class="mono">${esc(x.r.ncNumber||"")}</span></td><td>${x.a.prazo?fdate(x.a.prazo):"—"}</td><td><a class="qx-btn sm qxp-ol" href="${esc(m.href)}" data-qxpav="${esc(qxChaveAcao(x.k,x.r.id,x.a))}">Avisar no Outlook</a></td></tr>`}).join("")}</tbody></table></div></section>`:"")+
-   `<section class="qx-card"><div class="qx-tabwrap"><table class="qx-tab qxp-tab"><thead><tr><th>Nome</th><th>Cargo</th><th>Área</th><th>E-mail</th><th>Gerência</th><th>Ações abertas</th><th>Vencidas</th><th></th></tr></thead><tbody>
-     ${L.map(p=>{const g=qxGerencia(p),xs=por[p.id]||[];const v=xs.filter(x=>x.vencida).length;return `<tr><td><b>${esc(p.nome)}</b></td><td>${esc(p.cargo||"—")}</td><td>${esc(p.area||"—")}</td><td class="mono">${p.email?esc(p.email):'<span class="qx-tag warn">sem e-mail</span>'}</td><td>${esc(g.nome||g.email||"—")}</td><td>${xs.length||"—"}</td><td>${v?`<span class="qx-tag crit">${v}</span>`:"—"}</td><td><button type="button" class="qx-btn sm ghost" data-qxped="${esc(p.id)}">Editar</button></td></tr>`}).join("")||`<tr><td colspan="8" class="qx-vazio">Nenhuma pessoa cadastrada ainda. Use “Nova pessoa”.</td></tr>`}
-   </tbody></table></div></section>`+
-   (Object.keys(semCad).length?`<section class="qx-card qxp-sem"><header class="qxp-h"><div><h2>Responsáveis citados nas ações sem cadastro</h2><p class="hint">Estes nomes estão nas ações do 8D, mas não batem com nenhuma pessoa cadastrada. Cadastre para poder avisar.</p></div></header>
+   `<div class="qxh-resumo">${QX_NIVEIS.map(([n,l])=>`<span><b>${L.filter(p=>qxNivel(p)===n).length}</b> ${l}</span>`).join("")}<span><b>${L.length}</b> no total</span></div>`+
+   `<section class="qxh-grid">${blocos||`<div class="qx-vazio">Cadastre os gerentes primeiro (nível Gerente).</div>`}</section>`+
+   (sem.length?`<section class="qx-card qxh-g qxh-sem"><header><div class="qxh-av">?</div><div><div class="qx-eye">Sem gerência definida</div><h3>${sem.length} pessoa${sem.length===1?"":"s"}</h3><span class="hint">Edite e escolha a gerência: sem ela, a cobrança de atraso não tem para quem ir.</span></div></header>${niveis(sem)}</section>`:"")+
+   (Object.keys(semCad).length?`<section class="qx-card qxp-sem"><header class="qxp-h"><div><h2>Responsáveis citados nas ações sem cadastro</h2><p class="hint">Nomes usados nas ações em aberto que não batem com ninguém do cadastro. Clique para cadastrar.</p></div></header>
      <div class="qxp-chips">${Object.entries(semCad).sort((a,b)=>b[1].length-a[1].length).map(([n,xs])=>`<button type="button" class="qxp-chip" data-qxpnova="${esc(n.replace(/\([^)]*\)/g,"").trim())}">${esc(n)} <b>${xs.length}</b></button>`).join("")}</div></section>`:"");
 }
+
+/* ---------- aba "Plano de ações" dentro da página do cliente ---------- */
+QX_PAGES.push(["qxCliAcoes","Plano de ações do cliente"]);
+QX.fca={st:"",q:""};
+function qxSitAcao(x,hoje,lim){if(x.conc)return "conc";if(!x.a.prazo)return "sem";if(x.a.prazo<hoje)return "venc";if(x.a.prazo<=lim)return "avencer";return "prazo"}
+async function qxCliAcoesPg(host,D){
+  await qxCarregarPessoas();const k=site()&&site().current();const c=qxCli(k);const AV=QX.avisos||{};
+  const hoje=isoToday(),lim=addDias(hoje,7);const A=D.AC.filter(x=>x.k===k).map(x=>Object.assign(x,{sit:qxSitAcao(x,hoje,lim),p:qxPessoaDe(x.a.resp)}));
+  const cnt=s=>A.filter(x=>x.sit===s).length;const ab=A.filter(x=>!x.conc);const conc=A.filter(x=>x.conc);
+  const noPrazoPct=conc.length?Math.round(conc.filter(x=>x.noPrazo).length/conc.length*100):null;
+  const semResp=ab.filter(x=>!x.p).length,semAviso=ab.filter(x=>x.p&&x.p.email&&!(AV[qxChaveAcao(x.k,x.r.id,x.a)]||{}).avisado).length;
+  const f=QX.fca;const tile=(id,n,l,sub,cls)=>`<button type="button" class="qxca-k ${cls||""}" data-qxcast="${id}" aria-pressed="${f.st===id}"><b>${n}</b><span>${l}</span>${sub?`<i>${sub}</i>`:""}</button>`;
+  // vencidas agrupadas por pessoa (cobrança)
+  const vencPor={};A.filter(x=>x.sit==="venc").forEach(x=>{const key=x.p?x.p.id:"?"+x.a.resp;(vencPor[key]=vencPor[key]||{p:x.p,resp:x.a.resp,xs:[]}).xs.push(x)});
+  const grupos=Object.values(vencPor).sort((a,b)=>b.xs.length-a.xs.length);
+  const linhaAc=x=>`<li><span class="qx-tag ${x.sit==="venc"?"crit":x.sit==="avencer"?"warn":"info"}">${x.sit==="venc"?qxDiasAtraso(x.a.prazo)+"d atraso":x.a.prazo?fdate(x.a.prazo):"sem prazo"}</span><span class="qxca-ac">${esc(x.a.acao)}</span><span class="hint">NC <span class="mono">${esc(x.r.ncNumber||"")}</span>${x.r.piece?" · "+esc(x.r.piece):""}</span><button type="button" class="qx-btn sm ghost" data-qx8d="${x.k}|${x.r.id}">8D</button></li>`;
+  const botaoAviso=x=>{if(x.conc)return "";if(!x.p)return `<button type="button" class="qx-btn sm ghost" data-qxpnova="${esc(String(x.a.resp||"").replace(/\([^)]*\)/g,"").trim())}">Cadastrar</button>`;const m=qxMailAtribuicao(x.k,x.r,x.a);if(!m)return `<button type="button" class="qx-btn sm ghost" data-qxped="${esc(x.p.id)}">Completar e-mail</button>`;
+    const ch=qxChaveAcao(x.k,x.r.id,x.a),av=AV[ch]||{};return x.sit==="venc"&&m.g.email?`<a class="qx-btn sm qxp-ol" href="${esc(qxMailCobranca(x.p,[x]))}" data-qxpcob="${esc(ch)}">Cobrar gerência</a>`:`<a class="qx-btn sm ${av.avisado?"ghost ":""}qxp-ol" href="${esc(m.href)}" data-qxpav="${esc(ch)}" title="${av.avisado?"Aviso aberto em "+fdate(av.avisado):""}">${av.avisado?"Avisar de novo":"Avisar"}</a>`};
+  let T=A.slice();if(f.st)T=T.filter(x=>f.st==="semresp"?(!x.conc&&!x.p):f.st==="semaviso"?(!x.conc&&x.p&&x.p.email&&!(AV[qxChaveAcao(x.k,x.r.id,x.a)]||{}).avisado):x.sit===f.st);
+  const ordem={venc:0,avencer:1,prazo:2,sem:3,conc:4};T.sort((a,b)=>ordem[a.sit]-ordem[b.sit]||String(a.a.prazo||"9").localeCompare(String(b.a.prazo||"9")));
+  const stTag={venc:["Vencida","crit"],avencer:["Vence em até 7 dias","warn"],prazo:["No prazo","ok"],sem:["Sem prazo","info"],conc:["Concluída",""]};
+  host.innerHTML=qxHead(`Cliente · ${esc(c.nome)}`,"Plano de ações",`Ações corretivas (D5–D6) dos 8Ds deste cliente: prazos, responsáveis, avisos e cobrança da gerência.`,qxLogo(k,"qxca-logo"))+
+   `<section class="qxca-kpis">
+     ${tile("",ab.length,"Em aberto",`${A.length} no total`)}
+     ${tile("prazo",cnt("prazo"),"No prazo","vence depois de 7 dias","ok")}
+     ${tile("avencer",cnt("avencer"),"A vencer","nos próximos 7 dias","warn")}
+     ${tile("venc",cnt("venc"),"Vencidas","sem conclusão","crit")}
+     ${tile("sem",cnt("sem"),"Sem prazo","definir data","info")}
+     ${tile("conc",conc.length,"Concluídas",noPrazoPct==null?"":`${noPrazoPct}% no prazo`,"")}
+   </section>
+   ${semResp||semAviso?`<div class="qxca-alert">${semAviso?`<button type="button" data-qxcast="semaviso">✉ <b>${semAviso}</b> ${semAviso===1?"ação":"ações"} com responsável cadastrado ainda sem aviso</button>`:""}${semResp?`<button type="button" data-qxcast="semresp">👤 <b>${semResp}</b> ${semResp===1?"ação":"ações"} com responsável fora do cadastro (área ou nome genérico)</button>`:""}</div>`:""}
+   ${grupos.length?`<section class="qx-card qxp-cob"><header class="qxp-h"><div><h2>Vencidas · cobrança da gerência</h2><p class="hint">O e-mail vai para a gerência com o responsável em cópia, listando todas as ações vencidas dele neste cliente.</p></div></header>
+     <div class="qxp-cobl">${grupos.map(gp=>{const p=gp.p,g=qxGerencia(p);const ult=gp.xs.map(x=>(AV[qxChaveAcao(x.k,x.r.id,x.a)]||{}).cobrado).filter(Boolean).sort().pop();
+       return `<article class="qxp-cobi"><div class="qxp-cobt"><b>${esc(p?p.nome:gp.resp)}</b><span class="hint">${p?esc([p.cargo,p.area].filter(Boolean).join(" · ")):"fora do cadastro"}${p?` · gerência: ${g.email?esc(g.nome||g.email):"não informada"}`:""}</span></div>
+        <ul class="qxca-list">${gp.xs.map(linhaAc).join("")}</ul>
+        <div class="qxp-cobf">${ult?`<span class="hint">Última cobrança: ${fdate(ult)}</span>`:`<span class="hint">Gerência ainda não avisada</span>`}${!p?`<button type="button" class="qx-btn sm ghost" data-qxpnova="${esc(String(gp.resp).replace(/\([^)]*\)/g,"").trim())}">Cadastrar</button>`:g.email&&p.email?`<a class="qx-btn sm qxp-ol" href="${esc(qxMailCobranca(p,gp.xs))}" data-qxpcob="${esc(gp.xs.map(x=>qxChaveAcao(x.k,x.r.id,x.a)).join(","))}">Avisar gerência no Outlook</a>`:`<button type="button" class="qx-btn sm ghost" data-qxped="${esc(p.id)}">Informar ${p.email?"gerência":"e-mail"}</button>`}</div></article>`}).join("")}</div></section>`:""}
+   <section class="qx-card"><header class="qxp-h"><div><h2>${f.st?({prazo:"No prazo",avencer:"A vencer em 7 dias",venc:"Vencidas",sem:"Sem prazo",conc:"Concluídas",semresp:"Responsável fora do cadastro",semaviso:"Sem aviso enviado"})[f.st]:"Todas as ações"} <span class="hint">· ${T.length}</span></h2></div>${f.st?`<button type="button" class="qx-btn sm ghost" data-qxcast="">Ver todas</button>`:""}</header>
+    <div class="qx-tabwrap"><table class="qx-tab qxca-tab"><thead><tr><th>Situação</th><th>Ação</th><th>NC</th><th>Responsável</th><th>Prazo</th><th>Aviso</th><th></th></tr></thead><tbody>
+     ${T.map(x=>{const st=stTag[x.sit];const av=(AV[qxChaveAcao(x.k,x.r.id,x.a)]||{});return `<tr class="${x.sit==="venc"?"late":""}"><td><span class="qx-tag ${st[1]}">${st[0]}</span></td><td>${esc(x.a.acao)}<div class="hint">${esc(x.a.causa||"")}${x.a.status&&!x.conc?" · "+esc(x.a.status):""}</div></td><td><span class="mono">${esc(x.r.ncNumber||"")}</span><div class="hint">${esc(x.r.piece||"")}</div></td><td>${x.p?esc(x.p.nome):esc(x.a.resp||"—")}${x.p?`<div class="hint">${esc(qxGerencia(x.p).nome||"sem gerência")}</div>`:x.a.resp?'<div class="hint">fora do cadastro</div>':""}</td><td>${x.a.prazo?fdate(x.a.prazo):"—"}${x.sit==="venc"?`<div class="hint">${qxDiasAtraso(x.a.prazo)} dias de atraso</div>`:x.conc&&x.a.concluidaEm?`<div class="hint">concluída ${fdate(x.a.concluidaEm)}</div>`:""}</td><td class="hint">${av.cobrado?"cobrado "+fdate(av.cobrado):av.avisado?"avisado "+fdate(av.avisado):x.conc?"":"—"}</td><td><div class="qxp-rowb">${botaoAviso(x)}<button type="button" class="qx-btn sm" data-qx8d="${x.k}|${x.r.id}">Abrir 8D</button></div></td></tr>`}).join("")||`<tr><td colspan="7" class="qx-vazio">${A.length?"Nenhuma ação neste filtro.":"Ainda não há planos de ação feitos no site para este cliente."}</td></tr>`}
+    </tbody></table></div></section>`;
+}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-qxcast]");if(!t)return;QX.fca.st=t.dataset.qxcast;qxRender("qxCliAcoes")});
 
 /* ---------- formulário ---------- */
 let qxPEd=null;
 function qxPRoot(){let r=document.getElementById("qxpRoot");if(!r){r=document.createElement("div");r.id="qxpRoot";r.className="ntx";document.body.appendChild(r)}return r}
 function qxPessoaForm(p,nomeIni){
   qxPEd=p?d8clone(p):{id:"p"+Date.now().toString(36),nome:nomeIni||"",cargo:"",area:"",email:"",gestorId:"",gestorNome:"",gestorEmail:""};const x=qxPEd,e=esc;
-  const outros=(QX.pessoas||[]).filter(o=>o.id!==x.id).sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));
+  x.nivel=x.nivel||qxNivel(x);const outros=(QX.pessoas||[]).filter(o=>o.id!==x.id&&qxNivel(o)==="gerente").sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));
   qxPRoot().innerHTML=`<div class="scrim" data-qxpx></div><aside class="drawer qxp-form" role="dialog" aria-modal="true" aria-label="Pessoa"><div class="dhead"><div><div class="eyebrow">Cadastro</div><h2>${p?"Editar":"Nova"} pessoa</h2></div><button type="button" class="ntx-btn small" data-qxpx>Fechar</button></div>
    <div class="dbody"><section class="sec"><h3>Pessoa</h3>
      <div class="f"><label for="qxp-nome">Nome (como vai aparecer no responsável da ação)</label><input id="qxp-nome" data-qp="nome" value="${e(x.nome)}"></div>
      <div class="grid"><div class="f"><label for="qxp-cargo">Cargo</label><input id="qxp-cargo" data-qp="cargo" value="${e(x.cargo)}" placeholder="Ex.: Supervisor de Produção"></div><div class="f"><label for="qxp-area">Área</label><input id="qxp-area" data-qp="area" value="${e(x.area)}" list="qxAreasDL" placeholder="Ex.: Pintura"></div></div>
      <datalist id="qxAreasDL">${[...new Set((QX.pessoas||[]).map(o=>o.area).filter(Boolean))].map(a=>`<option value="${e(a)}">`).join("")}</datalist>
+     <div class="f"><label for="qxp-niv">Nível</label><select id="qxp-niv" data-qp="nivel">${QX_NIVEIS.map(([v,l])=>`<option value="${v}" ${x.nivel===v?"selected":""}>${l}</option>`).join("")}</select></div>
      <div class="f"><label for="qxp-email">E-mail</label><input id="qxp-email" data-qp="email" type="email" class="mono" value="${e(x.email)}" placeholder="nome@magius.com.br"></div></section>
     <section class="sec"><h3>Gerência</h3><p class="hint" style="margin:-6px 0 4px">Vai em cópia nos avisos e recebe a cobrança quando a ação atrasa.</p>
-     <div class="f"><label for="qxp-ger">Gerência cadastrada</label><select id="qxp-ger" data-qp="gestorId"><option value="">— escolher —</option>${outros.map(o=>`<option value="${e(o.id)}" ${x.gestorId===o.id?"selected":""}>${e(o.nome)}${o.cargo?" · "+e(o.cargo):""}</option>`).join("")}</select></div>
+     <div class="f"><label for="qxp-ger">Gerente</label><select id="qxp-ger" data-qp="gestorId"><option value="">${outros.length?"— escolher o gerente —":"nenhum gerente cadastrado"}</option>${outros.map(o=>`<option value="${e(o.id)}" ${x.gestorId===o.id?"selected":""}>${e(o.nome)}${o.cargo?" · "+e(o.cargo):""}</option>`).join("")}</select></div>
      <div class="grid"><div class="f"><label for="qxp-gnome">ou nome da gerência</label><input id="qxp-gnome" data-qp="gestorNome" value="${e(x.gestorNome)}"></div><div class="f"><label for="qxp-gmail">e-mail da gerência</label><input id="qxp-gmail" data-qp="gestorEmail" type="email" class="mono" value="${e(x.gestorEmail)}"></div></div>
-     <p class="hint">Se a gerência estiver cadastrada, escolha na lista. Os campos de baixo servem para quem não está no cadastro.</p></section></div>
+     <p class="hint">A lista mostra só quem está cadastrado com nível Gerente. Os campos de baixo servem para um gerente que não está no cadastro.</p></section></div>
    <div class="dfoot">${p?`<button type="button" class="ntx-btn danger" data-qxpdel>Excluir</button>`:""}<span style="flex:1"></span><button type="button" class="ntx-btn" data-qxpx>Cancelar</button><button type="button" class="ntx-btn primary" data-qxpsalvar>Salvar</button></div></aside>`;
   setTimeout(()=>{const i=document.getElementById("qxp-nome");if(i)i.focus()},50)}
 function qxLerPessoa(){document.querySelectorAll("#qxpRoot [data-qp]").forEach(el=>{qxPEd[el.dataset.qp]=el.value.trim()})}
 
 document.addEventListener("click",async e=>{const t=e.target.closest("[data-qxpnova],[data-qxped],[data-qxpx],[data-qxpsalvar],[data-qxpdel],[data-qxpav],[data-qxpcob],[data-qxav8d]");if(!t)return;
-  if(t.matches("[data-qxpav]")){qxLogAviso(t.dataset.qxpav,"avisado");setTimeout(()=>{if(QX.pagina==="qxPessoas")qxRender("qxPessoas")},1500);return}
+  if(t.matches("[data-qxpav]")){qxLogAviso(t.dataset.qxpav,"avisado");setTimeout(()=>{if(QX.pagina==="qxPessoas"||QX.pagina==="qxCliAcoes")qxRender(QX.pagina)},1500);return}
   if(t.matches("[data-qxav8d]")){qxLogAviso(t.dataset.qxav8d,"avisado");const s=t.parentElement.querySelector(".hint");if(s)s.textContent="Aviso aberto no Outlook hoje";return}
-  if(t.matches("[data-qxpcob]")){t.dataset.qxpcob.split(",").forEach(c=>qxLogAviso(c,"cobrado"));setTimeout(()=>{if(QX.pagina==="qxPessoas")qxRender("qxPessoas")},1500);return}
+  if(t.matches("[data-qxpcob]")){t.dataset.qxpcob.split(",").forEach(c=>qxLogAviso(c,"cobrado"));setTimeout(()=>{if(QX.pagina==="qxPessoas"||QX.pagina==="qxCliAcoes")qxRender(QX.pagina)},1500);return}
   e.preventDefault();
   if(t.matches("[data-qxpnova]")){await qxCarregarPessoas();qxPessoaForm(null,t.dataset.qxpnova||"");return}
   if(t.matches("[data-qxped]")){await qxCarregarPessoas();qxPessoaForm((QX.pessoas||[]).find(p=>p.id===t.dataset.qxped));return}
@@ -17500,10 +17577,10 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-qxpn
     if(x.email&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x.email)){toast("E-mail inválido");return}
     if(x.gestorEmail&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x.gestorEmail)){toast("E-mail da gerência inválido");return}
     if((QX.pessoas||[]).some(o=>o.id!==x.id&&qxNorm(o.nome)===qxNorm(x.nome))){toast("Já existe uma pessoa com esse nome");return}
-    t.disabled=true;try{await qxSalvarPessoas(L=>{const i=L.findIndex(o=>o.id===x.id);if(i>=0)L[i]=x;else L.push(x);return L});qxPRoot().innerHTML="";toast("Pessoa salva");if(QX.pagina==="qxPessoas")qxRender("qxPessoas")}
+    t.disabled=true;try{await qxSalvarPessoas(L=>{const i=L.findIndex(o=>o.id===x.id);if(i>=0)L[i]=x;else L.push(x);return L});qxPRoot().innerHTML="";toast("Pessoa salva");if(QX.pagina==="qxPessoas"||QX.pagina==="qxCliAcoes")qxRender(QX.pagina)}
     catch(err){t.disabled=false;toast("Não foi possível salvar")}return}
   if(t.matches("[data-qxpdel]")){if(!confirm("Excluir esta pessoa do cadastro? As ações do 8D não são alteradas."))return;const id=qxPEd.id;
-    await qxSalvarPessoas(L=>L.filter(o=>o.id!==id).map(o=>o.gestorId===id?Object.assign(o,{gestorId:""}):o));qxPRoot().innerHTML="";toast("Pessoa excluída");if(QX.pagina==="qxPessoas")qxRender("qxPessoas")}
+    await qxSalvarPessoas(L=>L.filter(o=>o.id!==id).map(o=>o.gestorId===id?Object.assign(o,{gestorId:""}):o));qxPRoot().innerHTML="";toast("Pessoa excluída");if(QX.pagina==="qxPessoas"||QX.pagina==="qxCliAcoes")qxRender(QX.pagina)}
 },true);
 
 /* ---------- no 8D: lista de nomes no campo Responsável + botão de aviso por ação ---------- */
