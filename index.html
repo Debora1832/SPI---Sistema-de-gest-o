@@ -3459,6 +3459,23 @@ html body #ncStatusModalBackdrop .nc-btn-cancel-modal{background:transparent!imp
 #qxCliAcoes .qxca-tab td:first-child,#qxCliAcoes .qxca-tab td:nth-child(5){white-space:nowrap}
 #qxCliAcoes .qx-head .qx-mlogo.qxca-logo{width:120px;height:56px;padding:8px}
 #qxCliAcoes .qx-head .qx-mlogo.qxca-logo img{max-height:40px;width:auto;object-fit:contain}
+.qx-tab tr.qxca-r.venc td{background:rgba(232,90,79,.13)}
+.qx-tab tr.qxca-r.avencer td{background:rgba(240,180,41,.11)}
+.qx-tab tr.qxca-r.prazo td{background:rgba(63,185,122,.08)}
+.qx-tab tr.qxca-r.sem td{background:rgba(90,169,255,.08)}
+.qx-tab tr.qxca-r.conc td{background:rgba(255,255,255,.02);color:var(--qx-muted)}
+.qx-tab tr.qxca-r.venc td:first-child{box-shadow:inset 3px 0 0 #e85a4f}
+.qx-tab tr.qxca-r.avencer td:first-child{box-shadow:inset 3px 0 0 #f0b429}
+.qx-tab tr.qxca-r.prazo td:first-child{box-shadow:inset 3px 0 0 #3fb97a}
+.qx-tab tr.qxca-r.sem td:first-child{box-shadow:inset 3px 0 0 #5aa9ff}
+.qxca-k.done{border-top-color:#8b939d}
+.qxp-cob.vazio{border-color:var(--qx-line)!important}
+.qxca-ok{padding:4px 18px 16px;color:#7fd3a5;margin:0}
+.qxca-cob{background:#c0392b!important;border-color:#c0392b!important}
+#qxAcoes .qxca-tab td,#qxAcoes .qxca-tab th{white-space:normal;vertical-align:top}
+#qxAcoes .qxca-tab td:nth-child(2){min-width:300px;max-width:480px}
+#qxAcoes .qxca-tab td:first-child,#qxAcoes .qxca-tab td:nth-child(6){white-space:nowrap}
+.qxca-sel{background:var(--qx-sunk);color:var(--qx-ink);border:1px solid var(--qx-line);border-radius:10px;padding:9px 12px;font:inherit;font-size:14px;min-width:200px}
 </style>
 </head>
 <body>
@@ -16617,7 +16634,7 @@ async function qxRender(id){
   const host=document.getElementById(id);if(!host||!id.startsWith("qx"))return;
   if(!QX.dados)host.innerHTML=`<div class="qx-load">Carregando dados de todos os clientes…</div>`;
   const D=await qxCarregar();if((id==="qxAcoes"||id==="qxCliAcoes")&&typeof qxCarregarPessoas==="function")await qxCarregarPessoas();
-  ({qxClientesPg:qxClientesPg,qxCusto:qxCustoPg,qxDash:qxDash,qxNcs:qxNcs,qx8d:qx8d,qxHist:qxHist,qxAcoes:qxAcoes,qxMaq:qxMaqPg,qxPessoas:qxPessoasPg,qxCliAcoes:qxCliAcoesPg})[id](host,D);
+  ({qxClientesPg:qxClientesPg,qxCusto:qxCustoPg,qxDash:qxDash,qxNcs:qxNcs,qx8d:qx8d,qxHist:qxHist,qxAcoes:(h,D)=>qxPlanoAcoes(h,D,null),qxMaq:qxMaqPg,qxPessoas:qxPessoasPg,qxCliAcoes:qxCliAcoesPg})[id](host,D);
 }
 
 /* ---------- cabeçalho de página padrão ---------- */
@@ -16881,7 +16898,7 @@ document.addEventListener("click",async e=>{
     if(id==="qxNovaNc"){qxEscolherCliente();return}
     if(id==="qxNovoCli"){const b=document.getElementById("btnNewTenant");if(b)b.click();return}
     if(id==="qxNcs"){QX.f.aba="lista";QX.f.status=sub&&sub!=="pecas"?sub:"";if(sub==="atrasada"||sub==="concluida")QX.f.periodo="tudo"}
-    if(id==="qxAcoes")QX.fa.st=sub||"";
+    if(id==="qxAcoes"){QX.fa.st=sub||"";QX.fga.st=({vencida:"venc",concluida:"conc",aberta:""})[sub||""]??"";}
     if(id==="qxDash"){const li=document.querySelector('.sidebar-nav li[data-page="homePage"]');if(li)li.click()}
     if(id.startsWith("qx"))qxMostrar(id);else qxLegado(id);return}
   if(t.matches("[data-qxcli]")){qxIrCliente(t.dataset.qxcli);return}
@@ -17432,8 +17449,9 @@ async function qxNtMaqSalvar(key){if(!key||!QXNM.dirty)return;const L=QXNM.list.
    ===================================================================== */
 QX_PAGES.push(["qxPessoas","Pessoas"]);
 QX.pessoas=null;QX.avisos=null;
-async function qxCarregarPessoas(force){if(QX.pessoas&&!force)return QX.pessoas;
-  try{const s=await fdb.collection("cadastro_pessoas").doc("all").get();QX.pessoas=(s.exists&&s.data().itens)||[]}catch(e){QX.pessoas=QX.pessoas||[]}
+async function qxCarregarPessoas(force){if(QX.pessoasOk&&!force)return QX.pessoas;
+  if(typeof fdb==="undefined"||!fdb){QX.pessoas=QX.pessoas||[];return QX.pessoas}
+  try{const s=await fdb.collection("cadastro_pessoas").doc("all").get();QX.pessoas=(s.exists&&s.data().itens)||[];QX.pessoasOk=true}catch(e){QX.pessoas=QX.pessoas||[]}
   try{const s=await fdb.collection("avisos_acoes").doc("all").get();QX.avisos=(s.exists&&s.data().log)||{}}catch(e){QX.avisos=QX.avisos||{}}
   qxPessoasDL();return QX.pessoas}
 async function qxSalvarPessoas(fn){const ref=fdb.collection("cadastro_pessoas").doc("all");let novo;
@@ -17471,16 +17489,16 @@ Att;`;
 
 /* e-mail de cobrança: gerência + pessoa em cópia, com todas as ações vencidas dela */
 function qxMailCobranca(p,itens){const g=qxGerencia(p);const linhas=itens.map((x,i)=>`${i+1}. NC ${x.r.ncNumber||"—"} (${qxCli(x.k).nome}${x.r.piece?" · "+x.r.piece:""}) – ${x.a.acao} – prazo ${fdate(x.a.prazo)} (${qxDiasAtraso(x.a.prazo)} dia${qxDiasAtraso(x.a.prazo)===1?"":"s"} de atraso)`).join("\n");
-  const corpo=`Olá${g.nome?", "+g.nome.split(" ")[0]:""},
+  const corpo=`Olá, ${p.nome.split(" ")[0]}${g.nome?" e "+g.nome.split(" ")[0]:""},
 
-As ações abaixo, sob responsabilidade de ${p.nome}${p.cargo||p.area?` (${[p.cargo,p.area].filter(Boolean).join(" · ")})`:""}, estão com o prazo vencido e até agora não tive retorno:
+${itens.length===1?"A ação abaixo, sob responsabilidade":"As ações abaixo, sob responsabilidade"} de ${p.nome}${p.cargo||p.area?` (${[p.cargo,p.area].filter(Boolean).join(" · ")})`:""}, ${itens.length===1?"está":"estão"} com o prazo vencido e até agora não tive retorno:
 
 ${linhas}
 
-Peço apoio para regularizar e me retornar com as evidências.
+${p.nome.split(" ")[0]}, por favor me retorne com a evidência da implementação ou com uma nova data.${g.nome?`\n${g.nome.split(" ")[0]}, peço seu apoio para regularizar.`:""}
 
 Att;`;
-  return qxMailto(g.email,p.email,`Ações 8D vencidas sem retorno – ${p.nome}`,corpo)}
+  return qxMailto([p.email,g.email].filter(Boolean).join(";"),"",`Ações 8D vencidas sem retorno – ${p.nome}`,corpo)}
 
 /* ---------- página ---------- */
 async function qxPessoasPg(host,D){
@@ -17502,47 +17520,56 @@ async function qxPessoasPg(host,D){
      <div class="qxp-chips">${Object.entries(semCad).sort((a,b)=>b[1].length-a[1].length).map(([n,xs])=>`<button type="button" class="qxp-chip" data-qxpnova="${esc(n.replace(/\([^)]*\)/g,"").trim())}">${esc(n)} <b>${xs.length}</b></button>`).join("")}</div></section>`:"");
 }
 
-/* ---------- aba "Plano de ações" dentro da página do cliente ---------- */
+/* ---------- Plano de ações: aba do cliente (qxCliAcoes) e visão geral de todos os clientes (qxAcoes) ---------- */
 QX_PAGES.push(["qxCliAcoes","Plano de ações do cliente"]);
-QX.fca={st:"",q:""};
+QX.fca={st:""};QX.fga={st:"",cli:""};
 function qxSitAcao(x,hoje,lim){if(x.conc)return "conc";if(!x.a.prazo)return "sem";if(x.a.prazo<hoje)return "venc";if(x.a.prazo<=lim)return "avencer";return "prazo"}
-async function qxCliAcoesPg(host,D){
-  await qxCarregarPessoas();const k=site()&&site().current();const c=qxCli(k);const AV=QX.avisos||{};
-  const hoje=isoToday(),lim=addDias(hoje,7);const A=D.AC.filter(x=>x.k===k).map(x=>Object.assign(x,{sit:qxSitAcao(x,hoje,lim),p:qxPessoaDe(x.a.resp)}));
+const QX_SIT={venc:["Vencida","crit"],avencer:["Vence em até 7 dias","warn"],prazo:["No prazo","ok"],sem:["Sem prazo","info"],conc:["Concluída",""]};
+async function qxPlanoAcoes(host,D,k){
+  await qxCarregarPessoas();const geral=!k;const f=geral?QX.fga:QX.fca;const AV=QX.avisos||{};
+  const hoje=isoToday(),lim=addDias(hoje,7);
+  const A=D.AC.filter(x=>geral?(!f.cli||x.k===f.cli):x.k===k).map(x=>Object.assign(x,{sit:qxSitAcao(x,hoje,lim),p:qxPessoaDe(x.a.resp)}));
   const cnt=s=>A.filter(x=>x.sit===s).length;const ab=A.filter(x=>!x.conc);const conc=A.filter(x=>x.conc);
   const noPrazoPct=conc.length?Math.round(conc.filter(x=>x.noPrazo).length/conc.length*100):null;
-  const semResp=ab.filter(x=>!x.p).length,semAviso=ab.filter(x=>x.p&&x.p.email&&!(AV[qxChaveAcao(x.k,x.r.id,x.a)]||{}).avisado).length;
-  const f=QX.fca;const tile=(id,n,l,sub,cls)=>`<button type="button" class="qxca-k ${cls||""}" data-qxcast="${id}" aria-pressed="${f.st===id}"><b>${n}</b><span>${l}</span>${sub?`<i>${sub}</i>`:""}</button>`;
-  // vencidas agrupadas por pessoa (cobrança)
+  const chv=x=>qxChaveAcao(x.k,x.r.id,x.a);
+  const semResp=ab.filter(x=>!x.p).length,semAviso=ab.filter(x=>x.p&&x.p.email&&!(AV[chv(x)]||{}).avisado).length;
+  const tile=(id,n,l,sub,cls)=>`<button type="button" class="qxca-k ${cls||""}" data-qxcast="${id}" aria-pressed="${f.st===id}"><b>${n}</b><span>${l}</span>${sub?`<i>${sub}</i>`:""}</button>`;
+  // cobrança: vencidas agrupadas por pessoa
   const vencPor={};A.filter(x=>x.sit==="venc").forEach(x=>{const key=x.p?x.p.id:"?"+x.a.resp;(vencPor[key]=vencPor[key]||{p:x.p,resp:x.a.resp,xs:[]}).xs.push(x)});
   const grupos=Object.values(vencPor).sort((a,b)=>b.xs.length-a.xs.length);
-  const linhaAc=x=>`<li><span class="qx-tag ${x.sit==="venc"?"crit":x.sit==="avencer"?"warn":"info"}">${x.sit==="venc"?qxDiasAtraso(x.a.prazo)+"d atraso":x.a.prazo?fdate(x.a.prazo):"sem prazo"}</span><span class="qxca-ac">${esc(x.a.acao)}</span><span class="hint">NC <span class="mono">${esc(x.r.ncNumber||"")}</span>${x.r.piece?" · "+esc(x.r.piece):""}</span><button type="button" class="qx-btn sm ghost" data-qx8d="${x.k}|${x.r.id}">8D</button></li>`;
-  const botaoAviso=x=>{if(x.conc)return "";if(!x.p)return `<button type="button" class="qx-btn sm ghost" data-qxpnova="${esc(String(x.a.resp||"").replace(/\([^)]*\)/g,"").trim())}">Cadastrar</button>`;const m=qxMailAtribuicao(x.k,x.r,x.a);if(!m)return `<button type="button" class="qx-btn sm ghost" data-qxped="${esc(x.p.id)}">Completar e-mail</button>`;
-    const ch=qxChaveAcao(x.k,x.r.id,x.a),av=AV[ch]||{};return x.sit==="venc"&&m.g.email?`<a class="qx-btn sm qxp-ol" href="${esc(qxMailCobranca(x.p,[x]))}" data-qxpcob="${esc(ch)}">Cobrar gerência</a>`:`<a class="qx-btn sm ${av.avisado?"ghost ":""}qxp-ol" href="${esc(m.href)}" data-qxpav="${esc(ch)}" title="${av.avisado?"Aviso aberto em "+fdate(av.avisado):""}">${av.avisado?"Avisar de novo":"Avisar"}</a>`};
-  let T=A.slice();if(f.st)T=T.filter(x=>f.st==="semresp"?(!x.conc&&!x.p):f.st==="semaviso"?(!x.conc&&x.p&&x.p.email&&!(AV[qxChaveAcao(x.k,x.r.id,x.a)]||{}).avisado):x.sit===f.st);
-  const ordem={venc:0,avencer:1,prazo:2,sem:3,conc:4};T.sort((a,b)=>ordem[a.sit]-ordem[b.sit]||String(a.a.prazo||"9").localeCompare(String(b.a.prazo||"9")));
-  const stTag={venc:["Vencida","crit"],avencer:["Vence em até 7 dias","warn"],prazo:["No prazo","ok"],sem:["Sem prazo","info"],conc:["Concluída",""]};
-  host.innerHTML=qxHead(`Cliente · ${esc(c.nome)}`,"Plano de ações",`Ações corretivas (D5–D6) dos 8Ds deste cliente: prazos, responsáveis, avisos e cobrança da gerência.`,qxLogo(k,"qxca-logo"))+
+  const linhaAc=x=>`<li><span class="qx-tag crit">${qxDiasAtraso(x.a.prazo)}d atraso</span><span class="qxca-ac">${esc(x.a.acao)}</span><span class="hint">${geral?esc(qxCli(x.k).nome)+" · ":""}NC <span class="mono">${esc(x.r.ncNumber||"")}</span>${x.r.piece?" · "+esc(x.r.piece):""} · prazo ${fdate(x.a.prazo)}</span><button type="button" class="qx-btn sm ghost" data-qx8d="${x.k}|${x.r.id}">8D</button></li>`;
+  const cad=r=>`<button type="button" class="qx-btn sm ghost" data-qxpnova="${esc(String(r||"").replace(/\([^)]*\)/g,"").trim())}">Cadastrar</button>`;
+  const botaoAviso=x=>{if(x.conc)return "";if(!x.p)return cad(x.a.resp);const m=qxMailAtribuicao(x.k,x.r,x.a);if(!m)return `<button type="button" class="qx-btn sm ghost" data-qxped="${esc(x.p.id)}">Completar e-mail</button>`;
+    const ch=chv(x),av=AV[ch]||{};return x.sit==="venc"?`<a class="qx-btn sm qxp-ol qxca-cob" href="${esc(qxMailCobranca(x.p,[x]))}" data-qxpcob="${esc(ch)}" title="Para ${esc(x.p.nome)}${m.g.email?" e "+esc(m.g.nome||m.g.email):""}">Cobrar pessoa + gerência</a>`:`<a class="qx-btn sm ${av.avisado?"ghost ":""}qxp-ol" href="${esc(m.href)}" data-qxpav="${esc(ch)}" title="${av.avisado?"Aviso aberto em "+fdate(av.avisado):""}">${av.avisado?"Avisar de novo":"Avisar"}</a>`};
+  // lista: por padrão só o que está aberto; concluídas só no indicador
+  let T=f.st==="conc"?conc:f.st==="semresp"?ab.filter(x=>!x.p):f.st==="semaviso"?ab.filter(x=>x.p&&x.p.email&&!(AV[chv(x)]||{}).avisado):f.st?A.filter(x=>x.sit===f.st):ab;
+  const ordem={venc:0,avencer:1,prazo:2,sem:3,conc:4};T=T.slice().sort((a,b)=>ordem[a.sit]-ordem[b.sit]||String(a.a.prazo||"9").localeCompare(String(b.a.prazo||"9")));
+  const titulo={"":"Ações em aberto",prazo:"No prazo",avencer:"A vencer em 7 dias",venc:"Vencidas",sem:"Sem prazo",conc:"Concluídas",semresp:"Responsável fora do cadastro",semaviso:"Sem aviso enviado"}[f.st];
+  const cls=qxClientes();
+  host.innerHTML=qxHead(geral?"Análise 8D · todos os clientes":`Cliente · ${esc(qxCli(k).nome)}`,"Plano de ações",`Ações corretivas (D5–D6) dos 8Ds${geral?" de todos os clientes":" deste cliente"}: prazos, responsáveis, avisos e cobrança da pessoa e da gerência quando atrasa.`,
+     geral?`<select class="qxca-sel" data-qxgacli aria-label="Cliente"><option value="">Todos os clientes</option>${cls.map(c=>`<option value="${c}" ${f.cli===c?"selected":""}>${esc(qxCli(c).nome)}</option>`).join("")}</select>`:qxLogo(k,"qxca-logo"))+
    `<section class="qxca-kpis">
      ${tile("",ab.length,"Em aberto",`${A.length} no total`)}
      ${tile("prazo",cnt("prazo"),"No prazo","vence depois de 7 dias","ok")}
      ${tile("avencer",cnt("avencer"),"A vencer","nos próximos 7 dias","warn")}
      ${tile("venc",cnt("venc"),"Vencidas","sem conclusão","crit")}
      ${tile("sem",cnt("sem"),"Sem prazo","definir data","info")}
-     ${tile("conc",conc.length,"Concluídas",noPrazoPct==null?"":`${noPrazoPct}% no prazo`,"")}
+     ${tile("conc",conc.length,"Concluídas",noPrazoPct==null?"":`${noPrazoPct}% no prazo`,"done")}
    </section>
    ${semResp||semAviso?`<div class="qxca-alert">${semAviso?`<button type="button" data-qxcast="semaviso">✉ <b>${semAviso}</b> ${semAviso===1?"ação":"ações"} com responsável cadastrado ainda sem aviso</button>`:""}${semResp?`<button type="button" data-qxcast="semresp">👤 <b>${semResp}</b> ${semResp===1?"ação":"ações"} com responsável fora do cadastro (área ou nome genérico)</button>`:""}</div>`:""}
-   ${grupos.length?`<section class="qx-card qxp-cob"><header class="qxp-h"><div><h2>Vencidas · cobrança da gerência</h2><p class="hint">O e-mail vai para a gerência com o responsável em cópia, listando todas as ações vencidas dele neste cliente.</p></div></header>
-     <div class="qxp-cobl">${grupos.map(gp=>{const p=gp.p,g=qxGerencia(p);const ult=gp.xs.map(x=>(AV[qxChaveAcao(x.k,x.r.id,x.a)]||{}).cobrado).filter(Boolean).sort().pop();
+   <section class="qx-card qxp-cob ${grupos.length?"":"vazio"}"><header class="qxp-h"><div><h2>Cobrança de atraso · pessoa e gerência</h2><p class="hint">Quando o prazo vence e a ação não está concluída, o e-mail vai para o responsável e para a gerência dele, listando todas as ações vencidas da pessoa.</p></div></header>
+     ${grupos.length?`<div class="qxp-cobl">${grupos.map(gp=>{const p=gp.p,g=qxGerencia(p);const ult=gp.xs.map(x=>(AV[chv(x)]||{}).cobrado).filter(Boolean).sort().pop();
        return `<article class="qxp-cobi"><div class="qxp-cobt"><b>${esc(p?p.nome:gp.resp)}</b><span class="hint">${p?esc([p.cargo,p.area].filter(Boolean).join(" · ")):"fora do cadastro"}${p?` · gerência: ${g.email?esc(g.nome||g.email):"não informada"}`:""}</span></div>
         <ul class="qxca-list">${gp.xs.map(linhaAc).join("")}</ul>
-        <div class="qxp-cobf">${ult?`<span class="hint">Última cobrança: ${fdate(ult)}</span>`:`<span class="hint">Gerência ainda não avisada</span>`}${!p?`<button type="button" class="qx-btn sm ghost" data-qxpnova="${esc(String(gp.resp).replace(/\([^)]*\)/g,"").trim())}">Cadastrar</button>`:g.email&&p.email?`<a class="qx-btn sm qxp-ol" href="${esc(qxMailCobranca(p,gp.xs))}" data-qxpcob="${esc(gp.xs.map(x=>qxChaveAcao(x.k,x.r.id,x.a)).join(","))}">Avisar gerência no Outlook</a>`:`<button type="button" class="qx-btn sm ghost" data-qxped="${esc(p.id)}">Informar ${p.email?"gerência":"e-mail"}</button>`}</div></article>`}).join("")}</div></section>`:""}
-   <section class="qx-card"><header class="qxp-h"><div><h2>${f.st?({prazo:"No prazo",avencer:"A vencer em 7 dias",venc:"Vencidas",sem:"Sem prazo",conc:"Concluídas",semresp:"Responsável fora do cadastro",semaviso:"Sem aviso enviado"})[f.st]:"Todas as ações"} <span class="hint">· ${T.length}</span></h2></div>${f.st?`<button type="button" class="qx-btn sm ghost" data-qxcast="">Ver todas</button>`:""}</header>
-    <div class="qx-tabwrap"><table class="qx-tab qxca-tab"><thead><tr><th>Situação</th><th>Ação</th><th>NC</th><th>Responsável</th><th>Prazo</th><th>Aviso</th><th></th></tr></thead><tbody>
-     ${T.map(x=>{const st=stTag[x.sit];const av=(AV[qxChaveAcao(x.k,x.r.id,x.a)]||{});return `<tr class="${x.sit==="venc"?"late":""}"><td><span class="qx-tag ${st[1]}">${st[0]}</span></td><td>${esc(x.a.acao)}<div class="hint">${esc(x.a.causa||"")}${x.a.status&&!x.conc?" · "+esc(x.a.status):""}</div></td><td><span class="mono">${esc(x.r.ncNumber||"")}</span><div class="hint">${esc(x.r.piece||"")}</div></td><td>${x.p?esc(x.p.nome):esc(x.a.resp||"—")}${x.p?`<div class="hint">${esc(qxGerencia(x.p).nome||"sem gerência")}</div>`:x.a.resp?'<div class="hint">fora do cadastro</div>':""}</td><td>${x.a.prazo?fdate(x.a.prazo):"—"}${x.sit==="venc"?`<div class="hint">${qxDiasAtraso(x.a.prazo)} dias de atraso</div>`:x.conc&&x.a.concluidaEm?`<div class="hint">concluída ${fdate(x.a.concluidaEm)}</div>`:""}</td><td class="hint">${av.cobrado?"cobrado "+fdate(av.cobrado):av.avisado?"avisado "+fdate(av.avisado):x.conc?"":"—"}</td><td><div class="qxp-rowb">${botaoAviso(x)}<button type="button" class="qx-btn sm" data-qx8d="${x.k}|${x.r.id}">Abrir 8D</button></div></td></tr>`}).join("")||`<tr><td colspan="7" class="qx-vazio">${A.length?"Nenhuma ação neste filtro.":"Ainda não há planos de ação feitos no site para este cliente."}</td></tr>`}
+        <div class="qxp-cobf">${ult?`<span class="hint">Última cobrança: ${fdate(ult)}</span>`:`<span class="hint">Ainda não cobrado</span>`}${!p?cad(gp.resp):p.email?`<a class="qx-btn sm qxp-ol" href="${esc(qxMailCobranca(p,gp.xs))}" data-qxpcob="${esc(gp.xs.map(chv).join(","))}">Cobrar ${esc(p.nome.split(" ")[0])}${g.email?" + "+esc((g.nome||"gerência").split(" ")[0]):""} no Outlook</a>`:`<button type="button" class="qx-btn sm ghost" data-qxped="${esc(p.id)}">Informar e-mail</button>`}</div></article>`}).join("")}</div>`:`<p class="qxca-ok">✓ Nenhuma ação vencida${geral?"":" neste cliente"}. Quando alguma passar do prazo sem conclusão, ela aparece aqui com o e-mail de cobrança pronto.</p>`}</section>
+   <section class="qx-card"><header class="qxp-h"><div><h2>${titulo} <span class="hint">· ${T.length}</span></h2>${f.st?"":`<p class="hint">As concluídas saem desta lista; veja no indicador Concluídas.</p>`}</div>${f.st?`<button type="button" class="qx-btn sm ghost" data-qxcast="">Voltar para em aberto</button>`:""}</header>
+    <div class="qx-tabwrap"><table class="qx-tab qxca-tab"><thead><tr><th>Situação</th><th>Ação</th>${geral?"<th>Cliente</th>":""}<th>NC</th><th>Responsável</th><th>Prazo</th><th>Aviso</th><th></th></tr></thead><tbody>
+     ${T.map(x=>{const st=QX_SIT[x.sit];const av=(AV[chv(x)]||{});return `<tr class="qxca-r ${x.sit}"><td><span class="qx-tag ${st[1]}">${st[0]}</span></td><td>${esc(x.a.acao)}<div class="hint">${esc(x.a.causa||"")}${x.a.status&&!x.conc?" · "+esc(x.a.status):""}</div></td>${geral?`<td>${qxLogo(x.k,"mini")}</td>`:""}<td><span class="mono">${esc(x.r.ncNumber||"")}</span><div class="hint">${esc(x.r.piece||"")}</div></td><td>${x.p?esc(x.p.nome):esc(x.a.resp||"—")}${x.p?`<div class="hint">${esc(qxGerencia(x.p).nome||"sem gerência")}</div>`:x.a.resp?'<div class="hint">fora do cadastro</div>':""}</td><td>${x.a.prazo?fdate(x.a.prazo):"—"}${x.sit==="venc"?`<div class="hint">${qxDiasAtraso(x.a.prazo)} dias de atraso</div>`:x.conc&&x.a.concluidaEm?`<div class="hint">concluída ${fdate(x.a.concluidaEm)}</div>`:""}</td><td class="hint">${av.cobrado?"cobrado "+fdate(av.cobrado):av.avisado?"avisado "+fdate(av.avisado):x.conc?"":"—"}</td><td><div class="qxp-rowb">${botaoAviso(x)}<button type="button" class="qx-btn sm" data-qx8d="${x.k}|${x.r.id}">Abrir 8D</button></div></td></tr>`}).join("")||`<tr><td colspan="${geral?8:7}" class="qx-vazio">${A.length?(f.st?"Nenhuma ação neste filtro.":"Nenhuma ação em aberto. 🎉"):"Ainda não há planos de ação feitos no site."}</td></tr>`}
     </tbody></table></div></section>`;
 }
-document.addEventListener("click",e=>{const t=e.target.closest("[data-qxcast]");if(!t)return;QX.fca.st=t.dataset.qxcast;qxRender("qxCliAcoes")});
+function qxCliAcoesPg(host,D){return qxPlanoAcoes(host,D,site()&&site().current())}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-qxcast]");if(!t)return;const f=QX.pagina==="qxAcoes"?QX.fga:QX.fca;f.st=t.dataset.qxcast;qxRender(QX.pagina)});
+document.addEventListener("change",e=>{if(e.target.matches("[data-qxgacli]")){QX.fga.cli=e.target.value;qxRender("qxAcoes")}});
 
 /* ---------- formulário ---------- */
 let qxPEd=null;
@@ -17566,9 +17593,9 @@ function qxPessoaForm(p,nomeIni){
 function qxLerPessoa(){document.querySelectorAll("#qxpRoot [data-qp]").forEach(el=>{qxPEd[el.dataset.qp]=el.value.trim()})}
 
 document.addEventListener("click",async e=>{const t=e.target.closest("[data-qxpnova],[data-qxped],[data-qxpx],[data-qxpsalvar],[data-qxpdel],[data-qxpav],[data-qxpcob],[data-qxav8d]");if(!t)return;
-  if(t.matches("[data-qxpav]")){qxLogAviso(t.dataset.qxpav,"avisado");setTimeout(()=>{if(QX.pagina==="qxPessoas"||QX.pagina==="qxCliAcoes")qxRender(QX.pagina)},1500);return}
+  if(t.matches("[data-qxpav]")){qxLogAviso(t.dataset.qxpav,"avisado");setTimeout(()=>{if(QX.pagina==="qxPessoas"||QX.pagina==="qxCliAcoes"||QX.pagina==="qxAcoes")qxRender(QX.pagina)},1500);return}
   if(t.matches("[data-qxav8d]")){qxLogAviso(t.dataset.qxav8d,"avisado");const s=t.parentElement.querySelector(".hint");if(s)s.textContent="Aviso aberto no Outlook hoje";return}
-  if(t.matches("[data-qxpcob]")){t.dataset.qxpcob.split(",").forEach(c=>qxLogAviso(c,"cobrado"));setTimeout(()=>{if(QX.pagina==="qxPessoas"||QX.pagina==="qxCliAcoes")qxRender(QX.pagina)},1500);return}
+  if(t.matches("[data-qxpcob]")){t.dataset.qxpcob.split(",").forEach(c=>qxLogAviso(c,"cobrado"));setTimeout(()=>{if(QX.pagina==="qxPessoas"||QX.pagina==="qxCliAcoes"||QX.pagina==="qxAcoes")qxRender(QX.pagina)},1500);return}
   e.preventDefault();
   if(t.matches("[data-qxpnova]")){await qxCarregarPessoas();qxPessoaForm(null,t.dataset.qxpnova||"");return}
   if(t.matches("[data-qxped]")){await qxCarregarPessoas();qxPessoaForm((QX.pessoas||[]).find(p=>p.id===t.dataset.qxped));return}
@@ -17577,10 +17604,10 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-qxpn
     if(x.email&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x.email)){toast("E-mail inválido");return}
     if(x.gestorEmail&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x.gestorEmail)){toast("E-mail da gerência inválido");return}
     if((QX.pessoas||[]).some(o=>o.id!==x.id&&qxNorm(o.nome)===qxNorm(x.nome))){toast("Já existe uma pessoa com esse nome");return}
-    t.disabled=true;try{await qxSalvarPessoas(L=>{const i=L.findIndex(o=>o.id===x.id);if(i>=0)L[i]=x;else L.push(x);return L});qxPRoot().innerHTML="";toast("Pessoa salva");if(QX.pagina==="qxPessoas"||QX.pagina==="qxCliAcoes")qxRender(QX.pagina)}
+    t.disabled=true;try{await qxSalvarPessoas(L=>{const i=L.findIndex(o=>o.id===x.id);if(i>=0)L[i]=x;else L.push(x);return L});qxPRoot().innerHTML="";toast("Pessoa salva");if(QX.pagina==="qxPessoas"||QX.pagina==="qxCliAcoes"||QX.pagina==="qxAcoes")qxRender(QX.pagina)}
     catch(err){t.disabled=false;toast("Não foi possível salvar")}return}
   if(t.matches("[data-qxpdel]")){if(!confirm("Excluir esta pessoa do cadastro? As ações do 8D não são alteradas."))return;const id=qxPEd.id;
-    await qxSalvarPessoas(L=>L.filter(o=>o.id!==id).map(o=>o.gestorId===id?Object.assign(o,{gestorId:""}):o));qxPRoot().innerHTML="";toast("Pessoa excluída");if(QX.pagina==="qxPessoas"||QX.pagina==="qxCliAcoes")qxRender(QX.pagina)}
+    await qxSalvarPessoas(L=>L.filter(o=>o.id!==id).map(o=>o.gestorId===id?Object.assign(o,{gestorId:""}):o));qxPRoot().innerHTML="";toast("Pessoa excluída");if(QX.pagina==="qxPessoas"||QX.pagina==="qxCliAcoes"||QX.pagina==="qxAcoes")qxRender(QX.pagina)}
 },true);
 
 /* ---------- no 8D: lista de nomes no campo Responsável + botão de aviso por ação ---------- */
@@ -17595,7 +17622,7 @@ function qxAviso8DAtualiza(){if(typeof ed8==="undefined"||!ed8||!ed8.nc||!ed8.ob
     el.innerHTML=qxAviso8DHtml(ed8.t,ed8.nc,a)})}
 let qxAv8dT;document.addEventListener("input",e=>{if(e.target.matches('[data-8d^="d5.acoes."]')){clearTimeout(qxAv8dT);qxAv8dT=setTimeout(qxAviso8DAtualiza,300)}});
 document.addEventListener("change",e=>{if(e.target.matches('[data-8d^="d5.acoes."]'))qxAviso8DAtualiza()});
-qxCarregarPessoas().catch(()=>{});
+(function qxPessoasBoot(n){if(typeof fdb!=="undefined"&&fdb)qxCarregarPessoas().catch(()=>{});else if(n<60)setTimeout(()=>qxPessoasBoot(n+1),1000)})(0);
 
 document.addEventListener("click",e=>{const t=e.target.closest('[data-nt8d],[data-8dppt],[data-8dfechar],[data-8dadd],[data-8drm],[data-8dsuga],[data-8daba],[data-fbst],[data-fbrm],[data-fbsug],[data-w5sug],[data-8dplano],[data-evrm],[data-alpg],[data-8dpptgo],[data-8dsalvar],[data-8dconcluir]');if(t){e.preventDefault();clique8D(t)}});
 function boot(){
