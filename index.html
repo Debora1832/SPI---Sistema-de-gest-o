@@ -3476,6 +3476,10 @@ html body #ncStatusModalBackdrop .nc-btn-cancel-modal{background:transparent!imp
 #qxAcoes .qxca-tab td:nth-child(2){min-width:300px;max-width:480px}
 #qxAcoes .qxca-tab td:first-child,#qxAcoes .qxca-tab td:nth-child(6){white-space:nowrap}
 .qxca-sel{background:var(--qx-sunk);color:var(--qx-ink);border:1px solid var(--qx-line);border-radius:10px;padding:9px 12px;font:inherit;font-size:14px;min-width:200px}
+.qxp-lote{background:rgba(15,108,189,.10);border:1px solid rgba(15,108,189,.45);border-radius:12px;padding:10px 12px;margin:0 0 14px}
+.qxp-lote-h{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:8px}
+.qxp-lote-b{display:flex;gap:8px;flex-wrap:wrap}
+.qxp-lote .ntx-btn.ghost.qxp-ol{background:transparent!important;color:#6cb4ff!important}
 </style>
 </head>
 <body>
@@ -16384,6 +16388,7 @@ function htmlAcoes(){
   const A=obj.d5.acoes;
   return `${A.length?"":`<div class="tier">O plano padrão tem 5 ações: 1–2 para a causa de ocorrência, 1–2 para a detecção/escape, 1 sistêmica e 1 de treinamento.</div>`}
   <div class="ntx-actions" style="margin-bottom:10px"><button class="ntx-btn primary small" type="button" data-8dplano>${A.length?"Refazer":"Montar"} plano de 5 ações pelo histórico</button><button class="ntx-btn small" type="button" data-8dadd="d5.acoes">+ Ação</button></div>
+  <div id="qxAv8dLote">${typeof qxAvisoLoteHtml==="function"?qxAvisoLoteHtml(ed8.t,ed8.nc,A):""}</div>
   ${A.map((a,i)=>{const ev=ed8.evid[i]||{imgs:[],antes:null};const slide=[8,9,10,11,12][i];return `<div class="d8-acao">
     <div class="d8-acao-h"><b>Ação ${i+1}</b>${slide?`<span class="hint">vai para o slide ${slide} (evidência)${i===3?" · antes/depois":""}</span>`:`<span class="hint">só na tabela D5–D6 (o modelo tem 5 slides de evidência)</span>`}${a.origem?`<span class="hint">· histórico: ${e(a.origem)}</span>`:""}<button class="ntx-btn small danger" type="button" data-8drm="d5.acoes.${i}">Remover</button></div>
     <div class="f"><label>Ação corretiva (descrição técnica)</label><textarea data-8d="d5.acoes.${i}.acao">${e(a.acao)}</textarea></div>
@@ -17487,6 +17492,27 @@ ${g.nome?`\n${g.nome.split(" ")[0]}, você está em cópia para acompanhamento.\
 Att;`;
   return {href:qxMailto(p.email,g.email,`Ação 8D – NC ${nc.ncNumber||""} – ${cli} – prazo ${a.prazo?fdate(a.prazo):"a definir"}`,corpo),p,g}}
 
+/* e-mail único por responsável com todas as ações dele neste 8D */
+function qxMailLote(k,nc,p,acoes){const g=qxGerencia(p);const cli=qxCli(k).nome;
+  const ref=[`NC ${nc.ncNumber||"—"}`,nc.rncNumber?`RNC ${String(nc.rncNumber).replace(/^RNC\s*/i,"")}`:"",cli,nc.piece?`peça ${nc.piece}`:"",nc.failureMode||""].filter(Boolean).join(" · ");
+  const linhas=acoes.map((a,i)=>`${i+1}. ${a.acao}\n   Prazo: ${a.prazo?fdate(a.prazo):"a definir"}${a.evidencia?`\n   Evidência esperada: ${a.evidencia}`:""}${a.criterio?`\n   Critério de aprovação: ${a.criterio}`:""}`).join("\n\n");
+  const corpo=`Olá, ${p.nome.split(" ")[0]},
+
+Você foi definido(a) como responsável ${acoes.length===1?"pela ação abaixo":"pelas ações abaixo"} no 8D da ${ref}.
+
+${linhas}
+
+Por favor, me retorne com a evidência da implementação até o prazo.
+${g.nome?`\n${g.nome.split(" ")[0]}, você está em cópia para acompanhamento.\n`:""}
+Att;`;
+  const prazos=acoes.map(a=>a.prazo).filter(Boolean).sort();
+  return qxMailto(p.email,g.email,`${acoes.length===1?"Ação":acoes.length+" ações"} 8D – NC ${nc.ncNumber||""} – ${cli}${prazos[0]?" – primeiro prazo "+fdate(prazos[0]):""}`,corpo)}
+function qxAvisoLoteHtml(k,nc,acoes){acoes=(acoes||[]).filter(a=>a&&a.acao&&a.resp&&!/conclu/i.test(a.status||""));if(!acoes.length)return "";
+  const por={};const fora=new Set();acoes.forEach(a=>{const p=qxPessoaDe(a.resp);if(p&&p.email)(por[p.id]=por[p.id]||{p,xs:[]}).xs.push(a);else fora.add(a.resp)});
+  const AV=QX.avisos||{};const gs=Object.values(por);if(!gs.length&&!fora.size)return "";
+  return `<div class="qxp-lote"><div class="qxp-lote-h"><b>Avisar responsáveis</b><span class="hint">Um e-mail por pessoa com todas as ações e prazos dela neste 8D, gerência em cópia.</span></div><div class="qxp-lote-b">${gs.map(({p,xs})=>{const ch=xs.map(a=>qxChaveAcao(k,nc.id,a));const ok=ch.every(c=>(AV[c]||{}).avisado);const semPrazo=xs.some(a=>!a.prazo);
+    return `<a class="ntx-btn small qxp-ol ${ok?"ghost":""}" href="${esc(qxMailLote(k,nc,p,xs))}" data-qxav8dl="${esc(ch.join(","))}" title="${esc(xs.map(a=>"• "+a.acao+(a.prazo?" ("+fdate(a.prazo)+")":" (sem prazo)")).join("\n"))}">✉ ${esc(p.nome.split(" ")[0])} · ${xs.length} ${xs.length===1?"ação":"ações"}${ok?" · avisado":""}${semPrazo?" · ⚠ sem prazo":""}</a>`}).join("")}
+   ${[...fora].map(r=>`<button type="button" class="ntx-btn small" data-qxpnova="${esc(String(r).replace(/\([^)]*\)/g,"").trim())}">Cadastrar “${esc(r)}”</button>`).join("")}</div></div>`}
 /* e-mail de cobrança: gerência + pessoa em cópia, com todas as ações vencidas dela */
 function qxMailCobranca(p,itens){const g=qxGerencia(p);const linhas=itens.map((x,i)=>`${i+1}. NC ${x.r.ncNumber||"—"} (${qxCli(x.k).nome}${x.r.piece?" · "+x.r.piece:""}) – ${x.a.acao} – prazo ${fdate(x.a.prazo)} (${qxDiasAtraso(x.a.prazo)} dia${qxDiasAtraso(x.a.prazo)===1?"":"s"} de atraso)`).join("\n");
   const corpo=`Olá, ${p.nome.split(" ")[0]}${g.nome?" e "+g.nome.split(" ")[0]:""},
@@ -17592,8 +17618,9 @@ function qxPessoaForm(p,nomeIni){
   setTimeout(()=>{const i=document.getElementById("qxp-nome");if(i)i.focus()},50)}
 function qxLerPessoa(){document.querySelectorAll("#qxpRoot [data-qp]").forEach(el=>{qxPEd[el.dataset.qp]=el.value.trim()})}
 
-document.addEventListener("click",async e=>{const t=e.target.closest("[data-qxpnova],[data-qxped],[data-qxpx],[data-qxpsalvar],[data-qxpdel],[data-qxpav],[data-qxpcob],[data-qxav8d]");if(!t)return;
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-qxpnova],[data-qxped],[data-qxpx],[data-qxpsalvar],[data-qxpdel],[data-qxpav],[data-qxpcob],[data-qxav8d],[data-qxav8dl]");if(!t)return;
   if(t.matches("[data-qxpav]")){qxLogAviso(t.dataset.qxpav,"avisado");setTimeout(()=>{if(QX.pagina==="qxPessoas"||QX.pagina==="qxCliAcoes"||QX.pagina==="qxAcoes")qxRender(QX.pagina)},1500);return}
+  if(t.matches("[data-qxav8dl]")){t.dataset.qxav8dl.split(",").forEach(c=>qxLogAviso(c,"avisado"));setTimeout(qxAviso8DAtualiza,400);return}
   if(t.matches("[data-qxav8d]")){qxLogAviso(t.dataset.qxav8d,"avisado");const s=t.parentElement.querySelector(".hint");if(s)s.textContent="Aviso aberto no Outlook hoje";return}
   if(t.matches("[data-qxpcob]")){t.dataset.qxpcob.split(",").forEach(c=>qxLogAviso(c,"cobrado"));setTimeout(()=>{if(QX.pagina==="qxPessoas"||QX.pagina==="qxCliAcoes"||QX.pagina==="qxAcoes")qxRender(QX.pagina)},1500);return}
   e.preventDefault();
@@ -17615,11 +17642,12 @@ function qxAviso8DHtml(k,nc,a){if(!a||!a.acao||!a.resp||/conclu/i.test(a.status|
   if(!p)return `<div class="qxp-av8d"><span class="hint">“${esc(a.resp)}” não está no cadastro de pessoas.</span><button type="button" class="ntx-btn small" data-qxpnova="${esc(String(a.resp).replace(/\([^)]*\)/g,"").trim())}">Cadastrar</button></div>`;
   if(!p.email)return `<div class="qxp-av8d"><span class="hint">${esc(p.nome)} está cadastrado(a) sem e-mail.</span><button type="button" class="ntx-btn small" data-qxped="${esc(p.id)}">Completar cadastro</button></div>`;
   const m=qxMailAtribuicao(k,nc,a),ch=qxChaveAcao(k,nc.id,a),av=(QX.avisos||{})[ch]||{};
-  return `<div class="qxp-av8d"><a class="ntx-btn small qxp-ol" href="${esc(m.href)}" data-qxav8d="${esc(ch)}">✉ Avisar ${esc(p.nome.split(" ")[0])} no Outlook</a><span class="hint">${av.avisado?`Aviso aberto em ${fdate(av.avisado)}`:`Para ${esc(p.email)}${m.g.email?` · cópia ${esc(m.g.nome||m.g.email)}`:" · sem gerência cadastrada"}`}</span></div>`}
+  return `<div class="qxp-av8d"><a class="ntx-btn small qxp-ol" href="${esc(m.href)}" data-qxav8d="${esc(ch)}">✉ Avisar ${esc(p.nome.split(" ")[0])} no Outlook</a><span class="hint">${av.avisado?`Aviso aberto em ${fdate(av.avisado)}`:`Para ${esc(p.email)}${m.g.email?` · cópia ${esc(m.g.nome||m.g.email)}`:" · sem gerência cadastrada"}`}</span>${a.prazo?"":`<span class="qx-tag warn">defina o prazo antes de avisar</span>`}</div>`}
 function qxAviso8DAtualiza(){if(typeof ed8==="undefined"||!ed8||!ed8.nc||!ed8.obj||!ed8.obj.d5)return;const O=ed8.obj;
   document.querySelectorAll("[data-qxav8di]").forEach(el=>{const i=+el.dataset.qxav8di;const a=Object.assign({},O.d5.acoes[i]||{});
     const g=k=>{const f=document.querySelector(`[data-8d="d5.acoes.${i}.${k}"]`);return f?f.value:a[k]};["acao","resp","prazo","causa","evidencia","criterio","status"].forEach(k=>a[k]=g(k));
-    el.innerHTML=qxAviso8DHtml(ed8.t,ed8.nc,a)})}
+    el.innerHTML=qxAviso8DHtml(ed8.t,ed8.nc,a)});
+  const lote=document.getElementById("qxAv8dLote");if(lote){const L=(O.d5.acoes||[]).map((a0,i)=>{const a=Object.assign({},a0);["acao","resp","prazo","causa","evidencia","criterio","status"].forEach(k=>{const f=document.querySelector(`[data-8d="d5.acoes.${i}.${k}"]`);if(f)a[k]=f.value});return a});lote.innerHTML=qxAvisoLoteHtml(ed8.t,ed8.nc,L)}}
 let qxAv8dT;document.addEventListener("input",e=>{if(e.target.matches('[data-8d^="d5.acoes."]')){clearTimeout(qxAv8dT);qxAv8dT=setTimeout(qxAviso8DAtualiza,300)}});
 document.addEventListener("change",e=>{if(e.target.matches('[data-8d^="d5.acoes."]'))qxAviso8DAtualiza()});
 (function qxPessoasBoot(n){if(typeof fdb!=="undefined"&&fdb)qxCarregarPessoas().catch(()=>{});else if(n<60)setTimeout(()=>qxPessoasBoot(n+1),1000)})(0);
