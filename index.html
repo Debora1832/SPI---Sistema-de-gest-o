@@ -17778,15 +17778,32 @@ function qxMailPlano(k,nc,todas){const O=(typeof ed8!=="undefined"&&ed8&&ed8.nc&
   if(efic)H.push(sec("VERIFICAÇÃO DE EFICÁCIA"),`<tr><td style="padding-top:6px;font-size:10.5pt">${h(efic)}</td></tr>`);
   H.push(`</table><p style="margin-top:18px">Att;<br><br><b>Débora Cristina</b><br>Qualidade · Magius Metalúrgica Industrial</p></div>`);
   const html=H.join("");
+  /* versão compacta (link do Outlook na Web tem limite de tamanho) */
+  const tb='<table border="1" cellspacing="0" cellpadding="4" style="border-collapse:collapse;border-color:#c8d1db;font-size:10pt">',th2=t=>`<th bgcolor="#eef4fb" align="left">${t}</th>`,sc=t=>`<p style="margin:14px 0 4px;color:#0f6cbd"><b>${t}</b></p>`,stc=s=>`<font color="${cor[s]||"#555"}"><b>${h(s)}</b></font>`;
+  const HC=[`<div style="font-family:Aptos,Calibri,Arial,sans-serif;font-size:11pt"><p>Olá a todos,</p><p>Segue o plano de ação do 8D abaixo para alinhamento.</p>`,
+    `<table cellpadding="8" cellspacing="0" width="100%" style="max-width:900px"><tr><td bgcolor="#0f6cbd" style="color:#ffffff"><b>Plano de ação 8D${rnc?" · RNC "+h(rnc):""}</b><br><font size="2">${h(resumo)}</font></td></tr></table>`,
+    sc("DADOS DA NC"),tb+dados.map(d=>`<tr>${th2(h(d[0]))}<td>${h(d[1])}</td></tr>`).join("")+"</table>"];
+  if(d2.declaracao)HC.push(sc("PROBLEMA"),`<p style="margin:0">${h(d2.declaracao)}</p>`);
+  if(cont.length)HC.push(sc("CONTENÇÃO"),cont.map(a=>`• ${h(a.acao)} · ${stc(st(a))}`).join("<br>"));
+  if(causas.length)HC.push(sc("CAUSA RAIZ"),tb+causas.map(c=>`<tr>${th2(c[0])}<td>${h(c[1])}</td></tr>`).join("")+"</table>");
+  HC.push(sc("PLANO DE AÇÃO"),tb+`<tr>${["#","Tipo","Ação","Responsável","Prazo","Status","Evidência esperada"].map(th2).join("")}</tr>`+todas.map((a,i)=>`<tr><td align="center">${i+1}</td><td>${h(a.causa||"—")}</td><td>${h(a.acao)}</td><td>${h(a.resp||"A definir")}</td><td nowrap>${a.prazo?fdate(a.prazo):"A definir"}</td><td>${stc(st(a))}</td><td>${h(a.evidencia||"")}</td></tr>`).join("")+"</table>");
+  if(resps.length)HC.push(sc("RESPONSÁVEIS E PRAZOS"),resps.map(r=>`• <b>${h(r.n)}</b>: ação ${r.nums.join(", ")}${r.prox?` · prazo ${fdate(r.prox)}`:""}`).join("<br>"));
+  HC.push(sc("O QUE PRECISO DE CADA UM"),pedidos.map(x=>"• "+h(x)).join("<br>"));
+  if(efic)HC.push(sc("VERIFICAÇÃO DE EFICÁCIA"),`<p style="margin:0">${h(efic)}</p>`);
+  HC.push(`<p>Att;<br><br><b>Débora Cristina</b><br>Qualidade · Magius Metalúrgica Industrial</p></div>`);
+  const htmlc=HC.join("");
   const P=[...para].join(";"),C=[...cc].join(";");
   let href=qxMailto(P,C,assunto,corpo);const longo=href.length>1900;
   if(longo)href=qxMailto(P,C,assunto,"Olá a todos,\n\n(Cole aqui o plano de ação: o texto já foi copiado pelo painel.)\n\nAtt;");
   const hrefCola=qxMailto(P,C,assunto,"");
   const chaves=abertas.filter(a=>a.resp).map(a=>qxChaveAcao(k,nc.id,a));
-  return {href,hrefCola,assunto,corpo,html,texto:`Assunto: ${assunto}\n\n${corpo}`,para:[...para],cc:[...cc],semEmail:[...semEmail],longo,chaves,nome:`Plano de ação 8D ${rnc?"RNC "+rnc.replace(/\//g,"-")+" ":""}NC ${nc.ncNumber||""}.eml`.replace(/[\\:*?"<>|]/g,"")}}
+  return {href,hrefCola,assunto,corpo,html,htmlc,texto:`Assunto: ${assunto}\n\n${corpo}`,para:[...para],cc:[...cc],semEmail:[...semEmail],longo,chaves,nome:`Plano de ação 8D ${rnc?"RNC "+rnc.replace(/\//g,"-")+" ":""}NC ${nc.ncNumber||""}.eml`.replace(/[\\:*?"<>|]/g,"")}}
 /* remetente: Débora (cadastro) — o novo Outlook precisa do From para saber de qual conta enviar */
 function qxMeuEmail(){const p=(QX.pessoas||[]).find(x=>/^debora/i.test(qxNorm(x.nome))&&x.email);return p?{nome:p.nome,email:p.email}:null}
 function qxEnd(m){const p=(QX.pessoas||[]).find(x=>x.email&&x.email.toLowerCase()===String(m).toLowerCase());return p?`${moHdr(p.nome)} <${m}>`:`<${m}>`}
+function qxPlanoOwa(pl,teste){const eu=qxMeuEmail();const para=teste?(eu?[eu.email]:[]):pl.para,cc=teste?[]:pl.cc;
+  const q=[["to",para.join(";")],...(cc.length?[["cc",cc.join(";")]]:[]),["subject",(teste?"[TESTE] ":"")+pl.assunto],["body",pl.htmlc]];
+  return "https://outlook.office.com/mail/deeplink/compose?"+q.map(([k,v])=>k+"="+encodeURIComponent(v)).join("&")}
 function qxPlanoEml(pl,teste){const bd="----=_8D_"+Date.now().toString(36);const eu=qxMeuEmail();
   const para=teste?(eu?[eu.email]:[]):pl.para,cc=teste?[]:pl.cc;const dom=eu?eu.email.split("@")[1]:"magius.com.br";
   const eml=["X-Unsent: 1","MIME-Version: 1.0",...(eu?[`From: ${moHdr(eu.nome)} <${eu.email}>`]:[]),`Date: ${new Date().toUTCString().replace("GMT","+0000")}`,`Message-ID: <8d.${Date.now().toString(36)}.${Math.random().toString(36).slice(2)}@${dom}>`,
@@ -17826,17 +17843,18 @@ function qxAvisoLoteHtml(k,nc,acoes){const todas=(acoes||[]).filter(a=>a&&a.acao
   const sem=pl.semEmail.map(r=>`<button type="button" class="ntx-btn small" data-qxpnova="${esc(String(r).replace(/\([^)]*\)/g,"").trim())}">Cadastrar “${esc(r)}”</button>`).join("");
   const dest=esc("Para: "+(pl.para.join("; ")||"ninguém com e-mail")+(pl.cc.length?"\nCc: "+pl.cc.join("; "):""));
   const auto=false;
-  const bt=pl.para.length?`<button type="button" class="ntx-btn ${env?"ghost":"primary"} small" data-qxplanoeml="1" title="${dest}\n\nAbre no Outlook um e-mail novo já com destinatários, assunto e o plano formatado. É só clicar em Enviar.">✉ ${env?"Reenviar":"Enviar"} plano completo (${todas.length} ${todas.length===1?"ação":"ações"})</button><button type="button" class="ntx-btn small ghost" data-qxplanoteste="1" title="Mesmo e-mail, só para você, para conferir se sai do Outlook">Testar (só para mim)</button>${env||ger?"":`<button type="button" class="ntx-btn small ghost" data-qxplanoja="1" title="Marca o plano como enviado sem abrir o e-mail (para envio feito por fora do portal)">✓ Já enviei</button>`}`:`<span class="hint">Nenhum responsável com e-mail no cadastro.</span>`;
+  const bt=pl.para.length?`<button type="button" class="ntx-btn ${env?"ghost":"primary"} small" data-qxplanoowa="1" title="${dest}\n\nAbre o Outlook com um e-mail novo já com destinatários, assunto e o plano formatado. É só clicar em Enviar.">✉ ${env?"Reenviar":"Enviar"} plano completo (${todas.length} ${todas.length===1?"ação":"ações"})</button><button type="button" class="ntx-btn small ghost" data-qxplanoteste="1" title="Mesmo e-mail, só para você, para conferir se sai do Outlook">Testar (só para mim)</button>${env||ger?"":`<button type="button" class="ntx-btn small ghost" data-qxplanoja="1" title="Marca o plano como enviado sem abrir o e-mail (para envio feito por fora do portal)">✓ Já enviei</button>`}`:`<span class="hint">Nenhum responsável com e-mail no cadastro.</span>`;
   return `<div class="qxp-lote"><div class="qxp-lote-h"><b>Avisar responsáveis</b><span class="hint">Um e-mail para todos com o plano de ação completo: responsáveis em Para; gerências, equipe do 8D, supervisor da planta e cópias fixas em Cc.</span></div>${st}<div class="qxp-lote-b">${bt}${sem}</div>${pl.semEmail.length?`<div class="hint" style="margin-top:6px">Fora do e-mail (sem e-mail no cadastro): ${esc(pl.semEmail.join(", "))}</div>`:""}</div>`}
-document.addEventListener("click",async e=>{const b=e.target.closest&&e.target.closest("[data-qxplano],[data-qxplanocp],[data-qxplanoeml],[data-qxplanodesf],[data-qxplanoja],[data-qxplanocola],[data-qxplanoauto],[data-qxm365cfg],[data-qxplanoteste]");if(!b||!QX.plano)return;const pl=QX.plano;
+document.addEventListener("click",async e=>{const b=e.target.closest&&e.target.closest("[data-qxplano],[data-qxplanocp],[data-qxplanoeml],[data-qxplanodesf],[data-qxplanoja],[data-qxplanocola],[data-qxplanoauto],[data-qxm365cfg],[data-qxplanoteste],[data-qxplanoowa]");if(!b||!QX.plano)return;const pl=QX.plano;
   if(b.matches("[data-qxm365cfg]")){qxM365Configurar();return}
-  if(b.matches("[data-qxplanoteste]")){const eu=qxMeuEmail();if(!eu){toast("Cadastre seu e-mail em Pessoas (Débora) para testar.");return}moBaixar(qxPlanoEml(pl,true),"TESTE "+pl.nome);toast(`Teste baixado: abra o arquivo, clique em Enviar e veja se chega em ${eu.email}.`,9000);return}
+  if(b.matches("[data-qxplanoteste]")){const eu=qxMeuEmail();if(!eu){toast("Cadastre seu e-mail em Pessoas (Débora) para testar.");return}window.open(qxPlanoOwa(pl,true),"_blank");toast(`Teste aberto no Outlook: clique em Enviar e veja se chega em ${eu.email}.`,9000);return}
   if(b.matches("[data-qxplanoja]")){pl.chaves.forEach(c=>qxLogAviso(c,"avisado"));qxLogAviso(pl.kp,"avisado");if(QX.planoGerado)delete QX.planoGerado[pl.kp];qxAviso8DAtualiza();toast("Plano marcado como enviado.");return}
   if(b.matches("[data-qxplanodesf]")){QX.avisos=QX.avisos||{};delete QX.avisos[pl.kp];try{fdb.collection("avisos_acoes").doc("all").set({log:{[pl.kp]:firebase.firestore.FieldValue.delete()}},{merge:true})}catch(err){}qxAviso8DAtualiza();return}
   if(pl.env&&!b.matches("[data-qxplanocp]")&&!confirm(`Este plano já foi enviado em ${fdate(pl.env)}. Enviar de novo?`)){e.preventDefault();return}
   if(b.matches("[data-qxplanoauto]")){const old=b.textContent;b.disabled=true;b.textContent="Enviando…";
     try{await qxM365Enviar(pl);pl.chaves.forEach(c=>qxLogAviso(c,"avisado"));qxLogAviso(pl.kp,"avisado");toast(`Plano enviado para ${pl.para.length} responsáve${pl.para.length===1?"l":"is"}${pl.cc.length?` (+${pl.cc.length} em cópia)`:""}. Está em Itens Enviados.`,8000);setTimeout(qxAviso8DAtualiza,300)}
     catch(err){console.error(err);b.disabled=false;b.textContent=old;toast("Não enviou: "+(err.message||err),9000)}return}
+  if(b.matches("[data-qxplanoowa]")){window.open(qxPlanoOwa(pl),"_blank");toast("Outlook aberto com o e-mail pronto: clique em Enviar e depois em ✓ Enviei aqui.",9000);QX.planoGerado=QX.planoGerado||{};QX.planoGerado[pl.kp]=new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});setTimeout(qxAviso8DAtualiza,400);return}
   if(b.matches("[data-qxplanocola]")){
     try{const html=`<html><body>${pl.html}</body></html>`;
       if(window.ClipboardItem&&navigator.clipboard&&navigator.clipboard.write)await navigator.clipboard.write([new ClipboardItem({"text/html":new Blob([html],{type:"text/html"}),"text/plain":new Blob([pl.corpo],{type:"text/plain"})})]);
