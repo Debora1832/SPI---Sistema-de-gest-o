@@ -3567,6 +3567,14 @@ select.crfase[data-f=fim]{background:var(--cr-ok-s);color:var(--cr-ok);border-co
 .cr-acr.venc{background:rgba(232,90,79,.18);color:#ff9a90}.cr-acr.avencer{background:rgba(240,180,41,.15);color:#ffd166}.cr-acr.ok{background:rgba(63,185,122,.13);color:#7fd3a5}
 .cr-acr.none{background:none;color:var(--qx-muted);cursor:default;padding-left:0}
 .cr-g .gt{height:84px}
+.cr-ini{display:grid;grid-template-columns:150px 1fr;gap:14px;align-items:start}
+.cr-foto{position:relative;display:block;width:150px;height:150px;border-radius:10px;overflow:hidden;background:#0d1116;border:1px solid rgba(255,255,255,.08)}
+.cr-foto img{width:100%;height:100%;object-fit:cover;display:block}
+.cr-foto span{position:absolute;right:6px;bottom:6px;background:rgba(0,0,0,.7);color:#fff;font-size:11px;padding:2px 6px;border-radius:6px}
+.cr-foto.vazio{display:grid;place-items:center;color:#7b8580;font-size:12px}
+.cr-ini .cr-meta{grid-template-columns:repeat(2,minmax(0,1fr))}.cr-ini .cr-meta b{font-weight:600}
+.cr-ini .cr-desc{margin:0;max-height:110px;overflow:auto}
+@media (max-width:520px){.cr-ini{grid-template-columns:1fr}.cr-foto{width:100%;height:180px}}
 </style>
 </head>
 <body>
@@ -17869,13 +17877,15 @@ function crAbrir(id){const k=QX.crK,w=(QX.crW||[]).find(x=>x.id===id);if(!w)retu
     return `<div class="cr-step"><div class="crdot ${st==="todo"?"":st}" id="crdot-${s}"></div><div class="nm">${CR_ETAPAS[s]}<small>${lb}</small></div><input type="date" id="crpz-${s}" value="${crIso(p)}" aria-label="Prazo ${CR_ETAPAS[s]}" ${w.fimSite?"disabled":""}></div>`}).join("");
   crRoot().innerHTML=`<div class="scrim" data-crx></div><aside class="drawer cr-dw" role="dialog" aria-modal="true" aria-label="RNC"><div class="dhead"><div><div class="eyebrow">${esc(qxCli(k).nome)} · ${esc(w.nc||"")}${w.rnc?" · RNC "+esc(w.rnc):""}</div><h2>${esc(w.peca)} · ${esc(w.modo)}</h2><div>${crTags(w,i)}</div></div><button type="button" class="ntx-btn small" data-crx>Fechar</button></div>
    <div class="dbody">
+    <section class="sec cr-ini">${(()=>{const F=(w.r.photos||[]).filter(Boolean);return F.length?`<a class="cr-foto" href="${esc(F[0])}" target="_blank" rel="noopener" title="Abrir foto"><img src="${esc(F[0])}" alt="Foto da NC ${esc(w.nc)}" loading="lazy">${F.length>1?`<span>+${F.length-1}</span>`:""}</a>`:`<div class="cr-foto vazio">sem foto</div>`})()}
+     <div class="cr-ini-d"><div class="cr-meta"><div><span>Nº NC</span><b class="mono">${esc(w.nc||"—")}</b></div><div><span>Nº RNC</span><b class="mono">${esc(w.rnc||"—")}</b></div><div><span>Abertura</span><b>${crBr(crP(w.data))}</b></div><div><span>Planta</span>${esc(w.cliente)}</div><div><span>Qtd. NOK</span>${esc(w.r.qty??"—")}</div><div><span>8D</span>${esc(w.x.d8st)}</div></div>
+      ${w.r.description?`<p class="cr-desc">${esc(w.r.description)}</p>`:""}</div></section>
     ${w.fimSite?`<p class="cr-note ok">8D finalizado no site: todas as fases estão concluídas.</p>`:""}
     <section class="sec"><h3>Fase</h3><div class="f"><label for="crdFase">Em qual fase estou</label><select id="crdFase" ${w.fimSite?"disabled":""}>${[...CR_KEYS,"fim"].map(s=>`<option value="${s}" ${s===f?"selected":""}>${s==="fim"?"Finalizada":"Em "+CR_ETAPAS[s]}</option>`).join("")}</select><span class="hint">As fases anteriores à escolhida ficam marcadas como concluídas.</span></div>
      <div class="cr-steps">${steps}</div>${meta.data&&!w.fimSite?`<button type="button" class="ntx-btn small" data-crreplan>Distribuir fases pendentes até a meta (${crBr(crP(meta.data))})</button>`:""}</section>
     ${blocoAcoes}
     ${f!=="acoes"&&abertas.length&&!w.improcedente?`<p class="hint cr-note">${abertas.length} ${abertas.length===1?"ação pendente":"ações pendentes"} no 8D. Elas aparecem aqui quando a RNC estiver na fase Ações.</p>`:""}
-    <section class="sec"><h3>Dados da NC</h3><div class="cr-meta"><div><span>Nº NC</span>${esc(w.nc||"—")}</div><div><span>Nº RNC</span>${esc(w.rnc||"—")}</div><div><span>Abertura</span>${crBr(crP(w.data))}</div><div><span>Planta</span>${esc(w.cliente)}</div><div><span>Qtd.</span>${esc(w.r.qty??"—")}</div><div><span>8D</span>${esc(w.x.d8st)}</div></div>
-     ${w.r.description?`<p class="cr-desc">${esc(w.r.description)}</p>`:""}
+    <section class="sec"><h3>Responsável e observações</h3>
      <div class="f"><label for="crdResp">Responsável</label><input id="crdResp" list="qxPessoasDL" value="${esc(w.responsavel)}" placeholder="Nome do analista"></div>
      <div class="f"><label for="crdObs">Observações</label><textarea id="crdObs" rows="3">${esc(w.obs)}</textarea></div>
      <label class="cr-imp"><input type="checkbox" id="crdImp" ${w.improcedente?"checked":""} ${w.r.naoProcedente?"disabled":""}> Improcedente / impacto negociado${w.r.naoProcedente?" (marcada como não procedente no site)":""}</label></section></div>
