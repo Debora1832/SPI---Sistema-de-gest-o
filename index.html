@@ -3575,6 +3575,18 @@ select.crfase[data-f=fim]{background:var(--cr-ok-s);color:var(--cr-ok);border-co
 .cr-ini .cr-meta{grid-template-columns:repeat(2,minmax(0,1fr))}.cr-ini .cr-meta b{font-weight:600}
 .cr-ini .cr-desc{margin:0;max-height:110px;overflow:auto}
 @media (max-width:520px){.cr-ini{grid-template-columns:1fr}.cr-foto{width:100%;height:180px}}
+
+/* MO Trigo */
+#ncPage .qxc .qxc-tg button.qxc-mo{background:#1d242e!important;color:var(--qx-muted)!important;border:1px dashed #4a5768!important}
+#ncPage .qxc .qxc-tg button.qxc-mo.gerada{background:#3a2a08!important;color:#ffc25c!important;border:1px solid #5a4110!important}
+#ncPage .qxc .qxc-tg button.qxc-mo.enviada{background:#11301f!important;color:#7ddba4!important;border:1px solid #1d4a30!important}
+#moRoot .drawer{z-index:6001;width:min(600px,100%)}#moRoot .scrim{z-index:6000}
+#moRoot .mo-g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#moRoot .mo-ck{display:flex;gap:18px;flex-wrap:wrap;margin:6px 0}#moRoot .mo-ck label{display:flex;align-items:center;gap:6px;font-size:13px}
+#moRoot .mo-cab{line-height:1.5}
+#moRoot .mo-acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}#moRoot .mo-acts .hint{flex-basis:100%;margin:2px 0 0}
+#moRoot .mo-env{background:#ffcd11!important;color:#111!important;border-color:#ffcd11!important}
+@media (max-width:560px){#moRoot .mo-g2{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -17278,7 +17290,7 @@ function qxCards(){
       ut.querySelectorAll("button").forEach(btn=>{const a=btn.dataset.action;if(a==="export_pdf"){btn.title="Exportar PDF";btn.innerHTML='<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm7 1.5V9h5.5zM8 13v5h1.5v-1.6h.9a1.7 1.7 0 0 0 0-3.4zm1.5 1.2h.8a.5.5 0 0 1 0 1h-.8zM13 13v5h1.6a2.5 2.5 0 0 0 0-5zm1.5 1.2h.1a1.3 1.3 0 0 1 0 2.6h-.1z"/></svg>'}if(a==="edit"){btn.title="Editar NC";btn.innerHTML='<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M3 17.3V21h3.8L17.8 9.9l-3.7-3.7zM20.7 7a1 1 0 0 0 0-1.4l-2.3-2.3a1 1 0 0 0-1.4 0l-1.8 1.8 3.7 3.7z"/></svg>'}if(a==="delete"){btn.title="Excluir NC";btn.innerHTML='<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6zM19 4h-3.5l-1-1h-5l-1 1H5v2h14z"/></svg>'}});
       tg.querySelectorAll("button").forEach(btn=>{btn.textContent={rnc_aberta:"RNC",["8d_finalizado"]:"8D",third_party:"3ª"}[btn.dataset.action]||btn.textContent;btn.title={rnc_aberta:"Marcar RNC aberta",["8d_finalizado"]:"Marcar 8D finalizado",third_party:"Sinalizar desconto da terceira"}[btn.dataset.action]||""})}
   });
-  qxTabelaNc();qxMarcarFim(k);
+  qxTabelaNc();qxMarcarFim(k);try{qxMoCards(k)}catch(e){console.error(e)}
 }
 function qxTabelaNc(){
   const reg=document.querySelector("#ncPage .ncp-registers"),grid=document.getElementById("ncCardsGrid");if(!reg||!grid||!site())return;
@@ -17943,6 +17955,127 @@ document.addEventListener("change",async e=>{const t=e.target;
   if(t.matches("[data-crfase]")){const id=t.dataset.crfase,w=(QX.crW||[]).find(x=>x.id===id);if(!w)return;const f=t.value;
     if(await crSalvar(QX.crK,id,{etapas:crEtapasDaFase(f),prazos:w.prazos},f==="fim"?"NC finalizada no cronograma":"Fase atualizada"))crRe()}});
 let crQT;document.addEventListener("input",e=>{if(e.target.matches("[data-crq]")){QX.cr.q=e.target.value;clearTimeout(crQT);crQT=setTimeout(()=>{const pos=e.target.selectionStart;crRe();setTimeout(()=>{const i=document.querySelector("[data-crq]");if(i){i.focus();try{i.setSelectionRange(pos,pos)}catch(_){}}},60)},250)}});
+
+/* =====================================================================
+   M.O. (Ordem de Missão TRIGO) — alertas de qualidade John Deere
+   Gera a MO no modelo da Trigo (mo_base.pdf, publicado junto do site) com o cabeçalho da Débora,
+   os dados da NC e assinatura eletrônica. Status em nc_mo_<t>/<ncId>; padrões em mo_cfg/padrao.
+   O envio é sempre pela Débora: o botão abre o e-mail original no Outlook e copia o texto da resposta.
+   ===================================================================== */
+const MO_TIPOS=["INSPEÇÃO - inspeção preventiva (entrada, firewall, linha, final ...)","EVENTO DE REATIVIDADE - Contenção de Estoque","EVENTO DE REATIVIDADE - Contenção de Estoque - Preço Peça","EVENTO DE REATIVIDADE - Notificação sem Contenção de Estoque","INSPEÇÃO - triagem corretiva e retrabalho/contenção básica","METROLOGIA E SERVIÇOS DE TECNOLOGIA - medição 3D, rastreadores de lazer, calibração, testes não destrutivos/destrutivos, análise de raios-x ...","REWORK TÉCNICO - atualização de software, reflash"];
+const MO_PAD={tipo:MO_TIPOS[0],qtd:"",vCont:"9,89",vEv:"756,25",assinante:"DEBORA CRISTINA TAVARES RODRIGUES",cargo:"Qualidade"};
+const MO_TXT="Bom dia,\n\nSegue MO assinada.\n\nAtt;";
+QX.mo={};QX.moCfg=null;
+function qxMoAplica(r){if(!r||!r.qnote)return false;const t=(JSON.stringify(r.qnote)+" "+(r.customer||"")).toLowerCase();return /trigo|alerta de qualidade/.test(t)||/catal/.test(t)}
+async function qxMoCarregar(k,force){if(!force&&QX.mo[k])return QX.mo[k];const m={};
+  try{const s=await fdb.collection("nc_mo_"+k).get();s.forEach(d=>m[d.id]=d.data())}catch(e){}
+  if(!QX.moCfg){try{const s=await fdb.collection("mo_cfg").doc("padrao").get();QX.moCfg={...MO_PAD,...(s.exists?s.data():{})}}catch(e){QX.moCfg={...MO_PAD}}}
+  QX.mo[k]=m;return m}
+function qxMoCards(k){const g=document.getElementById("ncCardsGrid");if(!g||!fdb)return;
+  if(!QX.mo[k]){qxMoCarregar(k).then(()=>qxMoCards(k));return}
+  g.querySelectorAll(".nc-card[data-nc-id]").forEach(card=>{const tg=card.querySelector(".qxc-tg");if(!tg)return;const r=(ncCache[k]||[]).find(x=>x.id===card.dataset.ncId);
+    let b=tg.querySelector(".qxc-mo");if(!qxMoAplica(r)||(r.d8Finalizado&&!QX.mo[k][r.id])){if(b)b.remove();return}
+    if(!b){b=document.createElement("button");b.type="button";b.className="qxc-mo";b.textContent="MO";b.dataset.qxmo=r.id;tg.appendChild(b)}
+    const st=(QX.mo[k][r.id]||{}).status||"";b.classList.toggle("gerada",st==="gerada");b.classList.toggle("enviada",st==="enviada");
+    b.title=st==="enviada"?"MO assinada enviada":st==="gerada"?"MO gerada, falta responder o e-mail":"Gerar MO assinada"})}
+function moRoot(){let r=document.getElementById("moRoot");if(!r){r=document.createElement("div");r.id="moRoot";r.className="ntx";document.body.appendChild(r)}return r}
+function moBr(iso){const s=String(iso||"").slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(s)?s.split("-").reverse().join("/"):s}
+function moRazao(d){d=String(d||"").replace(/\s+/g," ").trim();const p=d.split(/(?<=\.)\s/)[0];return (p.length>8?p:d).slice(0,160)}
+function moDefaults(k,r){const c=QX.moCfg||MO_PAD,q=r.qnote||{};
+  return {tipo:c.tipo,data:moBr(r.date||isoToday()),hora:"",nomePeca:q.nomePeca||"",numPeca:r.piece||"",razao:moRazao(r.description),fim:"",descOp:"",
+    qtd:c.qtd||"",vCont:c.vCont,vEv:c.vEv,total:"",host:false,forn:false,assinar:true,assinante:c.assinante,cargo:c.cargo}}
+function moNum(s){const v=parseFloat(String(s||"").replace(/[^\d,.-]/g,"").replace(/\.(?=\d{3}(\D|$))/g,"").replace(",","."));return isFinite(v)?v:0}
+function moBRL(v){return v.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}
+function moAbrir(id){const k=site().current(),r=(ncCache[k]||[]).find(x=>x.id===id);if(!r)return;const D=QX.mo[k]&&QX.mo[k][id]||{};const v={...moDefaults(k,r),...(D.campos||{})};
+  const q=r.qnote||{},F=(r.photos||[]).filter(Boolean);
+  const inp=(id,lb,val,extra)=>`<div class="f"><label for="mo_${id}">${lb}</label><input id="mo_${id}" value="${esc(val||"")}" ${extra||""}></div>`;
+  moRoot().innerHTML=`<div class="scrim" data-mox></div><aside class="drawer mo-dw" role="dialog" aria-modal="true" aria-label="Ordem de Missão"><div class="dhead"><div><div class="eyebrow">${esc(r.customer||"")} · ${esc(r.ncNumber||"")}${r.rncNumber?" · "+esc(r.rncNumber):""}</div><h2>M.O. Trigo · ${esc(r.piece||"")}</h2>
+    <div>${D.status==="enviada"?`<span class="qx-tag ok">Enviada ${D.enviadaEm?fdate(D.enviadaEm):""}</span>`:D.status==="gerada"?`<span class="qx-tag warn">Gerada ${D.geradaEm?fdate(D.geradaEm):""} · falta responder</span>`:`<span class="qx-tag">Pendente</span>`}</div></div><button type="button" class="ntx-btn small" data-mox>Fechar</button></div>
+   <div class="dbody">
+    <section class="sec cr-ini">${F.length?`<a class="cr-foto" href="${esc(F[0])}" target="_blank" rel="noopener"><img src="${esc(F[0])}" alt="Foto da NC" loading="lazy"></a>`:`<div class="cr-foto vazio">sem foto</div>`}
+     <div class="cr-ini-d"><div class="cr-meta"><div><span>Nº NC</span><b class="mono">${esc(r.ncNumber||"—")}</b></div><div><span>Abertura</span><b>${moBr(r.date)}</b></div><div><span>Contato</span>${esc(q.contato||"—")}</div><div><span>Qtd. NOK</span>${esc(r.qty??"—")}</div></div>${q.disposicao?`<p class="cr-desc">${esc(q.disposicao)}</p>`:""}</div></section>
+    <section class="sec"><h3>Cabeçalho (fixo)</h3><p class="hint mo-cab">DEBORA CRISTINA · QUALIDADE · Magius Metalúrgica Industrial · R. David Campista, 1385 · CNPJ 81.312.894/0001-57 · 5541 9785-1441 · debora.cristina@magius.com.br · faturamento sac@magius.com.br · Local Catalão - GO · John Deere - Catalão</p></section>
+    <section class="sec"><h3>Missão</h3>
+     <div class="f"><label for="mo_tipo">Tipo de missão</label><input id="mo_tipo" list="moTiposDL" value="${esc(v.tipo)}"><datalist id="moTiposDL">${MO_TIPOS.map(t=>`<option value="${esc(t)}">`).join("")}</datalist></div>
+     <div class="mo-g2">${inp("nomePeca","Nome da peça",v.nomePeca)}${inp("numPeca","Número da peça",v.numPeca)}</div>
+     ${inp("razao","Razão",v.razao,'maxlength="200"')}
+     <div class="mo-g2">${inp("data","Data de início",v.data,'placeholder="dd/mm/aaaa"')}${inp("hora","Hora de início",v.hora,'placeholder="opcional"')}</div>
+     ${inp("fim","Fim da missão (quantidade, data, forma de entrega...)",v.fim,'placeholder="opcional"')}
+     ${inp("descOp","Descrição da operação",v.descOp,'placeholder="opcional"')}
+     <div class="mo-ck"><label><input type="checkbox" id="mo_host" ${v.host?"checked":""}> Host</label><label><input type="checkbox" id="mo_forn" ${v.forn?"checked":""}> Fornecedor</label></div></section>
+    <section class="sec"><h3>Valores da Trigo <span class="hint">confira com o e-mail deles</span></h3>
+     <div class="mo-g2">${inp("qtd","Peças a inspecionar",v.qtd,'inputmode="numeric"')}${inp("vCont","Valor da contenção (R$/peça)",v.vCont)}</div>
+     <div class="mo-g2">${inp("vEv","Evento da reatividade (R$)",v.vEv)}${inp("total","Total geral (R$)",v.total,'placeholder="calculado se vazio"')}</div>
+     <p class="hint" id="moTotHint"></p></section>
+    <section class="sec"><h3>Assinatura</h3>
+     <div class="mo-ck"><label><input type="checkbox" id="mo_assinar" ${v.assinar!==false?"checked":""}> Assinar eletronicamente ao gerar</label></div>
+     <div class="mo-g2">${inp("assinante","Nome de quem assina",v.assinante)}${inp("cargo","Cargo",v.cargo)}</div>
+     <p class="hint">A assinatura sai como bloco "Assinado eletronicamente por", com data e hora. A Trigo aceita assinatura a punho ou eletrônica. Se preferir a assinatura gov.br, desmarque e assine o PDF no assinador.iti.br.</p></section>
+    <section class="sec mo-acts">
+     <button type="button" class="ntx-btn" data-mogerar="${esc(id)}">Gerar MO assinada (PDF)</button>
+     ${D.pdfUrl?`<a class="ntx-btn small ghost" href="${esc(D.pdfUrl)}" target="_blank" rel="noopener">Abrir última MO gerada</a>`:""}
+     ${q.emailLink?`<button type="button" class="ntx-btn mo-env" data-moresp="${esc(id)}">Enviar MO assinada</button>`:`<p class="hint">Esta NC não tem o link do e-mail original da Trigo.</p>`}
+     ${D.status!=="enviada"?`<button type="button" class="ntx-btn small ghost" data-moenv="${esc(id)}">Já enviei: marcar como enviada</button>`:""}
+     <p class="hint">"Enviar MO assinada" baixa o PDF (se ainda não baixou), copia o texto "Bom dia, Segue MO assinada. Att;" e abre o e-mail original no Outlook. Lá é só Responder a todos, colar, anexar o PDF e enviar.</p></section>
+   </div></aside>`;
+  moTot()}
+function moLer(){const g=i=>{const e=document.getElementById("mo_"+i);return e?(e.type==="checkbox"?e.checked:e.value.trim()):""};
+  return {tipo:g("tipo"),nomePeca:g("nomePeca"),numPeca:g("numPeca"),razao:g("razao"),data:g("data"),hora:g("hora"),fim:g("fim"),descOp:g("descOp"),host:g("host"),forn:g("forn"),
+    qtd:g("qtd"),vCont:g("vCont"),vEv:g("vEv"),total:g("total"),assinar:g("assinar"),assinante:g("assinante"),cargo:g("cargo")}}
+function moTotal(v){if(v.total)return moNum(v.total);const q=moNum(v.qtd),c=moNum(v.vCont),e=moNum(v.vEv);return q*c+e}
+function moTot(){const h=document.getElementById("moTotHint");if(!h)return;const v=moLer();h.textContent=v.total?"":`Total calculado: R$ ${moBRL(moTotal(v))} (peças × contenção + evento).`}
+async function moPdf(k,r,v){await carregarScriptUma("https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js",()=>!!window.PDFLib);
+  const {PDFDocument,StandardFonts,rgb}=PDFLib;const base=await fetch("mo_base.pdf",{cache:"no-cache"});if(!base.ok)throw new Error("modelo");
+  const doc=await PDFDocument.load(await base.arrayBuffer());const pg=doc.getPage(0),H=pg.getHeight();
+  const f=await doc.embedFont(StandardFonts.Helvetica),fb=await doc.embedFont(StandardFonts.HelveticaBold),fs=await doc.embedFont(StandardFonts.TimesRomanBoldItalic);
+  const W1252=/[^\x20-\x7E -ÿ–—‘’“”•…€]/g;
+  const tx=(s,x,bot,o={})=>{s=String(s||"").replace(/\s+/g," ").replace(W1252,"").trim();if(!s)return;const fo=o.font||f;let sz=o.size||6.6;const mw=o.w||400;
+    while(sz>4.6&&fo.widthOfTextAtSize(s,sz)>mw)sz-=.2;while(s.length>3&&fo.widthOfTextAtSize(s,sz)>mw)s=s.slice(0,-2).trim()+"…";
+    pg.drawText(s,{x,y:H-bot+1.6,size:sz,font:fo,color:o.c||rgb(0,0,0)})};
+  tx(v.tipo,74.1,137.3,{w:405});tx(v.data,674,137.3,{w:95});tx(v.nomePeca,74.1,154.4,{w:128});tx(v.numPeca,259.9,154.4,{w:160});tx(v.hora,674,154.4,{w:95});
+  tx(v.razao,74.1,171.1,{w:355});tx(v.fim,478,171.1,{w:290});tx(v.descOp,250,193.3,{w:520});
+  const X=(x,top)=>{pg.drawText("X",{x:x+1.6,y:H-top-7.4,size:7,font:fb})};if(v.host)X(491.5,125.5);if(v.forn)X(525.5,125.5);
+  const q=moNum(v.qtd);tx(`Quantidade de peças a serem inspecionadas:   ${q?q.toLocaleString("pt-BR")+" PEÇAS":"—"}`,528.1,374.1,{font:fb,size:7.1,w:240});
+  tx(`VALOR DA CONTENÇÃO: R$ ${moBRL(moNum(v.vCont))} BRL`,528.1,383.3,{font:fb,size:7.1,w:240});
+  tx(`VALOR DO EVENTO DA REATIVIDADE: R$ ${moBRL(moNum(v.vEv))} BRL`,528.1,392.6,{font:fb,size:7.1,w:240});
+  tx(`TOTAL GERAL: R$ ${moBRL(moTotal(v))} BRL`,528.1,401.8,{font:fb,size:7.1,w:240});
+  const agora=new Date(),dh=agora.toLocaleString("pt-BR",{timeZone:"America/Sao_Paulo",day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}).replace(",","");
+  tx(dh.slice(0,10),563.5,520.7,{size:7.1,w:60});
+  if(v.assinar){const azul=rgb(.07,.2,.45),cinza=rgb(.25,.25,.25);
+    tx(v.assinante.split(" ").filter(Boolean).slice(0,2).map(p=>p[0]+p.slice(1).toLowerCase()).join(" "),600,487,{font:fs,size:13,w:155,c:azul});
+    tx(`Assinado eletronicamente por ${v.assinante}`,600,494.5,{size:5.4,w:158,c:cinza});
+    tx(`${v.cargo} · Magius Metalúrgica Industrial · CNPJ 81.312.894/0001-57`,600,501.5,{size:5.4,w:158,c:cinza});
+    tx(`${dh} (Brasília) · NC ${r.ncNumber||""} · ${v.numPeca}`,600,508.5,{size:5.4,w:158,c:cinza})}
+  doc.setTitle(`M.O ${v.numPeca} - ${r.ncNumber||""} assinado`);doc.setAuthor(v.assinante);doc.setCreator("SPI Magius");
+  return new Blob([await doc.save()],{type:"application/pdf"})}
+function moNome(r,v){return `M.O CONTENCAO REATIVIDADE ${String(v.numPeca||r.piece||"").replace(/[^\w.-]+/g,"")} - ${r.ncNumber||""} assinado.pdf`}
+function moBaixar(blob,nome){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=nome;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000)}
+async function moSalvar(k,id,patch){const m=await qxMoCarregar(k);const novo={...(m[id]||{}),...patch};try{await fdb.collection("nc_mo_"+k).doc(id).set(novo);m[id]=novo;return true}catch(e){toast("Não foi possível salvar o status da MO");return false}}
+QX.moUlt=null;
+async function moGerar(id,silencioso){const k=site().current(),r=(ncCache[k]||[]).find(x=>x.id===id);if(!r)return null;const v=moLer();
+  if(!v.numPeca||!v.tipo){toast("Preencha tipo de missão e número da peça");return null}
+  let blob;try{blob=await moPdf(k,r,v)}catch(e){console.error(e);toast("Não consegui montar o PDF. Verifique a internet e tente de novo.");return null}
+  const nome=moNome(r,v);moBaixar(blob,nome);QX.moUlt={id,blob,nome};
+  let url="";if(fst){try{const snap=await fst.ref(`nc_files/${k}/${id}/mo_assinada.pdf`).put(blob,{contentType:"application/pdf"});url=await snap.ref.getDownloadURL()}catch(e){}}
+  const D=(QX.mo[k]||{})[id]||{};await moSalvar(k,id,{campos:v,status:D.status==="enviada"?"enviada":"gerada",geradaEm:new Date().toISOString(),arquivo:nome,...(url?{pdfUrl:url}:{})});
+  QX.moCfg={...(QX.moCfg||MO_PAD),tipo:v.tipo,vCont:v.vCont,vEv:v.vEv,assinante:v.assinante,cargo:v.cargo};try{await fdb.collection("mo_cfg").doc("padrao").set(QX.moCfg)}catch(e){}
+  if(!silencioso)toast("MO gerada e baixada: "+nome,4000);qxMoCards(k);return nome}
+async function moResponder(id){const k=site().current(),r=(ncCache[k]||[]).find(x=>x.id===id);if(!r||!r.qnote||!r.qnote.emailLink)return;
+  const w=window.open(r.qnote.emailLink,"_blank");try{if(w)w.opener=null}catch(_){}
+  if(!(QX.moUlt&&QX.moUlt.id===id)){const n=await moGerar(id,true);if(!n)return}
+  try{await navigator.clipboard.writeText(MO_TXT)}catch(e){}
+  if(!w)toast("O navegador bloqueou a janela do Outlook. Libere pop-ups para o site.",5000);
+  else toast("PDF baixado e texto copiado. No Outlook: Responder a todos, colar, anexar o PDF e enviar.",6000);
+  moAbrirAviso(id)}
+function moAbrirAviso(id){const b=document.querySelector(`[data-moenv="${CSS.escape(id)}"]`);if(b){b.classList.remove("ghost");b.textContent="Enviei: marcar como enviada"}}
+document.addEventListener("input",e=>{if(e.target.closest("#moRoot .mo-dw")&&/^mo_(qtd|vCont|vEv|total)$/.test(e.target.id))moTot()});
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-qxmo],[data-mox],[data-mogerar],[data-moresp],[data-moenv]");if(!t)return;
+  if(t.matches("[data-qxmo]")){e.preventDefault();e.stopPropagation();const k=site().current();await qxMoCarregar(k);moAbrir(t.dataset.qxmo);return}
+  if(t.matches("[data-mox]")){moRoot().innerHTML="";return}
+  if(t.matches("[data-mogerar]")){t.disabled=true;const old=t.textContent;t.textContent="Gerando…";await moGerar(t.dataset.mogerar);t.disabled=false;t.textContent=old;return}
+  if(t.matches("[data-moresp]")){t.disabled=true;await moResponder(t.dataset.moresp);t.disabled=false;return}
+  if(t.matches("[data-moenv]")){const k=site().current(),id=t.dataset.moenv;if(await moSalvar(k,id,{status:"enviada",enviadaEm:new Date().toISOString()})){toast("MO marcada como enviada");qxMoCards(k);moAbrir(id)}}},true);
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&document.querySelector("#moRoot .mo-dw"))moRoot().innerHTML=""});
 
 document.addEventListener("click",e=>{const t=e.target.closest('[data-nt8d],[data-8dppt],[data-8dfechar],[data-8dadd],[data-8drm],[data-8dsuga],[data-8daba],[data-fbst],[data-fbrm],[data-fbsug],[data-w5sug],[data-8dplano],[data-evrm],[data-alpg],[data-8dpptgo],[data-8dsalvar],[data-8dconcluir]');if(t){e.preventDefault();clique8D(t)}});
 function boot(){
