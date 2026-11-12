@@ -3563,6 +3563,10 @@ select.crfase[data-f=fim]{background:var(--cr-ok-s);color:var(--cr-ok);border-co
 #qxCrono .qx-head-r{flex:0 0 auto}
 .cr-tab td{color:var(--qx-ink)}
 .cr-tab td .cr-link{color:var(--qx-ink);text-decoration-color:rgba(255,255,255,.25)}
+.cr-acr{display:block;margin-top:4px;font:inherit;font-size:11.5px;border:0;border-radius:6px;padding:3px 8px;cursor:pointer;text-align:left;white-space:nowrap}
+.cr-acr.venc{background:rgba(232,90,79,.18);color:#ff9a90}.cr-acr.avencer{background:rgba(240,180,41,.15);color:#ffd166}.cr-acr.ok{background:rgba(63,185,122,.13);color:#7fd3a5}
+.cr-acr.none{background:none;color:var(--qx-muted);cursor:default;padding-left:0}
+.cr-g .gt{height:84px}
 </style>
 </head>
 <body>
@@ -17772,6 +17776,10 @@ function crInfo(w,meta){const done=CR_KEYS.every(s=>w.etapas[s]);const late=!don
   return {done,late,next,st,foraMeta,nextDate:next?crPrazo(w,next):null}}
 function crTags(w,i){const t=[];if(i.done)t.push('<span class="crt ok">Finalizada</span>');else if(i.st==="wait")t.push('<span class="crt wait">Sem nº RNC</span>');else if(i.st!=="imp")t.push('<span class="crt open">RNC aberta</span>');
   if(i.late)t.push('<span class="crt late">Atrasada</span>');if(i.foraMeta)t.push('<span class="crt late">Fora da meta</span>');if(w.improcedente)t.push('<span class="crt imp">Improcedente</span>');return t.join(" ")}
+function crAcResumo(w){if(crFase(w)!=="acoes"||w.improcedente)return "";const hoje=isoToday(),lim=addDias(hoje,7);
+  const xs=((QX.dados&&QX.dados.AC)||[]).filter(x=>x.r.id===w.id&&!x.conc);if(!xs.length)return `<div class="cr-acr none">sem ações no 8D</div>`;
+  const c={venc:0,avencer:0,prazo:0,sem:0};xs.forEach(x=>c[qxSitAcao(x,hoje,lim)]++);
+  return `<button type="button" class="cr-acr ${c.venc?"venc":c.avencer?"avencer":"ok"}" data-cropen="${esc(w.id)}" title="Ver ações pendentes">${xs.length} ${xs.length===1?"ação":"ações"}${c.venc?` · <b>${c.venc} vencida${c.venc===1?"":"s"}</b>`:""}${c.avencer?` · ${c.avencer} a vencer`:""}${!c.venc&&!c.avencer&&c.prazo?" · no prazo":""}${c.sem?` · ${c.sem} sem prazo`:""}</button>`}
 function crFaseSel(w,i){const f=crFase(w);return `<select class="crfase ${i.late?"late":""}" data-crfase="${esc(w.id)}" data-f="${f}" aria-label="Fase atual da NC ${esc(w.nc)}" ${w.fimSite?"disabled title=\"8D finalizado no site\"":""}>${[...CR_KEYS,"fim"].map(s=>`<option value="${s}" ${s===f?"selected":""}>${s==="fim"?"Finalizada":"Em "+CR_ETAPAS[s]}</option>`).join("")}</select>`}
 const CR_ORD={contencao:0,analise:1,sad:2,acoes:3,fim:4};
 function crSortVal(w,k,meta){const i=crInfo(w,meta);switch(k){
@@ -17813,7 +17821,7 @@ async function qxCronoPg(host,D){
   const L=crFiltrar(W,meta);
   const th=(s,l,c)=>`<th class="${c||""}" ${C.sort===s?`aria-sort="${C.dir>0?"ascending":"descending"}"`:""}><button type="button" class="cr-sort" data-crsort="${s}">${l}<span class="arr"></span></button></th>`;
   const lista=`<div class="cr-scroll"><table class="cr-tab"><thead><tr>${th("nc",k==="cat"?"Nº AQE":k==="jd2"?"Nº NC / Q-note":"Nº NC")}${th("rnc","Nº RNC")}${th("data","Abertura")}${plantas.length>1?th("planta","Planta"):""}${th("peca","Peça")}${th("modo","Modo de falha")}${th("fase","Fase atual")}${CR_KEYS.map(s=>th(s,CR_ETAPAS[s],"c")).join("")}${th("prazo","Prazo da fase")}${th("sit","Situação")}<th></th></tr></thead><tbody>
-    ${L.map(w=>{const i=crInfo(w,meta);return `<tr class="${w.improcedente?"imp":i.done?"done":i.late?"late":""}"><td class="mono"><button type="button" class="cr-link" data-cropen="${esc(w.id)}">${esc(w.nc||"—")}</button></td><td class="mono">${esc(w.rnc||"—")}</td><td class="mono">${crBr(crP(w.data))}</td>${plantas.length>1?`<td>${esc(String(w.cliente).replace(/^John Deere /,""))}</td>`:""}<td class="mono">${esc(w.peca)}</td><td class="modo">${esc(w.modo)}</td><td>${crFaseSel(w,i)}</td>
+    ${L.map(w=>{const i=crInfo(w,meta);return `<tr class="${w.improcedente?"imp":i.done?"done":i.late?"late":""}"><td class="mono"><button type="button" class="cr-link" data-cropen="${esc(w.id)}">${esc(w.nc||"—")}</button></td><td class="mono">${esc(w.rnc||"—")}</td><td class="mono">${crBr(crP(w.data))}</td>${plantas.length>1?`<td>${esc(String(w.cliente).replace(/^John Deere /,""))}</td>`:""}<td class="mono">${esc(w.peca)}</td><td class="modo">${esc(w.modo)}</td><td>${crFaseSel(w,i)}${crAcResumo(w)}</td>
       ${CR_KEYS.map(s=>{const st=crEst(w,s),p=crPrazo(w,s);return `<td class="c"><button type="button" class="crchk ${st==="done"?"on":st}" data-crchk="${esc(w.id)}" data-k="${s}" ${w.fimSite?"disabled":""} aria-label="${CR_ETAPAS[s]}: ${st==="done"?"concluída":"pendente"}" title="${CR_ETAPAS[s]} · prazo ${crBr(p)}">✓</button><div class="crd">${crBr(p).slice(0,5)}</div></td>`}).join("")}
       <td class="mono" style="${i.late?"color:var(--cr-late)":""}">${i.nextDate?crBr(i.nextDate):"—"}</td><td>${crTags(w,i)}</td><td><button type="button" class="qx-btn sm ghost" data-cropen="${esc(w.id)}">Abrir</button></td></tr>`}).join("")}
     </tbody></table></div>`;
@@ -17837,7 +17845,7 @@ function crGantt(L,meta){const DAY=6,hoje=crHoje();let min=crAdd(hoje,-45),max=c
   L.forEach(w=>{const i=crInfo(w,meta),s=crP(w.data),e=crPrazo(w,"acoes"),end=i.done?e:(e<hoje?hoje:e);let mk="";
     CR_KEYS.forEach(k=>{const st=crEst(w,k),p=crPrazo(w,k);mk+=`<div class="gmk ${st==="todo"?"":st}" style="left:${x(p)}px" title="${CR_ETAPAS[k]}: ${crBr(p)}${st==="done"?" · concluída":st==="late"?" · atrasada "+(-crDiff(p,hoje))+" dias":""}"></div>`});
     const sx=x(s);
-    h+=`<div class="gl"><div class="l1"><button type="button" class="cr-link" data-cropen="${esc(w.id)}"><b>${esc(w.nc||"—")}</b></button><span>${esc(w.rnc||"sem RNC")}</span></div><div class="l2">${esc(w.peca)} · ${esc(String(w.cliente).replace(/^John Deere /,""))}</div><div>${crFaseSel(w,i)}</div></div>
+    h+=`<div class="gl"><div class="l1"><button type="button" class="cr-link" data-cropen="${esc(w.id)}"><b>${esc(w.nc||"—")}</b></button><span>${esc(w.rnc||"sem RNC")}</span></div><div class="l2">${esc(w.peca)} · ${esc(String(w.cliente).replace(/^John Deere /,""))}</div><div>${crFaseSel(w,i)}</div>${crAcResumo(w)}</div>
      <div class="gt" style="width:${Wd}px">${grid}${tl}<div class="gspan ${i.done?"done":i.late?"late":""}" style="left:${sx}px;width:${Math.max(4,x(end)-sx)}px"></div>${s>=min?`<div class="gorig" style="left:${sx}px" title="Abertura: ${crBr(s)}"></div>`:""}${mk}</div>`});
   return `<div class="cr-gscroll" data-hoje="${x(hoje)}">${h}</div></div>`}
 
