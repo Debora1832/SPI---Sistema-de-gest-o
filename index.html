@@ -3480,6 +3480,89 @@ html body #ncStatusModalBackdrop .nc-btn-cancel-modal{background:transparent!imp
 .qxp-lote-h{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:8px}
 .qxp-lote-b{display:flex;gap:8px;flex-wrap:wrap}
 .qxp-lote .ntx-btn.ghost.qxp-ol{background:transparent!important;color:#6cb4ff!important}
+#qxCrono{--cr-ok:#5cbf83;--cr-ok-s:#1f3a2a;--cr-late:#f07a6c;--cr-late-s:#432420;--cr-warn:#e8a845;--cr-warn-s:#3d3018;--cr-wait:#9db0cf;--cr-wait-s:#28303e;--cr-bar:#56615c}
+.cr-goal{display:grid;grid-template-columns:auto 1fr auto;gap:18px;align-items:center;background:var(--qx-card);border:1px solid var(--qx-line);border-left:6px solid #ffcd11;border-radius:12px;padding:14px 16px;margin-bottom:12px}
+.cr-goal.empty{grid-template-columns:1fr}
+.cr-goal .big{font-size:34px;font-weight:700;line-height:1}.cr-goal .big small{font-size:14px;font-weight:500;color:var(--qx-muted);margin-left:6px}
+.cr-goal .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--qx-muted)}
+.cr-goal .mid{display:grid;gap:8px;min-width:0}
+.cr-goal .prog{height:10px;border-radius:5px;background:var(--qx-sunk);overflow:hidden}.cr-goal .prog>div{height:100%;background:var(--cr-ok)}
+.cr-goal .facts{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px}.cr-goal .facts.col{flex-direction:column;gap:4px}
+.cr-link{background:none;border:0;padding:0;font:inherit;color:inherit;text-decoration:underline;text-decoration-color:var(--qx-line);text-underline-offset:3px;cursor:pointer;text-align:left}
+.cr-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));background:var(--qx-card);border:1px solid var(--qx-line);border-radius:12px;margin-bottom:12px;overflow:hidden}
+.cr-kpi{padding:12px 14px;border:0;border-left:1px solid var(--qx-line);background:none;color:var(--qx-ink);text-align:left;cursor:pointer;display:grid;gap:2px}
+.cr-kpi:first-child{border-left:0}.cr-kpi:hover{background:var(--qx-sunk)}.cr-kpi[aria-pressed="true"]{box-shadow:inset 0 -3px 0 #ffcd11}
+.cr-kpi b{font-size:28px;line-height:1}.cr-kpi span{font-size:12px;color:var(--qx-muted)}
+.cr-kpi.late b{color:var(--cr-late)}.cr-kpi.ok b{color:var(--cr-ok)}.cr-kpi.wait b{color:var(--cr-wait)}
+@media (max-width:900px){.cr-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.cr-goal{grid-template-columns:1fr}}
+.cr-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px}
+.cr-bar input[type=search],.cr-bar select{font:inherit;padding:8px 10px;border:1px solid var(--qx-line);border-radius:8px;background:var(--qx-sunk);color:var(--qx-ink)}
+.cr-bar input[type=search]{flex:1 1 240px}
+.cr-seg{display:inline-flex;border:1px solid var(--qx-line);border-radius:8px;overflow:hidden}
+.cr-seg button{font:inherit;font-weight:600;border:0;background:var(--qx-sunk);color:var(--qx-muted);padding:8px 12px;cursor:pointer}
+.cr-seg button[aria-pressed="true"]{background:#ffcd11;color:#111}
+.cr-legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--qx-muted);margin:0 0 10px}
+.cr-legend i{display:inline-block;width:10px;height:10px;transform:rotate(45deg);margin-right:6px;border:2px solid var(--qx-muted);vertical-align:-1px}
+.cr-legend i.o{border-radius:50%;transform:none;background:var(--qx-ink);border-color:var(--qx-ink)}.cr-legend i.d{background:var(--cr-ok);border-color:var(--cr-ok)}
+.cr-legend i.s{border-color:var(--cr-warn);background:var(--cr-warn-s)}.cr-legend i.l{border-color:var(--cr-late);background:var(--cr-late-s)}.cr-legend i.m{transform:none;width:0;border-width:0 0 0 2px;border-style:dashed;border-color:var(--cr-late);height:12px}
+.cr-panel{padding:0;overflow:hidden}
+.cr-scroll{overflow-x:auto}
+.cr-tab{width:100%;border-collapse:collapse;font-size:13px;min-width:1100px}
+.cr-tab th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--qx-muted);text-align:left;font-weight:600;padding:10px;border-bottom:1px solid var(--qx-line);background:var(--qx-card);position:sticky;top:0}
+.cr-tab th.c,.cr-tab td.c{text-align:center}
+.cr-tab td{padding:8px 10px;border-bottom:1px solid var(--qx-line2);vertical-align:middle}
+.cr-tab tr:hover td{background:var(--qx-sunk)}
+.cr-tab tr.late td:first-child{box-shadow:inset 3px 0 0 var(--cr-late)}.cr-tab tr.done td{opacity:.7}.cr-tab tr.imp td{opacity:.55}
+.cr-tab td.mono{font-family:var(--qx-mono,ui-monospace,monospace);font-size:12px;white-space:nowrap}
+.cr-tab td.modo{max-width:220px}
+.cr-sort{all:unset;cursor:pointer;display:inline-flex;gap:4px;align-items:center;white-space:nowrap}
+.cr-tab th[aria-sort] .cr-sort{color:var(--qx-ink)}.cr-sort .arr::after{content:"↕";opacity:.4;font-size:10px}
+.cr-tab th[aria-sort=ascending] .arr::after{content:"▲";opacity:1}.cr-tab th[aria-sort=descending] .arr::after{content:"▼";opacity:1}
+.crchk{width:30px;height:30px;border:2px solid var(--qx-line);border-radius:6px;background:var(--qx-sunk);cursor:pointer;color:transparent;font-weight:700;padding:0}
+.crchk.on{background:var(--cr-ok);border-color:var(--cr-ok);color:#fff}.crchk.late{border-color:var(--cr-late)}.crchk.soon{border-color:var(--cr-warn)}.crchk:disabled{cursor:default;opacity:.75}
+.crd{font-family:ui-monospace,monospace;font-size:10.5px;color:var(--qx-muted)}
+select.crfase{font:inherit;font-weight:600;font-size:12.5px;padding:5px 8px;border:1px solid var(--qx-line);border-radius:6px;background:var(--qx-sunk);color:var(--qx-ink);cursor:pointer;max-width:100%}
+select.crfase[data-f=fim]{background:var(--cr-ok-s);color:var(--cr-ok);border-color:var(--cr-ok)}select.crfase.late{border-color:var(--cr-late);color:var(--cr-late)}
+.crt{display:inline-block;font-family:ui-monospace,monospace;font-size:10.5px;padding:1px 6px;border-radius:4px;white-space:nowrap;margin:1px 0}
+.crt.ok{background:var(--cr-ok-s,#1f3a2a);color:var(--cr-ok,#5cbf83)}.crt.late{background:var(--cr-late-s,#432420);color:var(--cr-late,#f07a6c)}.crt.open{background:var(--cr-warn-s,#3d3018);color:var(--cr-warn,#e8a845)}
+.crt.wait{background:var(--cr-wait-s,#28303e);color:var(--cr-wait,#9db0cf)}.crt.imp{background:var(--qx-sunk);color:var(--qx-muted);border:1px dashed var(--qx-muted)}
+.cr-gscroll{overflow-x:auto}
+.cr-g{display:grid;grid-template-columns:260px 1fr;min-width:0}
+.cr-g .gl{position:sticky;left:0;z-index:2;background:var(--qx-card);border-right:1px solid var(--qx-line);border-bottom:1px solid var(--qx-line2);padding:6px 10px;display:grid;gap:2px;min-width:0}
+.cr-g .gl .l1{display:flex;gap:8px;align-items:baseline;font-family:ui-monospace,monospace;font-size:12px}.cr-g .gl .l1 span{color:var(--qx-muted)}
+.cr-g .gl .l2{font-size:12px;color:var(--qx-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cr-g .gt{position:relative;border-bottom:1px solid var(--qx-line2);height:74px}
+.cr-g .gh{position:sticky;top:0;z-index:3;height:30px!important;font-size:11px;text-transform:uppercase;color:var(--qx-muted);align-content:center}
+.cr-g .gl.gh{z-index:4}
+.gmo{position:absolute;top:0;bottom:0;border-left:1px solid var(--qx-line);font-family:ui-monospace,monospace;font-size:11px;color:var(--qx-muted);padding:8px 6px}
+.gm{position:absolute;top:0;bottom:0;border-left:1px dashed var(--qx-line2)}
+.gtoday{position:absolute;top:0;bottom:0;border-left:2px solid #ffcd11;z-index:1}.gmeta{position:absolute;top:0;bottom:0;border-left:2px dashed var(--cr-late);z-index:1}
+.gspan{position:absolute;top:34px;height:6px;border-radius:3px;background:var(--cr-bar);opacity:.7}.gspan.done{background:var(--cr-ok);opacity:.5}.gspan.late{background:var(--cr-late);opacity:.45}
+.gmk{position:absolute;top:30px;width:14px;height:14px;margin-left:-7px;transform:rotate(45deg);border:2px solid var(--qx-muted);background:var(--qx-card);z-index:1}
+.gmk.done{background:var(--cr-ok);border-color:var(--cr-ok)}.gmk.late{border-color:var(--cr-late);background:var(--cr-late-s)}.gmk.soon{border-color:var(--cr-warn);background:var(--cr-warn-s)}
+.gorig{position:absolute;top:31px;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:var(--qx-ink)}
+#crRoot .drawer{z-index:6001;width:min(600px,100%)}#crRoot .scrim{z-index:6000}
+#crRoot{--cr-ok:#5cbf83;--cr-ok-s:#1f3a2a;--cr-late:#f07a6c;--cr-late-s:#432420;--cr-warn:#e8a845;--cr-warn-s:#3d3018;--cr-wait:#9db0cf;--cr-wait-s:#28303e}
+.cr-steps{display:grid;border:1px solid var(--line,#2e3532);border-radius:8px;margin:10px 0}
+.cr-step{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:10px 12px;border-top:1px solid var(--line,#2e3532)}.cr-step:first-child{border-top:0}
+.cr-step .nm{font-weight:600}.cr-step .nm small{display:block;font-weight:400;opacity:.7;font-size:12px}
+.crdot{width:12px;height:12px;transform:rotate(45deg);border:2px solid #9aa5a0}.crdot.done{background:var(--cr-ok);border-color:var(--cr-ok)}.crdot.late{border-color:var(--cr-late);background:var(--cr-late-s)}.crdot.soon{border-color:var(--cr-warn);background:var(--cr-warn-s)}
+.cr-meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 14px;font-size:13px;margin-bottom:10px}.cr-meta span{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;opacity:.65}
+.cr-desc{margin:0 0 10px;padding:10px 12px;border-radius:6px;background:rgba(255,255,255,.04);font-size:13px}
+.cr-note{font-size:12.5px;margin:8px 0}.cr-note.ok{color:var(--cr-ok)}
+.cr-imp{display:flex;gap:8px;align-items:center;font-size:13px;margin-top:8px}
+.cr-acoes{border:1px solid rgba(15,108,189,.45);background:rgba(15,108,189,.08);border-radius:10px;padding:12px}
+.cr-acl{list-style:none;margin:8px 0;padding:0;display:flex;flex-direction:column;gap:8px}
+.cr-acl li{padding:8px 10px;border-radius:8px;display:grid;gap:4px}
+.cr-acl li.venc{background:rgba(232,90,79,.14);box-shadow:inset 3px 0 0 #e85a4f}.cr-acl li.avencer{background:rgba(240,180,41,.12);box-shadow:inset 3px 0 0 #f0b429}
+.cr-acl li.prazo{background:rgba(63,185,122,.09);box-shadow:inset 3px 0 0 #3fb97a}.cr-acl li.sem{background:rgba(90,169,255,.09);box-shadow:inset 3px 0 0 #5aa9ff}
+.cr-acl li .b{display:flex;gap:6px;flex-wrap:wrap}
+.cr-cfg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:8px 0}
+#qxCrono .qx-head .qx-mlogo.qxca-logo,#qxAcoes .qx-head .qx-mlogo.qxca-logo{width:120px;height:56px;padding:8px}
+#qxCrono .qx-head .qx-mlogo.qxca-logo img{max-height:40px;width:auto;object-fit:contain}
+#qxCrono .qx-head-r{flex:0 0 auto}
+.cr-tab td{color:var(--qx-ink)}
+.cr-tab td .cr-link{color:var(--qx-ink);text-decoration-color:rgba(255,255,255,.25)}
 </style>
 </head>
 <body>
@@ -16610,20 +16693,20 @@ function qxMontarNav(){
   document.querySelectorAll(".main > .page").forEach(p=>obs.observe(p,{attributes:true,attributeFilter:["class"]}));
 }
 function qxNav(){
-  const nav=document.getElementById("qxNav");if(!nav)return;const cur=site()&&site().current();const naCli=QX.pagina&&(!QX.pagina.startsWith("qx")||QX.pagina==="qxCliAcoes");
+  const nav=document.getElementById("qxNav");if(!nav)return;const cur=site()&&site().current();const naCli=QX.pagina&&(!QX.pagina.startsWith("qx")||QX.pagina==="qxCliAcoes"||QX.pagina==="qxCrono");
   const item=(id,ic,l,extra)=>`<button type="button" class="qx-ni" data-qxnav="${id}" ${extra||""}>${svgI(ic)}<span>${l}</span></button>`;
   const cls=qxClientes();
   nav.innerHTML=`
    <div class="qx-ng"><div class="qx-nh">Visão geral</div>${item("qxDash","dash","Dashboard executivo")}${item("qxCusto","custo","Custo de não qualidade")}
     <details class="qx-det" ${naCli?"open":""}><summary class="qx-ni">${svgI("cli")}<span>Painéis dos clientes</span></summary>${cls.map(k=>{const c=qxCli(k);return `<button type="button" class="qx-ni qx-cli ${naCli&&cur===k?"on":""}" data-qxcli="${k}" style="--c:${c.acc}">${c.logo?`<img src="${esc(c.logo)}" alt="" style="background:${c.bg}">`:`<i>${esc(c.sigla)}</i>`}<span>${esc(c.nome)}</span></button>`}).join("")}</details></div>
-   ${naCli&&cur&&cls.includes(cur)?`<div class="qx-ng qx-ativo" style="--c:${qxCli(cur).acc}"><div class="qx-nh">${esc(qxCli(cur).nome)}</div>${item("ncPage","nc","NCs do cliente")}${item("qxCliAcoes","d8","Plano de ações")}${item("ncCostPage","custo","Custo de não qualidade")}</div>`:""}
+   ${naCli&&cur&&cls.includes(cur)?`<div class="qx-ng qx-ativo" style="--c:${qxCli(cur).acc}"><div class="qx-nh">${esc(qxCli(cur).nome)}</div>${item("ncPage","nc","NCs do cliente")}${item("qxCrono","d8","Cronograma de RNCs")}${item("ncCostPage","custo","Custo de não qualidade")}</div>`:""}
    <div class="qx-ng"><div class="qx-nh">Não conformidades</div>${item("qxNcs","nc","Todas as NCs")}</div>
    <div class="qx-ng"><div class="qx-nh">Análise 8D</div>${item("qx8d","d8","Análises 8D")}${item("qxAcoes","nc","Plano de ações")}${item("qxHist","hist","Histórico e consulta")}</div>
    <div class="qx-ng"><div class="qx-nh">Cadastros</div>${item("qxClientesPg","cli","Clientes")}${item("qxPessoas","cli","Pessoas")}</div>`;
   qxMarcar(QX.pagina);
 }
 function qxMarcar(id){if(!id)return;QX.pagina=id;document.querySelectorAll("#qxNav [data-qxnav]").forEach(b=>{const v=b.dataset.qxnav;const base=v.split(":")[0];const sub=v.split(":")[1];b.classList.toggle("on",base===id)});
-  document.querySelectorAll("#qxNav [data-qxcli]").forEach(b=>b.classList.toggle("on",(!id.startsWith("qx")||id==="qxCliAcoes")&&site()&&site().current()===b.dataset.qxcli))}
+  document.querySelectorAll("#qxNav [data-qxcli]").forEach(b=>b.classList.toggle("on",(!id.startsWith("qx")||id==="qxCliAcoes"||id==="qxCrono")&&site()&&site().current()===b.dataset.qxcli))}
 function qxMostrar(id){
   document.querySelectorAll(".main > .page").forEach(p=>p.classList.toggle("active",p.id===id));
   document.querySelectorAll(".sidebar-nav li[data-page]").forEach(i=>i.classList.remove("active"));
@@ -16638,8 +16721,8 @@ async function qxAbrir8D(k,ncId){if(site()&&site().current()!==k){site().go(k);a
 async function qxRender(id){
   const host=document.getElementById(id);if(!host||!id.startsWith("qx"))return;
   if(!QX.dados)host.innerHTML=`<div class="qx-load">Carregando dados de todos os clientes…</div>`;
-  const D=await qxCarregar();if((id==="qxAcoes"||id==="qxCliAcoes")&&typeof qxCarregarPessoas==="function")await qxCarregarPessoas();
-  ({qxClientesPg:qxClientesPg,qxCusto:qxCustoPg,qxDash:qxDash,qxNcs:qxNcs,qx8d:qx8d,qxHist:qxHist,qxAcoes:(h,D)=>qxPlanoAcoes(h,D,null),qxMaq:qxMaqPg,qxPessoas:qxPessoasPg,qxCliAcoes:qxCliAcoesPg})[id](host,D);
+  const D=await qxCarregar();if((id==="qxAcoes"||id==="qxCliAcoes"||id==="qxCrono")&&typeof qxCarregarPessoas==="function")await qxCarregarPessoas();
+  ({qxClientesPg:qxClientesPg,qxCusto:qxCustoPg,qxDash:qxDash,qxNcs:qxNcs,qx8d:qx8d,qxHist:qxHist,qxAcoes:(h,D)=>qxPlanoAcoes(h,D,null),qxMaq:qxMaqPg,qxPessoas:qxPessoasPg,qxCliAcoes:qxCliAcoesPg,qxCrono:qxCronoPg})[id](host,D);
 }
 
 /* ---------- cabeçalho de página padrão ---------- */
@@ -17651,6 +17734,197 @@ function qxAviso8DAtualiza(){if(typeof ed8==="undefined"||!ed8||!ed8.nc||!ed8.ob
 let qxAv8dT;document.addEventListener("input",e=>{if(e.target.matches('[data-8d^="d5.acoes."]')){clearTimeout(qxAv8dT);qxAv8dT=setTimeout(qxAviso8DAtualiza,300)}});
 document.addEventListener("change",e=>{if(e.target.matches('[data-8d^="d5.acoes."]'))qxAviso8DAtualiza()});
 (function qxPessoasBoot(n){if(typeof fdb!=="undefined"&&fdb)qxCarregarPessoas().catch(()=>{});else if(n<60)setTimeout(()=>qxPessoasBoot(n+1),1000)})(0);
+
+/* =====================================================================
+   CRONOGRAMA DE RNCs — aba do cliente (mesma estrutura do painel "Cronograma de RNCs")
+   Dados das fases: nc_crono_<t>/<ncId> {etapas:{contencao,analise,sad,acoes}, prazos, obs, responsavel, rnc?, improcedente?}
+   Config: crono_cfg/prazos {contencao,analise,sad,acoes} (D+) · crono_cfg/meta_<t> {data, base}
+   ===================================================================== */
+QX_PAGES.push(["qxCrono","Cronograma de RNCs"]);
+const CR_KEYS=["contencao","analise","sad","acoes"];
+const CR_ETAPAS={contencao:"Contenção",analise:"Análise de causa",sad:"SAD",acoes:"Ações"};
+const CR_DEF={contencao:1,analise:5,sad:10,acoes:30};
+QX.cr={view:"l",q:"",planta:"",st:"",sort:"",dir:1,docs:{},cfg:{...CR_DEF},meta:{}};
+try{const v=localStorage.getItem("qxCrView");if(v)QX.cr.view=v}catch(e){}
+async function crCarregar(k,force){const C=QX.cr;
+  if(!force&&C.docs[k])return;
+  try{const s=await fdb.collection("nc_crono_"+k).get();const m={};s.forEach(d=>m[d.id]=d.data());C.docs[k]=m}catch(e){C.docs[k]=C.docs[k]||{}}
+  try{const s=await fdb.collection("crono_cfg").doc("prazos").get();if(s.exists)C.cfg={...CR_DEF,...s.data()}}catch(e){}
+  try{const s=await fdb.collection("crono_cfg").doc("meta_"+k).get();C.meta[k]=s.exists?{data:"",base:0,...s.data()}:{data:"",base:0}}catch(e){C.meta[k]=C.meta[k]||{data:"",base:0}}}
+const crP=s=>{const [y,m,d]=String(s||isoToday()).slice(0,10).split("-").map(Number);return new Date(Date.UTC(y,m-1,d))};
+const crIso=d=>d.toISOString().slice(0,10);
+const crAdd=(d,n)=>new Date(d.getTime()+n*864e5);
+const crDiff=(a,b)=>Math.round((a-b)/864e5);
+const crBr=d=>d.toLocaleDateString("pt-BR",{timeZone:"UTC",day:"2-digit",month:"2-digit",year:"2-digit"});
+const crHoje=()=>crP(isoToday());
+const crUteis=(a,b)=>{const o=[];for(let d=new Date(a);d<=b;d=crAdd(d,1)){const w=d.getUTCDay();if(w>0&&w<6)o.push(d)}return o};
+function crRows(D,k){const m=QX.cr.docs[k]||{};
+  return D.NC.filter(x=>x.k===k).map(x=>{const r=x.r,c=m[r.id]||{};const fimSite=!!x.fim;
+    const et={};CR_KEYS.forEach(s=>et[s]=fimSite||!!(c.etapas&&c.etapas[s]));
+    return {id:r.id,x,r,c,nc:r.ncNumber||"",rnc:(r.rncNumber||c.rnc||"").replace(/^RNC\s*/i,""),data:(r.date||"").slice(0,10)||isoToday(),cliente:r.customer||qxCli(k).nome,peca:r.piece||"",modo:r.failureMode||"",
+      improcedente:!!(r.naoProcedente||c.improcedente),etapas:et,prazos:c.prazos||{},obs:c.obs||"",responsavel:c.responsavel||"",fimSite}})}
+function crPrazo(w,s){return w.prazos[s]?crP(w.prazos[s]):crAdd(crP(w.data),QX.cr.cfg[s]??CR_DEF[s])}
+function crEst(w,s){if(w.etapas[s])return "done";const dd=crDiff(crPrazo(w,s),crHoje());return dd<0?"late":dd<=1?"soon":"todo"}
+function crFase(w){const n=CR_KEYS.find(s=>!w.etapas[s]);return n||"fim"}
+function crInfo(w,meta){const done=CR_KEYS.every(s=>w.etapas[s]);const late=!done&&!w.improcedente&&CR_KEYS.some(s=>crEst(w,s)==="late");
+  const next=CR_KEYS.find(s=>!w.etapas[s]);const st=done?"done":w.improcedente?"imp":(!w.rnc?"wait":"open");
+  const foraMeta=!!(meta&&meta.data)&&!done&&!w.improcedente&&crPrazo(w,"acoes")>crP(meta.data);
+  return {done,late,next,st,foraMeta,nextDate:next?crPrazo(w,next):null}}
+function crTags(w,i){const t=[];if(i.done)t.push('<span class="crt ok">Finalizada</span>');else if(i.st==="wait")t.push('<span class="crt wait">Sem nº RNC</span>');else if(i.st!=="imp")t.push('<span class="crt open">RNC aberta</span>');
+  if(i.late)t.push('<span class="crt late">Atrasada</span>');if(i.foraMeta)t.push('<span class="crt late">Fora da meta</span>');if(w.improcedente)t.push('<span class="crt imp">Improcedente</span>');return t.join(" ")}
+function crFaseSel(w,i){const f=crFase(w);return `<select class="crfase ${i.late?"late":""}" data-crfase="${esc(w.id)}" data-f="${f}" aria-label="Fase atual da NC ${esc(w.nc)}" ${w.fimSite?"disabled title=\"8D finalizado no site\"":""}>${[...CR_KEYS,"fim"].map(s=>`<option value="${s}" ${s===f?"selected":""}>${s==="fim"?"Finalizada":"Em "+CR_ETAPAS[s]}</option>`).join("")}</select>`}
+const CR_ORD={contencao:0,analise:1,sad:2,acoes:3,fim:4};
+function crSortVal(w,k,meta){const i=crInfo(w,meta);switch(k){
+  case "nc":return Number(String(w.nc).replace(/\D.*$/,""))||0;case "rnc":{const m=String(w.rnc||"").match(/^(\d+)/);return m?Number(m[1]):Infinity}
+  case "data":return w.data;case "fase":return CR_ORD[crFase(w)];
+  case "contencao":case "analise":case "sad":case "acoes":return w.etapas[k]?Infinity:crPrazo(w,k).getTime();
+  case "prazo":return i.nextDate?i.nextDate.getTime():Infinity;case "sit":return i.done?3:i.late?0:i.st==="wait"?1:2;
+  case "planta":return String(w.cliente).toLowerCase();case "peca":return String(w.peca).toLowerCase();case "modo":return String(w.modo).toLowerCase();default:return ""}}
+function crFiltrar(W,meta){const C=QX.cr,q=C.q.trim().toLowerCase(),s=C.st;
+  return W.filter(w=>{const i=crInfo(w,meta);
+    if(C.planta&&w.cliente!==C.planta)return false;
+    if(s==="late"&&!i.late)return false;if(s==="open"&&(i.done||w.improcedente))return false;if(s==="wait"&&(i.done||w.improcedente||w.rnc))return false;
+    if(s==="done"&&!i.done)return false;if(s==="imp"&&!w.improcedente)return false;if(s==="today"&&!(i.nextDate&&crDiff(i.nextDate,crHoje())<=0&&!w.improcedente))return false;
+    if(s.startsWith("f:")&&(crFase(w)!==s.slice(2)||w.improcedente))return false;
+    if(q&&![w.nc,w.rnc,w.peca,w.modo,w.r.description,w.responsavel,w.obs].join(" ").toLowerCase().includes(q))return false;return true})
+   .sort((a,b)=>{if(C.sort){const va=crSortVal(a,C.sort,meta),vb=crSortVal(b,C.sort,meta);if(va<vb)return -C.dir;if(va>vb)return C.dir}
+     const ia=crInfo(a,meta),ib=crInfo(b,meta);if(ia.done!==ib.done)return ia.done?1:-1;if(a.improcedente!==b.improcedente)return a.improcedente?1:-1;
+     return (ia.nextDate||crP(a.data))-(ib.nextDate||crP(b.data))||(a.data<b.data?-1:1)})}
+
+async function qxCronoPg(host,D){
+  const k=site()&&site().current();if(!k){host.innerHTML='<div class="qx-vazio">Escolha um cliente.</div>';return}
+  await Promise.all([crCarregar(k),qxCarregarPessoas()]);
+  const C=QX.cr,meta=C.meta[k]||{data:"",base:0},W=crRows(D,k);QX.crW=W;QX.crK=k;
+  const inf=W.map(w=>crInfo(w,meta));const abertas=W.filter((w,i)=>!inf[i].done&&!w.improcedente);
+  // meta
+  let goal;
+  if(!meta.data){goal=`<section class="cr-goal empty"><div class="facts"><span><b>${abertas.length}</b> NCs abertas em ${esc(qxCli(k).nome)}.</span><span>Sem meta de fechamento definida. <button type="button" class="cr-link" data-crcfg>Definir meta</button></span></div></section>`}
+  else{const M=crP(meta.data),n=abertas.length,base=Math.max(meta.base||0,n),fech=base-n,pct=base?Math.round(fech/base*100):100;
+    const wd=crUteis(crHoje(),M).length,dias=crDiff(M,crHoje()),porDia=wd?Math.ceil(n/wd):n;
+    const hoje=abertas.filter(w=>{const i=crInfo(w,meta);return i.nextDate&&crDiff(i.nextDate,crHoje())<=0}).length,fora=abertas.filter(w=>crInfo(w,meta).foraMeta).length;
+    goal=`<section class="cr-goal"><div><div class="lbl">Meta: fechar até ${crBr(M)}</div><div class="big">${n}<small>NCs abertas</small></div></div>
+     <div class="mid"><div class="prog" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><div style="width:${pct}%"></div></div>
+      <div class="facts"><span><b>${fech}</b> de ${base} fechadas (${pct}%)</span><span><b>${wd}</b> dias úteis restantes${dias<0?" · meta vencida":""}</span><span>Ritmo necessário: <b>${porDia}</b> por dia</span>
+       <span>${CR_KEYS.map(s=>`<button type="button" class="cr-link" data-crst="f:${s}">${CR_ETAPAS[s]}: <b>${abertas.filter(w=>crFase(w)===s).length}</b></button>`).join(" · ")}</span></div></div>
+     <div class="facts col"><button type="button" class="cr-link" data-crst="today">Vencem hoje ou antes: <b style="color:${hoje?"var(--cr-late)":"inherit"}">${hoje}</b></button><span>Plano depois da meta: <b style="color:${fora?"var(--cr-late)":"var(--cr-ok)"}">${fora}</b></span></div></section>`}
+  const kp=[["",W.length,"NCs registradas",""],["open",abertas.length,"Em aberto",""],["wait",W.filter((w,i)=>!inf[i].done&&!w.improcedente&&!w.rnc).length,"Sem nº RNC","wait"],
+    ["imp",W.filter(w=>w.improcedente).length,"Improcedentes",""],["done",inf.filter(i=>i.done).length,"Finalizadas","ok"],["late",inf.filter(i=>i.late).length,"Com fase atrasada","late"]];
+  const plantas=[...new Set(W.map(w=>w.cliente))].sort();
+  const L=crFiltrar(W,meta);
+  const th=(s,l,c)=>`<th class="${c||""}" ${C.sort===s?`aria-sort="${C.dir>0?"ascending":"descending"}"`:""}><button type="button" class="cr-sort" data-crsort="${s}">${l}<span class="arr"></span></button></th>`;
+  const lista=`<div class="cr-scroll"><table class="cr-tab"><thead><tr>${th("nc",k==="cat"?"Nº AQE":k==="jd2"?"Nº NC / Q-note":"Nº NC")}${th("rnc","Nº RNC")}${th("data","Abertura")}${plantas.length>1?th("planta","Planta"):""}${th("peca","Peça")}${th("modo","Modo de falha")}${th("fase","Fase atual")}${CR_KEYS.map(s=>th(s,CR_ETAPAS[s],"c")).join("")}${th("prazo","Prazo da fase")}${th("sit","Situação")}<th></th></tr></thead><tbody>
+    ${L.map(w=>{const i=crInfo(w,meta);return `<tr class="${w.improcedente?"imp":i.done?"done":i.late?"late":""}"><td class="mono"><button type="button" class="cr-link" data-cropen="${esc(w.id)}">${esc(w.nc||"—")}</button></td><td class="mono">${esc(w.rnc||"—")}</td><td class="mono">${crBr(crP(w.data))}</td>${plantas.length>1?`<td>${esc(String(w.cliente).replace(/^John Deere /,""))}</td>`:""}<td class="mono">${esc(w.peca)}</td><td class="modo">${esc(w.modo)}</td><td>${crFaseSel(w,i)}</td>
+      ${CR_KEYS.map(s=>{const st=crEst(w,s),p=crPrazo(w,s);return `<td class="c"><button type="button" class="crchk ${st==="done"?"on":st}" data-crchk="${esc(w.id)}" data-k="${s}" ${w.fimSite?"disabled":""} aria-label="${CR_ETAPAS[s]}: ${st==="done"?"concluída":"pendente"}" title="${CR_ETAPAS[s]} · prazo ${crBr(p)}">✓</button><div class="crd">${crBr(p).slice(0,5)}</div></td>`}).join("")}
+      <td class="mono" style="${i.late?"color:var(--cr-late)":""}">${i.nextDate?crBr(i.nextDate):"—"}</td><td>${crTags(w,i)}</td><td><button type="button" class="qx-btn sm ghost" data-cropen="${esc(w.id)}">Abrir</button></td></tr>`}).join("")}
+    </tbody></table></div>`;
+  host.innerHTML=qxHead(`Cliente · ${esc(qxCli(k).nome)}`,"Cronograma de RNCs",`Fases ${CR_KEYS.map(s=>CR_ETAPAS[s]).join(" → ")} → Finalizada. Clique na RNC para ver o detalhe${" "}e, na fase Ações, as ações pendentes do 8D.`,qxLogo(k,"qxca-logo"))+goal+
+   `<div class="cr-kpis">${kp.map(([f,v,l,c])=>`<button type="button" class="cr-kpi ${c}" data-crst="${f}" aria-pressed="${C.st===f}"><b>${v}</b><span>${l}</span></button>`).join("")}</div>
+   <div class="cr-bar"><input type="search" data-crq value="${esc(C.q)}" placeholder="Buscar NC, RNC, peça ou modo de falha">
+    ${plantas.length>1?`<select data-crplanta aria-label="Planta"><option value="">Todas as plantas</option>${plantas.map(p=>`<option ${p===C.planta?"selected":""}>${esc(p)}</option>`).join("")}</select>`:""}
+    <select data-crsel aria-label="Situação">${[["","Todas as situações"],["open","Em aberto (todas)"],["today","Vencem hoje ou atrasadas"],["late","Com fase atrasada"],...CR_KEYS.map(s=>["f:"+s,"Em "+CR_ETAPAS[s]]),["wait","Sem nº RNC"],["imp","Improcedentes"],["done","Finalizadas"]].map(([v,l])=>`<option value="${v}" ${v===C.st?"selected":""}>${l}</option>`).join("")}</select>
+    <div class="cr-seg" role="group" aria-label="Visualização"><button type="button" data-crview="l" aria-pressed="${C.view==="l"}">Lista / editar</button><button type="button" data-crview="g" aria-pressed="${C.view==="g"}">Cronograma</button></div>
+    <button type="button" class="qx-btn ghost" data-crcfg>Meta e prazos</button></div>
+   <div class="cr-legend"><span><i class="o"></i>Data da NC</span><span><i class="d"></i>Etapa concluída</span><span><i></i>Etapa no prazo</span><span><i class="s"></i>Vence em até 1 dia</span><span><i class="l"></i>Atrasada</span>${meta.data?'<span><i class="m"></i>Meta de fechamento</span>':""}</div>
+   <section class="qx-card cr-panel">${L.length?(C.view==="g"?crGantt(L,meta):lista):`<div class="qx-vazio">${W.length?"Nenhuma NC com esses filtros.":"Nenhuma NC cadastrada para este cliente."}</div>`}</section>`;
+  if(C.view==="g"){const sc=host.querySelector(".cr-gscroll");if(sc)requestAnimationFrame(()=>{sc.scrollLeft=Math.max(0,(+sc.dataset.hoje||0)-260)})}
+}
+function crGantt(L,meta){const DAY=6,hoje=crHoje();let min=crAdd(hoje,-45),max=crAdd(meta.data?crP(meta.data):hoje,12);
+  L.forEach(w=>CR_KEYS.forEach(s=>{const p=crPrazo(w,s);if(p>max)max=crAdd(p,7)}));
+  const Wd=crDiff(max,min)*DAY,x=d=>Math.max(0,crDiff(d,min))*DAY;let months="",grid="";
+  for(let d=new Date(min);d<max;d=crAdd(d,1))if(d.getUTCDay()===1){grid+=`<div class="gm" style="left:${x(d)}px"></div>`;months+=`<div class="gmo" style="left:${x(d)}px">${String(d.getUTCDate()).padStart(2,"0")}/${String(d.getUTCMonth()+1).padStart(2,"0")}</div>`}
+  const tl=`<div class="gtoday" style="left:${x(hoje)}px" title="Hoje"></div>${meta.data?`<div class="gmeta" style="left:${x(crP(meta.data))}px" title="Meta ${crBr(crP(meta.data))}"></div>`:""}`;
+  let h=`<div class="cr-g"><div class="gl gh">NC · Fase atual</div><div class="gt gh" style="width:${Wd}px">${months}${tl}</div>`;
+  L.forEach(w=>{const i=crInfo(w,meta),s=crP(w.data),e=crPrazo(w,"acoes"),end=i.done?e:(e<hoje?hoje:e);let mk="";
+    CR_KEYS.forEach(k=>{const st=crEst(w,k),p=crPrazo(w,k);mk+=`<div class="gmk ${st==="todo"?"":st}" style="left:${x(p)}px" title="${CR_ETAPAS[k]}: ${crBr(p)}${st==="done"?" · concluída":st==="late"?" · atrasada "+(-crDiff(p,hoje))+" dias":""}"></div>`});
+    const sx=x(s);
+    h+=`<div class="gl"><div class="l1"><button type="button" class="cr-link" data-cropen="${esc(w.id)}"><b>${esc(w.nc||"—")}</b></button><span>${esc(w.rnc||"sem RNC")}</span></div><div class="l2">${esc(w.peca)} · ${esc(String(w.cliente).replace(/^John Deere /,""))}</div><div>${crFaseSel(w,i)}</div></div>
+     <div class="gt" style="width:${Wd}px">${grid}${tl}<div class="gspan ${i.done?"done":i.late?"late":""}" style="left:${sx}px;width:${Math.max(4,x(end)-sx)}px"></div>${s>=min?`<div class="gorig" style="left:${sx}px" title="Abertura: ${crBr(s)}"></div>`:""}${mk}</div>`});
+  return `<div class="cr-gscroll" data-hoje="${x(hoje)}">${h}</div></div>`}
+
+/* ---------- gravação ---------- */
+async function crSalvar(k,id,patch,msg){const C=QX.cr;const cur=(C.docs[k]||{})[id]||{};const novo={...cur,...patch,ncId:id,atualizadoEm:new Date().toISOString()};
+  try{await fdb.collection("nc_crono_"+k).doc(id).set(novo);(C.docs[k]=C.docs[k]||{})[id]=novo;toast(msg||"Salvo");return true}catch(e){toast("Não foi possível salvar. Tente de novo.");return false}}
+function crEtapasDaFase(f){const o={};let antes=true;CR_KEYS.forEach(s=>{if(s===f)antes=false;o[s]=f==="fim"?true:antes});return o}
+
+/* ---------- gaveta da RNC ---------- */
+function crRoot(){let r=document.getElementById("crRoot");if(!r){r=document.createElement("div");r.id="crRoot";r.className="ntx";document.body.appendChild(r)}return r}
+function crAbrir(id){const k=QX.crK,w=(QX.crW||[]).find(x=>x.id===id);if(!w)return;const meta=QX.cr.meta[k]||{};const i=crInfo(w,meta),f=crFase(w);
+  const acs=(QX.dados&&QX.dados.AC||[]).filter(x=>x.k===k&&x.r.id===id);const hoje=isoToday(),lim=addDias(hoje,7);
+  const abertas=acs.filter(x=>!x.conc).map(x=>Object.assign(x,{sit:qxSitAcao(x,hoje,lim),p:qxPessoaDe(x.a.resp)}));const AV=QX.avisos||{};
+  const blocoAcoes=f==="acoes"&&!w.improcedente?`<section class="sec cr-acoes"><h3>Ações pendentes do 8D <span class="hint">· ${abertas.length} de ${acs.length}</span></h3>
+     ${abertas.length?`<ul class="cr-acl">${abertas.sort((a,b)=>({venc:0,avencer:1,prazo:2,sem:3})[a.sit]-({venc:0,avencer:1,prazo:2,sem:3})[b.sit]).map(x=>{const st=QX_SIT[x.sit];const m=x.p?qxMailAtribuicao(x.k,x.r,x.a):null;const ch=qxChaveAcao(x.k,x.r.id,x.a),av=AV[ch]||{};
+       const bt=!x.p?`<button type="button" class="ntx-btn small" data-qxpnova="${esc(String(x.a.resp||"").replace(/\([^)]*\)/g,"").trim())}">Cadastrar responsável</button>`:!m?"":x.sit==="venc"?`<a class="ntx-btn small qxp-ol qxca-cob" href="${esc(qxMailCobranca(x.p,[x]))}" data-qxpcob="${esc(ch)}">Cobrar pessoa + gerência</a>`:`<a class="ntx-btn small qxp-ol ${av.avisado?"ghost":""}" href="${esc(m.href)}" data-qxpav="${esc(ch)}">${av.avisado?"Avisar de novo":"Avisar"}</a>`;
+       return `<li class="qxca-r ${x.sit}"><div class="t"><span class="qx-tag ${st[1]}">${st[0]}</span> ${esc(x.a.acao)}</div><div class="hint">${esc(x.p?x.p.nome:x.a.resp||"sem responsável")}${x.p&&qxGerencia(x.p).nome?" · gerência "+esc(qxGerencia(x.p).nome):""} · prazo ${x.a.prazo?fdate(x.a.prazo):"—"}${x.sit==="venc"?" · "+qxDiasAtraso(x.a.prazo)+" dias de atraso":""}${av.cobrado?" · cobrado "+fdate(av.cobrado):av.avisado?" · avisado "+fdate(av.avisado):""}</div><div class="b">${bt}</div></li>`}).join("")}</ul>`
+      :acs.length?`<p class="hint">Todas as ${acs.length} ações do 8D estão concluídas. Marque a fase Ações como concluída.</p>`:`<p class="hint">O 8D desta NC ainda não tem plano de ações no site.</p>`}
+     <button type="button" class="ntx-btn small" data-qx8d="${k}|${esc(id)}">Abrir 8D</button></section>`:"";
+  const steps=CR_KEYS.map(s=>{const st=crEst(w,s),p=crPrazo(w,s);const lb=st==="done"?"Concluída":st==="late"?`Atrasada há ${-crDiff(p,crHoje())} dia(s)`:crDiff(p,crHoje())===0?"Vence hoje":`Faltam ${crDiff(p,crHoje())} dia(s)`;
+    return `<div class="cr-step"><div class="crdot ${st==="todo"?"":st}" id="crdot-${s}"></div><div class="nm">${CR_ETAPAS[s]}<small>${lb}</small></div><input type="date" id="crpz-${s}" value="${crIso(p)}" aria-label="Prazo ${CR_ETAPAS[s]}" ${w.fimSite?"disabled":""}></div>`}).join("");
+  crRoot().innerHTML=`<div class="scrim" data-crx></div><aside class="drawer cr-dw" role="dialog" aria-modal="true" aria-label="RNC"><div class="dhead"><div><div class="eyebrow">${esc(qxCli(k).nome)} · ${esc(w.nc||"")}${w.rnc?" · RNC "+esc(w.rnc):""}</div><h2>${esc(w.peca)} · ${esc(w.modo)}</h2><div>${crTags(w,i)}</div></div><button type="button" class="ntx-btn small" data-crx>Fechar</button></div>
+   <div class="dbody">
+    ${w.fimSite?`<p class="cr-note ok">8D finalizado no site: todas as fases estão concluídas.</p>`:""}
+    <section class="sec"><h3>Fase</h3><div class="f"><label for="crdFase">Em qual fase estou</label><select id="crdFase" ${w.fimSite?"disabled":""}>${[...CR_KEYS,"fim"].map(s=>`<option value="${s}" ${s===f?"selected":""}>${s==="fim"?"Finalizada":"Em "+CR_ETAPAS[s]}</option>`).join("")}</select><span class="hint">As fases anteriores à escolhida ficam marcadas como concluídas.</span></div>
+     <div class="cr-steps">${steps}</div>${meta.data&&!w.fimSite?`<button type="button" class="ntx-btn small" data-crreplan>Distribuir fases pendentes até a meta (${crBr(crP(meta.data))})</button>`:""}</section>
+    ${blocoAcoes}
+    ${f!=="acoes"&&abertas.length&&!w.improcedente?`<p class="hint cr-note">${abertas.length} ${abertas.length===1?"ação pendente":"ações pendentes"} no 8D. Elas aparecem aqui quando a RNC estiver na fase Ações.</p>`:""}
+    <section class="sec"><h3>Dados da NC</h3><div class="cr-meta"><div><span>Nº NC</span>${esc(w.nc||"—")}</div><div><span>Nº RNC</span>${esc(w.rnc||"—")}</div><div><span>Abertura</span>${crBr(crP(w.data))}</div><div><span>Planta</span>${esc(w.cliente)}</div><div><span>Qtd.</span>${esc(w.r.qty??"—")}</div><div><span>8D</span>${esc(w.x.d8st)}</div></div>
+     ${w.r.description?`<p class="cr-desc">${esc(w.r.description)}</p>`:""}
+     <div class="f"><label for="crdResp">Responsável</label><input id="crdResp" list="qxPessoasDL" value="${esc(w.responsavel)}" placeholder="Nome do analista"></div>
+     <div class="f"><label for="crdObs">Observações</label><textarea id="crdObs" rows="3">${esc(w.obs)}</textarea></div>
+     <label class="cr-imp"><input type="checkbox" id="crdImp" ${w.improcedente?"checked":""} ${w.r.naoProcedente?"disabled":""}> Improcedente / impacto negociado${w.r.naoProcedente?" (marcada como não procedente no site)":""}</label></section></div>
+   <div class="dfoot"><button type="button" class="ntx-btn" data-crver="${esc(id)}">Ver NC</button><span style="flex:1"></span><button type="button" class="ntx-btn" data-crx>Cancelar</button><button type="button" class="ntx-btn primary" data-crsalvar="${esc(id)}">Salvar</button></div></aside>`;
+  const fs=document.getElementById("crdFase");if(fs)fs.onchange=()=>{const et=crEtapasDaFase(fs.value);CR_KEYS.forEach(s=>{const d=document.getElementById("crdot-"+s);if(d)d.className="crdot "+(et[s]?"done":"")})}}
+
+/* ---------- configuração ---------- */
+function crCfg(){const k=QX.crK,C=QX.cr,meta=C.meta[k]||{data:"",base:0};
+  crRoot().innerHTML=`<div class="scrim" data-crx></div><aside class="drawer cr-dw" role="dialog" aria-modal="true" aria-label="Meta e prazos"><div class="dhead"><div><div class="eyebrow">Configuração</div><h2>Meta de fechamento · ${esc(qxCli(k).nome)}</h2></div><button type="button" class="ntx-btn small" data-crx>Fechar</button></div>
+   <div class="dbody"><section class="sec"><div class="f"><label for="crmData">Fechar todas as NCs abertas até</label><input id="crmData" type="date" value="${esc(meta.data||"")}"></div>
+    <div class="row"><button type="button" class="ntx-btn primary" data-crmsave>Salvar meta</button> <button type="button" class="ntx-btn" data-crplan>Distribuir todas as abertas até a meta</button></div>
+    <p class="hint">Distribuir reparte as NCs abertas pelos dias úteis até a meta, das mais antigas para as mais novas, e coloca as fases pendentes de cada uma em dias seguidos. Prazos ajustados à mão nas NCs abertas são substituídos.</p></section>
+   <section class="sec"><h3>Regra padrão de prazos</h3><p class="hint">Dias corridos a partir da data da NC. Vale para NCs sem prazo definido, em todos os clientes.</p>
+    <div class="cr-cfg">${CR_KEYS.map(s=>`<div class="f"><label for="crc-${s}">${CR_ETAPAS[s]} (D+)</label><input id="crc-${s}" type="number" min="0" value="${C.cfg[s]}"></div>`).join("")}</div>
+    <button type="button" class="ntx-btn" data-crcsave>Salvar regra</button></section></div></aside>`}
+
+/* ---------- eventos ---------- */
+const crRe=()=>{if(QX.pagina==="qxCrono")qxRender("qxCrono")};
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-crst],[data-crview],[data-crsort],[data-crcfg],[data-cropen],[data-crchk],[data-crx],[data-crsalvar],[data-crver],[data-crreplan],[data-crmsave],[data-crcsave],[data-crplan]");if(!t)return;
+  const C=QX.cr,k=QX.crK;
+  if(t.matches("[data-crst]")){C.st=t.dataset.crst;crRe();return}
+  if(t.matches("[data-crview]")){C.view=t.dataset.crview;try{localStorage.setItem("qxCrView",C.view)}catch(_){}crRe();return}
+  if(t.matches("[data-crsort]")){const s=t.dataset.crsort;if(C.sort!==s){C.sort=s;C.dir=1}else if(C.dir===1)C.dir=-1;else{C.sort="";C.dir=1}crRe();return}
+  if(t.matches("[data-crcfg]")){crCfg();return}
+  if(t.matches("[data-cropen]")){crAbrir(t.dataset.cropen);return}
+  if(t.matches("[data-crx]")){crRoot().innerHTML="";return}
+  if(t.matches("[data-crver]")){crRoot().innerHTML="";qxAbrirNc(k,t.dataset.crver);return}
+  if(t.matches("[data-crchk]")){const id=t.dataset.crchk,s=t.dataset.k,w=(QX.crW||[]).find(x=>x.id===id);if(!w||w.fimSite)return;const et={...w.etapas,[s]:!w.etapas[s]};
+    if(await crSalvar(k,id,{etapas:et,prazos:w.prazos}))crRe();return}
+  if(t.matches("[data-crreplan]")){const meta=C.meta[k]||{};const et=crEtapasDaFase(document.getElementById("crdFase").value);const pend=CR_KEYS.filter(s=>!et[s]);
+    const wd=crUteis(crAdd(crHoje(),1),crP(meta.data));if(!wd.length||!pend.length)return;const step=Math.max(1,Math.floor(wd.length/pend.length));
+    pend.forEach((s,j)=>{const d=wd[Math.min(wd.length-1,(j+1)*step-1)];document.getElementById("crpz-"+s).value=crIso(d)});toast("Prazos sugeridos. Clique em Salvar.");return}
+  if(t.matches("[data-crsalvar]")){const id=t.dataset.crsalvar,w=(QX.crW||[]).find(x=>x.id===id);if(!w)return;
+    const patch={responsavel:document.getElementById("crdResp").value.trim(),obs:document.getElementById("crdObs").value};
+    const imp=document.getElementById("crdImp");if(imp&&!w.r.naoProcedente)patch.improcedente=imp.checked;
+    if(!w.fimSite){patch.etapas=crEtapasDaFase(document.getElementById("crdFase").value);const pz={};CR_KEYS.forEach(s=>{const v=document.getElementById("crpz-"+s).value;if(v&&v!==crIso(crAdd(crP(w.data),C.cfg[s]??CR_DEF[s])))pz[s]=v});patch.prazos=pz}
+    t.disabled=true;if(await crSalvar(k,id,patch)){crRoot().innerHTML="";crRe()}else t.disabled=false;return}
+  if(t.matches("[data-crmsave]")){const v=document.getElementById("crmData").value;const ab=(QX.crW||[]).filter(w=>!crInfo(w,{}).done&&!w.improcedente).length;
+    const m={data:v,base:(C.meta[k]&&C.meta[k].data===v&&C.meta[k].base)||ab};try{await fdb.collection("crono_cfg").doc("meta_"+k).set(m);C.meta[k]=m;toast("Meta salva");crRoot().innerHTML="";crRe()}catch(_){toast("Não foi possível salvar")}return}
+  if(t.matches("[data-crcsave]")){const n={};CR_KEYS.forEach(s=>n[s]=Math.max(0,parseInt(document.getElementById("crc-"+s).value)||0));
+    try{await fdb.collection("crono_cfg").doc("prazos").set(n);C.cfg={...CR_DEF,...n};toast("Regra salva");crRoot().innerHTML="";crRe()}catch(_){toast("Não foi possível salvar")}return}
+  if(t.matches("[data-crplan]")){const meta=C.meta[k]||{};if(!meta.data){toast("Defina e salve a data da meta primeiro.");return}
+    const M=crP(meta.data),wd=crUteis(crAdd(crHoje(),1),M);if(!wd.length){toast("A data da meta já passou. Ajuste a meta primeiro.");return}
+    if(!confirm("Substituir os prazos das NCs abertas, distribuindo até a meta?"))return;
+    const ab=(QX.crW||[]).filter(w=>!crInfo(w,meta).done&&!w.improcedente&&!w.fimSite).sort((a,b)=>a.data<b.data?-1:1),n=ab.length,Ln=wd.length,off=Math.min(2,Ln-1);
+    t.disabled=true;let ok=0;
+    for(let i=0;i<n;i++){const w=ab[i],ti=Math.min(Ln-1,off+Math.floor(i*(Ln-off)/n)),pend=CR_KEYS.filter(s=>!w.etapas[s]);const pr={...w.prazos};let idx=ti;
+      for(const s of pend.slice().reverse()){pr[s]=crIso(wd[Math.max(0,idx)]);idx--}
+      if(await crSalvar(k,w.id,{prazos:pr,etapas:w.etapas},null))ok++;t.textContent=`Distribuindo… ${ok}/${n}`}
+    toast(`${ok} NCs replanejadas`);crRoot().innerHTML="";crRe();return}
+});
+document.addEventListener("change",async e=>{const t=e.target;
+  if(t.matches("[data-crsel]")){QX.cr.st=t.value;crRe();return}
+  if(t.matches("[data-crplanta]")){QX.cr.planta=t.value;crRe();return}
+  if(t.matches("[data-crfase]")){const id=t.dataset.crfase,w=(QX.crW||[]).find(x=>x.id===id);if(!w)return;const f=t.value;
+    if(await crSalvar(QX.crK,id,{etapas:crEtapasDaFase(f),prazos:w.prazos},f==="fim"?"NC finalizada no cronograma":"Fase atualizada"))crRe()}});
+let crQT;document.addEventListener("input",e=>{if(e.target.matches("[data-crq]")){QX.cr.q=e.target.value;clearTimeout(crQT);crQT=setTimeout(()=>{const pos=e.target.selectionStart;crRe();setTimeout(()=>{const i=document.querySelector("[data-crq]");if(i){i.focus();try{i.setSelectionRange(pos,pos)}catch(_){}}},60)},250)}});
 
 document.addEventListener("click",e=>{const t=e.target.closest('[data-nt8d],[data-8dppt],[data-8dfechar],[data-8dadd],[data-8drm],[data-8dsuga],[data-8daba],[data-fbst],[data-fbrm],[data-fbsug],[data-w5sug],[data-8dplano],[data-evrm],[data-alpg],[data-8dpptgo],[data-8dsalvar],[data-8dconcluir]');if(t){e.preventDefault();clique8D(t)}});
 function boot(){
