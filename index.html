@@ -16329,6 +16329,51 @@ const D8_PRAZOS={d3:1,d4:7,d8:30};
 const EQUIPE_PADRAO=[{funcao:"Qualidade",nome:"Débora Cristina Rodrigues"},{funcao:"Eng. Processo",nome:"Marcos Batista"},{funcao:"Engenharia (MG)",nome:"Rafael"},{funcao:"Eng. Produto",nome:"Jadyson Carvalho"},{funcao:"Produção",nome:"Francisco Rodrigues"}];
 const CAUSAS=["Ocorrência","Detecção","Sistêmica","Treinamento"];
 const M6=[["maquina","Máquina"],["metodo","Método"],["maoDeObra","Mão de obra"],["medicao","Medição"],["material","Material"],["meioAmbiente","Meio ambiente"]];
+/* sugestão de evidência, critério de aprovação, técnica de avaliação e resultado de uma ação do 8D:
+   1º procura ação parecida já preenchida em outros 8Ds do cliente; 2º usa as regras pelo tipo de ação */
+const SUG_REGRAS=[
+  [/p?fmea/i,{evidencia:"PFMEA revisado – modo de falha e S/O/D (SAD)",criterio:"Modo de falha, causa, efeito e controles de prevenção e detecção registrados no PFMEA{it}, com S/O/D reavaliados (NPR)",tecnica:"Revisão do PFMEA pela equipe multifuncional"}],
+  [/trein|\blpt\b|capacita|reorienta/i,{evidencia:"LPT – lista de presença do treinamento",criterio:"100% dos operadores e inspetores envolvidos treinados e aplicando o método no posto",tecnica:"Lista de presença + verificação no posto"}],
+  [/poka|sensor|intertrav/i,{evidencia:"Foto/vídeo do sensor bloqueando o ciclo + check-list de verificação",criterio:"Sistema impede o ciclo ou sinaliza na condição de falha (teste com falha simulada OK)",tecnica:"Teste de falha simulada no início do turno"}],
+  [/mgpress|sistema|bloqueio autom/i,{evidencia:"Print do cadastro e do bloqueio no sistema",criterio:"Bloqueio ativo no sistema para a condição fora do padrão",tecnica:"Teste com caso real no sistema"}],
+  [/plano de controle|\brip\b/i,{evidencia:"Plano de Controle revisado (SAD) + registro no RIP",criterio:"Característica incluída no Plano de Controle{it} com método, frequência e plano de reação definidos e registrada no RIP",tecnica:"Auditoria de processo: conferência do RIP x Plano de Controle"}],
+  [/capabilidade|cpk/i,{evidencia:"Estudo de capabilidade + relatório dimensional",criterio:"Cpk ≥ 1,33 na característica tratada",tecnica:"Estudo de capabilidade (CEP)"}],
+  [/\bdm\d|\bdm\b|dispositivo de (medi|contr|inspe)|m[aá]scara|calibrador|gabarito|passa.?n[aã]o.?passa/i,{evidencia:"Dispositivo aprovado + foto em uso no posto",criterio:"Dispositivo validado com peça OK e NOK e em uso no posto, segregando a peça fora do especificado",tecnica:"Teste do dispositivo com peça OK e NOK + validação dimensional"}],
+  [/matriz de erros/i,{evidencia:"Matriz de Erros Humanos preenchida + LPT",criterio:"Causa humana analisada na Matriz de Erros Humanos, com bloqueios definidos e aplicados no posto",tecnica:"Análise da Matriz de Erros Humanos pela Qualidade"}],
+  [/segrega|suspeit/i,{evidencia:"Foto da área/regra de segregação + registro de liberação pela Qualidade",criterio:"Peça suspeita segregada e liberada somente pela Qualidade, sem mistura com peça boa",tecnica:"Auditoria de posto + conferência dos registros de liberação"}],
+  [/fifo|tempo m[aá]ximo|validade/i,{evidencia:"Regra definida + foto da identificação (FIFO/validade)",criterio:"Lotes consumidos dentro do tempo/validade definidos, sem lote vencido no processo",tecnica:"Auditoria de estoque (FIFO x data dos lotes)"}],
+  [/\bprograma(?![\wÀ-ú])|nesting/i,{evidencia:"Programa corrigido (versão) + aprovação de 1ª peça",criterio:"Programa corrigido e aprovado na 1ª peça, sem recorrência nos lotes seguintes",tecnica:"Aprovação de 1ª peça + conferência da versão do programa"}],
+  [/try.?out|ferrament|matriz|dispositivo de solda|grampo|presilha|fixa[cç][aã]o|apoio|batente/i,{evidencia:"Foto do ferramental ajustado + relatório dimensional de 1ª peça",criterio:"Ferramental ajustado e aprovado em try-out, com 1ª peça dimensionalmente conforme o desenho",tecnica:"Try-out + relatório dimensional da 1ª peça"}],
+  [/manuten|preventiv|cronograma/i,{evidencia:"Cronograma de manutenção + registro da 1ª preventiva",criterio:"Cronograma implantado e preventivas executadas no prazo",tecnica:"Conferência do cronograma x registros de manutenção"}],
+  [/ronda|auditori/i,{evidencia:"Check-list das rondas/auditorias registrado",criterio:"Rondas executadas e registradas na frequência definida, sem desvio aberto",tecnica:"Análise dos check-lists de ronda"}],
+  [/embalag|embarque|expedi[cç]/i,{evidencia:"Plano/instrução de embalagem revisado + foto da embalagem",criterio:"Peças embaladas e expedidas conforme o plano/instrução, sem dano ou mistura",tecnica:"Auditoria de embalagem na expedição"}],
+  [/etiqueta|identifica[cç]/i,{evidencia:"Foto da etiqueta/identificação aplicada",criterio:"100% das embalagens identificadas conforme o padrão",tecnica:"Auditoria de estoque e expedição"}],
+  [/\bfts\b|\bfss\b|\bio\b|\bio-|instru[cç][aã]o|\bip\b|\bim\b|padr[aã]o visual|roteiro|ficha/i,{evidencia:"Documento revisado (SAD) + foto no posto",criterio:"Documento revisado, aprovado e disponível no posto, com o operador executando conforme",tecnica:"Auditoria de posto (documento em uso)"}],
+  [/inspe[cç]|100%|verifica|acompanhamento|medi[cç]|medir|confer/i,{evidencia:"Registro da inspeção no RIP",criterio:"Inspeção executada e registrada, sem peça NOK liberada no período",tecnica:"Análise dos registros de inspeção (RIP)"}],
+  [/limpeza|banho/i,{evidencia:"Registro da limpeza/análise do banho",criterio:"Banho dentro dos parâmetros e limpeza executada na frequência definida",tecnica:"Conferência dos registros de limpeza e análise do banho"}],
+  [/olea|protetiv|tamp[aã]o/i,{evidencia:"Registro/foto da proteção aplicada",criterio:"Peças protegidas conforme definido, sem oxidação ou contaminação",tecnica:"Inspeção visual do lote"}]
+];
+const SUG_GERAL=[
+  [/jato|decapag|pintura|solda|corte|dobra/i,{evidencia:"Foto do processo ajustado + aprovação de 1ª peça",criterio:"Processo ajustado e peças conformes ao desenho após a alteração",tecnica:"Aprovação de 1ª peça + inspeção do lote"}]
+];
+const SUG_PAD={evidencia:"Registro/foto da implementação",criterio:"Ação implementada conforme descrito, com evidência registrada",tecnica:"Verificação no posto pela Qualidade"};
+function sugNorm(s){return String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9 ]+/g," ").split(/\s+/).filter(w=>w.length>3)}
+function sugParecida(a,base){const A=new Set(sugNorm(a.acao));if(A.size<3)return null;let best=null,bs=0;
+  for(const o of base||[])for(const x of ((o&&o.d5&&o.d5.acoes)||[])){if(!x||x===a||!x.acao||!(x.criterio&&x.tecnica))continue;if(x.causa&&a.causa&&x.causa!==a.causa)continue;
+    const B=new Set(sugNorm(x.acao));let i=0;A.forEach(w=>{if(B.has(w))i++});const s=i/(A.size+B.size-i);if(s>bs){bs=s;best=x}}
+  return bs>=0.45?best:null}
+function sugAcao(a,obj,base){const it=obj&&obj.item?" do "+obj.item:"";const fd=v=>{const m=String(v||"").match(/^(\d{4})-(\d\d)-(\d\d)/);return m?`${m[3]}/${m[2]}/${m[1]}`:""};
+  const p=sugParecida(a,base);const tx=a.acao||"";let r=SUG_PAD,pos=1e9;SUG_REGRAS.forEach(([re,v])=>{const m=tx.search(re);if(m>=0&&m<pos){pos=m;r=v}});if(r===SUG_PAD){const g=SUG_GERAL.find(([re])=>re.test(tx));if(g)r=g[1]}
+  const s={evidencia:(p&&p.evidencia)||r.evidencia,criterio:(p&&p.criterio)||r.criterio.replace("{it}",it),tecnica:(p&&p.tecnica)||r.tecnica};
+  const crit=String(a.criterio||s.criterio).replace(/\.$/,"");
+  s.resultado=/conclu/i.test(a.status||"")?`Implementado e verificado: ${crit.charAt(0).toLowerCase()+crit.slice(1)}. Evidência: ${(a.evidencia||s.evidencia).replace(/\.$/,"")}.`:/andamento/i.test(a.status||"")?`Em implementação${a.prazo?" (prazo "+fd(a.prazo)+")":""}; verificação após a conclusão.`:`Aguardando implementação${a.prazo?" (prazo "+fd(a.prazo)+")":""}.`;
+  return s}
+/* preenche só o que está vazio; resultado "automático" é atualizado quando o status muda */
+function sugPreencher(a,obj,base){const s=sugAcao(a,obj,base);let mud=false;
+  ["evidencia","criterio","tecnica"].forEach(k=>{if(!String(a[k]||"").trim()){a[k]=s[k];mud=true}});
+  const auto=/^(Aguardando implementação|Em implementação|Implementado e verificado:)/.test(a.resultado||"");
+  if(!String(a.resultado||"").trim()||(auto&&a.resultado!==s.resultado)){const s2=sugAcao(a,obj,base);a.resultado=s2.resultado;mud=true}
+  return mud}
 const CHECK=[["contencao","Contenção executada e registrada"],["ocorrencia","Causa raiz de ocorrência comprovada"],["escape","Causa raiz de escape comprovada"],["acoes","Ações permanentes implementadas"],["fmea","FMEA e plano de controle atualizados"],["eficacia","Eficácia validada por critério objetivo"],["comunicacao","Comunicação final enviada ao cliente"]];
 const ST_CAUSA=[["hipotese","Hipótese"],["investigar","Investigar"],["validada","Validada"],["descartada","Descartada"]];
 const CORES_8D={cat:{dark:"2B2B2B",tint:"FFF5CC",accent:"FFCD11",primary:"3A3A3A"},agco:{dark:"7A0E12",tint:"F7E4E5",accent:"D9D9D9",primary:"B5121B"},gts:{dark:"1F2933",tint:"E9ECF1",accent:"B4BAC5",primary:"3E4C59"}};
@@ -16612,7 +16657,8 @@ function desenhar8D(){
     <div class="ntx-actions"><button class="ntx-btn" type="button" data-8dfechar>Cancelar</button><button class="ntx-btn primary" type="button" data-8dsalvar>Salvar 8D</button></div></div></aside>`;
   const dr=$("#ntxDrawerRoot .drawer");
   dr.addEventListener("input",ler8D);
-  dr.addEventListener("change",ev=>{const x=ev.target;if(x.matches("[data-alerta]"))return subirAlerta(x);if(x.matches("[data-fotoadd]"))return subirFotos(x);if(x.matches("[data-evimg],[data-evantes]"))return subirEvid(x);if(x.matches("[data-d3foto]"))return subirFotoD3(x);if(x.matches("[data-fsel]"))return selFoto(x);if(x.matches("[data-8dmaq]")){ler8D();const m=ed8.maqs.find(y=>y.id===x.value);ed8.obj.d2.maquinaId=x.value;ed8.obj.d2.maquina=m?[m.codigo,m.nome].filter(Boolean).join(" · "):"";if(m&&!ed8.obj.d2.processo)ed8.obj.d2.processo=m.processo||"";desenhar8D();return}ler8D()});
+  dr.addEventListener("change",ev=>{const x=ev.target;if(x.matches("[data-alerta]"))return subirAlerta(x);if(x.matches("[data-fotoadd]"))return subirFotos(x);if(x.matches("[data-evimg],[data-evantes]"))return subirEvid(x);if(x.matches("[data-d3foto]"))return subirFotoD3(x);if(x.matches("[data-fsel]"))return selFoto(x);if(x.matches('[data-8d^="d5.acoes."][data-8d$=".acao"],[data-8d^="d5.acoes."][data-8d$=".status"],[data-8d^="d5.acoes."][data-8d$=".causa"]')){ler8D();const i=+x.dataset["8d"].split(".")[2];const a=ed8.obj.d5.acoes[i];if(a&&String(a.acao||"").trim().length>8&&sugPreencher(a,ed8.obj,Object.values(d8Cache[ed8.t]||{}))){desenhar8D();toast("Evidência, critério, técnica e resultado sugeridos: revise se precisar.",4500)}return}
+  if(x.matches("[data-8dmaq]")){ler8D();const m=ed8.maqs.find(y=>y.id===x.value);ed8.obj.d2.maquinaId=x.value;ed8.obj.d2.maquina=m?[m.codigo,m.nome].filter(Boolean).join(" · "):"";if(m&&!ed8.obj.d2.processo)ed8.obj.d2.processo=m.processo||"";desenhar8D();return}ler8D()});
   dr.addEventListener("submit",ev=>{ev.preventDefault();const f=ev.target;if(f.matches("[data-fbadd]")){const v=f.querySelector("input").value.trim();if(!v)return;ler8D();ed8.obj.d4.ishikawa[f.dataset.fbadd].push({t:v,st:"hipotese"});desenhar8D();const nf=$(`#ntxDrawerRoot [data-fbadd="${f.dataset.fbadd}"] input`);if(nf)nf.focus()}});
   dr.addEventListener("focusout",ev=>{const x=ev.target;if(x.matches&&x.matches("[data-fbtxt]")){const [k,i]=x.dataset.fbtxt.split(".");const v=x.textContent.trim();if(v)ed8.obj.d4.ishikawa[k][+i].t=v}});
   const db=dr.querySelector(".dbody");if(ed8._scroll)db.scrollTop=ed8._scroll;db.addEventListener("scroll",()=>{ed8._scroll=db.scrollTop});
@@ -17618,6 +17664,18 @@ function qxPessoasDL(){let dl=document.getElementById("qxPessoasDL");if(!dl){dl=
 const qxNorm=s=>String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/\s+/g," ").trim();
 function qxPessoaDe(resp){const r=qxNorm(resp);if(!r)return null;const L=QX.pessoas||[];
   return L.find(p=>qxNorm(p.nome)===r)||L.find(p=>p.email&&r.includes(qxNorm(p.email)))||L.find(p=>qxNorm(p.nome).length>4&&r.includes(qxNorm(p.nome)))||(()=>{const pal=new Set(r.split(/[^a-z0-9]+/));const c=L.filter(p=>{const pn=qxNorm(p.nome).split(" ")[0];return pn.length>2&&pal.has(pn)});return c.length===1?c[0]:null})()}
+const QX_PLANTAS=["","Matriz","Filial","MG","Todas"];
+/* quem vai em cópia sempre (ex.: supervisora da Qualidade) */
+function qxCcSempre(){return (QX.pessoas||[]).filter(p=>p.ccSempre&&p.email).map(p=>p.email.toLowerCase())}
+/* planta do 8D: texto do problema e das ações (filial / MG); padrão Matriz */
+function qxPlanta8D(O){const t=JSON.stringify([O.d2||{},(O.d5&&O.d5.acoes)||[],(O.d3&&O.d3.escopo)||[]]).toLowerCase();return /\bmg\b|mgpress/.test(t)&&!/filial|matriz/.test(t)?"MG":/filial|\brb\b/.test(t)?"Filial":"Matriz"}
+/* supervisor de produção da planta e do processo do 8D (solda matriz, demais processos da filial etc.) */
+function qxSupervisores8D(O){const pl=qxPlanta8D(O);const proc=[(O.d2||{}).processo,(O.d2||{}).oque,(O.d4||{}).efeito,...(((O.d5||{}).acoes)||[]).map(a=>a.acao)].join(" ").toLowerCase();
+  const sup=(QX.pessoas||[]).filter(p=>p.email&&/supervis/i.test((p.cargo||"")+" "+(p.nivel||""))&&/produ/i.test((p.area||"")+" "+(p.cargo||""))&&(p.planta===pl||p.planta==="Todas"));
+  const PROC=["solda","pintura","laser","dobra","decapag","usinag","montag","jato","embalag"];
+  const doProc=sup.filter(p=>PROC.some(w=>new RegExp(w,"i").test(p.area||"")&&proc.includes(w)));
+  const gerais=sup.filter(p=>!PROC.some(w=>new RegExp(w,"i").test(p.area||"")));
+  return {planta:pl,lista:(doProc.length?doProc:gerais)}}
 const QX_NIVEIS=[["gerente","Gerente"],["supervisor","Supervisor / Coordenador"],["analista","Analista / Engenheiro"],["demais","Demais"]];
 function qxNivel(p){if(!p)return "demais";if(p.nivel)return p.nivel;const c=qxNorm(p.cargo);return /gerente|gerencia|diretor/.test(c)?"gerente":/supervis|coorden|lider/.test(c)?"supervisor":/analista|engenheir|tecnic|especialista/.test(c)?"analista":"demais"}
 function qxGerencia(p){if(!p)return {nome:"",email:""};const g=p.gestorId&&(QX.pessoas||[]).find(x=>x.id===p.gestorId);
@@ -17625,7 +17683,7 @@ function qxGerencia(p){if(!p)return {nome:"",email:""};const g=p.gestorId&&(QX.p
 const qxChaveAcao=(k,ncId,a)=>{let h=0;const s=String(a.acao||"");for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return `${k}|${ncId}|${(h>>>0).toString(36)}`};
 function qxLogAviso(chave,campo){QX.avisos=QX.avisos||{};const v=Object.assign({},QX.avisos[chave]||{},{[campo]:isoToday()});QX.avisos[chave]=v;
   try{fdb.collection("avisos_acoes").doc("all").set({log:{[chave]:v}},{merge:true})}catch(e){}}
-function qxMailto(para,cc,assunto,corpo){const q=[];if(cc)q.push("cc="+encodeURIComponent(cc));q.push("subject="+encodeURIComponent(assunto));q.push("body="+encodeURIComponent(corpo.replace(/\n/g,"\r\n")));return "mailto:"+encodeURI(para||"")+"?"+q.join("&")}
+function qxMailto(para,cc,assunto,corpo){const P=new Set(String(para||"").toLowerCase().split(/[;,]\s*/).filter(Boolean)),C=String(cc||"").split(/[;,]\s*/).filter(Boolean);qxCcSempre().forEach(m=>{if(!P.has(m)&&!C.map(x=>x.toLowerCase()).includes(m))C.push(m)});cc=C.join(";");const q=[];if(cc)q.push("cc="+encodeURIComponent(cc));q.push("subject="+encodeURIComponent(assunto));q.push("body="+encodeURIComponent(corpo.replace(/\n/g,"\r\n")));return "mailto:"+encodeURI(para||"")+"?"+q.join("&")}
 const qxDiasAtraso=p=>{const a=pd(p),h=pd(isoToday());return a&&h?Math.round((h-a)/864e5):0};
 
 /* e-mail de atribuição: pessoa + gerência em cópia */
@@ -17666,6 +17724,7 @@ function qxMailPlano(k,nc,todas){const O=(typeof ed8!=="undefined"&&ed8&&ed8.nc&
   const para=new Set(),cc=new Set(),semEmail=new Set();
   todas.forEach(a=>{const p=qxPessoaDe(a.resp);if(p&&p.email){para.add(p.email.toLowerCase());const g=qxGerencia(p);if(g.email)cc.add(g.email.toLowerCase())}else if(a.resp)semEmail.add(a.resp)});
   ((O.d1&&O.d1.equipe)||[]).forEach(m=>{const p=qxPessoaDe(m&&m.nome);if(p&&p.email)cc.add(p.email.toLowerCase())});
+  const SUP=qxSupervisores8D(O);SUP.lista.forEach(p=>cc.add(p.email.toLowerCase()));qxCcSempre().forEach(m=>cc.add(m));
   para.forEach(e=>cc.delete(e));
   const d2=O.d2||{},d3=O.d3||{},pq=(O.d4&&O.d4.porques)||{},d8=O.d8||{},prz=O.prazos||{};
   const causas=[["Ocorrência",qxUltimaCausa(pq.ocorrencia)],["Detecção",qxUltimaCausa(pq.deteccao)],["Sistêmica",qxUltimaCausa(pq.sistemica)]].filter(x=>x[1]).map(x=>[x[0],x[1].charAt(0).toUpperCase()+x[1].slice(1)]);
@@ -17728,7 +17787,7 @@ function qxAvisoLoteHtml(k,nc,acoes){const todas=(acoes||[]).filter(a=>a&&a.acao
   const sem=pl.semEmail.map(r=>`<button type="button" class="ntx-btn small" data-qxpnova="${esc(String(r).replace(/\([^)]*\)/g,"").trim())}">Cadastrar “${esc(r)}”</button>`).join("");
   const dest=esc("Para: "+(pl.para.join("; ")||"ninguém com e-mail")+(pl.cc.length?"\nCc: "+pl.cc.join("; "):""));
   const bt=pl.para.length?`<button type="button" class="ntx-btn primary small" data-qxplanoeml="1" title="${dest}\n\nBaixa o e-mail formatado (tabela). Clique no arquivo baixado: abre no Outlook pronto para enviar.">✉ Enviar plano completo (${todas.length} ${todas.length===1?"ação":"ações"})${ok?" · avisado":""}</button><a class="ntx-btn small ghost qxp-ol" href="${esc(pl.href)}" data-qxplano="1" title="${dest}\n\nAbre o e-mail padrão em texto simples${pl.longo?"; o texto é copiado ao clicar, cole no corpo":""}.">Texto simples</a><button type="button" class="ntx-btn small ghost" data-qxplanocp="1" title="Copia o texto do plano completo">Copiar plano</button>`:`<span class="hint">Nenhum responsável com e-mail no cadastro.</span>`;
-  return `<div class="qxp-lote"><div class="qxp-lote-h"><b>Avisar responsáveis</b><span class="hint">Um e-mail para todos com o plano de ação completo: responsáveis em Para, gerências e equipe do 8D em cópia.</span></div><div class="qxp-lote-b">${bt}${sem}</div>${pl.semEmail.length?`<div class="hint" style="margin-top:6px">Fora do e-mail (sem e-mail no cadastro): ${esc(pl.semEmail.join(", "))}</div>`:""}</div>`}
+  return `<div class="qxp-lote"><div class="qxp-lote-h"><b>Avisar responsáveis</b><span class="hint">Um e-mail para todos com o plano de ação completo: responsáveis em Para; gerências, equipe do 8D, supervisor da planta e cópias fixas em Cc.</span></div><div class="qxp-lote-b">${bt}${sem}</div>${pl.semEmail.length?`<div class="hint" style="margin-top:6px">Fora do e-mail (sem e-mail no cadastro): ${esc(pl.semEmail.join(", "))}</div>`:""}</div>`}
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-qxplano],[data-qxplanocp],[data-qxplanoeml]");if(!b||!QX.plano)return;const pl=QX.plano;
   if(b.matches("[data-qxplanoeml]")){try{moBaixar(qxPlanoEml(pl),pl.nome);toast("E-mail baixado. Clique nele na barra de downloads: abre no Outlook com o plano formatado. É só revisar e enviar.",8000)}catch(err){console.error(err);toast("Não consegui montar o e-mail. Use 'Texto simples'.");return}}
   else{try{navigator.clipboard.writeText(pl.corpo);if(b.matches("[data-qxplanocp]"))b.textContent="Texto copiado ✓"}catch(err){}}
@@ -17752,7 +17811,7 @@ async function qxPessoasPg(host,D){
   const abertas=D.AC.filter(x=>!x.conc&&x.a.resp);const por={},semCad={};
   abertas.forEach(x=>{const p=qxPessoaDe(x.a.resp);if(p)(por[p.id]=por[p.id]||[]).push(x);else{const n=x.a.resp.trim();(semCad[n]=semCad[n]||[]).push(x)}});
   const ger=L.filter(p=>qxNivel(p)==="gerente");const ids=new Set(ger.map(g=>g.id));
-  const pessoa=p=>{const xs=por[p.id]||[];return `<li class="qxh-p"><div><b>${esc(p.nome)}</b><span class="hint">${esc([p.cargo,p.area].filter(Boolean).join(" · ")||"cargo e área não informados")}</span></div><span class="mono hint">${p.email?esc(p.email):'<span class="qx-tag warn">sem e-mail</span>'}</span><span class="qxh-ac">${xs.length?`<span class="qx-tag info">${xs.length} ${xs.length===1?"ação":"ações"}</span>`:""}</span><button type="button" class="qx-btn sm ghost" data-qxped="${esc(p.id)}">Editar</button></li>`};
+  const pessoa=p=>{const xs=por[p.id]||[];return `<li class="qxh-p"><div><b>${esc(p.nome)}</b><span class="hint">${esc([p.cargo,p.area,p.planta].filter(Boolean).join(" · ")||"cargo e área não informados")}${p.ccSempre?" · em cópia em todos os e-mails":""}</span></div><span class="mono hint">${p.email?esc(p.email):'<span class="qx-tag warn">sem e-mail</span>'}</span><span class="qxh-ac">${xs.length?`<span class="qx-tag info">${xs.length} ${xs.length===1?"ação":"ações"}</span>`:""}</span><button type="button" class="qx-btn sm ghost" data-qxped="${esc(p.id)}">Editar</button></li>`};
   const niveis=time=>QX_NIVEIS.filter(([n])=>n!=="gerente").map(([n,l])=>{const g=time.filter(p=>qxNivel(p)===n);return g.length?`<div class="qxh-niv"><div class="qxh-nl">${l} <span class="hint">${g.length}</span></div><ul>${g.map(pessoa).join("")}</ul></div>`:""}).join("");
   const blocos=ger.map(g=>{const time=L.filter(p=>p.gestorId===g.id&&p.id!==g.id);return `<article class="qx-card qxh-g"><header><div class="qxh-av">${esc(g.nome.split(" ").map(w=>w[0]).slice(0,2).join(""))}</div><div><div class="qx-eye">Gerente${g.area?" · "+esc(g.area):""}</div><h3>${esc(g.nome)}</h3><span class="hint mono">${esc(g.email||"sem e-mail")}${g.cargo?" · "+esc(g.cargo):""}</span></div><span class="qxh-n">${time.length} pessoa${time.length===1?"":"s"}</span><button type="button" class="qx-btn sm ghost" data-qxped="${esc(g.id)}">Editar</button></header>
      ${time.length?niveis(time):`<p class="hint qxh-vazio">Ninguém ligado a esta gerência ainda.</p>`}</article>`}).join("");
@@ -17829,14 +17888,17 @@ function qxPessoaForm(p,nomeIni){
      <div class="grid"><div class="f"><label for="qxp-cargo">Cargo</label><input id="qxp-cargo" data-qp="cargo" value="${e(x.cargo)}" placeholder="Ex.: Supervisor de Produção"></div><div class="f"><label for="qxp-area">Área</label><input id="qxp-area" data-qp="area" value="${e(x.area)}" list="qxAreasDL" placeholder="Ex.: Pintura"></div></div>
      <datalist id="qxAreasDL">${[...new Set((QX.pessoas||[]).map(o=>o.area).filter(Boolean))].map(a=>`<option value="${e(a)}">`).join("")}</datalist>
      <div class="f"><label for="qxp-niv">Nível</label><select id="qxp-niv" data-qp="nivel">${QX_NIVEIS.map(([v,l])=>`<option value="${v}" ${x.nivel===v?"selected":""}>${l}</option>`).join("")}</select></div>
-     <div class="f"><label for="qxp-email">E-mail</label><input id="qxp-email" data-qp="email" type="email" class="mono" value="${e(x.email)}" placeholder="nome@magius.com.br"></div></section>
+     <div class="f"><label for="qxp-email">E-mail</label><input id="qxp-email" data-qp="email" type="email" class="mono" value="${e(x.email)}" placeholder="nome@magius.com.br"></div>
+     <div class="grid"><div class="f"><label for="qxp-planta">Planta</label><select id="qxp-planta" data-qp="planta">${QX_PLANTAS.map(v=>`<option value="${v}" ${(x.planta||"")===v?"selected":""}>${v||"— não informada —"}</option>`).join("")}</select></div>
+     <div class="f"><label class="qxp-ck"><input type="checkbox" data-qp="ccSempre" ${x.ccSempre?"checked":""}> Em cópia em todos os e-mails de ações</label><span class="hint">Ex.: supervisora da Qualidade.</span></div></div>
+     <p class="hint">Supervisor de produção: a planta define quem vai em cópia no plano de ação do 8D (ex.: solda matriz, processos da filial).</p></section>
     <section class="sec"><h3>Gerência</h3><p class="hint" style="margin:-6px 0 4px">Vai em cópia nos avisos e recebe a cobrança quando a ação atrasa.</p>
      <div class="f"><label for="qxp-ger">Gerente</label><select id="qxp-ger" data-qp="gestorId"><option value="">${outros.length?"— escolher o gerente —":"nenhum gerente cadastrado"}</option>${outros.map(o=>`<option value="${e(o.id)}" ${x.gestorId===o.id?"selected":""}>${e(o.nome)}${o.cargo?" · "+e(o.cargo):""}</option>`).join("")}</select></div>
      <div class="grid"><div class="f"><label for="qxp-gnome">ou nome da gerência</label><input id="qxp-gnome" data-qp="gestorNome" value="${e(x.gestorNome)}"></div><div class="f"><label for="qxp-gmail">e-mail da gerência</label><input id="qxp-gmail" data-qp="gestorEmail" type="email" class="mono" value="${e(x.gestorEmail)}"></div></div>
      <p class="hint">A lista mostra só quem está cadastrado com nível Gerente. Os campos de baixo servem para um gerente que não está no cadastro.</p></section></div>
    <div class="dfoot">${p?`<button type="button" class="ntx-btn danger" data-qxpdel>Excluir</button>`:""}<span style="flex:1"></span><button type="button" class="ntx-btn" data-qxpx>Cancelar</button><button type="button" class="ntx-btn primary" data-qxpsalvar>Salvar</button></div></aside>`;
   setTimeout(()=>{const i=document.getElementById("qxp-nome");if(i)i.focus()},50)}
-function qxLerPessoa(){document.querySelectorAll("#qxpRoot [data-qp]").forEach(el=>{qxPEd[el.dataset.qp]=el.value.trim()})}
+function qxLerPessoa(){document.querySelectorAll("#qxpRoot [data-qp]").forEach(el=>{qxPEd[el.dataset.qp]=el.type==="checkbox"?el.checked:el.value.trim()})}
 
 document.addEventListener("click",async e=>{const t=e.target.closest("[data-qxpnova],[data-qxped],[data-qxpx],[data-qxpsalvar],[data-qxpdel],[data-qxpav],[data-qxpcob],[data-qxav8d],[data-qxav8dl]");if(!t)return;
   if(t.matches("[data-qxpav]")){qxLogAviso(t.dataset.qxpav,"avisado");setTimeout(()=>{if(QX.pagina==="qxPessoas"||QX.pagina==="qxCliAcoes"||QX.pagina==="qxAcoes")qxRender(QX.pagina)},1500);return}
