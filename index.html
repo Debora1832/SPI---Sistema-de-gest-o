@@ -3590,6 +3590,8 @@ select.crfase[data-f=fim]{background:var(--cr-ok-s);color:var(--cr-ok);border-co
 #moRoot .mo-drop{display:flex;flex-direction:column;gap:4px;border:2px dashed #4a5768;border-radius:12px;padding:18px;text-align:center;cursor:pointer;margin-bottom:8px}
 #moRoot .mo-drop input{position:absolute;width:1px;height:1px;opacity:0}
 #moRoot .mo-drop.over,#moRoot .mo-drop:hover{border-color:#ffcd11;background:rgba(255,205,17,.06)}#moRoot .mo-drop.pede{border-color:#f07a6c}
+#ncPage .qxc .qxc-tg button.qxc-mo.xls{background:#432420!important;color:#f7a196!important;border:1px solid #6b3129!important}
+#moRoot .mo-xls{background:#432420;color:#f7c2bb;border-radius:10px;padding:10px 12px;margin:0 0 12px}
 </style>
 </head>
 <body>
@@ -17976,6 +17978,7 @@ function moMailto(r){const q=r.qnote||{};const de=(q.emailDe||"lucas.borges@trig
   const e=encodeURIComponent;return `mailto:${para.join(";")}?cc=${cc.join(";")}&subject=${e(assunto)}&body=${e(MO_TXT+"\n\n")}`}
 const MO_TXT="Bom dia,\n\nSegue MO assinada.\n\nAtt;";
 QX.mo={};QX.moCfg=null;
+const MO_DESDE="2026-11-01"; /* fluxo da MO vale para as NCs a partir de novembro/2026 */
 function qxMoAplica(r){if(!r||!r.qnote)return false;const t=(JSON.stringify(r.qnote)+" "+(r.customer||"")).toLowerCase();return /trigo|alerta de qualidade/.test(t)||/catal/.test(t)}
 async function qxMoCarregar(k,force){if(!force&&QX.mo[k])return QX.mo[k];const m={};
   try{const s=await fdb.collection("nc_mo_"+k).get();s.forEach(d=>m[d.id]=d.data())}catch(e){}
@@ -17984,10 +17987,11 @@ async function qxMoCarregar(k,force){if(!force&&QX.mo[k])return QX.mo[k];const m
 function qxMoCards(k){const g=document.getElementById("ncCardsGrid");if(!g||!fdb)return;
   if(!QX.mo[k]){qxMoCarregar(k).then(()=>qxMoCards(k));return}
   g.querySelectorAll(".nc-card[data-nc-id]").forEach(card=>{const tg=card.querySelector(".qxc-tg");if(!tg)return;const r=(ncCache[k]||[]).find(x=>x.id===card.dataset.ncId);
-    let b=tg.querySelector(".qxc-mo");if(!qxMoAplica(r)||r.naoProcedente||(r.d8Finalizado&&!QX.mo[k][r.id])){if(b)b.remove();return}
+    let b=tg.querySelector(".qxc-mo");if(!qxMoAplica(r)||r.naoProcedente||String(r.date||"")<MO_DESDE||(r.d8Finalizado&&!QX.mo[k][r.id])){if(b)b.remove();return}
     if(!b){b=document.createElement("button");b.type="button";b.className="qxc-mo";b.textContent="MO";b.dataset.qxmo=r.id;tg.appendChild(b)}
-    const st=(QX.mo[k][r.id]||{}).status||"";b.classList.toggle("gerada",st==="gerada");b.classList.toggle("enviada",st==="enviada");
-    b.title=st==="enviada"?"MO assinada enviada":st==="gerada"?"MO gerada, falta responder o e-mail":"Gerar MO assinada"})}
+    const M=QX.mo[k][r.id]||{},st=M.status||"",xls=M.moFormato==="xlsx"&&!st;b.classList.toggle("gerada",st==="gerada");b.classList.toggle("enviada",st==="enviada");b.classList.toggle("xls",xls);
+    b.textContent=xls?"MO em Excel":"MO";
+    b.title=st==="enviada"?"MO assinada enviada":st==="gerada"?"MO assinada, falta enviar o e-mail":xls?"A Trigo mandou a MO só em Excel: gere o PDF e arraste no painel":"Assinar a MO da Trigo"})}
 function moRoot(){let r=document.getElementById("moRoot");if(!r){r=document.createElement("div");r.id="moRoot";r.className="ntx";document.body.appendChild(r)}return r}
 function moBr(iso){const s=String(iso||"").slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(s)?s.split("-").reverse().join("/"):s}
 /* cabeçalho do cliente: rótulo do formulário Trigo -> valor (só preenche se o campo estiver vazio) */
@@ -18003,6 +18007,7 @@ function moAbrir(id){const k=site().current(),r=(ncCache[k]||[]).find(x=>x.id===
    <div class="dbody">
     <section class="sec cr-ini">${F.length?`<a class="cr-foto" href="${esc(F[0])}" target="_blank" rel="noopener"><img src="${esc(F[0])}" alt="Foto da NC" loading="lazy"></a>`:`<div class="cr-foto vazio">sem foto</div>`}
      <div class="cr-ini-d"><div class="cr-meta"><div><span>Nº NC</span><b class="mono">${esc(r.ncNumber||"—")}</b></div><div><span>Abertura</span><b>${moBr(r.date)}</b></div><div><span>Contato</span>${esc(q.contato||"—")}</div><div><span>Qtd. NOK</span>${esc(r.qty??"—")}</div></div>${q.disposicao?`<p class="cr-desc">${esc(q.disposicao)}</p>`:""}</div></section>
+    ${D.moFormato==="xlsx"?`<p class="cr-note mo-xls">A Trigo mandou a MO só em Excel${D.moArquivo?` (${esc(D.moArquivo)})`:""}. Abra o arquivo, salve como PDF e arraste aqui.</p>`:""}
     <section class="sec"><h3>1. MO original da Trigo</h3>
      <label class="mo-drop" for="mo_arq"><input type="file" id="mo_arq" accept="application/pdf,.pdf" data-moarq="${esc(id)}"><b>${A?esc(A.nome):"Arraste aqui o PDF da MO que veio no e-mail"}</b><span class="hint">${A?"Arquivo carregado. Clique para trocar.":"ou clique para escolher. É o arquivo \"M.O - ... .pdf\" anexado pela Trigo."}</span></label>
      ${q.emailLink?`<a class="ntx-btn small ghost" href="${esc(q.emailLink)}" target="_blank" rel="noopener">Abrir e-mail da Trigo para baixar a MO</a>`:""}
