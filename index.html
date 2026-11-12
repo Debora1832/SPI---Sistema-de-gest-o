@@ -17622,45 +17622,77 @@ Att;`;
 /* e-mail do plano de ação completo: todos os responsáveis em "Para", gerências e equipe do 8D em cópia */
 function qxUltimaCausa(L){L=(L||[]).map(x=>String(x||"").trim()).filter(Boolean);const r=L.reverse().find(x=>/causa raiz/i.test(x))||L[0]||"";return r.replace(/^CAUSA RAIZ:\s*/i,"")}
 function qxMailPlano(k,nc,todas){const O=(typeof ed8!=="undefined"&&ed8&&ed8.nc&&ed8.nc.id===nc.id&&ed8.obj)?ed8.obj:{};const cli=qxCli(k).nome;
-  const rnc=nc.rncNumber?String(nc.rncNumber).replace(/^RNC\s*/i,""):"";
-  const ref=[`NC ${nc.ncNumber||"—"}`,rnc?`RNC ${rnc}`:"",cli,nc.piece?`peça ${nc.piece}`:"",nc.failureMode||""].filter(Boolean).join(" · ");
+  const rnc=nc.rncNumber?String(nc.rncNumber).replace(/^RNC\s*/i,""):"";const hoje=new Date().toISOString().slice(0,10);
   const para=new Set(),cc=new Set(),semEmail=new Set();
   todas.forEach(a=>{const p=qxPessoaDe(a.resp);if(p&&p.email){para.add(p.email.toLowerCase());const g=qxGerencia(p);if(g.email)cc.add(g.email.toLowerCase())}else if(a.resp)semEmail.add(a.resp)});
   ((O.d1&&O.d1.equipe)||[]).forEach(m=>{const p=qxPessoaDe(m&&m.nome);if(p&&p.email)cc.add(p.email.toLowerCase())});
   para.forEach(e=>cc.delete(e));
-  const d2=O.d2||{},pq=(O.d4&&O.d4.porques)||{};
-  const causas=[["Ocorrência",qxUltimaCausa(pq.ocorrencia)],["Detecção",qxUltimaCausa(pq.deteccao)],["Sistêmica",qxUltimaCausa(pq.sistemica)]].filter(x=>x[1]);
-  const conc=todas.filter(a=>/conclu/i.test(a.status||"")).length;
-  const prox=todas.filter(a=>a.prazo&&!/conclu/i.test(a.status||"")).map(a=>a.prazo).sort()[0];
-  const linhas=todas.map((a,i)=>`${i+1}. [${a.causa||"—"}] ${a.acao}\n   Responsável: ${a.resp||"a definir"} | Prazo: ${a.prazo?fdate(a.prazo):"a definir"} | Status: ${a.status||"Pendente"}${a.evidencia?`\n   Evidência esperada: ${a.evidencia}`:""}`).join("\n\n");
-  const corpo=`Olá a todos,
-
-Segue o plano de ação completo do 8D da ${ref}, para alinhamento de todos os envolvidos.
-${d2.declaracao?`\nPROBLEMA\n${d2.declaracao}\n`:""}${causas.length?`\nCAUSA RAIZ\n${causas.map(c=>`• ${c[0]}: ${c[1]}`).join("\n")}\n`:""}
-PLANO DE AÇÃO
-${linhas}
-
-Resumo: ${todas.length} ${todas.length===1?"ação":"ações"} · ${conc} concluída${conc===1?"":"s"} · ${todas.length-conc} em aberto${prox?` · próximo prazo ${fdate(prox)}`:""}.
-
-Cada responsável, por favor, me envie a evidência da sua ação até o prazo. Se houver algum impedimento, me avise antes do vencimento para replanejarmos.
-
-Att;`;
-  const assunto=`Plano de ação 8D – ${rnc?"RNC "+rnc+" – ":""}NC ${nc.ncNumber||""} – ${cli}${nc.piece?" – "+nc.piece:""}`;
+  const d2=O.d2||{},d3=O.d3||{},pq=(O.d4&&O.d4.porques)||{},d8=O.d8||{},prz=O.prazos||{};
+  const causas=[["Ocorrência",qxUltimaCausa(pq.ocorrencia)],["Detecção",qxUltimaCausa(pq.deteccao)],["Sistêmica",qxUltimaCausa(pq.sistemica)]].filter(x=>x[1]).map(x=>[x[0],x[1].charAt(0).toUpperCase()+x[1].slice(1)]);
+  const cont=(d3.acoes||[]).filter(a=>a&&a.acao);
+  const st=a=>/conclu/i.test(a.status||"")?"Concluída":(a.prazo&&a.prazo<hoje?"Atrasada":(a.status||"Pendente"));
+  const conc=todas.filter(a=>/conclu/i.test(a.status||"")).length,atr=todas.filter(a=>st(a)==="Atrasada").length;
+  const abertas=todas.filter(a=>!/conclu/i.test(a.status||""));
+  const prox=abertas.map(a=>a.prazo).filter(Boolean).sort()[0];
+  const pr={};todas.forEach((a,i)=>{if(/conclu/i.test(a.status||""))return;const pp=qxPessoaDe(a.resp),n=(pp&&pp.nome)||a.resp||"A definir";(pr[n]=pr[n]||[]).push({i:i+1,a})});
+  const resps=Object.entries(pr).map(([n,xs])=>({n,nums:xs.map(x=>x.i),prox:xs.map(x=>x.a.prazo).filter(Boolean).sort()[0]}));
+  const efic=String(d8.eficacia||"").replace(/^Eficácia:\s*/i,"");
+  const dados=[["Cliente",cli],["Peça",nc.piece],["NC",nc.ncNumber],["RNC",rnc],["Modo de falha",nc.failureMode||d2.oque],["Encerramento do 8D",prz.d8?fdate(prz.d8):""]].filter(x=>x[1]);
+  const assunto=`[8D] Plano de ação – ${rnc?"RNC "+rnc+" | ":""}NC ${nc.ncNumber||"—"} | ${cli}${nc.piece?" | "+nc.piece:""}`;
+  const resumo=`${todas.length} ${todas.length===1?"ação":"ações"} · ${conc} concluída${conc===1?"":"s"} · ${todas.length-conc} em aberto${atr?` · ${atr} atrasada${atr===1?"":"s"}`:""}${prox?` · próximo prazo ${fdate(prox)}`:""}`;
+  const pedidos=["Confirme o recebimento e o prazo da sua ação respondendo este e-mail.","Ao concluir, envie a evidência esperada (foto, documento revisado, registro ou lista de presença).","Se houver impedimento, me avise antes do vencimento para replanejarmos."];
+  /* texto simples */
+  const T=[];T.push("Olá a todos,","",`Segue o plano de ação do 8D abaixo para alinhamento. ${resumo}.`,"","DADOS DA NC",...dados.map(d=>`${d[0]}: ${d[1]}`));
+  if(d2.declaracao)T.push("","PROBLEMA",d2.declaracao);
+  if(cont.length)T.push("","CONTENÇÃO",...cont.map(a=>`• ${a.acao} (${st(a)})`));
+  if(causas.length)T.push("","CAUSA RAIZ",...causas.map(c=>`• ${c[0]}: ${c[1]}`));
+  T.push("","PLANO DE AÇÃO",...todas.map((a,i)=>`${i+1}. [${a.causa||"—"}] ${a.acao}\n   Responsável: ${a.resp||"a definir"} | Prazo: ${a.prazo?fdate(a.prazo):"a definir"} | Status: ${st(a)}${a.evidencia?`\n   Evidência esperada: ${a.evidencia}`:""}`));
+  if(resps.length)T.push("","RESPONSÁVEIS E PRAZOS",...resps.map(r=>`• ${r.n}: ação ${r.nums.join(", ")}${r.prox?` · prazo ${fdate(r.prox)}`:""}`));
+  T.push("","O QUE PRECISO DE CADA UM",...pedidos.map(p=>"• "+p));
+  if(efic)T.push("","VERIFICAÇÃO DE EFICÁCIA",efic);
+  T.push("","Att;","Débora Cristina","Qualidade · Magius Metalúrgica Industrial");
+  const corpo=T.join("\n");
+  /* HTML (Outlook) */
+  const h=s=>esc(String(s==null?"":s)).replace(/\n/g,"<br>");
+  const cor={"Concluída":"#1e7e34","Atrasada":"#c62828","Em andamento":"#b26a00"};
+  const sec=t=>`<tr><td style="padding:18px 0 6px;font-size:10.5pt;font-weight:bold;color:#0f6cbd;letter-spacing:.4px;border-bottom:2px solid #0f6cbd">${t}</td></tr>`;
+  const td="padding:6px 8px;border:1px solid #d0d7de;vertical-align:top;font-size:10pt";const th=td+";background:#eef4fb;font-weight:bold;text-align:left";
+  const badge=s=>`<span style="color:${cor[s]||"#555"};font-weight:bold">${h(s)}</span>`;
+  const H=[];
+  H.push(`<div style="font-family:Aptos,Calibri,Arial,sans-serif;font-size:11pt;color:#1f2328"><p>Olá a todos,</p><p>Segue o plano de ação do 8D abaixo para alinhamento.</p>`);
+  H.push(`<table cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;max-width:900px">`);
+  H.push(`<tr><td style="background:#0f6cbd;color:#fff;padding:12px 14px;font-size:13pt;font-weight:bold">Plano de ação 8D${rnc?" · RNC "+h(rnc):""}<div style="font-size:10pt;font-weight:normal;margin-top:3px">${h(resumo)}</div></td></tr>`);
+  H.push(sec("DADOS DA NC"),`<tr><td style="padding-top:6px"><table cellpadding="0" cellspacing="0" style="border-collapse:collapse">${dados.map(d=>`<tr><td style="${th};width:160px">${h(d[0])}</td><td style="${td}">${h(d[1])}</td></tr>`).join("")}</table></td></tr>`);
+  if(d2.declaracao)H.push(sec("PROBLEMA"),`<tr><td style="padding-top:6px;font-size:10.5pt">${h(d2.declaracao)}</td></tr>`);
+  if(cont.length)H.push(sec("CONTENÇÃO"),`<tr><td style="padding-top:6px;font-size:10.5pt">${cont.map(a=>`• ${h(a.acao)} · ${badge(st(a))}`).join("<br>")}</td></tr>`);
+  if(causas.length)H.push(sec("CAUSA RAIZ"),`<tr><td style="padding-top:6px"><table cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%">${causas.map(c=>`<tr><td style="${th};width:110px">${c[0]}</td><td style="${td}">${h(c[1])}</td></tr>`).join("")}</table></td></tr>`);
+  H.push(sec("PLANO DE AÇÃO"),`<tr><td style="padding-top:6px"><table cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%"><tr><th style="${th};width:24px">#</th><th style="${th};width:90px">Tipo</th><th style="${th}">Ação</th><th style="${th};width:130px">Responsável</th><th style="${th};width:78px">Prazo</th><th style="${th};width:84px">Status</th><th style="${th};width:170px">Evidência esperada</th></tr>${todas.map((a,i)=>`<tr${i%2?' style="background:#f8fafc"':""}><td style="${td};text-align:center">${i+1}</td><td style="${td}">${h(a.causa||"—")}</td><td style="${td}">${h(a.acao)}</td><td style="${td}">${h(a.resp||"A definir")}</td><td style="${td};white-space:nowrap">${a.prazo?fdate(a.prazo):"A definir"}</td><td style="${td}">${badge(st(a))}</td><td style="${td}">${h(a.evidencia||"")}</td></tr>`).join("")}</table></td></tr>`);
+  if(resps.length)H.push(sec("RESPONSÁVEIS E PRAZOS"),`<tr><td style="padding-top:6px;font-size:10.5pt">${resps.map(r=>`• <b>${h(r.n)}</b>: ação ${r.nums.join(", ")}${r.prox?` · prazo ${fdate(r.prox)}`:""}`).join("<br>")}</td></tr>`);
+  H.push(sec("O QUE PRECISO DE CADA UM"),`<tr><td style="padding-top:6px;font-size:10.5pt">${pedidos.map(p=>"• "+h(p)).join("<br>")}</td></tr>`);
+  if(efic)H.push(sec("VERIFICAÇÃO DE EFICÁCIA"),`<tr><td style="padding-top:6px;font-size:10.5pt">${h(efic)}</td></tr>`);
+  H.push(`</table><p style="margin-top:18px">Att;<br><br><b>Débora Cristina</b><br>Qualidade · Magius Metalúrgica Industrial</p></div>`);
+  const html=H.join("");
   const P=[...para].join(";"),C=[...cc].join(";");
   let href=qxMailto(P,C,assunto,corpo);const longo=href.length>1900;
-  if(longo)href=qxMailto(P,C,assunto,"Olá a todos,\n\n(Cole aqui o plano de ação — já copiado pelo painel.)\n\nAtt;");
-  return {href,texto:`Assunto: ${assunto}\n\n${corpo}`,para:[...para],cc:[...cc],semEmail:[...semEmail],longo}}
-function qxAvisoLoteHtml(k,nc,acoes){const todas=(acoes||[]).filter(a=>a&&a.acao);acoes=todas.filter(a=>a.resp&&!/conclu/i.test(a.status||""));
-  const por={};const fora=new Set();acoes.forEach(a=>{const p=qxPessoaDe(a.resp);if(p&&p.email)(por[p.id]=por[p.id]||{p,xs:[]}).xs.push(a);else fora.add(a.resp)});
-  const AV=QX.avisos||{};const gs=Object.values(por);
-  const pl=todas.length?qxMailPlano(k,nc,todas):null;if(pl)QX.planoTxt=pl.texto;
-  if(!gs.length&&!fora.size&&!(pl&&pl.para.length))return "";
-  const btTodos=pl&&pl.para.length?`<a class="ntx-btn primary small qxp-ol" href="${esc(pl.href)}" data-qxplano="1" title="${esc("Plano de ação completo (problema, causa raiz e todas as ações)\nPara: "+pl.para.join("; ")+(pl.cc.length?"\nCc: "+pl.cc.join("; "):"")+(pl.longo?"\n\nO texto completo é copiado ao clicar: cole no corpo do e-mail.":""))}">✉ Todos · plano completo (${todas.length} ${todas.length===1?"ação":"ações"})</a><button type="button" class="ntx-btn small ghost" data-qxplanocp="1" title="Copia o texto do plano completo">Copiar plano</button>`:"";
-  return `<div class="qxp-lote"><div class="qxp-lote-h"><b>Avisar responsáveis</b><span class="hint">Um e-mail por pessoa com as ações e prazos dela (gerência em cópia), ou um e-mail para todos com o plano de ação completo.</span></div><div class="qxp-lote-b">${btTodos}${gs.map(({p,xs})=>{const ch=xs.map(a=>qxChaveAcao(k,nc.id,a));const ok=ch.every(c=>(AV[c]||{}).avisado);const semPrazo=xs.some(a=>!a.prazo);
-    return `<a class="ntx-btn small qxp-ol ${ok?"ghost":""}" href="${esc(qxMailLote(k,nc,p,xs))}" data-qxav8dl="${esc(ch.join(","))}" title="${esc(xs.map(a=>"• "+a.acao+(a.prazo?" ("+fdate(a.prazo)+")":" (sem prazo)")).join("\n"))}">✉ ${esc(p.nome.split(" ")[0])} · ${xs.length} ${xs.length===1?"ação":"ações"}${ok?" · avisado":""}${semPrazo?" · ⚠ sem prazo":""}</a>`}).join("")}
-   ${[...fora].map(r=>`<button type="button" class="ntx-btn small" data-qxpnova="${esc(String(r).replace(/\([^)]*\)/g,"").trim())}">Cadastrar “${esc(r)}”</button>`).join("")}</div>${pl&&pl.semEmail.length?`<div class="hint" style="margin-top:6px">Fora do e-mail para todos (sem e-mail no cadastro): ${esc(pl.semEmail.join(", "))}</div>`:""}</div>`}
-document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-qxplano],[data-qxplanocp]");if(!b||!QX.planoTxt)return;
-  try{navigator.clipboard.writeText(QX.planoTxt.replace(/^Assunto:[^\n]*\n\n/,""));if(b.matches("[data-qxplanocp]"))b.textContent="Texto copiado ✓"}catch(err){}});
+  if(longo)href=qxMailto(P,C,assunto,"Olá a todos,\n\n(Cole aqui o plano de ação: o texto já foi copiado pelo painel.)\n\nAtt;");
+  const chaves=abertas.filter(a=>a.resp).map(a=>qxChaveAcao(k,nc.id,a));
+  return {href,assunto,corpo,html,texto:`Assunto: ${assunto}\n\n${corpo}`,para:[...para],cc:[...cc],semEmail:[...semEmail],longo,chaves,nome:`Plano de ação 8D ${rnc?"RNC "+rnc.replace(/\//g,"-")+" ":""}NC ${nc.ncNumber||""}.eml`.replace(/[\\:*?"<>|]/g,"")}}
+function qxPlanoEml(pl){const bd="----=_8D_"+Date.now().toString(36);
+  const eml=["X-Unsent: 1","MIME-Version: 1.0",`To: ${pl.para.join(", ")}`,...(pl.cc.length?[`Cc: ${pl.cc.join(", ")}`]:[]),`Subject: ${moHdr(pl.assunto)}`,
+    `Content-Type: multipart/alternative; boundary="${bd}"`,"",`--${bd}`,"Content-Type: text/plain; charset=UTF-8","Content-Transfer-Encoding: base64","",moLinhas(moUtf(pl.corpo)),
+    `--${bd}`,"Content-Type: text/html; charset=UTF-8","Content-Transfer-Encoding: base64","",moLinhas(moUtf(`<html><head><meta charset="utf-8"></head><body>${pl.html}</body></html>`)),`--${bd}--`,""].join("\r\n");
+  return new Blob([eml],{type:"message/rfc822"})}
+function qxAvisoLoteHtml(k,nc,acoes){const todas=(acoes||[]).filter(a=>a&&a.acao);if(!todas.length)return "";
+  const pl=qxMailPlano(k,nc,todas);QX.plano=pl;QX.planoTxt=pl.texto;
+  const AV=QX.avisos||{};const ok=pl.chaves.length&&pl.chaves.every(c=>(AV[c]||{}).avisado);
+  const sem=pl.semEmail.map(r=>`<button type="button" class="ntx-btn small" data-qxpnova="${esc(String(r).replace(/\([^)]*\)/g,"").trim())}">Cadastrar “${esc(r)}”</button>`).join("");
+  const dest=esc("Para: "+(pl.para.join("; ")||"ninguém com e-mail")+(pl.cc.length?"\nCc: "+pl.cc.join("; "):""));
+  const bt=pl.para.length?`<button type="button" class="ntx-btn primary small" data-qxplanoeml="1" title="${dest}\n\nBaixa o e-mail formatado (tabela). Clique no arquivo baixado: abre no Outlook pronto para enviar.">✉ Enviar plano completo (${todas.length} ${todas.length===1?"ação":"ações"})${ok?" · avisado":""}</button><a class="ntx-btn small ghost qxp-ol" href="${esc(pl.href)}" data-qxplano="1" title="${dest}\n\nAbre o e-mail padrão em texto simples${pl.longo?"; o texto é copiado ao clicar, cole no corpo":""}.">Texto simples</a><button type="button" class="ntx-btn small ghost" data-qxplanocp="1" title="Copia o texto do plano completo">Copiar plano</button>`:`<span class="hint">Nenhum responsável com e-mail no cadastro.</span>`;
+  return `<div class="qxp-lote"><div class="qxp-lote-h"><b>Avisar responsáveis</b><span class="hint">Um e-mail para todos com o plano de ação completo: responsáveis em Para, gerências e equipe do 8D em cópia.</span></div><div class="qxp-lote-b">${bt}${sem}</div>${pl.semEmail.length?`<div class="hint" style="margin-top:6px">Fora do e-mail (sem e-mail no cadastro): ${esc(pl.semEmail.join(", "))}</div>`:""}</div>`}
+document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-qxplano],[data-qxplanocp],[data-qxplanoeml]");if(!b||!QX.plano)return;const pl=QX.plano;
+  if(b.matches("[data-qxplanoeml]")){try{moBaixar(qxPlanoEml(pl),pl.nome);toast("E-mail baixado. Clique nele na barra de downloads: abre no Outlook com o plano formatado. É só revisar e enviar.",8000)}catch(err){console.error(err);toast("Não consegui montar o e-mail. Use 'Texto simples'.");return}}
+  else{try{navigator.clipboard.writeText(pl.corpo);if(b.matches("[data-qxplanocp]"))b.textContent="Texto copiado ✓"}catch(err){}}
+  if(!b.matches("[data-qxplanocp]")){pl.chaves.forEach(c=>qxLogAviso(c,"avisado"));setTimeout(qxAviso8DAtualiza,400)}});
 /* e-mail de cobrança: gerência + pessoa em cópia, com todas as ações vencidas dela */
 function qxMailCobranca(p,itens){const g=qxGerencia(p);const linhas=itens.map((x,i)=>`${i+1}. NC ${x.r.ncNumber||"—"} (${qxCli(x.k).nome}${x.r.piece?" · "+x.r.piece:""}) – ${x.a.acao} – prazo ${fdate(x.a.prazo)} (${qxDiasAtraso(x.a.prazo)} dia${qxDiasAtraso(x.a.prazo)===1?"":"s"} de atraso)`).join("\n");
   const corpo=`Olá, ${p.nome.split(" ")[0]}${g.nome?" e "+g.nome.split(" ")[0]:""},
