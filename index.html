@@ -3587,6 +3587,9 @@ select.crfase[data-f=fim]{background:var(--cr-ok-s);color:var(--cr-ok);border-co
 #moRoot .mo-acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}#moRoot .mo-acts .hint{flex-basis:100%;margin:2px 0 0}
 #moRoot .mo-env{background:#ffcd11!important;color:#111!important;border-color:#ffcd11!important}
 @media (max-width:560px){#moRoot .mo-g2{grid-template-columns:1fr}}
+#moRoot .mo-drop{display:flex;flex-direction:column;gap:4px;border:2px dashed #4a5768;border-radius:12px;padding:18px;text-align:center;cursor:pointer;margin-bottom:8px}
+#moRoot .mo-drop input{position:absolute;width:1px;height:1px;opacity:0}
+#moRoot .mo-drop.over,#moRoot .mo-drop:hover{border-color:#ffcd11;background:rgba(255,205,17,.06)}#moRoot .mo-drop.pede{border-color:#f07a6c}
 </style>
 </head>
 <body>
@@ -17958,12 +17961,19 @@ let crQT;document.addEventListener("input",e=>{if(e.target.matches("[data-crq]")
 
 /* =====================================================================
    M.O. (Ordem de Missão TRIGO) — alertas de qualidade John Deere
-   Gera a MO no modelo da Trigo (mo_base.pdf, publicado junto do site) com o cabeçalho da Débora,
-   os dados da NC e assinatura eletrônica. Status em nc_mo_<t>/<ncId>; padrões em mo_cfg/padrao.
-   O envio é sempre pela Débora: o botão abre o e-mail original no Outlook e copia o texto da resposta.
+   Usa o PDF ORIGINAL da MO enviado pela Trigo no e-mail, sem alterar nada dele: só escreve o cabeçalho
+   do cliente (dados fixos da Débora) nos campos vazios, a assinatura eletrônica e a data.
+   Status em nc_mo_<t>/<ncId>; padrões em mo_cfg/padrao. O envio é sempre pela Débora (Outlook do PC).
    ===================================================================== */
-const MO_TIPOS=["INSPEÇÃO - inspeção preventiva (entrada, firewall, linha, final ...)","EVENTO DE REATIVIDADE - Contenção de Estoque","EVENTO DE REATIVIDADE - Contenção de Estoque - Preço Peça","EVENTO DE REATIVIDADE - Notificação sem Contenção de Estoque","INSPEÇÃO - triagem corretiva e retrabalho/contenção básica","METROLOGIA E SERVIÇOS DE TECNOLOGIA - medição 3D, rastreadores de lazer, calibração, testes não destrutivos/destrutivos, análise de raios-x ...","REWORK TÉCNICO - atualização de software, reflash"];
-const MO_PAD={tipo:MO_TIPOS[0],qtd:"",vCont:"9,89",vEv:"756,25",assinante:"DEBORA CRISTINA TAVARES RODRIGUES",cargo:"Qualidade"};
+const MO_PAD={assinante:"DEBORA CRISTINA TAVARES RODRIGUES",cargo:"Qualidade",sigNome:"Débora Rodrigues"};
+/* destinatários padrão dos alertas Trigo Catalão (mesma lista do Responder a todos) */
+const MO_PARA=["ailen@magius.com.br","elisangela@magius.com.br","danilo.moreira@magius.com.br","christopher.borges@magius.com.br"];
+const MO_CC=["maruzan.marques@trigo-group.com","christian.nunes@trigo-group.com","gabriele.melo@trigo-group.com","thais.caldeira@trigo-group.com","fabio.moura@trigo-group.com","dayane.mesquita@trigo-group.com","edson.santos@trigo-group.com","SilvaAnaCeliaP@JohnDeere.com","DomingosBarbaraHelenaS@JohnDeere.com","BrazilWarranty@JohnDeere.com","CardosoDenerdosSantos@JohnDeere.com","VianaGabriel2@JohnDeere.com","LourencoGideoneS@JohnDeere.com","SilvaJorgeLuisda@JohnDeere.com","SilvaLaraK@JohnDeere.com","ArrudaLeonardoP@JohnDeere.com","AssisRickson@JohnDeere.com","AlexandrePasottiRicardo@JohnDeere.com","SilvaRodrigoJ@JohnDeere.com","MeirelesSebastiaoPaulo@JohnDeere.com","LeaoWagnerA@JohnDeere.com","FonsecaRodriguesYago@JohnDeere.com","melolucianav@johndeere.com","pereirabeatrizm@johndeere.com","SilvaCristianoL@JohnDeere.com","DiasMuriloNeiltonS@JohnDeere.com","FerreiraAnadieleM@JohnDeere.com","paivabrunoT@JohnDeere.com","tiago.guedes@trigo-group.com","karina.souza@trigo-group.com","RosaPedroC@JohnDeere.com","sergio.campos@trigo-group.com","OliveiraLauraX@JohnDeere.com","OliveiraRodrigoC@JohnDeere.com","SilvaMatheusFranciscoC2@JohnDeere.com","beatriz.neto@trigo-group.com","maer.silva@trigo-group.com","phelype.silva@trigo-group.com","limiriomartinspamella@johndeere.com"];
+function moMailto(r){const q=r.qnote||{};const de=(q.emailDe||"lucas.borges@trigo-group.com").toLowerCase();
+  const para=[...new Set([de,...(q.emailPara||MO_PARA)].map(x=>x.toLowerCase()))].filter(x=>x!=="debora.cristina@magius.com.br");
+  const cc=[...new Set((q.emailCc||MO_CC).map(x=>x.toLowerCase()))].filter(x=>!para.includes(x)&&x!=="debora.cristina@magius.com.br");
+  const assunto="RE: "+String(q.emailAssunto||`ALERTA DE QUALIDADE - 328709 - MAGIUS METALURGICA - ${r.piece||""} - ${r.ncNumber||""}`).replace(/^(RE|RES|ENC|FW|FWD):\s*/i,"");
+  const e=encodeURIComponent;return `mailto:${para.join(";")}?cc=${cc.join(";")}&subject=${e(assunto)}&body=${e(MO_TXT+"\n\n")}`}
 const MO_TXT="Bom dia,\n\nSegue MO assinada.\n\nAtt;";
 QX.mo={};QX.moCfg=null;
 function qxMoAplica(r){if(!r||!r.qnote)return false;const t=(JSON.stringify(r.qnote)+" "+(r.customer||"")).toLowerCase();return /trigo|alerta de qualidade/.test(t)||/catal/.test(t)}
@@ -17974,105 +17984,94 @@ async function qxMoCarregar(k,force){if(!force&&QX.mo[k])return QX.mo[k];const m
 function qxMoCards(k){const g=document.getElementById("ncCardsGrid");if(!g||!fdb)return;
   if(!QX.mo[k]){qxMoCarregar(k).then(()=>qxMoCards(k));return}
   g.querySelectorAll(".nc-card[data-nc-id]").forEach(card=>{const tg=card.querySelector(".qxc-tg");if(!tg)return;const r=(ncCache[k]||[]).find(x=>x.id===card.dataset.ncId);
-    let b=tg.querySelector(".qxc-mo");if(!qxMoAplica(r)||(r.d8Finalizado&&!QX.mo[k][r.id])){if(b)b.remove();return}
+    let b=tg.querySelector(".qxc-mo");if(!qxMoAplica(r)||r.naoProcedente||(r.d8Finalizado&&!QX.mo[k][r.id])){if(b)b.remove();return}
     if(!b){b=document.createElement("button");b.type="button";b.className="qxc-mo";b.textContent="MO";b.dataset.qxmo=r.id;tg.appendChild(b)}
     const st=(QX.mo[k][r.id]||{}).status||"";b.classList.toggle("gerada",st==="gerada");b.classList.toggle("enviada",st==="enviada");
     b.title=st==="enviada"?"MO assinada enviada":st==="gerada"?"MO gerada, falta responder o e-mail":"Gerar MO assinada"})}
 function moRoot(){let r=document.getElementById("moRoot");if(!r){r=document.createElement("div");r.id="moRoot";r.className="ntx";document.body.appendChild(r)}return r}
 function moBr(iso){const s=String(iso||"").slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(s)?s.split("-").reverse().join("/"):s}
-function moRazao(d){d=String(d||"").replace(/\s+/g," ").trim();const p=d.split(/(?<=\.)\s/)[0];return (p.length>8?p:d).slice(0,160)}
-function moDefaults(k,r){const c=QX.moCfg||MO_PAD,q=r.qnote||{};
-  return {tipo:c.tipo,data:moBr(r.date||isoToday()),hora:"",nomePeca:q.nomePeca||"",numPeca:r.piece||"",razao:moRazao(r.description),fim:"",descOp:"",
-    qtd:c.qtd||"",vCont:c.vCont,vEv:c.vEv,total:"",host:false,forn:false,assinar:true,assinante:c.assinante,cargo:c.cargo}}
-function moNum(s){const v=parseFloat(String(s||"").replace(/[^\d,.-]/g,"").replace(/\.(?=\d{3}(\D|$))/g,"").replace(",","."));return isFinite(v)?v:0}
-function moBRL(v){return v.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}
-function moAbrir(id){const k=site().current(),r=(ncCache[k]||[]).find(x=>x.id===id);if(!r)return;const D=QX.mo[k]&&QX.mo[k][id]||{};const v={...moDefaults(k,r),...(D.campos||{})};
-  const q=r.qnote||{},F=(r.photos||[]).filter(Boolean);
-  const inp=(id,lb,val,extra)=>`<div class="f"><label for="mo_${id}">${lb}</label><input id="mo_${id}" value="${esc(val||"")}" ${extra||""}></div>`;
+/* cabeçalho do cliente: rótulo do formulário Trigo -> valor (só preenche se o campo estiver vazio) */
+const MO_CAB=[["Sr/Sra","DEBORA CRISTINA","esq"],["Cargo","QUALIDADE","esq"],["email","debora.cristina@magius.com.br","esq"],["Tel","5541 9785-1441","esq"],
+  ["Empresa","Magius Metalúrgica Industrial","dir"],["Endereço","R. David Campista, 1385","dir"],["CNPJ","81.312.894/0001-57","dir"],
+  ["Destinatário da fatura","debora.cristina@magius.com.br / sac@magius.com.br","dir"],["Email/endereço para","sac@magius.com.br","dir"],["faturamento","debora.cristina@magius.com.br","dir"]];
+QX.moArq={};
+function moAbrir(id){const k=site().current(),r=(ncCache[k]||[]).find(x=>x.id===id);if(!r)return;const D=QX.mo[k]&&QX.mo[k][id]||{};const c=QX.moCfg||MO_PAD;
+  const q=r.qnote||{},F=(r.photos||[]).filter(Boolean),A=QX.moArq[id];
+  const inp=(i,lb,val)=>`<div class="f"><label for="mo_${i}">${lb}</label><input id="mo_${i}" value="${esc(val||"")}"></div>`;
   moRoot().innerHTML=`<div class="scrim" data-mox></div><aside class="drawer mo-dw" role="dialog" aria-modal="true" aria-label="Ordem de Missão"><div class="dhead"><div><div class="eyebrow">${esc(r.customer||"")} · ${esc(r.ncNumber||"")}${r.rncNumber?" · "+esc(r.rncNumber):""}</div><h2>M.O. Trigo · ${esc(r.piece||"")}</h2>
-    <div>${D.status==="enviada"?`<span class="qx-tag ok">Enviada ${D.enviadaEm?fdate(D.enviadaEm):""}</span>`:D.status==="gerada"?`<span class="qx-tag warn">Gerada ${D.geradaEm?fdate(D.geradaEm):""} · falta responder</span>`:`<span class="qx-tag">Pendente</span>`}</div></div><button type="button" class="ntx-btn small" data-mox>Fechar</button></div>
+    <div>${D.status==="enviada"?`<span class="qx-tag ok">Enviada ${D.enviadaEm?fdate(D.enviadaEm):""}</span>`:D.status==="gerada"?`<span class="qx-tag warn">Assinada ${D.geradaEm?fdate(D.geradaEm):""} · falta enviar</span>`:`<span class="qx-tag">Pendente</span>`}</div></div><button type="button" class="ntx-btn small" data-mox>Fechar</button></div>
    <div class="dbody">
     <section class="sec cr-ini">${F.length?`<a class="cr-foto" href="${esc(F[0])}" target="_blank" rel="noopener"><img src="${esc(F[0])}" alt="Foto da NC" loading="lazy"></a>`:`<div class="cr-foto vazio">sem foto</div>`}
      <div class="cr-ini-d"><div class="cr-meta"><div><span>Nº NC</span><b class="mono">${esc(r.ncNumber||"—")}</b></div><div><span>Abertura</span><b>${moBr(r.date)}</b></div><div><span>Contato</span>${esc(q.contato||"—")}</div><div><span>Qtd. NOK</span>${esc(r.qty??"—")}</div></div>${q.disposicao?`<p class="cr-desc">${esc(q.disposicao)}</p>`:""}</div></section>
-    <section class="sec"><h3>Cabeçalho (fixo)</h3><p class="hint mo-cab">DEBORA CRISTINA · QUALIDADE · Magius Metalúrgica Industrial · R. David Campista, 1385 · CNPJ 81.312.894/0001-57 · 5541 9785-1441 · debora.cristina@magius.com.br · faturamento sac@magius.com.br · Local Catalão - GO · John Deere - Catalão</p></section>
-    <section class="sec"><h3>Missão</h3>
-     <div class="f"><label for="mo_tipo">Tipo de missão</label><input id="mo_tipo" list="moTiposDL" value="${esc(v.tipo)}"><datalist id="moTiposDL">${MO_TIPOS.map(t=>`<option value="${esc(t)}">`).join("")}</datalist></div>
-     <div class="mo-g2">${inp("nomePeca","Nome da peça",v.nomePeca)}${inp("numPeca","Número da peça",v.numPeca)}</div>
-     ${inp("razao","Razão",v.razao,'maxlength="200"')}
-     <div class="mo-g2">${inp("data","Data de início",v.data,'placeholder="dd/mm/aaaa"')}${inp("hora","Hora de início",v.hora,'placeholder="opcional"')}</div>
-     ${inp("fim","Fim da missão (quantidade, data, forma de entrega...)",v.fim,'placeholder="opcional"')}
-     ${inp("descOp","Descrição da operação",v.descOp,'placeholder="opcional"')}
-     <div class="mo-ck"><label><input type="checkbox" id="mo_host" ${v.host?"checked":""}> Host</label><label><input type="checkbox" id="mo_forn" ${v.forn?"checked":""}> Fornecedor</label></div></section>
-    <section class="sec"><h3>Valores da Trigo <span class="hint">confira com o e-mail deles</span></h3>
-     <div class="mo-g2">${inp("qtd","Peças a inspecionar",v.qtd,'inputmode="numeric"')}${inp("vCont","Valor da contenção (R$/peça)",v.vCont)}</div>
-     <div class="mo-g2">${inp("vEv","Evento da reatividade (R$)",v.vEv)}${inp("total","Total geral (R$)",v.total,'placeholder="calculado se vazio"')}</div>
-     <p class="hint" id="moTotHint"></p></section>
-    <section class="sec"><h3>Assinatura</h3>
-     <div class="mo-ck"><label><input type="checkbox" id="mo_assinar" ${v.assinar!==false?"checked":""}> Assinar eletronicamente ao gerar</label></div>
-     <div class="mo-g2">${inp("assinante","Nome de quem assina",v.assinante)}${inp("cargo","Cargo",v.cargo)}</div>
-     <p class="hint">A assinatura sai como bloco "Assinado eletronicamente por", com data e hora. A Trigo aceita assinatura a punho ou eletrônica. Se preferir a assinatura gov.br, desmarque e assine o PDF no assinador.iti.br.</p></section>
+    <section class="sec"><h3>1. MO original da Trigo</h3>
+     <label class="mo-drop" for="mo_arq"><input type="file" id="mo_arq" accept="application/pdf,.pdf" data-moarq="${esc(id)}"><b>${A?esc(A.nome):"Arraste aqui o PDF da MO que veio no e-mail"}</b><span class="hint">${A?"Arquivo carregado. Clique para trocar.":"ou clique para escolher. É o arquivo \"M.O - ... .pdf\" anexado pela Trigo."}</span></label>
+     ${q.emailLink?`<a class="ntx-btn small ghost" href="${esc(q.emailLink)}" target="_blank" rel="noopener">Abrir e-mail da Trigo para baixar a MO</a>`:""}
+     <p class="hint">Nada do documento da Trigo é alterado. Entram só os campos do cliente que estiverem vazios: ${MO_CAB.map(x=>x[0]).join(", ")}, mais a assinatura e a data.</p></section>
+    <section class="sec"><h3>2. Assinatura</h3>
+     <div class="mo-g2">${inp("sigNome","Assinatura (letra cursiva)",c.sigNome||MO_PAD.sigNome)}${inp("cargo","Cargo",c.cargo)}</div>${inp("assinante","Nome completo",c.assinante)}</section>
     <section class="sec mo-acts">
-     <button type="button" class="ntx-btn" data-mogerar="${esc(id)}">Gerar MO assinada (PDF)</button>
-     ${D.pdfUrl?`<a class="ntx-btn small ghost" href="${esc(D.pdfUrl)}" target="_blank" rel="noopener">Abrir última MO gerada</a>`:""}
-     ${q.emailLink?`<button type="button" class="ntx-btn mo-env" data-moresp="${esc(id)}">Enviar MO assinada</button>`:`<p class="hint">Esta NC não tem o link do e-mail original da Trigo.</p>`}
+     <button type="button" class="ntx-btn" data-mogerar="${esc(id)}">Assinar e baixar PDF</button>
+     <button type="button" class="ntx-btn mo-env" data-moresp="${esc(id)}">Enviar MO assinada</button>
+     ${D.pdfUrl?`<a class="ntx-btn small ghost" href="${esc(D.pdfUrl)}" target="_blank" rel="noopener">Abrir última MO assinada</a>`:""}
      ${D.status!=="enviada"?`<button type="button" class="ntx-btn small ghost" data-moenv="${esc(id)}">Já enviei: marcar como enviada</button>`:""}
-     <p class="hint">"Enviar MO assinada" baixa o PDF (se ainda não baixou), copia o texto "Bom dia, Segue MO assinada. Att;" e abre o e-mail original no Outlook. Lá é só Responder a todos, colar, anexar o PDF e enviar.</p></section>
-   </div></aside>`;
-  moTot()}
-function moLer(){const g=i=>{const e=document.getElementById("mo_"+i);return e?(e.type==="checkbox"?e.checked:e.value.trim()):""};
-  return {tipo:g("tipo"),nomePeca:g("nomePeca"),numPeca:g("numPeca"),razao:g("razao"),data:g("data"),hora:g("hora"),fim:g("fim"),descOp:g("descOp"),host:g("host"),forn:g("forn"),
-    qtd:g("qtd"),vCont:g("vCont"),vEv:g("vEv"),total:g("total"),assinar:g("assinar"),assinante:g("assinante"),cargo:g("cargo")}}
-function moTotal(v){if(v.total)return moNum(v.total);const q=moNum(v.qtd),c=moNum(v.vCont),e=moNum(v.vEv);return q*c+e}
-function moTot(){const h=document.getElementById("moTotHint");if(!h)return;const v=moLer();h.textContent=v.total?"":`Total calculado: R$ ${moBRL(moTotal(v))} (peças × contenção + evento).`}
-async function moPdf(k,r,v){await carregarScriptUma("https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js",()=>!!window.PDFLib);
-  const {PDFDocument,StandardFonts,rgb}=PDFLib;const base=await fetch("mo_base.pdf",{cache:"no-cache"});if(!base.ok)throw new Error("modelo");
-  const doc=await PDFDocument.load(await base.arrayBuffer());const pg=doc.getPage(0),H=pg.getHeight();
-  const f=await doc.embedFont(StandardFonts.Helvetica),fb=await doc.embedFont(StandardFonts.HelveticaBold),fs=await doc.embedFont(StandardFonts.TimesRomanBoldItalic);
-  const W1252=/[^\x20-\x7E -ÿ–—‘’“”•…€]/g;
-  const tx=(s,x,bot,o={})=>{s=String(s||"").replace(/\s+/g," ").replace(W1252,"").trim();if(!s)return;const fo=o.font||f;let sz=o.size||6.6;const mw=o.w||400;
-    while(sz>4.6&&fo.widthOfTextAtSize(s,sz)>mw)sz-=.2;while(s.length>3&&fo.widthOfTextAtSize(s,sz)>mw)s=s.slice(0,-2).trim()+"…";
-    pg.drawText(s,{x,y:H-bot+1.6,size:sz,font:fo,color:o.c||rgb(0,0,0)})};
-  tx(v.tipo,74.1,137.3,{w:405});tx(v.data,674,137.3,{w:95});tx(v.nomePeca,74.1,154.4,{w:128});tx(v.numPeca,259.9,154.4,{w:160});tx(v.hora,674,154.4,{w:95});
-  tx(v.razao,74.1,171.1,{w:355});tx(v.fim,478,171.1,{w:290});tx(v.descOp,250,193.3,{w:520});
-  const X=(x,top)=>{pg.drawText("X",{x:x+1.6,y:H-top-7.4,size:7,font:fb})};if(v.host)X(491.5,125.5);if(v.forn)X(525.5,125.5);
-  const q=moNum(v.qtd);tx(`Quantidade de peças a serem inspecionadas:   ${q?q.toLocaleString("pt-BR")+" PEÇAS":"—"}`,528.1,374.1,{font:fb,size:7.1,w:240});
-  tx(`VALOR DA CONTENÇÃO: R$ ${moBRL(moNum(v.vCont))} BRL`,528.1,383.3,{font:fb,size:7.1,w:240});
-  tx(`VALOR DO EVENTO DA REATIVIDADE: R$ ${moBRL(moNum(v.vEv))} BRL`,528.1,392.6,{font:fb,size:7.1,w:240});
-  tx(`TOTAL GERAL: R$ ${moBRL(moTotal(v))} BRL`,528.1,401.8,{font:fb,size:7.1,w:240});
-  const agora=new Date(),dh=agora.toLocaleString("pt-BR",{timeZone:"America/Sao_Paulo",day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}).replace(",","");
-  tx(dh.slice(0,10),563.5,520.7,{size:7.1,w:60});
-  if(v.assinar){const azul=rgb(.07,.2,.45),cinza=rgb(.25,.25,.25);
-    tx(v.assinante.split(" ").filter(Boolean).slice(0,2).map(p=>p[0]+p.slice(1).toLowerCase()).join(" "),600,487,{font:fs,size:13,w:155,c:azul});
-    tx(`Assinado eletronicamente por ${v.assinante}`,600,494.5,{size:5.4,w:158,c:cinza});
-    tx(`${v.cargo} · Magius Metalúrgica Industrial · CNPJ 81.312.894/0001-57`,600,501.5,{size:5.4,w:158,c:cinza});
-    tx(`${dh} (Brasília) · NC ${r.ncNumber||""} · ${v.numPeca}`,600,508.5,{size:5.4,w:158,c:cinza})}
-  doc.setTitle(`M.O ${v.numPeca} - ${r.ncNumber||""} assinado`);doc.setAuthor(v.assinante);doc.setCreator("SPI Magius");
-  return new Blob([await doc.save()],{type:"application/pdf"})}
-function moNome(r,v){return `M.O CONTENCAO REATIVIDADE ${String(v.numPeca||r.piece||"").replace(/[^\w.-]+/g,"")} - ${r.ncNumber||""} assinado.pdf`}
+     <p class="hint">"Enviar MO assinada" assina e baixa o PDF e abre no Outlook do seu PC a resposta para a Trigo: assunto RE: do alerta, os mesmos destinatários e cópias do Responder a todos e o texto "Bom dia, Segue MO assinada. Att;". Falta só anexar o PDF da pasta Downloads e clicar em Enviar.</p></section>
+   </div></aside>`}
+function moLer(){const g=i=>{const e=document.getElementById("mo_"+i);return e?e.value.trim():""};return {assinante:g("assinante"),cargo:g("cargo"),sigNome:g("sigNome")}}
+async function moItens(bytes){await carregarScriptUma("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js",()=>!!window.pdfjsLib);
+  pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  const d=await pdfjsLib.getDocument({data:bytes.slice(0)}).promise;const pg=await d.getPage(1);const tc=await pg.getTextContent();
+  return tc.items.filter(i=>i.str&&i.str.trim()).map(i=>({t:i.str.trim(),x:i.transform[4],y:i.transform[5],w:i.width,s:Math.abs(i.transform[3])||7}))}
+async function moPdf(r,v,bytes){await carregarScriptUma("https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js",()=>!!window.PDFLib);
+  const {PDFDocument,StandardFonts,rgb}=PDFLib;const I=await moItens(bytes);
+  const doc=await PDFDocument.load(bytes,{ignoreEncryption:true});const pg=doc.getPage(0);
+  const f=await doc.embedFont(StandardFonts.Helvetica),fs=await doc.embedFont(StandardFonts.TimesRomanBoldItalic);
+  const W1252=/[^\x20-\x7E -ÿ–—‘’“”•…€]/g,preto=rgb(0,0,0);
+  const tx=(s,x,y,o={})=>{s=String(s||"").replace(/\s+/g," ").replace(W1252,"").trim();if(!s)return;const fo=o.font||f;let sz=o.size||6.6;const mw=o.w||400;
+    while(sz>4.6&&fo.widthOfTextAtSize(s,sz)>mw)sz-=.2;if(o.center)x-=fo.widthOfTextAtSize(s,sz)/2;pg.drawText(s,{x,y,size:sz,font:fo,color:preto})};
+  const acha=t=>I.filter(i=>i.t===t||i.t.replace(/\s+/g," ")===t).sort((a,b)=>b.y-a.y)[0];
+  const lab=new Set(I.map(i=>i.t));const tipo=acha("Tipo de missão"),vTipo=tipo&&I.find(i=>Math.abs(i.y-tipo.y)<2&&i.x>tipo.x+tipo.w+2&&i.x<tipo.x+90);
+  const colEsq=vTipo?vTipo.x:null;const feitos=[],faltou=[];
+  for(const [rot,val,lado] of MO_CAB){const L=acha(rot);if(!L){faltou.push(rot);continue}
+    const x=lado==="esq"?(colEsq||L.x+48.5):L.x+L.w+3,y=L.y;
+    const ocupado=I.some(i=>i!==L&&Math.abs(i.y-y)<2.5&&i.x>=x-1&&i.x<x+40&&!/^(Empresa|Endereço|CNPJ|Setor de atividade|Destinatário da fatura|Email\/endereço para|Número do pedido|faturamento)$/.test(i.t));
+    if(ocupado)continue;tx(val,x,y,{size:Math.min(L.s,7.1)*.93,w:lado==="esq"?150:300});feitos.push(rot)}
+  const S=acha("Assinatura do cliente e carimbo da empresa");const agora=new Date();
+  const dh=agora.toLocaleString("pt-BR",{timeZone:"America/Sao_Paulo",day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}).replace(",","");
+  if(S){const cx=S.x+S.w/2,y=S.y,C={center:true};
+    tx(v.sigNome||MO_PAD.sigNome,cx,y-14.7,{...C,font:fs,size:13,w:170});
+    tx(`Assinado eletronicamente por ${v.assinante}`,cx,y-22.2,{...C,size:5.4,w:170});
+    tx(`${v.cargo} · Magius Metalúrgica Industrial · CNPJ 81.312.894/0001-57`,cx,y-29.2,{...C,size:5.4,w:170});
+    tx(`${dh} (Brasília) · NC ${r.ncNumber||""}`,cx,y-36.2,{...C,size:5.4,w:170})}else faltou.push("Assinatura");
+  const Dt=I.filter(i=>/^(Data|Encontro)\s*:?$/.test(i.t)||i.t==="Data :").sort((a,b)=>a.y-b.y)[0];
+  if(Dt&&!I.some(i=>Math.abs(i.y-Dt.y)<2.5&&i.x>Dt.x+Dt.w&&i.x<Dt.x+Dt.w+60))tx(dh.slice(0,10),Dt.x+Dt.w+3,Dt.y,{size:7,w:60});
+  return {blob:new Blob([await doc.save()],{type:"application/pdf"}),feitos,faltou}}
+function moNome(r){const n=(QX.moArq[r.id]&&QX.moArq[r.id].nome||`M.O ${r.piece||""} - ${r.ncNumber||""}.pdf`).replace(/\.pdf$/i,"");return n.replace(/[\\/:*?"<>|]+/g,"")+"_assinado.pdf"}
 function moBaixar(blob,nome){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=nome;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000)}
 async function moSalvar(k,id,patch){const m=await qxMoCarregar(k);const novo={...(m[id]||{}),...patch};try{await fdb.collection("nc_mo_"+k).doc(id).set(novo);m[id]=novo;return true}catch(e){toast("Não foi possível salvar o status da MO");return false}}
+async function moCarregarArq(id,file){if(!file||!/\.pdf$/i.test(file.name)&&file.type!=="application/pdf"){toast("Use o PDF da MO (se a Trigo mandou só o Excel, abra e salve como PDF).",6000);return}
+  QX.moArq[id]={nome:file.name,bytes:new Uint8Array(await file.arrayBuffer())};QX.moUlt=null;moAbrir(id)}
 QX.moUlt=null;
 async function moGerar(id,silencioso){const k=site().current(),r=(ncCache[k]||[]).find(x=>x.id===id);if(!r)return null;const v=moLer();
-  if(!v.numPeca||!v.tipo){toast("Preencha tipo de missão e número da peça");return null}
-  let blob;try{blob=await moPdf(k,r,v)}catch(e){console.error(e);toast("Não consegui montar o PDF. Verifique a internet e tente de novo.");return null}
-  const nome=moNome(r,v);moBaixar(blob,nome);QX.moUlt={id,blob,nome};
-  let url="";if(fst){try{const snap=await fst.ref(`nc_files/${k}/${id}/mo_assinada.pdf`).put(blob,{contentType:"application/pdf"});url=await snap.ref.getDownloadURL()}catch(e){}}
-  const D=(QX.mo[k]||{})[id]||{};await moSalvar(k,id,{campos:v,status:D.status==="enviada"?"enviada":"gerada",geradaEm:new Date().toISOString(),arquivo:nome,...(url?{pdfUrl:url}:{})});
-  QX.moCfg={...(QX.moCfg||MO_PAD),tipo:v.tipo,vCont:v.vCont,vEv:v.vEv,assinante:v.assinante,cargo:v.cargo};try{await fdb.collection("mo_cfg").doc("padrao").set(QX.moCfg)}catch(e){}
-  if(!silencioso)toast("MO gerada e baixada: "+nome,4000);qxMoCards(k);return nome}
-async function moResponder(id){const k=site().current(),r=(ncCache[k]||[]).find(x=>x.id===id);if(!r||!r.qnote||!r.qnote.emailLink)return;
-  const w=window.open(r.qnote.emailLink,"_blank");try{if(w)w.opener=null}catch(_){}
+  const A=QX.moArq[id];if(!A){toast("Primeiro coloque o PDF da MO que a Trigo mandou no e-mail.",5000);const d=document.querySelector("#moRoot .mo-drop");if(d)d.classList.add("pede");return null}
+  let o;try{o=await moPdf(r,v,A.bytes)}catch(e){console.error(e);toast("Não consegui ler esse PDF. Confira se é a MO da Trigo e tente de novo.",5000);return null}
+  const nome=moNome(r);moBaixar(o.blob,nome);QX.moUlt={id,nome};
+  const D=(QX.mo[k]||{})[id]||{};moSalvar(k,id,{status:D.status==="enviada"?"enviada":"gerada",geradaEm:new Date().toISOString(),arquivo:nome,original:A.nome,campos:o.feitos}).then(()=>qxMoCards(k));
+  if(fst)(async()=>{try{const snap=await fst.ref(`nc_files/${k}/${id}/mo_assinada.pdf`).put(o.blob,{contentType:"application/pdf"});const url=await snap.ref.getDownloadURL();moSalvar(k,id,{pdfUrl:url})}catch(e){}})();
+  QX.moCfg={...(QX.moCfg||MO_PAD),assinante:v.assinante,cargo:v.cargo,sigNome:v.sigNome};fdb.collection("mo_cfg").doc("padrao").set(QX.moCfg).catch(()=>{});
+  if(!silencioso)toast(o.faltou.length?`MO assinada e baixada. Não achei no formulário: ${o.faltou.join(", ")}. Confira o PDF.`:"MO assinada e baixada: "+nome,6000);qxMoCards(k);return nome}
+async function moResponder(id){const k=site().current(),r=(ncCache[k]||[]).find(x=>x.id===id);if(!r)return;
   if(!(QX.moUlt&&QX.moUlt.id===id)){const n=await moGerar(id,true);if(!n)return}
-  try{await navigator.clipboard.writeText(MO_TXT)}catch(e){}
-  if(!w)toast("O navegador bloqueou a janela do Outlook. Libere pop-ups para o site.",5000);
-  else toast("PDF baixado e texto copiado. No Outlook: Responder a todos, colar, anexar o PDF e enviar.",6000);
-  moAbrirAviso(id)}
+  const a=document.createElement("a");a.href=moMailto(r);document.body.appendChild(a);a.click();setTimeout(()=>a.remove(),1000);
+  toast("MO baixada e resposta aberta no Outlook do PC. Anexe o PDF da pasta Downloads e envie.",7000);moAbrirAviso(id)}
 function moAbrirAviso(id){const b=document.querySelector(`[data-moenv="${CSS.escape(id)}"]`);if(b){b.classList.remove("ghost");b.textContent="Enviei: marcar como enviada"}}
-document.addEventListener("input",e=>{if(e.target.closest("#moRoot .mo-dw")&&/^mo_(qtd|vCont|vEv|total)$/.test(e.target.id))moTot()});
+document.addEventListener("change",e=>{const t=e.target.closest("[data-moarq]");if(t&&t.files&&t.files[0])moCarregarArq(t.dataset.moarq,t.files[0])});
+document.addEventListener("dragover",e=>{const d=e.target.closest&&e.target.closest("#moRoot .mo-drop");if(d){e.preventDefault();d.classList.add("over")}});
+document.addEventListener("dragleave",e=>{const d=e.target.closest&&e.target.closest("#moRoot .mo-drop");if(d)d.classList.remove("over")});
+document.addEventListener("drop",e=>{const d=e.target.closest&&e.target.closest("#moRoot .mo-drop");if(!d)return;e.preventDefault();const i=d.querySelector("[data-moarq]");const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0];if(i&&f)moCarregarArq(i.dataset.moarq,f)});
 document.addEventListener("click",async e=>{const t=e.target.closest("[data-qxmo],[data-mox],[data-mogerar],[data-moresp],[data-moenv]");if(!t)return;
   if(t.matches("[data-qxmo]")){e.preventDefault();e.stopPropagation();const k=site().current();await qxMoCarregar(k);moAbrir(t.dataset.qxmo);return}
   if(t.matches("[data-mox]")){moRoot().innerHTML="";return}
-  if(t.matches("[data-mogerar]")){t.disabled=true;const old=t.textContent;t.textContent="Gerando…";await moGerar(t.dataset.mogerar);t.disabled=false;t.textContent=old;return}
+  if(t.matches("[data-mogerar]")){t.disabled=true;const old=t.textContent;t.textContent="Assinando…";await moGerar(t.dataset.mogerar);t.disabled=false;t.textContent=old;return}
   if(t.matches("[data-moresp]")){t.disabled=true;await moResponder(t.dataset.moresp);t.disabled=false;return}
   if(t.matches("[data-moenv]")){const k=site().current(),id=t.dataset.moenv;if(await moSalvar(k,id,{status:"enviada",enviadaEm:new Date().toISOString()})){toast("MO marcada como enviada");qxMoCards(k);moAbrir(id)}}},true);
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&document.querySelector("#moRoot .mo-dw"))moRoot().innerHTML=""});
