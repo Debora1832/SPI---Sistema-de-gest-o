@@ -17671,13 +17671,13 @@ function qxCcSempre(){return (QX.pessoas||[]).filter(p=>p.ccSempre&&p.email).map
 function qxPlanta8D(O){const t=JSON.stringify([O.d2||{},(O.d5&&O.d5.acoes)||[],(O.d3&&O.d3.escopo)||[]]).toLowerCase();return /\bmg\b|mgpress/.test(t)&&!/filial|matriz/.test(t)?"MG":/filial|\brb\b/.test(t)?"Filial":"Matriz"}
 /* supervisor de produção da planta e do processo do 8D (solda matriz, demais processos da filial etc.) */
 function qxSupervisores8D(O){const pl=qxPlanta8D(O);const proc=[(O.d2||{}).processo,(O.d2||{}).oque,(O.d4||{}).efeito,...(((O.d5||{}).acoes)||[]).map(a=>a.acao)].join(" ").toLowerCase();
-  const sup=(QX.pessoas||[]).filter(p=>p.email&&/supervis/i.test((p.cargo||"")+" "+(p.nivel||""))&&/produ/i.test((p.area||"")+" "+(p.cargo||""))&&(p.planta===pl||p.planta==="Todas"));
+  const sup=(QX.pessoas||[]).filter(p=>p.email&&/supervis|coorden/i.test((p.cargo||"")+" "+(p.nivel||""))&&/produ/i.test((p.area||"")+" "+(p.cargo||""))&&(p.planta===pl||p.planta==="Todas"));
   const PROC=["solda","pintura","laser","dobra","decapag","usinag","montag","jato","embalag"];
   const doProc=sup.filter(p=>PROC.some(w=>new RegExp(w,"i").test(p.area||"")&&proc.includes(w)));
   const gerais=sup.filter(p=>!PROC.some(w=>new RegExp(w,"i").test(p.area||"")));
   return {planta:pl,lista:(doProc.length?doProc:gerais)}}
-const QX_NIVEIS=[["gerente","Gerente"],["supervisor","Supervisor / Coordenador"],["analista","Analista / Engenheiro"],["demais","Demais"]];
-function qxNivel(p){if(!p)return "demais";if(p.nivel)return p.nivel;const c=qxNorm(p.cargo);return /gerente|gerencia|diretor/.test(c)?"gerente":/supervis|coorden|lider/.test(c)?"supervisor":/analista|engenheir|tecnic|especialista/.test(c)?"analista":"demais"}
+const QX_NIVEIS=[["gerente","Gerente"],["coordenador","Coordenador"],["supervisor","Supervisor"],["analista","Analista"],["assistente","Assistente"],["operador","Operador"]];
+function qxNivel(p){if(!p)return "operador";if(p.nivel&&QX_NIVEIS.some(n=>n[0]===p.nivel))return p.nivel;const c=qxNorm(p.cargo);return /gerente|gerencia|diretor/.test(c)?"gerente":/coorden/.test(c)?"coordenador":/supervis|lider/.test(c)?"supervisor":/analista|engenheir|tecnic|especialista/.test(c)?"analista":/assistente|auxiliar/.test(c)?"assistente":p.nivel==="supervisor"?"supervisor":p.nivel==="analista"?"analista":/eng|qualidade|pcp|logistic|\bti\b|mgpress|edp|processo|produto/.test(qxNorm(p.area))?"analista":"operador"}
 function qxGerencia(p){if(!p)return {nome:"",email:""};const g=p.gestorId&&(QX.pessoas||[]).find(x=>x.id===p.gestorId);
   return g?{nome:g.nome,email:g.email||""}:{nome:p.gestorNome||"",email:p.gestorEmail||""}}
 const qxChaveAcao=(k,ncId,a)=>{let h=0;const s=String(a.acao||"");for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return `${k}|${ncId}|${(h>>>0).toString(36)}`};
@@ -17816,10 +17816,10 @@ async function qxPessoasPg(host,D){
   const blocos=ger.map(g=>{const time=L.filter(p=>p.gestorId===g.id&&p.id!==g.id);return `<article class="qx-card qxh-g"><header><div class="qxh-av">${esc(g.nome.split(" ").map(w=>w[0]).slice(0,2).join(""))}</div><div><div class="qx-eye">Gerente${g.area?" · "+esc(g.area):""}</div><h3>${esc(g.nome)}</h3><span class="hint mono">${esc(g.email||"sem e-mail")}${g.cargo?" · "+esc(g.cargo):""}</span></div><span class="qxh-n">${time.length} pessoa${time.length===1?"":"s"}</span><button type="button" class="qx-btn sm ghost" data-qxped="${esc(g.id)}">Editar</button></header>
      ${time.length?niveis(time):`<p class="hint qxh-vazio">Ninguém ligado a esta gerência ainda.</p>`}</article>`}).join("");
   const sem=L.filter(p=>qxNivel(p)!=="gerente"&&!(p.gestorId&&ids.has(p.gestorId)));
-  host.innerHTML=qxHead("Cadastros","Pessoas","Organizado por gerência e nível. A gerência de cada pessoa vai em cópia nos avisos das ações e recebe a cobrança quando atrasa; as pendências ficam na página de cada cliente, na aba Plano de ações.",
+  host.innerHTML=qxHead("Cadastros","Pessoas","Organizado por gerência e cargo. A gerência de cada pessoa vai em cópia nos avisos das ações e recebe a cobrança quando atrasa; as pendências ficam na página de cada cliente, na aba Plano de ações.",
     `<button type="button" class="qx-btn" data-qxpnova>${svgI("novo")} Nova pessoa</button>`)+
    `<div class="qxh-resumo">${QX_NIVEIS.map(([n,l])=>`<span><b>${L.filter(p=>qxNivel(p)===n).length}</b> ${l}</span>`).join("")}<span><b>${L.length}</b> no total</span></div>`+
-   `<section class="qxh-grid">${blocos||`<div class="qx-vazio">Cadastre os gerentes primeiro (nível Gerente).</div>`}</section>`+
+   `<section class="qxh-grid">${blocos||`<div class="qx-vazio">Cadastre os gerentes primeiro (cargo Gerente).</div>`}</section>`+
    (sem.length?`<section class="qx-card qxh-g qxh-sem"><header><div class="qxh-av">?</div><div><div class="qx-eye">Sem gerência definida</div><h3>${sem.length} pessoa${sem.length===1?"":"s"}</h3><span class="hint">Edite e escolha a gerência: sem ela, a cobrança de atraso não tem para quem ir.</span></div></header>${niveis(sem)}</section>`:"")+
    (Object.keys(semCad).length?`<section class="qx-card qxp-sem"><header class="qxp-h"><div><h2>Responsáveis citados nas ações sem cadastro</h2><p class="hint">Nomes usados nas ações em aberto que não batem com ninguém do cadastro. Clique para cadastrar.</p></div></header>
      <div class="qxp-chips">${Object.entries(semCad).sort((a,b)=>b[1].length-a[1].length).map(([n,xs])=>`<button type="button" class="qxp-chip" data-qxpnova="${esc(n.replace(/\([^)]*\)/g,"").trim())}">${esc(n)} <b>${xs.length}</b></button>`).join("")}</div></section>`:"");
@@ -17885,9 +17885,9 @@ function qxPessoaForm(p,nomeIni){
   qxPRoot().innerHTML=`<div class="scrim" data-qxpx></div><aside class="drawer qxp-form" role="dialog" aria-modal="true" aria-label="Pessoa"><div class="dhead"><div><div class="eyebrow">Cadastro</div><h2>${p?"Editar":"Nova"} pessoa</h2></div><button type="button" class="ntx-btn small" data-qxpx>Fechar</button></div>
    <div class="dbody"><section class="sec"><h3>Pessoa</h3>
      <div class="f"><label for="qxp-nome">Nome (como vai aparecer no responsável da ação)</label><input id="qxp-nome" data-qp="nome" value="${e(x.nome)}"></div>
-     <div class="grid"><div class="f"><label for="qxp-cargo">Cargo</label><input id="qxp-cargo" data-qp="cargo" value="${e(x.cargo)}" placeholder="Ex.: Supervisor de Produção"></div><div class="f"><label for="qxp-area">Área</label><input id="qxp-area" data-qp="area" value="${e(x.area)}" list="qxAreasDL" placeholder="Ex.: Pintura"></div></div>
+     <div class="grid"><div class="f"><label for="qxp-cargo">Função</label><input id="qxp-cargo" data-qp="cargo" value="${e(x.cargo)}" placeholder="Ex.: Supervisor de Produção Matriz"></div><div class="f"><label for="qxp-area">Área</label><input id="qxp-area" data-qp="area" value="${e(x.area)}" list="qxAreasDL" placeholder="Ex.: Pintura"></div></div>
      <datalist id="qxAreasDL">${[...new Set((QX.pessoas||[]).map(o=>o.area).filter(Boolean))].map(a=>`<option value="${e(a)}">`).join("")}</datalist>
-     <div class="f"><label for="qxp-niv">Nível</label><select id="qxp-niv" data-qp="nivel">${QX_NIVEIS.map(([v,l])=>`<option value="${v}" ${x.nivel===v?"selected":""}>${l}</option>`).join("")}</select></div>
+     <div class="f"><label for="qxp-niv">Cargo</label><select id="qxp-niv" data-qp="nivel">${QX_NIVEIS.map(([v,l])=>`<option value="${v}" ${x.nivel===v?"selected":""}>${l}</option>`).join("")}</select></div>
      <div class="f"><label for="qxp-email">E-mail</label><input id="qxp-email" data-qp="email" type="email" class="mono" value="${e(x.email)}" placeholder="nome@magius.com.br"></div>
      <div class="grid"><div class="f"><label for="qxp-planta">Planta</label><select id="qxp-planta" data-qp="planta">${QX_PLANTAS.map(v=>`<option value="${v}" ${(x.planta||"")===v?"selected":""}>${v||"— não informada —"}</option>`).join("")}</select></div>
      <div class="f"><label class="qxp-ck"><input type="checkbox" data-qp="ccSempre" ${x.ccSempre?"checked":""}> Em cópia em todos os e-mails de ações</label><span class="hint">Ex.: supervisora da Qualidade.</span></div></div>
@@ -17895,7 +17895,7 @@ function qxPessoaForm(p,nomeIni){
     <section class="sec"><h3>Gerência</h3><p class="hint" style="margin:-6px 0 4px">Vai em cópia nos avisos e recebe a cobrança quando a ação atrasa.</p>
      <div class="f"><label for="qxp-ger">Gerente</label><select id="qxp-ger" data-qp="gestorId"><option value="">${outros.length?"— escolher o gerente —":"nenhum gerente cadastrado"}</option>${outros.map(o=>`<option value="${e(o.id)}" ${x.gestorId===o.id?"selected":""}>${e(o.nome)}${o.cargo?" · "+e(o.cargo):""}</option>`).join("")}</select></div>
      <div class="grid"><div class="f"><label for="qxp-gnome">ou nome da gerência</label><input id="qxp-gnome" data-qp="gestorNome" value="${e(x.gestorNome)}"></div><div class="f"><label for="qxp-gmail">e-mail da gerência</label><input id="qxp-gmail" data-qp="gestorEmail" type="email" class="mono" value="${e(x.gestorEmail)}"></div></div>
-     <p class="hint">A lista mostra só quem está cadastrado com nível Gerente. Os campos de baixo servem para um gerente que não está no cadastro.</p></section></div>
+     <p class="hint">A lista mostra só quem está cadastrado com cargo Gerente. Os campos de baixo servem para um gerente que não está no cadastro.</p></section></div>
    <div class="dfoot">${p?`<button type="button" class="ntx-btn danger" data-qxpdel>Excluir</button>`:""}<span style="flex:1"></span><button type="button" class="ntx-btn" data-qxpx>Cancelar</button><button type="button" class="ntx-btn primary" data-qxpsalvar>Salvar</button></div></aside>`;
   setTimeout(()=>{const i=document.getElementById("qxp-nome");if(i)i.focus()},50)}
 function qxLerPessoa(){document.querySelectorAll("#qxpRoot [data-qp]").forEach(el=>{qxPEd[el.dataset.qp]=el.type==="checkbox"?el.checked:el.value.trim()})}
