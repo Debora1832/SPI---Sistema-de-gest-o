@@ -16134,7 +16134,9 @@ const PX={
   corForma(sh,fill,line,texto){if(!sh)return;const sp=sh.getElementsByTagName("p:spPr")[0];if(sp){const f=[...sp.childNodes].find(n=>n.nodeName==="a:solidFill");if(f&&fill)f.innerHTML=`<a:srgbClr xmlns:a="${PX_A}" val="${fill}"/>`;const ln=sp.getElementsByTagName("a:ln")[0];const lf=ln&&ln.getElementsByTagName("a:solidFill")[0];if(lf&&line)lf.innerHTML=`<a:srgbClr xmlns:a="${PX_A}" val="${line}"/>`}
     if(texto)[...sh.getElementsByTagName("a:rPr"),...sh.getElementsByTagName("a:endParaRPr")].forEach(r=>{[...r.getElementsByTagName("a:solidFill")].forEach(f=>f.innerHTML=`<a:srgbClr xmlns:a="${PX_A}" val="${texto}"/>`)})},
   tag(doc,id,txt){const sh=PX.el(doc,id);if(!sh)return;const tx=sh.getElementsByTagName('p:txBody')[0];const base=PX.szBase(tx);const w=PX.ext(sh).cx/12700;const sz=Math.min(base,Math.floor(w/(txt.length*0.72)*100/50)*50);PX.linhas(tx,[txt],{sz:sz<base?sz:null});const bp=tx.getElementsByTagName('a:bodyPr')[0];if(bp)bp.setAttribute('wrap','none')},
-  remover(sh){if(sh&&sh.parentNode)sh.parentNode.removeChild(sh)}
+  remover(sh){if(sh&&sh.parentNode)sh.parentNode.removeChild(sh)},
+  /* célula de status: Concluído com fundo verde claro */
+  corCel(tbl,r,c,s){if(!/conclu/i.test(s||""))return;const tr=tbl.getElementsByTagName("a:tr")[r];const tc=tr&&tr.getElementsByTagName("a:tc")[c];if(!tc)return;const pr=tc.getElementsByTagName("a:tcPr")[0];if(!pr)return;const f=[...pr.childNodes].find(n=>n.nodeName==="a:solidFill");const nf=PX.parse(`<a:solidFill xmlns:a="${PX_A}"><a:srgbClr val="E2F0D9"/></a:solidFill>`).documentElement;const im=pr.ownerDocument.importNode(nf,true);if(f)pr.replaceChild(im,f);else pr.appendChild(im)}
 };
 const STATUS_COR=s=>/conclu|implement|eficaz/i.test(s||"")?{fill:"E2F0D9",line:"2E7D32",txt:"2E7D32"}:/andamento/i.test(s||"")?{fill:"DDEBF7",line:"1F5FA8",txt:"1F5FA8"}:{fill:"FFF2CC",line:"9C6500",txt:"9C6500"};
 
@@ -16158,13 +16160,13 @@ async function preencherModelo8D(ctx){
   await usarJSZip();
   const zip=await JSZip.loadAsync(D8_MODELO_B64,{base64:true});
   const {obj,nc}=ctx, cor=ctx.cores||null;
-  const docs={},rels={};
+  const docs={},rels={},raw={},rawRels={};
   for(let i=1;i<=14;i++){
     let x=await zip.file(`ppt/slides/slide${i}.xml`).async("string");
     if(cor){x=x.split('<a:schemeClr val="accent6"><a:lumMod val="50000"/></a:schemeClr>').join(`<a:srgbClr val="${cor.dark}"/>`)
               .split('<a:schemeClr val="accent6"><a:lumMod val="20000"/><a:lumOff val="80000"/></a:schemeClr>').join(`<a:srgbClr val="${cor.tint}"/>`)
               .split('val="FFDE00"').join(`val="${cor.accent}"`).split('val="367C2B"').join(`val="${cor.primary}"`).split('val="F2F7EF"').join('val="FFFFFF"')}
-    docs[i]=PX.parse(x);rels[i]=PX.parse(await zip.file(`ppt/slides/_rels/slide${i}.xml.rels`).async("string"));
+    raw[i]=x;rawRels[i]=await zip.file(`ppt/slides/_rels/slide${i}.xml.rels`).async("string");docs[i]=PX.parse(x);rels[i]=PX.parse(rawRels[i]);
   }
   let nImg=0;
   async function img(sl,id,src,op){op=op||{};const sh=PX.el(docs[sl],id);if(!sh)return;
@@ -16216,7 +16218,7 @@ async function preencherModelo8D(ctx){
   pIC(13,[`RECLAMADA: ${pc(imp.clienteReclamada)}`,`N/OK: ${pc(imp.clienteNok)}`]);
   pIC(61,[`OK: ${pc(imp.magiusOk)}`,`N/OK: ${pc(imp.magiusNok)}`]);
   tb=PX.tabela(docs[4],"TBL_CONT");
-  if(tb){const A=(obj.d3.acoes||[]).filter(a=>a.acao).slice(0,6);PX.linhasTab(tb,Math.max(A.length,1)+1);A.forEach((a,i)=>{PX.celula(tb,i+1,0,a.acao);PX.celula(tb,i+1,1,a.resp||"");PX.celula(tb,i+1,2,fd(a.prazo)||"");PX.celula(tb,i+1,3,a.status||"")})}
+  if(tb){const A=(obj.d3.acoes||[]).filter(a=>a.acao).slice(0,6);PX.linhasTab(tb,Math.max(A.length,1)+1);A.forEach((a,i)=>{PX.celula(tb,i+1,0,a.acao);PX.celula(tb,i+1,1,a.resp||"");PX.celula(tb,i+1,2,fd(a.prazo)||"");PX.celula(tb,i+1,3,a.status||"");PX.corCel(tb,i+1,3,a.status)})}
   T(4,58,[obj.d3.criterio?`Critério de liberação: ${obj.d3.criterio}`:""]);
   await img(4,88,ctx.fotoContencao||null);
 
@@ -16229,23 +16231,45 @@ async function preencherModelo8D(ctx){
 
   /* 6 · 5 porquês */
   tb=PX.tabela(docs[6],"TBL_5W");
-  if(tb){const P=obj.d4.porques;["ocorrencia","deteccao","sistemica"].forEach((c,ci)=>{const arr=(P[c]||[]).slice(0,5);let u=-1;arr.forEach((v,i)=>{if(String(v||"").trim())u=i});for(let i=0;i<5;i++){const v=arr[i]||"";PX.celula(tb,i+1,ci+1,i===u?`CAUSA RAIZ: ${v}`:v,{min:600,b:i===u?true:(i===4?false:null)})}})}
+  if(tb){const P=obj.d4.porques;["ocorrencia","deteccao","sistemica"].forEach((c,ci)=>{const arr=(P[c]||[]).slice(0,5);let u=-1;arr.forEach((v,i)=>{if(String(v||"").trim())u=i});for(let i=0;i<5;i++){const v=String(arr[i]||"").replace(/^\s*CAUSA RAIZ:\s*/i,"");PX.celula(tb,i+1,ci+1,i===u?`CAUSA RAIZ: ${v}`:v,{min:600,b:i===u?true:(i===4?false:null)})}})
+    const trs=[...tb.getElementsByTagName("a:tr")];const hf=[...trs[0].getElementsByTagName("a:tcPr")[0].childNodes].find(n=>n.nodeName==="a:solidFill");
+    for(let r=1;r<trs.length;r++){const tc=trs[r].getElementsByTagName("a:tc")[0];if(!tc||!hf)continue;const pr=tc.getElementsByTagName("a:tcPr")[0];const f=[...pr.childNodes].find(n=>n.nodeName==="a:solidFill");if(f)pr.replaceChild(hf.cloneNode(true),f);else pr.appendChild(hf.cloneNode(true));
+      [...tc.getElementsByTagName("a:rPr")].forEach(rp=>{rp.setAttribute("b","1");[...rp.getElementsByTagName("a:solidFill")].forEach(s=>s.innerHTML=`<a:srgbClr xmlns:a="${PX_A}" val="FFFFFF"/>`)})}}
 
   /* 7 · Plano de ação */
   const AC=(obj.d5.acoes||[]).filter(a=>a.acao);
   tb=PX.tabela(docs[7],"TBL_ACOES");
-  if(tb){PX.linhasTab(tb,Math.max(AC.length,1)+1);AC.slice(0,8).forEach((a,i)=>{PX.celula(tb,i+1,0,a.acao);PX.celula(tb,i+1,1,a.causa||"");PX.celula(tb,i+1,2,a.resp||"");PX.celula(tb,i+1,3,fd(a.prazo));PX.celula(tb,i+1,4,a.status||"")})}
+  if(tb){PX.linhasTab(tb,Math.max(AC.length,1)+1);AC.slice(0,8).forEach((a,i)=>{PX.celula(tb,i+1,0,a.acao);PX.celula(tb,i+1,1,a.causa||"");PX.celula(tb,i+1,2,a.resp||"");PX.celula(tb,i+1,3,fd(a.prazo));PX.celula(tb,i+1,4,a.status||"");PX.corCel(tb,i+1,4,a.status)})}
 
-  /* 8–12 · Evidência das ações (uma ação por slide, layouts do modelo) */
-  const EV=[{sl:8,tag:[71,73],box:13,pics:[9,11]},{sl:9,tag:[71,73],box:13,pics:[9]},{sl:10,tag:[71,73],box:15,pics:[11]},{sl:11,tag:[61,63],box:null,antes:25,pics:[19,23]},{sl:12,tag:[112,114],box:null,pics:[9]}];
-  const usados=[];
-  for(let i=0;i<EV.length;i++){const a=AC[i],L=EV[i];if(!a)continue;usados.push(L.sl);const d=docs[L.sl];
+  /* 8+ · Evidência das ações: um slide por ação, todos no mesmo padrão (base = slide 9 do modelo) */
+  const EVS=[];
+  const pt=v=>String(Math.round(v*12700));
+  const posicao=(sh,x,y,w,hh)=>{if(!sh)return;const xf=sh.getElementsByTagName("a:xfrm")[0];if(!xf)return;const o=xf.getElementsByTagName("a:off")[0],e=xf.getElementsByTagName("a:ext")[0];o.setAttribute("x",pt(x));o.setAttribute("y",pt(y));e.setAttribute("cx",pt(w));e.setAttribute("cy",pt(hh))};
+  const grade=n=>n<=1?[1,1]:n===2?[2,1]:n===3?[3,1]:n===4?[2,2]:[3,2];
+  for(let i=0;i<AC.length;i++){const a=AC[i];
+    const d=PX.parse(raw[9]),rl=PX.parse(rawRels[9].replace(/<Relationship [^>]*notesSlide[^>]*\/>/,""));
+    PX.trocar(d,[["RNC 536/26C",`RNC ${rnc}`],["AT525750",item],["JD 222503011",`${sig} ${nc.ncNumber||""}`.trim()]]);
     const t=PX.tabela(d,"TBL_ACAO_EV");if(t){PX.celula(t,1,0,a.acao);PX.celula(t,1,1,a.causa||"");PX.celula(t,1,2,a.resp||"");PX.celula(t,1,3,fd(a.prazo))}
-    const st=(a.status||"Pendente").toUpperCase();const k=STATUS_COR(a.status);PX.corForma(PX.el(d,L.tag[0]),k.fill,k.line,k.txt);PX.tag(d,L.tag[1],st);PX.corForma(PX.el(d,L.tag[1]),null,null,k.txt);
-    if(L.box){const linhas=[`Evidência a anexar: ${a.evidencia||"—"}`];if(a.criterio)linhas.push(`Critério de aprovação: ${a.criterio}`);if(a.tecnica)linhas.push(`Técnica de avaliação: ${a.tecnica}`);if(a.resultado)linhas.push(`Resultado: ${a.resultado}`);T(L.sl,L.box,linhas)}
-    const im=(a.imgs||[]).filter(Boolean);
-    if(L.antes)await img(L.sl,L.antes,a.antes||null);
-    for(let j=0;j<L.pics.length;j++)await img(L.sl,L.pics[j],im[j]||null,{remover:j>0&&!im[j]});
+    [63,65,67].forEach(id=>PX.remover(PX.el(d,id)));
+    /* painel das fotos ocupa toda a direita; descrição em coluna fixa à esquerda */
+    posicao(PX.el(d,61),292,160,638,346);
+    posicao(PX.el(d,71),304,170,96,26);posicao(PX.el(d,73),304,178,96,10);
+    const st=(a.status||"Pendente").toUpperCase();const k=STATUS_COR(a.status);PX.corForma(PX.el(d,71),k.fill,k.line,k.txt);PX.tag(d,73,st);PX.corForma(PX.el(d,73),null,null,k.txt);
+    const bx=PX.el(d,13);posicao(bx,30,160,250,346);
+    const bp=bx&&bx.getElementsByTagName("a:bodyPr")[0];if(bp){[...bp.childNodes].forEach(n=>bp.removeChild(n));bp.setAttribute("wrap","square");bp.setAttribute("lIns","114300");bp.setAttribute("rIns","114300");bp.setAttribute("tIns","91440");bp.setAttribute("bIns","91440");bp.setAttribute("anchor","t")}
+    const L=[];[["Evidência",a.evidencia],["Critério de aprovação",a.criterio],["Técnica de avaliação",a.tecnica],["Resultado",a.resultado]].filter(x=>String(x[1]||"").trim()).forEach(([r,v],j)=>{if(j)L.push("");L.push({t:r,b:true});L.push({t:String(v).trim(),b:false})});
+    if(bx){if(L.length)PX.texto(d,13,L,{min:800,altura:(346-16)*12700});else PX.remover(bx)}
+    /* fotos: 1 grande, 2–3 lado a lado, 4 em 2x2, 5–6 em 3x2 */
+    const fotosA=[a.antes,...(a.imgs||[])].filter(Boolean).slice(0,6);const pic=PX.el(d,9);
+    if(pic){const [nc_,nr]=grade(fotosA.length),gx=10,X0=304,Y0=206,W=614,HH=290;const cw=(W-gx*(nc_-1))/nc_,chh=(HH-gx*(nr-1))/nr;
+      for(let j=0;j<fotosA.length;j++){const cx=Math.round(cw*12700),cy=Math.round(chh*12700);const r=await imgCaixa(fotosA[j],cx,cy,false,false,"#FFFFFF");if(!r)continue;
+        const novo=`d8_ev${i}_${j}_${++nImg}.${r.ext}`;zip.file(`ppt/media/${novo}`,r.b64,{base64:true});
+        const rid=`rIdEv${j}`;const R=rl.createElementNS(rl.documentElement.namespaceURI,"Relationship");R.setAttribute("Id",rid);R.setAttribute("Type","http://schemas.openxmlformats.org/officeDocument/2006/relationships/image");R.setAttribute("Target",`../media/${novo}`);rl.documentElement.appendChild(R);
+        const c=pic.cloneNode(true);const nv=c.getElementsByTagName("p:cNvPr")[0];nv.setAttribute("id",String(300+j));nv.setAttribute("name",`Evidencia ${j+1}`);
+        c.getElementsByTagName("a:blip")[0].setAttribute("r:embed",rid);[...c.getElementsByTagName("a:srcRect")].forEach(s=>s.parentNode.removeChild(s));
+        posicao(c,X0+(j%nc_)*(cw+gx),Y0+Math.floor(j/nc_)*(chh+gx),cw,chh);pic.parentNode.insertBefore(c,pic)}
+      PX.remover(pic)}
+    EVS.push({d,rl});
   }
 
   /* 13 · D7 */
@@ -16258,17 +16282,25 @@ async function preencherModelo8D(ctx){
   /* 14 · D8 */
   await img(14,7,fotos[0]);await img(14,8,fotos[1]);await img(14,12,fotos[2]);
   const CK=["contencao","ocorrencia","escape","acoes","fmea","eficacia","comunicacao"], QD=[17,19,21,23,25,27,29], XS=[13,34,36,38,40,42,44];
-  CK.forEach((k,i)=>{if(obj.d8.checklist[k]){PX.remover(PX.el(docs[14],XS[i]));const q=PX.el(docs[14],QD[i]);PX.corForma(q,"E2F0D9","2E7D32");PX.linhas(q.getElementsByTagName("p:txBody")[0],[{t:"✓",b:true,cor:"2E7D32"}],{sz:1300});const bp=q.getElementsByTagName("a:bodyPr")[0];if(bp){bp.setAttribute("anchor","ctr");bp.setAttribute("lIns","0");bp.setAttribute("rIns","0");bp.setAttribute("tIns","0");bp.setAttribute("bIns","0")}const pp=q.getElementsByTagName("a:p")[0];if(pp){const pr=PX.parse(`<a:pPr xmlns:a="${PX_A}" algn="ctr"/>`).documentElement;pp.insertBefore(pp.ownerDocument.importNode(pr,true),pp.firstChild)}}});
+  CK.forEach((k,i)=>{PX.remover(PX.el(docs[14],XS[i]));const q=PX.el(docs[14],QD[i]);if(!q)return;if(!obj.d8.checklist[k]){PX.corForma(q,"FFFFFF","2E7D32");return}{PX.corForma(q,"E2F0D9","2E7D32");PX.linhas(q.getElementsByTagName("p:txBody")[0],[{t:"✓",b:true,cor:"2E7D32"}],{sz:1300});const bp=q.getElementsByTagName("a:bodyPr")[0];if(bp){bp.setAttribute("anchor","ctr");bp.setAttribute("lIns","0");bp.setAttribute("rIns","0");bp.setAttribute("tIns","0");bp.setAttribute("bIns","0")}const pp=q.getElementsByTagName("a:p")[0];if(pp){const pr=PX.parse(`<a:pPr xmlns:a="${PX_A}" algn="ctr"/>`).documentElement;pp.insertBefore(pp.ownerDocument.importNode(pr,true),pp.firstChild)}}});
   T(14,31,[obj.d8.eficacia||""]);
 
   /* grava os slides */
   for(let i=1;i<=14;i++){zip.file(`ppt/slides/slide${i}.xml`,PX.ser(docs[i]));zip.file(`ppt/slides/_rels/slide${i}.xml.rels`,PX.ser(rels[i]))}
 
-  /* remove slides de evidência sem ação */
-  const remover=EV.map(e=>e.sl).filter(s=>!usados.includes(s));
-  if(remover.length){
+  /* slides 8–12 do modelo saem; entram os slides de evidência gerados (um por ação), no mesmo lugar */
+  const remover=[8,9,10,11,12];
+  {
     const pr=PX.parse(await zip.file("ppt/_rels/presentation.xml.rels").async("string"));const p=PX.parse(await zip.file("ppt/presentation.xml").async("string"));
     let ct=await zip.file("[Content_Types].xml").async("string");
+    const lst=p.getElementsByTagName("p:sldIdLst")[0];const r7=[...pr.getElementsByTagName("Relationship")].find(r=>r.getAttribute("Target")==="slides/slide7.xml");
+    let ref=r7&&[...p.getElementsByTagName("p:sldId")].find(x=>x.getAttribute("r:id")===r7.getAttribute("Id"));
+    let maxId=Math.max(...[...p.getElementsByTagName("p:sldId")].map(x=>+x.getAttribute("id")));
+    EVS.forEach((s,i)=>{const nm=`slide${15+i}.xml`,rid=`rIdEvS${i}`;zip.file(`ppt/slides/${nm}`,PX.ser(s.d));zip.file(`ppt/slides/_rels/${nm}.rels`,PX.ser(s.rl));
+      ct=ct.replace("</Types>",`<Override PartName="/ppt/slides/${nm}" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/></Types>`);
+      const R=pr.createElementNS(pr.documentElement.namespaceURI,"Relationship");R.setAttribute("Id",rid);R.setAttribute("Type","http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide");R.setAttribute("Target",`slides/${nm}`);pr.documentElement.appendChild(R);
+      const S=p.createElementNS(lst.namespaceURI,"p:sldId");S.setAttribute("id",String(++maxId));S.setAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships","r:id",rid);
+      if(ref&&ref.nextSibling)lst.insertBefore(S,ref.nextSibling);else lst.appendChild(S);ref=S});
     for(const s of remover){
       const rel=[...pr.getElementsByTagName("Relationship")].find(r=>r.getAttribute("Target")===`slides/slide${s}.xml`);if(!rel)continue;
       const rid=rel.getAttribute("Id");const sid=[...p.getElementsByTagName("p:sldId")].find(x=>x.getAttribute("r:id")===rid);if(sid)PX.remover(sid);PX.remover(rel);
@@ -16278,6 +16310,10 @@ async function preencherModelo8D(ctx){
     }
     zip.file("ppt/_rels/presentation.xml.rels",PX.ser(pr));zip.file("ppt/presentation.xml",PX.ser(p));zip.file("[Content_Types].xml",ct);
   }
+  /* limpeza: animações que apontam para formas removidas, mídia sem uso e entradas de pasta */
+  for(const f of Object.keys(zip.files).filter(n=>/^ppt\/slides\/slide\d+\.xml$/.test(n))){const x=await zip.file(f).async("string");const y=x.replace(/<p:timing>[\s\S]*?<\/p:timing>/,"");if(y!==x)zip.file(f,y)}
+  const usadas=new Set();for(const f of Object.keys(zip.files).filter(n=>/\.rels$/.test(n))){const x=await zip.file(f).async("string");(x.match(/Target="[^"]*media\/[^"]+"/g)||[]).forEach(t=>usadas.add(t.split("media/")[1].slice(0,-1)))}
+  Object.keys(zip.files).forEach(n=>{if(zip.files[n].dir)delete zip.files[n];else if(/^ppt\/media\//.test(n)&&!usadas.has(n.slice(10)))zip.remove(n)});
   return zip.generateAsync({type:"blob",mimeType:"application/vnd.openxmlformats-officedocument.presentationml.presentation",compression:"DEFLATE"});
 }
 
@@ -16501,15 +16537,14 @@ function htmlAcoes(){
   return `${A.length?"":`<div class="tier">O plano padrão tem 5 ações: 1–2 para a causa de ocorrência, 1–2 para a detecção/escape, 1 sistêmica e 1 de treinamento.</div>`}
   <div class="ntx-actions" style="margin-bottom:10px"><button class="ntx-btn primary small" type="button" data-8dplano>${A.length?"Refazer":"Montar"} plano de 5 ações pelo histórico</button><button class="ntx-btn small" type="button" data-8dadd="d5.acoes">+ Ação</button></div>
   <div id="qxAv8dLote">${typeof qxAvisoLoteHtml==="function"?qxAvisoLoteHtml(ed8.t,ed8.nc,A):""}</div>
-  ${A.map((a,i)=>{const ev=ed8.evid[i]||{imgs:[],antes:null};const slide=[8,9,10,11,12][i];return `<div class="d8-acao">
-    <div class="d8-acao-h"><b>Ação ${i+1}</b>${slide?`<span class="hint">vai para o slide ${slide} (evidência)${i===3?" · antes/depois":""}</span>`:`<span class="hint">só na tabela D5–D6 (o modelo tem 5 slides de evidência)</span>`}${a.origem?`<span class="hint">· histórico: ${e(a.origem)}</span>`:""}<button class="ntx-btn small danger" type="button" data-8drm="d5.acoes.${i}">Remover</button></div>
+  ${A.map((a,i)=>{const ev=ed8.evid[i]||{imgs:[],antes:null};const fts=[ev.antes,...(ev.imgs||[])].filter(Boolean);return `<div class="d8-acao">
+    <div class="d8-acao-h"><b>Ação ${i+1}</b><span class="hint">slide de evidência ${i+1} · até 6 fotos</span>${a.origem?`<span class="hint">· histórico: ${e(a.origem)}</span>`:""}<button class="ntx-btn small danger" type="button" data-8drm="d5.acoes.${i}">Remover</button></div>
     <div class="f"><label>Ação corretiva (descrição técnica)</label><textarea data-8d="d5.acoes.${i}.acao">${e(a.acao)}</textarea></div>
     <div class="grid four"><div class="f"><label>Causa tratada</label>${sel(`d5.acoes.${i}.causa`,a.causa,CAUSAS)}</div><div class="f"><label>Responsável</label><input data-8d="d5.acoes.${i}.resp" list="qxPessoasDL" value="${e(a.resp||"")}"></div><div class="f"><label>Prazo</label><input type="date" data-8d="d5.acoes.${i}.prazo" value="${e(a.prazo||"")}"></div><div class="f"><label>Status</label>${sel(`d5.acoes.${i}.status`,a.status,["Pendente","Em andamento","Concluído"])}</div></div>
     <div data-qxav8di="${i}">${typeof qxAviso8DHtml==="function"?qxAviso8DHtml(ed8.t,ed8.nc,a):""}</div>
     <div class="grid"><div class="f"><label>Evidência de implementação (o que anexar)</label><input data-8d="d5.acoes.${i}.evidencia" value="${e(a.evidencia||"")}"></div><div class="f"><label>Critério de aprovação</label><input data-8d="d5.acoes.${i}.criterio" value="${e(a.criterio||"")}"></div>
     <div class="f"><label>Técnica de avaliação</label><input data-8d="d5.acoes.${i}.tecnica" value="${e(a.tecnica||"")}"></div><div class="f"><label>Resultado da verificação de eficácia</label><input data-8d="d5.acoes.${i}.resultado" value="${e(a.resultado||"")}"></div></div>
-    <div class="d8-evid">${i===3?`<div><span class="lbl">Antes</span>${ev.antes?`<img src="${e(ev.antes)}" alt="Antes">`:""}<label class="ntx-btn small">${ev.antes?"Trocar":"+ Foto antes"}<input type="file" accept="image/*" hidden data-evantes="${i}"></label></div>`:""}
-      <div><span class="lbl">${i===3?"Depois":"Evidência"}</span><div class="d8-evimgs">${(ev.imgs||[]).map((s,j)=>`<span><img src="${e(s)}" alt="Evidência"><button type="button" class="fb-x" data-evrm="${i}.${j}" aria-label="Remover">×</button></span>`).join("")}</div>${(ev.imgs||[]).length<2?`<label class="ntx-btn small">+ Foto da evidência<input type="file" accept="image/*" hidden data-evimg="${i}"></label>`:""}</div></div>
+    <div class="d8-evid"><div><span class="lbl">Fotos da evidência (${fts.length}/6)</span><div class="d8-evimgs">${ev.antes?`<span><img src="${e(ev.antes)}" alt="Evidência"><button type="button" class="fb-x" data-evrmantes="${i}" aria-label="Remover">×</button></span>`:""}${(ev.imgs||[]).map((s,j)=>`<span><img src="${e(s)}" alt="Evidência"><button type="button" class="fb-x" data-evrm="${i}.${j}" aria-label="Remover">×</button></span>`).join("")}</div>${fts.length<6?`<label class="ntx-btn small">+ Fotos da evidência<input type="file" accept="image/*" multiple hidden data-evimg="${i}"></label>`:""}</div></div>
   </div>`}).join("")}
   ${sug.length?`<div class="d8-sugbox"><div class="lbl">Ações já implementadas em NCs parecidas</div>${sug.map((s,i)=>`<div class="d8-sugrow"><span class="pill">${e(s.tipo||"")}</span><div>${e(s.acao)}<div class="hint">${e(s.refs.slice(0,3).join(", "))}${s.eficaz?" · <b class='ok'>eficácia comprovada</b>":""}</div></div><button class="ntx-btn small" type="button" data-8dsuga="${i}">Usar</button></div>`).join("")}<div class="hint">Embarque controlado não entra como ação corretiva (é contenção).</div></div>`:""}`;
 }
@@ -16587,7 +16622,11 @@ function ler8D(){if(!ed8)return;document.querySelectorAll("#ntxDrawerRoot [data-
 async function subirAlerta(el){ler8D();const f=el.files[0];el.value="";if(!f)return;try{toast("Lendo o alerta…",4000);const pgs=/pdf/i.test(f.type)||/\.pdf$/i.test(f.name)?await pdfParaImagens(f,1500):[await comprimir(f,1500,0.82)];ed8.midia.alerta={nome:f.name,paginas:pgs,atualizado:new Date().toISOString()};ed8.obj.alertaPagina=0;ed8.sujo.midia=true;desenhar8D();toast(pgs.length>1?`Alerta com ${pgs.length} páginas — escolha a página do relatório`:"Alerta anexado — salve o 8D")}catch(e){toast("Não foi possível ler o arquivo do alerta")}}
 async function subirFotos(el){ler8D();const fs=[...el.files];el.value="";for(const f of fs){try{ed8.midia.fotos=ed8.midia.fotos||[];ed8.midia.fotos.push(await comprimir(f,1100,0.74));const i=ed8.midia.fotos.length-1;if(ed8.obj.fotosSel.length<3)ed8.obj.fotosSel.push(i)}catch(e){}}ed8.sujo.midia=true;desenhar8D()}
 function selFoto(el){ler8D();const i=+el.dataset.fsel;const s=ed8.obj.fotosSel;if(el.checked){if(s.length>=3){toast("O modelo usa até 3 fotos");el.checked=false;return}s.push(i)}else ed8.obj.fotosSel=s.filter(x=>x!==i);desenhar8D()}
-async function subirEvid(el){ler8D();const f=el.files[0];el.value="";if(!f)return;const i=+(el.dataset.evimg??el.dataset.evantes);const im=await comprimir(f,1300,0.78);ed8.evid[i]=ed8.evid[i]||{imgs:[],antes:null};if(el.dataset.evantes!=null)ed8.evid[i].antes=im.src;else ed8.evid[i].imgs.push(im.src);ed8.sujo.evid.add(i);desenhar8D()}
+async function subirEvid(el){ler8D();const fs=[...el.files];el.value="";if(!fs.length)return;const i=+el.dataset.evimg;const ev=ed8.evid[i]=ed8.evid[i]||{imgs:[],antes:null};ev.imgs=ev.imgs||[];
+  const livre=6-ev.imgs.length-(ev.antes?1:0);if(fs.length>livre)toast(`Cada ação aceita até 6 fotos: ${Math.max(livre,0)} entraram.`);
+  for(const f of fs.slice(0,Math.max(livre,0))){try{const im=await comprimir(f,1200,0.72);ev.imgs.push(im.src)}catch(e){}}
+  if(JSON.stringify(ev).length>950000){while(JSON.stringify(ev).length>950000&&ev.imgs.length)ev.imgs.pop();toast("Fotos muito pesadas: a última não coube no registro da ação.")}
+  ed8.sujo.evid.add(i);desenhar8D()}
 async function subirFotoD3(el){ler8D();const f=el.files[0];el.value="";if(!f)return;const im=await comprimir(f,900,0.72);ed8.obj.d3.foto=im.src;desenhar8D()}
 
 async function exportarPPT(){
@@ -16623,6 +16662,7 @@ async function clique8D(t){
   if(t.matches("[data-w5sug]")){const [c,i]=t.dataset.w5sug.split(".");const h=ed8.sem[+i];if(h){ler8D();const arr=(h.porques[c]||[]).filter(Boolean).slice(0,5);while(arr.length<5)arr.push("");O.d4.porques[c]=arr;desenhar8D();toast("Cadeia copiada como ponto de partida — confirme cada porquê com evidência")}return true}
   if(t.matches("[data-8dplano]")){ler8D();if(O.d5.acoes.some(a=>a.acao)&&!confirm("Substituir as ações atuais pelo plano montado com o histórico?"))return true;O.d5.acoes=planoPadrao(ed8.sem,O,ed8.nc);ed8.evid=O.d5.acoes.map((_,i)=>ed8.evid[i]||{imgs:[],antes:null});desenhar8D();toast("Plano de 5 ações montado — ajuste responsáveis, prazos e critérios");return true}
   if(t.matches("[data-8dsuga]")){ler8D();const s=ed8._sugA[+t.dataset["8dsuga"]];if(s){const tipo=/detec/i.test(s.tipo||"")?"Detecção":(CAUSAS.includes(s.tipo)?s.tipo:"Ocorrência");O.d5.acoes.push(Object.assign({acao:s.acao,causa:tipo,resp:s.resp||"",prazo:"",status:"Pendente",evidencia:"",resultado:"",origem:s.refs.slice(0,3).join(", ")},PADRAO_ACAO[tipo]));while(ed8.evid.length<O.d5.acoes.length)ed8.evid.push({imgs:[],antes:null});desenhar8D()}return true}
+  if(t.matches("[data-evrmantes]")){const i=+t.dataset.evrmantes;ed8.evid[i].antes=null;ed8.sujo.evid.add(i);ler8D();desenhar8D();return true}
   if(t.matches("[data-evrm]")){const [i,j]=t.dataset.evrm.split(".").map(Number);ed8.evid[i].imgs.splice(j,1);ed8.sujo.evid.add(i);ler8D();desenhar8D();return true}
   if(t.matches("[data-alpg]")){ler8D();O.alertaPagina=+t.dataset.alpg;desenhar8D();return true}
   if(t.matches("[data-8dpptgo]")){exportarPPT();return true}
@@ -18165,7 +18205,7 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-qxmo
   if(t.matches("[data-moenv]")){const k=site().current(),id=t.dataset.moenv;if(await moSalvar(k,id,{status:"enviada",enviadaEm:new Date().toISOString()})){toast("MO marcada como enviada");qxMoCards(k);moAbrir(id)}}},true);
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&document.querySelector("#moRoot .mo-dw"))moRoot().innerHTML=""});
 
-document.addEventListener("click",e=>{const t=e.target.closest('[data-nt8d],[data-8dppt],[data-8dfechar],[data-8dadd],[data-8drm],[data-8dsuga],[data-8daba],[data-fbst],[data-fbrm],[data-fbsug],[data-w5sug],[data-8dplano],[data-evrm],[data-alpg],[data-8dpptgo],[data-8dsalvar],[data-8dconcluir]');if(t){e.preventDefault();clique8D(t)}});
+document.addEventListener("click",e=>{const t=e.target.closest('[data-nt8d],[data-8dppt],[data-8dfechar],[data-8dadd],[data-8drm],[data-8dsuga],[data-8daba],[data-fbst],[data-fbrm],[data-fbsug],[data-w5sug],[data-8dplano],[data-evrm],[data-evrmantes],[data-alpg],[data-8dpptgo],[data-8dsalvar],[data-8dconcluir]');if(t){e.preventDefault();clique8D(t)}});
 function boot(){
   const pg=document.getElementById("ncCostPage"), head=pg&&pg.querySelector(":scope > .page-header");
   if(pg){pg.classList.add("cnq-novo");if(head)head.after($("#cnqNotas"))}
