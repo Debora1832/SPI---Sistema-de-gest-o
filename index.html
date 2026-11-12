@@ -17791,8 +17791,8 @@ function qxPlanoEml(pl,teste){const bd="----=_8D_"+Date.now().toString(36);const
   const para=teste?(eu?[eu.email]:[]):pl.para,cc=teste?[]:pl.cc;const dom=eu?eu.email.split("@")[1]:"magius.com.br";
   const eml=["X-Unsent: 1","MIME-Version: 1.0",...(eu?[`From: ${moHdr(eu.nome)} <${eu.email}>`]:[]),`Date: ${new Date().toUTCString().replace("GMT","+0000")}`,`Message-ID: <8d.${Date.now().toString(36)}.${Math.random().toString(36).slice(2)}@${dom}>`,
     `To: ${para.map(qxEnd).join(", ")}`,...(cc.length?[`Cc: ${cc.map(qxEnd).join(", ")}`]:[]),`Subject: ${moHdr((teste?"[TESTE] ":"")+pl.assunto)}`,
-    `Content-Type: multipart/alternative; boundary="${bd}"`,"",`--${bd}`,"Content-Type: text/plain; charset=UTF-8","Content-Transfer-Encoding: base64","",moLinhas(moUtf(pl.corpo)),
-    `--${bd}`,"Content-Type: text/html; charset=UTF-8","Content-Transfer-Encoding: base64","",moLinhas(moUtf(`<html><head><meta charset="utf-8"></head><body>${pl.html}</body></html>`)),`--${bd}--`,""].join("\r\n");
+    /* corpo único em HTML, sem partes extras: o novo Outlook tratava a parte de texto como anexo e não enviava */
+    "Content-Type: text/html; charset=UTF-8","Content-Transfer-Encoding: base64","",moLinhas(moUtf(`<html><head><meta charset="utf-8"></head><body>${pl.html}</body></html>`)),""].join("\r\n");
   return new Blob([eml],{type:"message/rfc822"})}
 /* ---------- envio automático pelo Microsoft 365 (Graph /me/sendMail) ----------
    Configuração única: TI registra um aplicativo no Entra ID (Azure AD) tipo SPA, redirect = esta página, permissão delegada Mail.Send.
