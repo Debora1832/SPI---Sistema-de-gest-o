@@ -17979,7 +17979,7 @@ function moMailto(r){const q=r.qnote||{};const de=(q.emailDe||"lucas.borges@trig
 const MO_TXT="Bom dia,\n\nSegue MO assinada.\n\nAtt;";
 QX.mo={};QX.moCfg=null;
 const MO_DESDE="2026-11-01"; /* fluxo da MO vale para as NCs a partir de novembro/2026 */
-function qxMoAplica(r){if(!r||!r.qnote)return false;const t=(JSON.stringify(r.qnote)+" "+(r.customer||"")).toLowerCase();return /trigo|alerta de qualidade/.test(t)||/catal/.test(t)}
+function qxMoAplica(r){if(!r)return false;if(/john\s*deere/i.test(r.customer||""))return true;if(!r.qnote)return false;const t=(JSON.stringify(r.qnote)+" "+(r.customer||"")).toLowerCase();return /trigo|alerta de qualidade/.test(t)||/catal/.test(t)}
 async function qxMoCarregar(k,force){if(!force&&QX.mo[k])return QX.mo[k];const m={};
   try{const s=await fdb.collection("nc_mo_"+k).get();s.forEach(d=>m[d.id]=d.data())}catch(e){}
   if(!QX.moCfg){try{const s=await fdb.collection("mo_cfg").doc("padrao").get();QX.moCfg={...MO_PAD,...(s.exists?s.data():{})}}catch(e){QX.moCfg={...MO_PAD}}}
@@ -17987,11 +17987,11 @@ async function qxMoCarregar(k,force){if(!force&&QX.mo[k])return QX.mo[k];const m
 function qxMoCards(k){const g=document.getElementById("ncCardsGrid");if(!g||!fdb)return;
   if(!QX.mo[k]){qxMoCarregar(k).then(()=>qxMoCards(k));return}
   g.querySelectorAll(".nc-card[data-nc-id]").forEach(card=>{const tg=card.querySelector(".qxc-tg");if(!tg)return;const r=(ncCache[k]||[]).find(x=>x.id===card.dataset.ncId);
-    let b=tg.querySelector(".qxc-mo");if(!qxMoAplica(r)||r.naoProcedente||String(r.date||"")<MO_DESDE||(r.d8Finalizado&&!QX.mo[k][r.id])){if(b)b.remove();return}
+    let b=tg.querySelector(".qxc-mo");if(!qxMoAplica(r)||r.naoProcedente){if(b)b.remove();return}
     if(!b){b=document.createElement("button");b.type="button";b.className="qxc-mo";b.textContent="MO";b.dataset.qxmo=r.id;tg.appendChild(b)}
-    const M=QX.mo[k][r.id]||{},st=M.status||"",xls=M.moFormato==="xlsx"&&!st;b.classList.toggle("gerada",st==="gerada");b.classList.toggle("enviada",st==="enviada");b.classList.toggle("xls",xls);
+    const ant=String(r.date||"")<MO_DESDE,M=QX.mo[k][r.id]||(ant?{status:"enviada",anterior:true}:{}),st=M.status||"",xls=M.moFormato==="xlsx"&&!st;b.classList.toggle("gerada",st==="gerada");b.classList.toggle("enviada",st==="enviada");b.classList.toggle("xls",xls);
     b.textContent=xls?"MO em Excel":"MO";
-    b.title=st==="enviada"?"MO assinada enviada":st==="gerada"?"MO assinada, falta enviar o e-mail":xls?"A Trigo mandou a MO só em Excel: gere o PDF e arraste no painel":"Assinar a MO da Trigo"})}
+    b.title=M.anterior?"Mês anterior: considerada enviada":st==="enviada"?"MO assinada enviada":st==="gerada"?"MO assinada, falta enviar o e-mail":xls?"A Trigo mandou a MO só em Excel: gere o PDF e arraste no painel":"Assinar a MO da Trigo"})}
 function moRoot(){let r=document.getElementById("moRoot");if(!r){r=document.createElement("div");r.id="moRoot";r.className="ntx";document.body.appendChild(r)}return r}
 function moBr(iso){const s=String(iso||"").slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(s)?s.split("-").reverse().join("/"):s}
 /* cabeçalho do cliente: rótulo do formulário Trigo -> valor (só preenche se o campo estiver vazio) */
