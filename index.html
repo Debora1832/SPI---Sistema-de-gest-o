@@ -3595,6 +3595,18 @@ select.crfase[data-f=fim]{background:var(--cr-ok-s);color:var(--cr-ok);border-co
 #moRoot .mo-drop.over,#moRoot .mo-drop:hover{border-color:#ffcd11;background:rgba(255,205,17,.06)}#moRoot .mo-drop.pede{border-color:#f07a6c}
 #ncPage .qxc .qxc-tg button.qxc-mo.xls{background:#432420!important;color:#f7a196!important;border:1px solid #6b3129!important}
 #moRoot .mo-xls{background:#432420;color:#f7c2bb;border-radius:10px;padding:10px 12px;margin:0 0 12px}
+/* Kanban de custos por fase */
+.qk-board{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(200px,1fr);gap:10px;overflow-x:auto;padding:4px 2px 10px}
+.qk-col{background:rgba(255,255,255,.03);border:1px solid var(--qx-line,#2a3340);border-radius:12px;display:flex;flex-direction:column;min-height:180px;max-height:70vh}
+.qk-col header{padding:10px 12px;border-bottom:1px solid var(--qx-line,#2a3340);display:flex;flex-wrap:wrap;gap:2px 8px;align-items:baseline;border-top:3px solid #4a5768;border-radius:12px 12px 0 0}
+.qk-col header b{font-size:13px}.qk-col header span{margin-left:auto;font-size:12px;color:var(--qx-muted)}.qk-col header small{flex-basis:100%;font-size:11px;color:var(--qx-muted)}
+.qk-req header,.qk-aprov header{border-top-color:#8a6cf0}.qk-pedido header,.qk-envio header{border-top-color:#3b82f6}.qk-nf header{border-top-color:#f59e0b}.qk-ged header,.qk-lanc header{border-top-color:#06b6d4}.qk-fim header{border-top-color:#22c55e}
+.qk-list{padding:8px;display:flex;flex-direction:column;gap:8px;overflow-y:auto}
+.qk-card{all:unset;box-sizing:border-box;display:flex;flex-direction:column;gap:4px;padding:10px;border-radius:10px;background:var(--qx-card,#151b23);border:1px solid var(--qx-line,#2a3340);cursor:pointer;font-size:12px}
+.qk-card:hover,.qk-card:focus-visible{border-color:#ffcd11}.qk-card.late{border-color:#f07a6c}
+.qk-top{display:flex;align-items:center;gap:6px}.qk-top b{font-size:13px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qk-d,.qk-m{color:var(--qx-muted)}.qk-r{font-size:11px;color:var(--qx-muted)}.qk-f{display:flex;align-items:center;justify-content:space-between;gap:6px}.qk-f b{font-size:13px}
+.qk-vz{color:var(--qx-muted);font-size:12px;text-align:center;margin:14px 0}
 </style>
 </head>
 <body>
@@ -17283,7 +17295,15 @@ function qxCustoPg(host,D){
   const th=(k,l,cl)=>`<th class="${cl||""}"><button type="button" data-qcord="${k}">${l}${f.ord===k?(f.dir>0?" ▲":" ▼"):""}</button></th>`;
   const chipFin=x=>`<span class="qx-tag ${x.fin[2]}">${x.fin[1]}</span>`;
   let reg;
-  if(f.vista==="lista"){const g={};L.slice().sort((a,b)=>b.data.localeCompare(a.data)).forEach(x=>{(g[x.data.slice(0,7)]=g[x.data.slice(0,7)]||[]).push(x)});
+  if(f.vista==="kanban"){
+    const COL=[["req","Abrir requisição","Requisição no Totvs"],["aprov","Aprovação","Requisição ou assinaturas da gerência"],["pedido","Nº do pedido","Aguardando Compras"],["envio","Enviar pedido","Pedido ao fornecedor"],["nf","Aguardando NF","Receber e conferir a NF"],["ged","Enviar GED","E-mail de GED ao fiscal"],["lanc","Lançamento","NF lançada / entregue ao fiscal"],["fim","Finalizadas",""]];
+    const G={};COL.forEach(c=>G[c[0]]=[]);
+    L.forEach(x=>{const S=stepsDe(x.n),i=etapaAtual(x.n);const c=i>=S.length?"fim":S[i].k;(G[c]||G.req).push(x)});
+    const ult=n=>{const E=n.etapas||{};return Object.values(E).filter(Boolean).sort().pop()||""};
+    const card=x=>{const n=x.n,u=ult(n),dias=u?Math.round((new Date(hoje)-new Date(u))/864e5):null;return `<button type="button" class="qk-card ${x.fin[0]==="vencida"?"late":""}" data-qcopen="${esc(x.k)}|${esc(n.id)}"><span class="qk-top">${qxLogo(x.k,"mini")}<b>${esc(n.fornecedor||(ehAdm(n)?"Custo administrativo":"Sem fornecedor"))}</b>${ehAdm(n)?'<span class="qx-tag info">Adm</span>':""}</span><span class="qk-d">${esc((n.servicos||[]).map(servLabel).join("/")||catNome(x.cat))}${x.ncTxt?` · NC ${esc(x.ncTxt)}`:""}</span>${n.relatorio?`<span class="qk-r mono">${esc(n.relatorio)}</span>`:""}<span class="qk-f"><b>${brl(x.val)}</b>${chipFin(x)}</span><span class="qk-m">${fdate(x.data)}${n.pedido?` · PC ${esc(n.pedido)}`:""}${n.nfNumero?` · NF ${esc(n.nfNumero)}`:""}${dias!=null&&dias>0?` · ${dias} d na fase`:""}</span></button>`};
+    reg=`<div class="qk-board">${COL.map(([k,l,h])=>{let A=G[k].slice().sort((a,b)=>b.data.localeCompare(a.data));const tot=A.length,v=soma(A,x=>x.val);const lim=k==="fim"&&!f.kbFimTudo?12:999;
+      return `<section class="qk-col qk-${k}"><header><b>${l}</b><span>${tot} · ${brlK(v)}</span>${h?`<small>${h}</small>`:""}</header><div class="qk-list">${A.slice(0,lim).map(card).join("")||'<p class="qk-vz">Nada aqui</p>'}${tot>lim?`<button type="button" class="qx-btn sm ghost" data-qckbfim>Ver todas (${tot})</button>`:""}</div></section>`}).join("")}</div>`}
+  else if(f.vista==="lista"){const g={};L.slice().sort((a,b)=>b.data.localeCompare(a.data)).forEach(x=>{(g[x.data.slice(0,7)]=g[x.data.slice(0,7)]||[]).push(x)});
     reg=`<div class="qc-tl">${Object.entries(g).map(([m,A])=>`<section><h4>${mesLbl(m)}<span>${A.length} · ${brl(soma(A,x=>x.val))}</span></h4><ol>${A.map(x=>`<li><button type="button" data-qcopen="${esc(x.k)}|${esc(x.n.id)}"><span class="d">${fdate(x.data).slice(0,5)}</span>${qxLogo(x.k,"mini")}<span class="t"><b>${esc(x.n.fornecedor||"Sem fornecedor")}</b> · ${esc((x.n.servicos||[]).map(servLabel).join("/")||catNome(x.cat))}${x.ncTxt?` · NC ${esc(x.ncTxt)}`:""}<small>${esc((x.n.descricao||x.n.relatorio||"").slice(0,120))}</small></span>${chipFin(x)}<b class="v">${brl(x.val)}</b></button></li>`).join("")}</ol></section>`).join("")||`<div class="qx-vazio">Nada no filtro.</div>`}</div>`}
   else if(f.vista==="calendario"){const m=f.cal||(f.ate||isoToday()).slice(0,7);const y=+m.slice(0,4),mo=+m.slice(5,7)-1;const first=new Date(y,mo,1),dias=new Date(y,mo+1,0).getDate(),off=(first.getDay()+6)%7;
     const ev={};L.forEach(x=>{if(x.data.startsWith(m))(ev[x.data]=ev[x.data]||[]).push(["s",x]);if(x.venc&&x.venc.startsWith(m))(ev[x.venc]=ev[x.venc]||[]).push(["v",x]);const lc=x.n.etapas&&x.n.etapas.lanc;if(lc&&lc.startsWith(m))(ev[lc]=ev[lc]||[]).push(["l",x])});
@@ -17296,7 +17316,7 @@ function qxCustoPg(host,D){
      <div class="qx-card"><div class="qx-ch"><h3>Ranking de clientes</h3><span class="hint">maior custo</span></div>${gRank}</div>
      <div class="qx-card"><div class="qx-ch"><h3>Distribuição por categoria</h3><span class="hint">clique para filtrar</span></div>${gCat}</div>
      <div class="qx-card span2"><div class="qx-ch"><h3>Original × final — economia das negociações</h3><span class="hint">${negs.length} ${negs.length===1?"negociação":"negociações"} · ${brl(eco)} economizados</span></div>${gNeg}</div></section>
-   ${filtros}<section class="qx-card qc-reg"><div class="qx-ch"><h3>Cronograma de custos · todos os clientes</h3><div class="qx-seg">${[["tabela","Tabela"],["lista","Lista cronológica"],["calendario","Calendário"]].map(([v,l])=>`<button type="button" aria-pressed="${f.vista===v}" data-qcvista="${v}">${l}</button>`).join("")}</div></div>${reg}</section>`;
+   ${filtros}<section class="qx-card qc-reg"><div class="qx-ch"><h3>Cronograma de custos · todos os clientes</h3><div class="qx-seg">${[["tabela","Tabela"],["kanban","Kanban por fase"],["lista","Lista cronológica"],["calendario","Calendário"]].map(([v,l])=>`<button type="button" aria-pressed="${f.vista===v}" data-qcvista="${v}">${l}</button>`).join("")}</div></div>${reg}</section>`;
   QX._qcL=L;QX._qcK={tot,org,eco,pEco,n:L.length};
 }
 function qcExportar(tipo){
@@ -17311,7 +17331,7 @@ document.addEventListener("click",e=>{
   const rw=e.target.closest("[data-qcrow]");if(rw&&!e.target.closest("button,a")){const id=rw.dataset.qcrow;QX.qcAberto=QX.qcAberto===id?null:id;const sc=window.scrollY;qxRender("qxCusto").then(()=>window.scrollTo(0,sc));return}
   const ed=e.target.closest("[data-qcedit]");if(ed){const [k,id]=ed.dataset.qcedit.split("|");qcEditarAqui(k,id);return}
   if(e.target.closest("[data-qcfecha]")){$("#ntxDrawerRoot").innerHTML="";return}
-  const t=e.target.closest("[data-qccli],[data-qccli1],[data-qcrm],[data-qcclear],[data-qcexp],[data-qctipo],[data-qcord],[data-qcvista],[data-qccal],[data-qcopen],[data-qcnova]");if(!t)return;const f=QX.fc;
+  const t=e.target.closest("[data-qckbfim],[data-qccli],[data-qccli1],[data-qcrm],[data-qcclear],[data-qcexp],[data-qctipo],[data-qcord],[data-qcvista],[data-qccal],[data-qcopen],[data-qcnova]");if(!t)return;const f=QX.fc;
   if(t.matches("[data-qcnova]")){qxEscolherCliente("custo");return}
   if(t.matches("[data-qccli]")){const k=t.dataset.qccli;f.clis=f.clis.includes(k)?f.clis.filter(x=>x!==k):[...f.clis,k]}
   else if(t.matches("[data-qccli1]")){f.clis=[t.dataset.qccli1]}
@@ -17321,6 +17341,7 @@ document.addEventListener("click",e=>{
   else if(t.matches("[data-qctipo]")){f.tipo=f.tipo===t.dataset.qctipo?"":t.dataset.qctipo}
   else if(t.matches("[data-qcord]")){const k=t.dataset.qcord;if(f.ord===k)f.dir*=-1;else{f.ord=k;f.dir=["cli","nc","desc","nf","fin","resp"].includes(k)?1:-1}}
   else if(t.matches("[data-qcvista]")){f.vista=t.dataset.qcvista}
+  else if(t.matches("[data-qckbfim]")){f.kbFimTudo=true}
   else if(t.matches("[data-qccal]")){f.cal=t.dataset.qccal}
   else if(t.matches("[data-qcopen]")){const id=t.dataset.qcopen.split("|")[1];const x=(QX._qcL||[]).find(y=>y.n.id===id);if(x){$("#ntxDrawerRoot").innerHTML=`<div class="scrim" data-qcfecha></div><aside class="drawer qcd-drawer" role="dialog" aria-modal="true" aria-label="Cronograma da nota"><div class="dhead d8-head"><div><div class="eyebrow">Cronograma da nota</div><h2>${esc(x.n.fornecedor||"Sem fornecedor")} · ${brl(x.val)}</h2></div><button type="button" class="ntx-btn small" data-qcfecha>Fechar</button></div><div class="dbody">${qcDetalhe(x)}</div></aside>`}return}
   qxRender("qxCusto");
