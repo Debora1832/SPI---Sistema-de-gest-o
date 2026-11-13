@@ -17177,7 +17177,7 @@ function qxBoot(){
    Fonte: notas_terceiros (custos de contenção/inspeção/retrabalho…)
    + NCs de cada cliente (situação da NC).
    ===================================================================== */
-QX.fc={clis:[],de:"",ate:"",nc:"",tipo:"",stNc:"",stNeg:"",stFin:"",nfPend:false,q:"",vista:"tabela",ord:"data",dir:-1,cal:""};
+QX.fc={clis:[],de:"",ate:"",nc:"",tipo:"",stNc:"",stNeg:"",stFin:"",nfPend:false,q:"",vista:"kanban",ord:"data",dir:-1,cal:""};
 const CAT_CUSTO=[["inspecao","Inspeção terceirizada"],["retrabalho","Retrabalho"],["contencao","Seleção e contenção"],["sucateamento","Sucateamento"],["embarque_controlado","Embarque controlado"],["administrativo","Administrativo"],["reatividade","Reatividade"],["outros","Outros"]];
 const catNome=k=>(CAT_CUSTO.find(c=>c[0]===k)||["","Outros"])[1];
 const SERIE=["#2a78d6","#eb6834","#1baf7a","#eda100","#e87ba4","#6250d6"];
