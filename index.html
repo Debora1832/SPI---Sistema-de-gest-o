@@ -3607,6 +3607,17 @@ select.crfase[data-f=fim]{background:var(--cr-ok-s);color:var(--cr-ok);border-co
 .qk-top{display:flex;align-items:center;gap:6px}.qk-top b{font-size:13px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .qk-d,.qk-m{color:var(--qx-muted)}.qk-r{font-size:11px;color:var(--qx-muted)}.qk-f{display:flex;align-items:center;justify-content:space-between;gap:6px}.qk-f b{font-size:13px}
 .qk-vz{color:var(--qx-muted);font-size:12px;text-align:center;margin:14px 0}
+
+/* Kanban: espaçamento e quebra de texto dentro dos cards */
+.qk-board{grid-auto-columns:minmax(236px,1fr);gap:12px}
+.qk-list{padding:10px;gap:10px}
+.qk-card{width:100%;min-width:0;padding:12px;gap:6px;line-height:1.35;overflow:hidden;white-space:normal}
+.qk-card>span{display:block;min-width:0;max-width:100%;overflow-wrap:anywhere;word-break:break-word}
+.qk-top{display:flex!important;gap:8px}.qk-top img,.qk-top .qx-logo{flex:0 0 auto}
+.qk-top b{white-space:normal;overflow-wrap:anywhere;line-height:1.25}
+.qk-f{display:flex!important;flex-wrap:wrap;gap:6px 8px;margin-top:2px}.qk-f .qx-tag{flex:0 0 auto;white-space:nowrap}
+.qk-m{font-size:11px}
+.qk-col header{padding:12px 12px 10px}.qk-col header b{flex:1 1 auto;min-width:0}.qk-col header span{flex:0 0 auto}
 </style>
 </head>
 <body>
