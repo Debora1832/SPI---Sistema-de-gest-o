@@ -18307,7 +18307,8 @@ async function moPdf(r,v,bytes){await carregarScriptUma("https://cdnjs.cloudflar
   const W1252=/[^\x20-\x7E -ÿ–—‘’“”•…€]/g,preto=rgb(0,0,0);
   const tx=(s,x,y,o={})=>{s=String(s||"").replace(/\s+/g," ").replace(W1252,"").trim();if(!s)return;const fo=o.font||f;let sz=o.size||6.6;const mw=o.w||400;
     while(sz>4.6&&fo.widthOfTextAtSize(s,sz)>mw)sz-=.2;if(o.center)x-=fo.widthOfTextAtSize(s,sz)/2;pg.drawText(s,{x,y,size:sz,font:fo,color:preto})};
-  const acha=t=>I.filter(i=>i.t===t||i.t.replace(/\s+/g," ")===t).sort((a,b)=>b.y-a.y)[0];
+  const MO_ALIAS={"Sr/Sra":["Sr/Sra","Sra./Sr.","Sra. / Sr.","Sr./Sra.","Sr. / Sra.","Sra/Sr"],"email":["email","E-mail","Email","e-mail"],"Email/endereço para":["Email/endereço para","E-mail/endereço para","E-mail/endereço para faturamento"]};
+  const nrm=t=>String(t).replace(/\s+/g," ").trim();const acha=t=>{const A=(MO_ALIAS[t]||[t]).map(nrm);return I.filter(i=>A.includes(nrm(i.t))).sort((a,b)=>b.y-a.y)[0]};
   const lab=new Set(I.map(i=>i.t));const tipo=acha("Tipo de missão"),vTipo=tipo&&I.find(i=>Math.abs(i.y-tipo.y)<2&&i.x>tipo.x+tipo.w+2&&i.x<tipo.x+90);
   const colEsq=vTipo?vTipo.x:null;const feitos=[],faltou=[];
   for(const [rot,val,lado] of MO_CAB){const L=acha(rot);if(!L){faltou.push(rot);continue}
