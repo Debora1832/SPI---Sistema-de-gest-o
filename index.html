@@ -4028,7 +4028,7 @@ select.crfase[data-f=fim]{background:var(--cr-ok-s);color:var(--cr-ok);border-co
       <section class="ntx-list" id="ntxList" aria-label="Notas"></section>
       <footer class="ntx-foot">
         <span id="ntxStore">Conectando…</span>
-        <span>Regras: NF emitida de 01 a 25 · vencimento mínimo 20 dias do recebimento · pagamento só por transferência</span>
+        <span>Regras: NF emitida de 01 a 20 · vencimento mínimo 20 dias do recebimento · pagamento só por transferência</span>
         <button type="button" class="ntx-linkbtn" id="cnqAntiga">Ver tela antiga (somente consulta)</button>
       </footer>
     </div>
@@ -15380,7 +15380,7 @@ const STEPS=[
  {k:"aprov",t:"Requisição aprovada",h:"Acompanhar em Pendências do Usuário (mla0207) / Consulta de pendências (mla0201)"},
  {k:"pedido",t:"Nº do pedido recebido",h:"Pedir ao Patrick ou Compras (Teams) e formalizar por e-mail"},
  {k:"envio",t:"Pedido enviado à empresa terceira",h:"Fornecedor deve citar o pedido na descrição da NF"},
- {k:"nf",t:"NF recebida e conferida",h:"Pedido na descrição, emitida de 01 a 25, vencimento ≥ 20 dias, dados bancários"},
+ {k:"nf",t:"NF recebida e conferida",h:"Pedido na descrição, emitida de 01 a 20, vencimento ≥ 20 dias, dados bancários"},
  {k:"ged",t:"E-mail de GED enviado",h:"PDF salvo só com os números do pedido · recbtofacil + recebimento.fiscal"},
  {k:"lanc",t:"NF lançada pelo fiscal",h:"Fiscal responde \"Lançada\" ou aponta erro"}
 ];
@@ -15454,7 +15454,7 @@ function alertas(n){
     if(et(n,"req")) A("warn","Requisição aberta com a negociação ainda em aberto: confira se o valor é o negociado");
     else A("info","Negociação em aberto: feche o valor antes de abrir a requisição");
   }
-  if(n.nfEmissao){const e=pd(n.nfEmissao);if(e&&e.getDate()>=26&&!fim) A("crit",`NF emitida dia ${pad(e.getDate())}: fora do período 01–25. Pedir cancelamento e reemissão a partir do dia 01`)}
+  if(n.nfEmissao){const e=pd(n.nfEmissao);if(e&&e.getDate()>=21&&!fim) A("crit",`NF emitida dia ${pad(e.getDate())}: fora do período 01–20. Pedir cancelamento e reemissão a partir do dia 01`)}
   if(n.nfVenc){
     const v=pd(n.nfVenc), base=pd(n.etapas?.nf)||pd(n.nfEmissao);
     if(base&&days(base,v)<20&&!fim) A("warn",`Vencimento ${days(base,v)} dias após o recebimento da NF (mínimo 20)`);
@@ -15466,7 +15466,7 @@ function alertas(n){
   if(et(n,"nf")&&!n.pedido&&!fim) A("crit","NF recebida sem número de pedido registrado");
   if(et(n,"ged")&&!fim){const g=pd(n.etapas.ged);if(g){const b=bizDays(g,hoje);if(b>=2) A("warn",`GED enviado há ${b} dias úteis sem confirmação: conferir com o fiscal`)}}
   if(et(n,"req")&&!et(n,"aprov")){const r=pd(n.etapas.req);if(r){const d=days(r,hoje);if(d>=3) A("info",`Aguardando aprovação há ${d} dias${tier(n.valor)?" ("+tier(n.valor)+")":""}`)}}
-  if(et(n,"envio")&&!et(n,"nf")){const dd=hoje.getDate();if(dd>=18&&dd<=25) A("info",`Lembrar o fornecedor: NF precisa ser emitida até dia 25 (faltam ${25-dd} dia${25-dd===1?"":"s"})`)}
+  if(et(n,"envio")&&!et(n,"nf")){const dd=hoje.getDate();if(dd>=14&&dd<=20) A("info",`Lembrar o fornecedor: NF precisa ser emitida até dia 20 (faltam ${20-dd} dia${20-dd===1?"":"s"})`)}
   if(et(n,"pedido")&&!et(n,"envio")){const p=pd(n.etapas.pedido);if(p&&days(p,hoje)>=2) A("info","Pedido recebido e ainda não enviado à empresa terceira")}
   return out;
 }
@@ -15563,7 +15563,7 @@ Assunto: ${n.relatorio?n.relatorio+" - ":""}Número do pedido ${p}
 
 Bom dia,
 Segue número do pedido ${p}, referente ao relatório ${n.relatorio||"___"} no valor de R$ ${brlPlain(n.valor)}.
-Favor informar o número do pedido na descrição da nota fiscal e emiti-la entre os dias 01 e 25 do mês, com vencimento mínimo de 20 dias e dados bancários para transferência (não aceitamos boleto). Enviar a NF para o solicitante, o comprador e nfe.servicos@magius.com.br.
+Favor informar o número do pedido na descrição da nota fiscal e emiti-la entre os dias 01 e 20 do mês, com vencimento mínimo de 20 dias e dados bancários para transferência (não aceitamos boleto). Enviar a NF para o solicitante, o comprador e nfe.servicos@magius.com.br.
 
 Att;`;
 }
@@ -15720,8 +15720,8 @@ function render(){
   const fila=[];abertas.forEach(n=>alertas(n).forEach(a=>fila.push({n,...a})));
   fila.sort((x,y)=>rank[x.lv]-rank[y.lv]);
   const dd=hoje.getDate();
-  const janela= dd>=26?`Hoje é dia ${dd}: NFs emitidas agora (26–31) serão recusadas. Peça emissão a partir do dia 01.`: dd>=20?`Faltam ${25-dd} dia${25-dd===1?"":"s"} para o fim da janela de emissão (dia 25).`:`Janela de emissão de NF aberta (01 a 25).`;
-  $("#ntxAlerts").innerHTML=`<header><h2>Atenção agora</h2><span class="flag ${dd>=26?"crit":dd>=20?"warn":"ok"}">${esc(janela)}</span></header>`+
+  const janela= dd>=21?`Hoje é dia ${dd}: NFs emitidas agora (21–31) serão recusadas. Peça emissão a partir do dia 01.`: dd>=15?`Faltam ${20-dd} dia${20-dd===1?"":"s"} para o fim da janela de emissão (dia 20).`:`Janela de emissão de NF aberta (01 a 20).`;
+  $("#ntxAlerts").innerHTML=`<header><h2>Atenção agora</h2><span class="flag ${dd>=21?"crit":dd>=15?"warn":"ok"}">${esc(janela)}</span></header>`+
    (fila.length?`<ul class="ntx-alist">${fila.slice(0,8).map(a=>`<li class="ntx-aitem ${a.lv}"><span class="bar"></span><div><div class="who">${esc(a.n.fornecedor||"Sem fornecedor")} · ${esc(a.n.cliente||"—")}${a.n.pedido?` · <span class="mono">PC ${esc(digits(a.n.pedido))}</span>`:""}</div><div class="msg">${esc(a.m)}</div></div><button class="ntx-btn small" type="button" data-ntopen="${esc(a.n.id)}">Abrir</button></li>`).join("")}</ul>${fila.length>8?`<div class="ntx-empty-al">+ ${fila.length-8} alerta(s). Use o filtro "Com alerta".</div>`:""}`
    : `<div class="ntx-empty-al">${loaded?"Nenhum prazo ou pendência exigindo ação.":"Carregando…"}</div>`);
   updateNavBadge();
