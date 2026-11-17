@@ -15517,11 +15517,21 @@ function narrativa(n,nome){
 }
 /* WhatsApp para o gerente quando a solicitação de compras é aberta */
 function waNum(v){let d=digits(v);if(!d)return "";if(d.length<=11)d="55"+d;return d}
-function gerenteMsg(n,ger){const serv=(n.servicos||[]).map(servLabel).join(" / ")||"serviço";const t=tier(n.valor);
-  return `Olá${ger&&ger.nome?", "+ger.nome:""}! Abri a solicitação de compras nº ${n.requisicao||"___"} no Totvs para aprovação.
-Serviço de ${serv}${n.fornecedor?" – "+n.fornecedor:""} – cliente ${n.cliente||"___"}${n.relatorio?"\nRelatório: "+n.relatorio:""}\n${narrVinculo(n)}\nFalha: ${narrFalha(n)}${n.vinculo==="nc"?`\nCausa raiz: ${narrCausa(n)}\nAções tomadas:\n${narrAcoes(n,true)}`:""}
-Valor: R$ ${brlPlain(n.valor)}${t?"\nAprovação: "+t:""}
+const supAprova=n=>{const v=Number(n.valor);return isFinite(v)&&v>0&&v<=2000};
+function waResumo(n){const serv=(n.servicos||[]).map(servLabel).join("/")||"serviço";const L=[`${n.fornecedor||"Fornecedor"} · ${serv} · ${n.cliente||"___"}`,`${n.relatorio?n.relatorio+" · ":""}R$ ${brlPlain(n.valor)}`];
+  if(n.vinculo==="nc"){let r=null;try{r=ncDaNota(n)}catch(e){}L.push([r&&r.rncNumber?"RNC "+r.rncNumber:(n.ncNumero?"NC "+n.ncNumero:""),r&&r.piece?"PN "+r.piece:"",r&&r.failureMode||""].filter(Boolean).join(" · "));
+    const d=narr8D(n);if(d){const oc=((d.d4&&d.d4.origem)||{}).ocorrencia;if(oc){const c=String(oc).trim().replace(/\.$/,"");L.push("Causa: "+(c.length>140?c.slice(0,137)+"...":c))}
+      const A=((d.d5&&d.d5.acoes)||[]).filter(a=>a&&a.acao);if(A.length){const c={};A.forEach(a=>{const k=/conclu/i.test(a.status||"")?"concluída":/andamento/i.test(a.status||"")?"em andamento":"pendente";c[k]=(c[k]||0)+1});
+        L.push("Ações do 8D: "+["concluída","em andamento","pendente"].filter(k=>c[k]).map(k=>`${c[k]} ${k}${c[k]>1&&k!=="em andamento"?"s":""}`).join(", "))}}}
+  else{const p=String(n.pns||"").split(/[,;\n]+/).map(x=>x.trim()).filter(Boolean);L.push((n.vinculo==="emb"?"Embarque controlado":"Inspeção geral")+(p.length?" · PN: "+p.join(", "):""))}
+  return L.join("\n")}
+function gerenteMsg(n,ger){return `Olá${ger&&ger.nome?", "+ger.nome:""}! Abri a SC nº ${n.requisicao||"___"} no Totvs para aprovação.
+${waResumo(n)}${supAprova(n)?`\nJá aprovada pela supervisão${cfg.supNome||pendingSup&&pendingSup.nome?" ("+((pendingSup&&pendingSup.nome)||cfg.supNome)+")":""}.`:""}
 Pode aprovar, por favor? Obrigada!`}
+function supMsg(n,sup){return `Olá${sup&&sup.nome?", "+sup.nome:""}! Abri a SC nº ${n.requisicao||"___"} no Totvs (valor até R$ 2.000, passa por você antes da gerência).
+${waResumo(n)}
+Pode aprovar, por favor? Obrigada!`}
+function waSupLink(n,sup){const num=waNum(sup&&sup.wa);return `https://wa.me/${num}?text=${encodeURIComponent(supMsg(n,sup))}`}
 function waLink(n,ger){const num=waNum(ger&&ger.wa);return num?`https://wa.me/${num}?text=${encodeURIComponent(gerenteMsg(n,ger))}`:""}
 /* e-mails prontos -> abrir no Outlook já preenchido (mailto) */
 function fornEmail(n){return (n.fornEmail||((cfg.fornEmails||{})[(n.fornecedor||"").trim().toLowerCase()])||"").trim()}
@@ -15779,12 +15789,12 @@ function updateNavBadge(){
 }
 
 /* ---------- editor ---------- */
-let editing=null, pendingNome=null, pendingGer=null, negVisivel=false;
+let editing=null, pendingNome=null, pendingGer=null, pendingSup=null, negVisivel=false;
 function openEditor(id){
   const base=id?notas.find(n=>n.id===id):null;
   const t=tenantAtual();
   editing=base?clone(base):{id:newId(),servicos:[],vinculo:"nenhum",etapas:{},tenant:t?t.key:"",cliente:""};
-  pendingNome=cfg.nome||"";pendingGer={nome:cfg.gerenteNome||"",wa:cfg.gerenteWhats||""};negVisivel=negTem(editing);
+  pendingNome=cfg.nome||"";pendingGer={nome:cfg.gerenteNome||"",wa:cfg.gerenteWhats||""};pendingSup={nome:cfg.supNome||"Ailen",wa:cfg.supWhats||""};negVisivel=negTem(editing);
   drawEditor(!base);
 }
 function negBlock(n){
@@ -15934,6 +15944,9 @@ function drawEditor(isNew){
      <div class="copy ntx-wa"><header><span class="lbl">WhatsApp para o gerente (abre sozinho ao salvar com a requisição aberta)</span><span class="ntx-actions"><button class="ntx-btn small" type="button" data-ntcopy="wa">Copiar</button><a class="ntx-btn small primary" id="ntxWaBtn" href="#" target="_blank" rel="noopener">Enviar no WhatsApp</a></span></header>
       <div class="grid"><div class="f"><label for="ntx-gnome">Nome do gerente</label><input id="ntx-gnome" value="${esc(pendingGer.nome)}" placeholder="Ex.: Patrick"></div><div class="f"><label for="ntx-gwa">WhatsApp do gerente (com DDD)</label><input id="ntx-gwa" class="mono" inputmode="tel" value="${esc(pendingGer.wa)}" placeholder="(41) 99999-9999"></div></div>
       <pre id="ntx-cp-wa"></pre><span class="hint" id="ntxWaHint"></span></div>
+     <div class="copy ntx-wa" id="ntxSupBox" hidden><header><span class="lbl">WhatsApp para a supervisora (nota até R$ 2.000: aprova antes do gerente)</span><span class="ntx-actions"><button class="ntx-btn small" type="button" data-ntcopy="wasup">Copiar</button><a class="ntx-btn small primary" id="ntxWaSupBtn" href="#" target="_blank" rel="noopener">Enviar no WhatsApp</a></span></header>
+      <div class="grid"><div class="f"><label for="ntx-snome">Nome da supervisora</label><input id="ntx-snome" value="${esc(pendingSup.nome)}"></div><div class="f"><label for="ntx-swa">WhatsApp da supervisora (com DDD)</label><input id="ntx-swa" class="mono" inputmode="tel" value="${esc(pendingSup.wa)}" placeholder="(41) 99999-9999"></div></div>
+      <pre id="ntx-cp-wasup"></pre><span class="hint" id="ntxWaSupHint"></span></div>
      ${["narr","ped","env","ged"].map(k=>`<div class="copy"><header><span class="lbl">${{narr:"Narrativa da requisição (passos 3 e 5)",ped:"E-mail pedindo nº do pedido a Compras (passo 9)",env:"E-mail enviando o pedido ao fornecedor (passo 10)",ged:"E-mail de GED (passo 13)"}[k]}</span><span class="ntx-actions"><button class="ntx-btn small" type="button" data-ntcopy="${k}">Copiar</button>${k==="narr"?"":`<a class="ntx-btn small primary ntx-ol" id="ntx-ol-${k}" href="#">Abrir no Outlook</a>`}</span></header>${k==="env"?`<div class="f ntx-fornmail"><label for="ntx-fmail">E-mail da empresa terceira (fica guardado para esta empresa)</label><input id="ntx-fmail" value="${esc(fornEmail(n))}" placeholder="Ex.: natalia.dias@trigo-group.com; vinicius.leite@trigo-group.com"></div>`:""}<pre id="ntx-cp-${k}"></pre>${k==="narr"?"":`<span class="hint" id="ntx-olh-${k}"></span>`}</div>`).join("")}
     </section>
     <section class="sec"><h3>Observações</h3>
@@ -16002,6 +16015,9 @@ function syncEditor(){
   const ncKey=n.vinculo+"|"+digits(n.ncNumero);if(syncEditor._nc!==ncKey){syncEditor._nc=ncKey;drawNc()}
   pendingNome=$("#ntx-nome").value.trim();
   pendingGer={nome:$("#ntx-gnome").value.trim(),wa:$("#ntx-gwa").value.trim()};
+  if($("#ntx-snome"))pendingSup={nome:$("#ntx-snome").value.trim(),wa:$("#ntx-swa").value.trim()};
+  {const box=$("#ntxSupBox");if(box){const on=supAprova(n);box.hidden=!on;if(on){$("#ntx-cp-wasup").textContent=supMsg(n,pendingSup);$("#ntxWaSupBtn").href=waSupLink(n,pendingSup);
+    $("#ntxWaSupHint").textContent=(!waNum(pendingSup.wa)?"Sem o número salvo, o WhatsApp abre para você escolher o contato. Informe uma vez e fica salvo. ":"")+(n.whatsSup?`Enviada à supervisora em ${fdate(n.whatsSup)}. Depois da aprovação dela, envie a do gerente.`:"Ao salvar com a requisição aberta, abre esta mensagem primeiro; a do gerente fica no botão acima para depois da aprovação dela.")}}}
   {const l=waLink(n,pendingGer),b=$("#ntxWaBtn");$("#ntx-cp-wa").textContent=gerenteMsg(n,pendingGer);b.href=l||"#";b.classList.toggle("off",!l);
    $("#ntxWaHint").textContent=!waNum(pendingGer.wa)?"Informe o WhatsApp do gerente uma vez; fica salvo para todas as notas.":n.whatsGerente?`Mensagem já enviada em ${fdate(n.whatsGerente)}. Ao salvar de novo não abre outra vez.`:!n.requisicao||!et(n,"req")?"Abre sozinho quando você marcar \"Requisição aberta\", preencher o nº da solicitação e salvar.":"Ao salvar, o WhatsApp abre com esta mensagem pronta: é só enviar."}
   n.fornEmail=$("#ntx-fmail").value.trim();
@@ -16023,9 +16039,11 @@ async function doSave(){
   if(!n.tenant){const tt=tenantAtual();if(tt)n.tenant=tt.key}
   if(n.vinculo==="nc"){const r=ncDaNota({...n,ncId:""});n.ncId=r?r.id:""}else delete n.ncId;
   /* abre o WhatsApp do gerente aqui, ainda dentro do clique (o navegador bloqueia se for depois de salvar) */
-  if(!ehAdm(n)&&et(n,"req")&&n.requisicao&&!n.whatsGerente){const l=waLink(n,pendingGer);if(l){const w=window.open(l,"_blank","noopener");n.whatsGerente=isoToday();if(!w)toast("O navegador bloqueou a janela do WhatsApp: use o botão Enviar no WhatsApp da nota")}}
+  if(!ehAdm(n)&&et(n,"req")&&n.requisicao&&supAprova(n)&&!n.whatsSup){const w=window.open(waSupLink(n,pendingSup),"_blank","noopener");n.whatsSup=isoToday();if(!w)toast("O navegador bloqueou a janela do WhatsApp: use o botão Enviar da supervisora")}
+  else if(!ehAdm(n)&&et(n,"req")&&n.requisicao&&!n.whatsGerente){const l=waLink(n,pendingGer);if(l){const w=window.open(l,"_blank","noopener");n.whatsGerente=isoToday();if(!w)toast("O navegador bloqueou a janela do WhatsApp: use o botão Enviar no WhatsApp da nota")}}
   let fmPatch=null;{const fk=(n.fornecedor||"").trim().toLowerCase();if(fk&&n.fornEmail&&(cfg.fornEmails||{})[fk]!==n.fornEmail)fmPatch={fornEmails:{...(cfg.fornEmails||{}),[fk]:n.fornEmail}}}
-  const gerPatch=(pendingGer&&(pendingGer.nome!==(cfg.gerenteNome||"")||pendingGer.wa!==(cfg.gerenteWhats||"")))?{gerenteNome:pendingGer.nome,gerenteWhats:pendingGer.wa}:null;
+  let gerPatch=(pendingGer&&(pendingGer.nome!==(cfg.gerenteNome||"")||pendingGer.wa!==(cfg.gerenteWhats||"")))?{gerenteNome:pendingGer.nome,gerenteWhats:pendingGer.wa}:null;
+  if(pendingSup&&(pendingSup.nome!==(cfg.supNome||"Ailen")||pendingSup.wa!==(cfg.supWhats||"")))gerPatch={...(gerPatch||{}),supNome:pendingSup.nome,supWhats:pendingSup.wa};
   const btn=$("#ntxBtnSave");btn.disabled=true;btn.textContent="Salvando…";
   try{await salvar(n,pendingNome!==cfg.nome?pendingNome:null,(gerPatch||fmPatch)?{...(gerPatch||{}),...(fmPatch||{})}:null);closeEditor();toast(et(n,"lanc")?(ehAdm(n)?"Custo administrativo finalizado (entregue ao fiscal)":"Nota finalizada"):"Nota salva")}
   catch(e){btn.disabled=false;btn.textContent="Salvar";toast("Não foi possível salvar no Firebase ("+((e&&e.code)||"erro")+"). Ficou salvo neste navegador.")}
