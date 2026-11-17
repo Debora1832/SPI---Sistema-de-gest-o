@@ -15482,12 +15482,20 @@ function motivo(n){
   if(n.relatorio) base+=` Relatório ${n.relatorio}.`;
   return base;
 }
+/* RNC e PN para a narrativa do Datasul: NC vinculada (card da NC) ou PNs inspecionados no trabalho geral */
+function narrVinculo(n){
+  if(n.vinculo==="nc"){let r=null;try{r=typeof ncDaNota==="function"?ncDaNota(n):null}catch(e){}
+    const rnc=r&&r.rncNumber?`RNC ${r.rncNumber}`:"RNC ___",pn=r&&r.piece?`PN ${r.piece}`:(n.pns?`PN ${n.pns}`:"PN ___");
+    return `${rnc} · ${pn}${n.ncNumero?` (Q-note/NC ${n.ncNumero})`:""}`}
+  const p=String(n.pns||"").split(/[,;\n]+/).map(x=>x.trim()).filter(Boolean);
+  const tp=n.vinculo==="emb"?"Embarque controlado":"Trabalho geral de inspeção";return p.length?`${tp} · PN${p.length>1?"s":""} inspecionado${p.length>1?"s":""}: ${p.join(", ")}`:`${tp} · PNs inspecionados: ___`}
 function narrativa(n,nome){
   return `1 – Nome do Solicitante: ${nome||"___"}
 2 – Local de aplicação: Linha de montagem e estoque Cliente ${n.cliente||"___"}
 3 – Centro de custo: 32403;
 4 – Quantidade comprada: Custo do Serviço realizado R$ ${brlPlain(n.valor)}
-5 – Por que está sendo comprado? ${motivo(n)}`;
+5 – Por que está sendo comprado? ${motivo(n)}
+6 – Vínculo: ${narrVinculo(n)}`;
 }
 /* WhatsApp para o gerente quando a solicitação de compras é aberta */
 function waNum(v){let d=digits(v);if(!d)return "";if(d.length<=11)d="55"+d;return d}
@@ -15801,7 +15809,7 @@ function drawNc(){
   if(!ncCache[t]){carregarNCs(t);box.innerHTML=`<div class="hint">Procurando o card da NC ${esc(n.ncNumero)}…</div>`;return}
   const r=ncDaNota(n);
   if(!r){box.innerHTML=`<div class="tier">Nenhum card de NC com a Q-note <b>${esc(n.ncNumero)}</b> neste cliente. Confira o número ou cadastre a NC na página NC.</div>`;return}
-  const fotos=ncFotos(r), arq=ncArquivos(r);
+  const fotos=ncFotos(r), arq=ncArquivos(r);try{const c=$("#ntx-cp-narr");if(c)c.textContent=narrativa(n,pendingNome)}catch(e){}
   box.innerHTML=`<div class="ntx-ncbox">
     <div class="ntx-nchead"><div><div class="eyebrow">Card da NC vinculado</div><b>Q-note ${esc(r.ncNumber||"")}${r.rncNumber?` · RNC ${esc(r.rncNumber)}`:""}</b></div><button class="ntx-btn small" type="button" data-ntabrenc="${esc(r.id)}">Abrir card da NC</button></div>
     <div class="ntx-ncgrid"><span><i>Peça</i>${esc(r.piece||"—")}</span><span><i>Modo de falha</i>${esc(r.failureMode||"—")}</span><span><i>Qtd.</i>${esc(r.qty||"—")}</span><span><i>Data</i>${fdate((r.date||"").slice(0,10))}</span><span><i>Status</i>${r.d8Finalizado?"8D finalizado":r.rncAberta?"RNC aberta":"Em aberto"}</span></div>
@@ -15875,6 +15883,7 @@ function drawEditor(isNew){
       </div></div>
      <div class="f" id="ntxNcWrap" ${n.vinculo==="nc"?"":"hidden"}><label for="ntx-nc">Nº da NC / RNC</label><input id="ntx-nc" class="mono" value="${v("ncNumero")}" placeholder="Q-note, ex.: 222771172"></div>
      <div id="ntxNcBox" hidden></div>
+     <div class="f" id="ntxPnsWrap" ${n.vinculo==="nc"?"hidden":""}><label for="ntx-pns">PN(s) inspecionado(s)</label><input id="ntx-pns" class="mono" value="${v("pns")}" placeholder="Ex.: AXT24359, CXT42223 (separe por vírgula)"><span class="hint">Vai na narrativa do Datasul. Em custo vinculado a NC, a RNC e o PN vêm do card da NC.</span></div>
     </section>
     <section class="sec"><h3 id="ntxSecValH">${ehAdm(n)?"Valor":"Valores e documentos"}</h3>
      <div class="grid three">
@@ -15951,7 +15960,7 @@ function readForm(){
   n.servicos=SERV.map(s=>s[0]).filter(k=>$("#ntx-sv-"+k).checked);
   n.fornecedor=g("ntx-forn");n.cliente=g("ntx-cli");n.relatorio=g("ntx-rel");n.dataServico=g("ntx-dserv");n.descricao=g("ntx-desc");
   n.vinculo=(document.querySelector('input[name="ntxvinc"]:checked')||{}).value||"nenhum";
-  n.ncNumero=n.vinculo==="nc"?g("ntx-nc"):"";
+  n.ncNumero=n.vinculo==="nc"?g("ntx-nc"):"";if($("#ntx-pns"))n.pns=g("ntx-pns");
   n.valor=g("ntx-valor");n.requisicao=g("ntx-req");n.pedido=g("ntx-ped");n.nfNumero=g("ntx-nf");n.nfEmissao=g("ntx-emis");n.nfVenc=g("ntx-venc");n.obs=$("#ntx-obs").value;
   if(negVisivel&&$("#ntx-negorig")){n.valorOriginal=g("ntx-negorig");n.negStatus=$("#ntx-negaberta").checked?"aberta":"fechada";n.negCom=g("ntx-negcom");n.negData=g("ntx-negdata");n.negObs=$("#ntx-negobs").value}
   else if(!negVisivel){delete n.valorOriginal;delete n.negStatus;delete n.negCom;delete n.negData;delete n.negObs}
@@ -15961,7 +15970,7 @@ function readForm(){
 }
 function syncEditor(){
   const n=readForm();
-  $("#ntxNcWrap").hidden=n.vinculo!=="nc";
+  $("#ntxNcWrap").hidden=n.vinculo!=="nc";if($("#ntxPnsWrap"))$("#ntxPnsWrap").hidden=n.vinculo==="nc";
   {const adm=ehAdm(n);document.querySelectorAll("#ntxDrawerRoot [data-ntterc]").forEach(e=>e.hidden=adm);$("#ntxAdmInfo").hidden=!adm;
    $("#ntxSecServH").textContent=adm?"Custo":"Serviço";$("#ntxSecValH").textContent=adm?"Valor":"Valores e documentos";$("#ntxValorLbl").textContent=adm?"Valor descontado pelo cliente (R$)":"Valor total da NF (R$)";
    $("#ntxCliLbl").textContent=adm?"Cliente que fez o desconto":"Cliente onde foi feito o serviço";$("#ntxDservLbl").textContent=adm?"Data do custo":"Data do serviço"}
