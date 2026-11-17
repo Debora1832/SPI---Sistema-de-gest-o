@@ -15489,19 +15489,23 @@ function narrVinculo(n){
     return `${rnc} · ${pn}${n.ncNumero?` (Q-note/NC ${n.ncNumero})`:""}`}
   const p=String(n.pns||"").split(/[,;\n]+/).map(x=>x.trim()).filter(Boolean);
   const tp=n.vinculo==="emb"?"Embarque controlado":"Trabalho geral de inspeção";return p.length?`${tp} · PN${p.length>1?"s":""} inspecionado${p.length>1?"s":""}: ${p.join(", ")}`:`${tp} · PNs inspecionados: ___`}
+function narrFalha(n){let r=null;if(n.vinculo==="nc"){try{r=typeof ncDaNota==="function"?ncDaNota(n):null}catch(e){}}
+  const d=String((r&&r.description)||n.descricao||"").replace(/\s+/g," ").trim(),m=r&&r.failureMode||"";
+  const t=[m,d].filter(Boolean).join(": ");return t?(t.length>300?t.slice(0,297)+"...":t):"___"}
 function narrativa(n,nome){
   return `1 – Nome do Solicitante: ${nome||"___"}
 2 – Local de aplicação: Linha de montagem e estoque Cliente ${n.cliente||"___"}
 3 – Centro de custo: 32403;
 4 – Quantidade comprada: Custo do Serviço realizado R$ ${brlPlain(n.valor)}
 5 – Por que está sendo comprado? ${motivo(n)}
-6 – Vínculo: ${narrVinculo(n)}`;
+6 – Vínculo: ${narrVinculo(n)}
+7 – Descrição da falha: ${narrFalha(n)}`;
 }
 /* WhatsApp para o gerente quando a solicitação de compras é aberta */
 function waNum(v){let d=digits(v);if(!d)return "";if(d.length<=11)d="55"+d;return d}
 function gerenteMsg(n,ger){const serv=(n.servicos||[]).map(servLabel).join(" / ")||"serviço";const t=tier(n.valor);
   return `Olá${ger&&ger.nome?", "+ger.nome:""}! Abri a solicitação de compras nº ${n.requisicao||"___"} no Totvs para aprovação.
-Serviço de ${serv}${n.fornecedor?" – "+n.fornecedor:""} – cliente ${n.cliente||"___"}${n.relatorio?"\nRelatório: "+n.relatorio:""}${n.vinculo==="nc"&&n.ncNumero?"\nNC: "+n.ncNumero:""}
+Serviço de ${serv}${n.fornecedor?" – "+n.fornecedor:""} – cliente ${n.cliente||"___"}${n.relatorio?"\nRelatório: "+n.relatorio:""}\n${narrVinculo(n)}\nFalha: ${narrFalha(n)}
 Valor: R$ ${brlPlain(n.valor)}${t?"\nAprovação: "+t:""}
 Pode aprovar, por favor? Obrigada!`}
 function waLink(n,ger){const num=waNum(ger&&ger.wa);return num?`https://wa.me/${num}?text=${encodeURIComponent(gerenteMsg(n,ger))}`:""}
@@ -15522,6 +15526,8 @@ Assunto: Solicitação Nº de Pedido para Serviço de ${serv}${n.relatorio?" - "
 
 Bom dia,
 Por favor, providenciar o nº do pedido de compras referente ao Serviço de ${serv}${n.relatorio?" - "+n.relatorio:""} / Empresa: ${n.fornecedor||"___"}, conforme a solicitação de compras nº ${n.requisicao||"___"}, serviço realizado no cliente ${n.cliente||"___"}${motivoTxt}, no valor de R$ ${brlPlain(n.valor)}${economia(n)?` (valor negociado com o fornecedor; valor original R$ ${brlPlain(n.valorOriginal)})`:""}.
+${narrVinculo(n)}
+Descrição da falha: ${narrFalha(n)}
 Segue em anexo o relatório do serviço.
 
 Att;`;
@@ -15788,9 +15794,14 @@ function carregarNCs(t){
 }
 function ncDaNota(n){
   const t=ncTenant(n), L=ncCache[t];if(!L){carregarNCs(t);return null}
-  if(n.ncId){const r=L.find(x=>x.id===n.ncId);if(r)return r}
-  const q=digits(n.ncNumero);if(!q)return null;
-  return L.find(x=>digits(x.ncNumber)===q)||null;
+  const q=digits(n.ncNumero),rn=String(n.ncNumero||"").toUpperCase().replace(/\s+/g,"").replace("-","/");
+  const bate=x=>(q&&digits(x.ncNumber)===q)||(rn&&String(x.rncNumber||"").toUpperCase().replace(/\s+/g,"").replace("-","/")===rn);
+  if(n.ncId){for(const k of [t,"jd2","cat","agco","gts"]){const r=(ncCache[k]||[]).find(x=>x.id===n.ncId);if(r)return r}}
+  if(!q)return null;
+  let r=L.find(bate);if(r)return r;
+  /* a NC pode estar em outro cliente (ex.: missão da Trigo de outra planta): procura nos demais */
+  for(const k of ["jd2","cat","agco","gts"]){if(k===t)continue;if(!ncCache[k]){carregarNCs(k);continue}r=ncCache[k].find(bate);if(r){r.__tenant=k;return r}}
+  return null;
 }
 function ncArquivos(r){
   const out=[];
@@ -15811,7 +15822,7 @@ function drawNc(){
   if(!r){box.innerHTML=`<div class="tier">Nenhum card de NC com a Q-note <b>${esc(n.ncNumero)}</b> neste cliente. Confira o número ou cadastre a NC na página NC.</div>`;return}
   const fotos=ncFotos(r), arq=ncArquivos(r);try{const c=$("#ntx-cp-narr");if(c)c.textContent=narrativa(n,pendingNome)}catch(e){}
   box.innerHTML=`<div class="ntx-ncbox">
-    <div class="ntx-nchead"><div><div class="eyebrow">Card da NC vinculado</div><b>Q-note ${esc(r.ncNumber||"")}${r.rncNumber?` · RNC ${esc(r.rncNumber)}`:""}</b></div><button class="ntx-btn small" type="button" data-ntabrenc="${esc(r.id)}">Abrir card da NC</button></div>
+    <div class="ntx-nchead"><div><div class="eyebrow">Card da NC vinculado${r.__tenant&&r.__tenant!==ncTenant(n)?` · está no cliente ${esc(r.customer||r.__tenant)}`:""}</div><b>Q-note ${esc(r.ncNumber||"")}${r.rncNumber?` · RNC ${esc(r.rncNumber)}`:""}</b></div><button class="ntx-btn small" type="button" data-ntabrenc="${esc(r.id)}">Abrir card da NC</button></div>
     <div class="ntx-ncgrid"><span><i>Peça</i>${esc(r.piece||"—")}</span><span><i>Modo de falha</i>${esc(r.failureMode||"—")}</span><span><i>Qtd.</i>${esc(r.qty||"—")}</span><span><i>Data</i>${fdate((r.date||"").slice(0,10))}</span><span><i>Status</i>${r.d8Finalizado?"8D finalizado":r.rncAberta?"RNC aberta":"Em aberto"}</span></div>
     ${r.description?`<div class="hint">${esc(r.description)}</div>`:""}
     ${fotos.length?`<div class="ntx-ncfotos">${fotos.map(u=>`<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="Foto da NC" loading="lazy"></a>`).join("")}</div>`:`<div class="hint">O card não tem fotos.</div>`}
