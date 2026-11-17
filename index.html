@@ -18129,7 +18129,8 @@ async function qxCronoPg(host,D){
     ${plantas.length>1?`<select data-crplanta aria-label="Planta"><option value="">Todas as plantas</option>${plantas.map(p=>`<option ${p===C.planta?"selected":""}>${esc(p)}</option>`).join("")}</select>`:""}
     <select data-crsel aria-label="Situação">${[["","Todas as situações"],["open","Em aberto (todas)"],["today","Vencem hoje ou atrasadas"],["late","Com fase atrasada"],...CR_KEYS.map(s=>["f:"+s,"Em "+CR_ETAPAS[s]]),["wait","Sem nº RNC"],["imp","Improcedentes"],["done","Finalizadas"]].map(([v,l])=>`<option value="${v}" ${v===C.st?"selected":""}>${l}</option>`).join("")}</select>
     <div class="cr-seg" role="group" aria-label="Visualização"><button type="button" data-crview="l" aria-pressed="${C.view==="l"}">Lista / editar</button><button type="button" data-crview="g" aria-pressed="${C.view==="g"}">Cronograma</button></div>
-    <button type="button" class="qx-btn ghost" data-crcfg>Meta e prazos</button></div>
+    <button type="button" class="qx-btn ghost" data-crcfg>Meta e prazos</button>
+    <label class="qx-btn ghost" for="crSadFile" title="Escolha o relatório de SADs exportado do Pipefy (.xlsx)">Atualizar SADs (Pipefy)</label><input type="file" id="crSadFile" accept=".xlsx,.xls,.csv" hidden data-crsadfile></div>
    <div class="cr-legend"><span><i class="o"></i>Data da NC</span><span><i class="d"></i>Etapa concluída</span><span><i></i>Etapa no prazo</span><span><i class="s"></i>Vence em até 1 dia</span><span><i class="l"></i>Atrasada</span>${meta.data?'<span><i class="m"></i>Meta de fechamento</span>':""}</div>
    <section class="qx-card cr-panel">${L.length?(C.view==="g"?crGantt(L,meta):lista):`<div class="qx-vazio">${W.length?"Nenhuma NC com esses filtros.":"Nenhuma NC cadastrada para este cliente."}</div>`}</section>`;
   if(C.view==="g"){const sc=host.querySelector(".cr-gscroll");if(sc)requestAnimationFrame(()=>{sc.scrollLeft=Math.max(0,(+sc.dataset.hoje||0)-260)})}
@@ -18150,6 +18151,36 @@ function crGantt(L,meta){const DAY=6,hoje=crHoje();let min=crAdd(hoje,-45),max=c
 /* ---------- gravação ---------- */
 async function crSalvar(k,id,patch,msg){const C=QX.cr;const cur=(C.docs[k]||{})[id]||{};const novo={...cur,...patch,ncId:id,atualizadoEm:new Date().toISOString()};
   try{await fdb.collection("nc_crono_"+k).doc(id).set(novo);(C.docs[k]=C.docs[k]||{})[id]=novo;toast(msg||"Salvo");return true}catch(e){toast("Não foi possível salvar. Tente de novo.");return false}}
+/* ---------- SADs do Pipefy: marca a etapa SAD das NCs cuja SAD já saiu da fase Fazendo ---------- */
+function crRncKeys(v){const s=String(v||"").toUpperCase().replace(/RNC/g," ").replace(/[:;]/g," ").replace(/\s*[-.]\s*/g,"/").replace(/\s*\/\s*/g,"/");const o=[];
+  const re=/((?:\d{1,4}\/)+)(\d{2})(?!\d)\s*([A-Z])?/g;let m;
+  while((m=re.exec(s))){m[1].split("/").filter(Boolean).forEach(n=>o.push(Number(n)+"/"+m[2]+(m[3]||"")))}
+  return [...new Set(o)]}
+function crSadData(v){if(v==null||v==="")return "";if(v instanceof Date)return isNaN(v)?"":v.toISOString().slice(0,10);
+  if(typeof v==="number"&&typeof XLSX!=="undefined"){const d=XLSX.SSF.parse_date_code(v);return d?`${d.y}-${String(d.m).padStart(2,"0")}-${String(d.d).padStart(2,"0")}`:""}
+  const t=String(v).trim();let m=t.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)return m[0];m=t.match(/^(\d{2})\/(\d{2})\/(\d{4})/);return m?`${m[3]}-${m[2]}-${m[1]}`:""}
+async function crLerSads(file){const wb=XLSX.read(await file.arrayBuffer(),{type:"array",cellDates:true});const ws=wb.Sheets[wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(ws,{defval:""});const col=(r,nome)=>{const k=Object.keys(r).find(x=>x.trim().toLowerCase()===nome.toLowerCase());return k?r[k]:""};
+  if(!rows.length||!Object.keys(rows[0]).some(x=>/c[oó]digo rnc/i.test(x)))throw new Error("formato");
+  const map={};rows.forEach(r=>{const fase=String(col(r,"Fase atual")).trim();if(/rejeitad/i.test(fase))return;
+    const sad={titulo:String(col(r,"Título")).trim(),fase,cliente:String(col(r,"Cliente")).trim(),
+      saiu:crSadData(col(r,"Última vez que saiu da fase Fazendo")),entrou:crSadData(col(r,"Primeira vez que entrou na fase Fazendo"))};
+    sad.ok=!!sad.saiu&&fase!=="Fazendo"&&fase!=="Ajustes";
+    crRncKeys(col(r,"Código RNC")).forEach(key=>(map[key]=map[key]||[]).push(sad))});
+  return map}
+function crSadMatch(map,rnc){const ks=crRncKeys(rnc);let xs=[];ks.forEach(key=>{xs=xs.concat(map[key]||[]);if(/[A-Z]$/.test(key))xs=xs.concat(map[key.slice(0,-1)]||[])});return xs}
+function crSadPreview(map,nomeArq){const W=(QX.crW||[]).filter(w=>w.rnc&&!w.fimSite&&!w.improcedente&&!w.etapas.sad);const atualizar=[],pend=[];let semSad=0;
+  W.forEach(w=>{const xs=crSadMatch(map,w.rnc);if(!xs.length){semSad++;return}
+    const abertas=xs.filter(x=>!x.ok);if(!abertas.length){const s=xs.slice().sort((a,b)=>a.saiu<b.saiu?1:-1)[0];atualizar.push({w,s})}else pend.push({w,s:abertas[0]})});
+  QX.crSadUpd=atualizar;
+  const tab=(L,ult)=>`<div style="overflow-x:auto"><table class="cr-tab" style="min-width:0"><thead><tr><th>NC</th><th>RNC</th><th>SAD</th><th>Fase no Pipefy</th><th>${ult}</th></tr></thead><tbody>${L.map(({w,s})=>`<tr><td>${esc(w.nc)}</td><td>${esc(w.rnc)}</td><td>${esc(s.titulo)}</td><td>${esc(s.fase)}</td><td>${s.saiu?crBr(crP(s.saiu)):"—"}</td></tr>`).join("")}</tbody></table></div>`;
+  crRoot().innerHTML=`<div class="scrim" data-crx></div><aside class="drawer cr-dw" role="dialog" aria-modal="true" aria-label="Atualizar SADs"><div class="dhead"><div><div class="eyebrow">SADs do Pipefy · ${esc(nomeArq)}</div><h2>Atualizar etapa SAD · ${esc(qxCli(QX.crK).nome)}</h2></div><button type="button" class="ntx-btn small" data-crx>Fechar</button></div>
+   <div class="dbody"><section class="sec"><p class="hint">Comparei o nº da RNC das NCs abertas (com a etapa SAD ainda pendente) com o Código RNC das SADs. Conta como SAD feita quando a SAD tem data de saída da fase Fazendo e não está em Fazendo nem em Ajustes agora; se a RNC tiver mais de uma SAD, todas precisam ter saído. Solicitações rejeitadas ficam de fora.</p>
+    ${atualizar.length?`<div class="row"><button type="button" class="ntx-btn primary" data-crsadapply>Marcar SAD concluída em ${atualizar.length} ${atualizar.length===1?"NC":"NCs"}</button></div>`:`<p><b>Nenhuma NC para atualizar.</b> Nenhuma SAD ligada às NCs abertas saiu da fase Fazendo ainda.</p>`}</section>
+   ${atualizar.length?`<section class="sec"><h3>Vão ficar com SAD concluída (${atualizar.length})</h3><p class="hint">Contenção e Análise de causa também ficam marcadas, e a NC passa para a fase Ações.</p>${tab(atualizar,"Saiu de Fazendo")}</section>`:""}
+   ${pend.length?`<section class="sec"><h3>SAD ainda em andamento (${pend.length})</h3><p class="hint">Têm SAD no Pipefy, mas ela ainda não saiu da fase Fazendo. Nada muda nestas.</p>${tab(pend,"Saiu de Fazendo")}</section>`:""}
+   ${semSad?`<section class="sec"><p class="hint">${semSad} ${semSad===1?"NC aberta não tem":"NCs abertas não têm"} SAD com esse nº de RNC no arquivo.</p></section>`:""}</div></aside>`}
+
 function crEtapasDaFase(f){const o={};let antes=true;CR_KEYS.forEach(s=>{if(s===f)antes=false;o[s]=f==="fim"?true:antes});return o}
 
 /* ---------- gaveta da RNC ---------- */
@@ -18194,7 +18225,7 @@ function crCfg(){const k=QX.crK,C=QX.cr,meta=C.meta[k]||{data:"",base:0};
 
 /* ---------- eventos ---------- */
 const crRe=()=>{if(QX.pagina==="qxCrono")qxRender("qxCrono")};
-document.addEventListener("click",async e=>{const t=e.target.closest("[data-crst],[data-crview],[data-crsort],[data-crcfg],[data-cropen],[data-crchk],[data-crx],[data-crsalvar],[data-crver],[data-crreplan],[data-crmsave],[data-crcsave],[data-crplan]");if(!t)return;
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-crst],[data-crview],[data-crsort],[data-crcfg],[data-cropen],[data-crchk],[data-crx],[data-crsalvar],[data-crver],[data-crreplan],[data-crmsave],[data-crcsave],[data-crplan],[data-crsadapply]");if(!t)return;
   const C=QX.cr,k=QX.crK;
   if(t.matches("[data-crst]")){C.st=t.dataset.crst;crRe();return}
   if(t.matches("[data-crview]")){C.view=t.dataset.crview;try{localStorage.setItem("qxCrView",C.view)}catch(_){}crRe();return}
@@ -18217,6 +18248,11 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-crst
     const m={data:v,base:(C.meta[k]&&C.meta[k].data===v&&C.meta[k].base)||ab};try{await fdb.collection("crono_cfg").doc("meta_"+k).set(m);C.meta[k]=m;toast("Meta salva");crRoot().innerHTML="";crRe()}catch(_){toast("Não foi possível salvar")}return}
   if(t.matches("[data-crcsave]")){const n={};CR_KEYS.forEach(s=>n[s]=Math.max(0,parseInt(document.getElementById("crc-"+s).value)||0));
     try{await fdb.collection("crono_cfg").doc("prazos").set(n);C.cfg={...CR_DEF,...n};toast("Regra salva");crRoot().innerHTML="";crRe()}catch(_){toast("Não foi possível salvar")}return}
+  if(t.matches("[data-crsadapply]")){const L=QX.crSadUpd||[];if(!L.length)return;t.disabled=true;let ok=0;
+    for(const {w,s} of L){const et={...w.etapas,contencao:true,analise:true,sad:true};
+      if(await crSalvar(k,w.id,{etapas:et,prazos:w.prazos,sadPipefy:{sad:s.titulo,fase:s.fase,saiuFazendo:s.saiu,importadoEm:new Date().toISOString()}},null))ok++;
+      t.textContent=`Atualizando… ${ok}/${L.length}`}
+    QX.crSadUpd=[];toast(`SAD concluída em ${ok} ${ok===1?"NC":"NCs"}`);crRoot().innerHTML="";crRe();return}
   if(t.matches("[data-crplan]")){const meta=C.meta[k]||{};if(!meta.data){toast("Defina e salve a data da meta primeiro.");return}
     const M=crP(meta.data),wd=crUteis(crAdd(crHoje(),1),M);if(!wd.length){toast("A data da meta já passou. Ajuste a meta primeiro.");return}
     if(!confirm("Substituir os prazos das NCs abertas, distribuindo até a meta?"))return;
@@ -18230,6 +18266,9 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-crst
 document.addEventListener("change",async e=>{const t=e.target;
   if(t.matches("[data-crsel]")){QX.cr.st=t.value;crRe();return}
   if(t.matches("[data-crplanta]")){QX.cr.planta=t.value;crRe();return}
+  if(t.matches("[data-crsadfile]")){const f=t.files&&t.files[0];t.value="";if(!f)return;
+    if(typeof XLSX==="undefined"){toast("Não consegui abrir planilhas agora. Recarregue a página.");return}
+    try{crSadPreview(await crLerSads(f),f.name)}catch(err){toast(err&&err.message==="formato"?"Esse arquivo não parece o relatório de SADs do Pipefy (falta a coluna Código RNC).":"Não consegui ler o arquivo.")}return}
   if(t.matches("[data-crfase]")){const id=t.dataset.crfase,w=(QX.crW||[]).find(x=>x.id===id);if(!w)return;const f=t.value;
     if(await crSalvar(QX.crK,id,{etapas:crEtapasDaFase(f),prazos:w.prazos},f==="fim"?"NC finalizada no cronograma":"Fase atualizada"))crRe()}});
 let crQT;document.addEventListener("input",e=>{if(e.target.matches("[data-crq]")){QX.cr.q=e.target.value;clearTimeout(crQT);crQT=setTimeout(()=>{const pos=e.target.selectionStart;crRe();setTimeout(()=>{const i=document.querySelector("[data-crq]");if(i){i.focus();try{i.setSelectionRange(pos,pos)}catch(_){}}},60)},250)}});
