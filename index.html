@@ -15489,6 +15489,18 @@ function narrVinculo(n){
     return `${rnc} · ${pn}${n.ncNumero?` (Q-note/NC ${n.ncNumero})`:""}`}
   const p=String(n.pns||"").split(/[,;\n]+/).map(x=>x.trim()).filter(Boolean);
   const tp=n.vinculo==="emb"?"Embarque controlado":"Trabalho geral de inspeção";return p.length?`${tp} · PN${p.length>1?"s":""} inspecionado${p.length>1?"s":""}: ${p.join(", ")}`:`${tp} · PNs inspecionados: ___`}
+/* 8D da NC vinculada: causa raiz (D4) e ações cadastradas (D5/D6) para a narrativa e a mensagem ao gerente */
+const D8C={};
+function narr8D(n){if(n.vinculo!=="nc")return null;let r=null;try{r=typeof ncDaNota==="function"?ncDaNota(n):null}catch(e){}if(!r)return null;
+  const t=r.__tenant||ncTenant(n),k=t+"/"+r.id;
+  if(!(k in D8C)){D8C[k]=undefined;if(fdb)fdb.collection("nc_8d_"+t).doc(r.id).get().then(d=>{D8C[k]=d.exists?d.data():false;try{if(editing&&typeof syncEditor==="function")syncEditor()}catch(e){}}).catch(()=>{D8C[k]=false})}
+  return D8C[k]}
+function narrCausa(n){const d=narr8D(n);if(d===undefined)return "(carregando 8D...)";if(!d)return "8D ainda não preenchido no portal";
+  const o=(d.d4&&d.d4.origem)||{},cr=d.d4&&d.d4.causaRaiz;const p=[["Ocorrência",o.ocorrencia],["Detecção",o.deteccao],["Sistêmica",o.sistemica]].filter(x=>x[1]).map(x=>`${x[0]}: ${x[1]}`);
+  if(p.length)return p.join("; ");if(typeof cr==="string"&&cr.trim())return cr.trim();return "causa raiz ainda não definida no 8D"}
+function narrAcoes(n,curto){const d=narr8D(n);if(d===undefined)return "(carregando 8D...)";if(!d)return "8D ainda não preenchido no portal";
+  const A=((d.d5&&d.d5.acoes)||[]).filter(a=>a&&String(a.acao||"").trim());if(!A.length)return "nenhuma ação cadastrada no 8D";
+  return A.map((a,i)=>{const t=String(a.acao).replace(/\s+/g," ").trim();return `${i+1}) ${curto&&t.length>110?t.slice(0,107)+"...":t}${a.causa?` [${a.causa}]`:""}${a.status?` (${a.status})`:""}`}).join(curto?"\n":"; ")}
 function narrFalha(n){let r=null;if(n.vinculo==="nc"){try{r=typeof ncDaNota==="function"?ncDaNota(n):null}catch(e){}}
   const d=String((r&&r.description)||n.descricao||"").replace(/\s+/g," ").trim(),m=r&&r.failureMode||"";
   const t=[m,d].filter(Boolean).join(": ");return t?(t.length>300?t.slice(0,297)+"...":t):"___"}
@@ -15499,13 +15511,15 @@ function narrativa(n,nome){
 4 – Quantidade comprada: Custo do Serviço realizado R$ ${brlPlain(n.valor)}
 5 – Por que está sendo comprado? ${motivo(n)}
 6 – Vínculo: ${narrVinculo(n)}
-7 – Descrição da falha: ${narrFalha(n)}`;
+7 – Descrição da falha: ${narrFalha(n)}${n.vinculo==="nc"?`
+8 – Causa raiz: ${narrCausa(n)}
+9 – Ações tomadas: ${narrAcoes(n)}`:""}`;
 }
 /* WhatsApp para o gerente quando a solicitação de compras é aberta */
 function waNum(v){let d=digits(v);if(!d)return "";if(d.length<=11)d="55"+d;return d}
 function gerenteMsg(n,ger){const serv=(n.servicos||[]).map(servLabel).join(" / ")||"serviço";const t=tier(n.valor);
   return `Olá${ger&&ger.nome?", "+ger.nome:""}! Abri a solicitação de compras nº ${n.requisicao||"___"} no Totvs para aprovação.
-Serviço de ${serv}${n.fornecedor?" – "+n.fornecedor:""} – cliente ${n.cliente||"___"}${n.relatorio?"\nRelatório: "+n.relatorio:""}\n${narrVinculo(n)}\nFalha: ${narrFalha(n)}
+Serviço de ${serv}${n.fornecedor?" – "+n.fornecedor:""} – cliente ${n.cliente||"___"}${n.relatorio?"\nRelatório: "+n.relatorio:""}\n${narrVinculo(n)}\nFalha: ${narrFalha(n)}${n.vinculo==="nc"?`\nCausa raiz: ${narrCausa(n)}\nAções tomadas:\n${narrAcoes(n,true)}`:""}
 Valor: R$ ${brlPlain(n.valor)}${t?"\nAprovação: "+t:""}
 Pode aprovar, por favor? Obrigada!`}
 function waLink(n,ger){const num=waNum(ger&&ger.wa);return num?`https://wa.me/${num}?text=${encodeURIComponent(gerenteMsg(n,ger))}`:""}
