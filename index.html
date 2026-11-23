@@ -11864,7 +11864,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 
     window._openNcDetailModalFn = function(nc) {
-      _ncDetailCurrent = nc;
+      _ncDetailCurrent = nc; window._ncDetailCurrent = nc;
       nc = normalizeNcRecordAttachments(nc);
       var photos = (nc.photos && nc.photos.length) ? nc.photos : (nc.photo ? [nc.photo] : []);
       var dateStr = ncFmtDate(nc.date);
@@ -18482,6 +18482,131 @@ function boot(){
   setInterval(render,10*60*1000);
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);else boot();
+})();
+</script>
+<!-- WhatsApp da NC: mensagem padrão para os grupos da empresa -->
+<style>
+.ncwa-btn{background:#1f8f4e;color:#fff;border:0;border-radius:9px;padding:9px 14px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;margin-right:auto}
+.ncwa-btn:hover{background:#18763f}
+#ncwaRoot{position:fixed;inset:0;z-index:7000;display:none;align-items:center;justify-content:center;background:rgba(5,10,16,.72);padding:16px}
+#ncwaRoot.on{display:flex}
+#ncwaRoot .w{background:#141b23;color:#e6edf3;border:1px solid #2a3542;border-radius:14px;width:min(980px,100%);max-height:94vh;display:flex;flex-direction:column;overflow:hidden;font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+#ncwaRoot header{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid #2a3542}
+#ncwaRoot header h3{margin:0;font-size:16px;flex:1}
+#ncwaRoot header button{background:#2a3542;color:#e6edf3;border:0;border-radius:8px;width:32px;height:32px;cursor:pointer}
+#ncwaRoot .b{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;padding:16px 18px;overflow:auto}
+#ncwaRoot .ed label{display:block;font-size:12px;color:#9fb0c0;margin:0 0 4px}
+#ncwaRoot textarea{width:100%;min-height:380px;background:#0d1319;color:#e6edf3;border:1px solid #2a3542;border-radius:10px;padding:12px;font:13px/1.5 ui-monospace,Consolas,monospace;resize:vertical;box-sizing:border-box}
+#ncwaRoot .opts{display:flex;flex-wrap:wrap;gap:8px 16px;margin:0 0 10px}
+#ncwaRoot .opts label{display:flex;align-items:center;gap:6px;font-size:13px;color:#e6edf3;margin:0;cursor:pointer}
+#ncwaRoot .obs{width:100%;box-sizing:border-box;background:#0d1319;color:#e6edf3;border:1px solid #2a3542;border-radius:8px;padding:8px 10px;margin:0 0 10px;font:13px system-ui,sans-serif}
+#ncwaRoot .pv{background:#0b141a url() ;border-radius:12px;padding:12px;border:1px solid #2a3542}
+#ncwaRoot .pv .bub{background:#005c4b;color:#e9edef;border-radius:10px 0 10px 10px;padding:6px 6px 8px;white-space:pre-wrap;word-break:break-word;font-size:13px}
+#ncwaRoot .pv .bub img{width:100%;border-radius:8px;display:block;margin-bottom:6px;max-height:220px;object-fit:cover}
+#ncwaRoot .pv .bub .t{padding:0 4px}
+#ncwaRoot .fotos{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+#ncwaRoot .fotos label{position:relative;cursor:pointer}
+#ncwaRoot .fotos img{width:72px;height:72px;object-fit:cover;border-radius:8px;border:2px solid #2a3542;display:block}
+#ncwaRoot .fotos input{position:absolute;top:4px;left:4px}
+#ncwaRoot .fotos input:checked+img{border-color:#25d366}
+#ncwaRoot footer{display:flex;flex-wrap:wrap;gap:8px;padding:12px 18px;border-top:1px solid #2a3542;align-items:center}
+#ncwaRoot footer button{border:1px solid #2a3542;background:#1c2530;color:#e6edf3;border-radius:9px;padding:9px 14px;font-weight:600;cursor:pointer}
+#ncwaRoot footer button.pri{background:#25d366;border-color:#25d366;color:#08130d}
+#ncwaRoot footer button:hover{filter:brightness(1.12)}
+#ncwaRoot footer .hint{flex-basis:100%;font-size:12px;color:#9fb0c0;margin:2px 0 0}
+#ncwaRoot .toast{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);background:#25d366;color:#08130d;padding:8px 14px;border-radius:8px;font-weight:600;display:none}
+@media (max-width:760px){#ncwaRoot .b{grid-template-columns:1fr}#ncwaRoot textarea{min-height:300px}}
+</style>
+<script>
+(function(){
+  const $=s=>document.querySelector(s);
+  const br=d=>{const s=String(d||"").slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(s)?s.split("-").reverse().join("/"):s};
+  const limpa=t=>String(t||"").replace(/\s+/g," ").trim();
+  let NC=null,ST={parada:false,reinc:false,urg:false,obs:""};
+  function fotosDe(nc){return ((nc.photos&&nc.photos.length)?nc.photos:(nc.photo?[nc.photo]:[])).filter(Boolean)}
+  function nomePeca(nc){return limpa((nc.qnote&&nc.qnote.nomePeca)||(nc.aqe&&nc.aqe.nomePeca)||nc.pieceName||"")}
+  function montar(nc){
+    const q=nc.qnote||{},a=nc.aqe||{},F=fotosDe(nc),sel=[...document.querySelectorAll("#ncwaRoot .fotos input:checked")].length;
+    const L=[];
+    L.push("⚠️ *NOVA NÃO CONFORMIDADE NO CLIENTE* ⚠️");
+    if(ST.reinc)L.push("🔁 *REINCIDÊNCIA*");
+    if(ST.parada)L.push("🚨 *Houve parada de linha no cliente por conta da não conformidade*");
+    if(ST.urg&&!ST.parada)L.push("🚨 *Prioridade alta: tratar hoje*");
+    L.push("");
+    L.push(`🏭 *Cliente:* ${nc.customer||"—"}`);
+    const num=[nc.ncNumber?`*NC:* ${nc.ncNumber}`:"",nc.rncNumber?`*RNC:* ${String(nc.rncNumber).replace(/^\s*RNC\s*/i,"")}`:""].filter(Boolean).join("  ·  ");
+    if(num)L.push(`🔢 ${num}`);
+    L.push(`📅 *Data:* ${br(nc.date)||"—"}`);
+    L.push(`🔩 *Item:* ${nc.piece||"—"}${nomePeca(nc)?" – "+nomePeca(nc):""}`);
+    const qtd=nc.qty?`${nc.qty} peça${Number(nc.qty)>1?"s":""} NC`:"—";
+    const est=q.estoqueCliente||q.qtdRejeitada||"";
+    L.push(`📦 *Quantidade:* ${qtd}${q.inspecionadas?` (de ${q.inspecionadas} inspecionadas)`:""}`);
+    if(nc.failureMode)L.push(`❌ *Falha:* ${nc.failureMode}`);
+    if(q.impacto)L.push(`📊 *Impacto:* ${q.impacto}`);
+    if(a.prioridade)L.push(`📊 *Prioridade AQE:* ${a.prioridade}${a.status?" · "+a.status:""}`);
+    L.push("");
+    L.push("📝 *Descrição da falha:*");
+    L.push(limpa(nc.description)||"—");
+    if(q.disposicao){L.push("");L.push(`📌 *Disposição do cliente:* ${limpa(q.disposicao)}`)}
+    if(ST.obs){L.push("");L.push(`💬 ${limpa(ST.obs)}`)}
+    L.push("");
+    L.push("✅ *Ações imediatas:*");
+    L.push(`1. Segregar e bloquear todo o estoque do item ${nc.piece||""} (expedição, WIP e produto acabado)`.replace("  "," "));
+    L.push("2. Inspeção 100% das peças antes da próxima expedição");
+    L.push("3. Informar à Qualidade o lote, turno e operador de fabricação");
+    L.push("4. Nenhuma peça sai sem liberação da Qualidade");
+    L.push("");
+    if(F.length)L.push(sel?"📸 Fotos da falha em anexo.":"📸 Fotos da falha no portal.");
+    L.push("_Qualidade Magius · Débora Cristina_");
+    return L.join("\n");
+  }
+  function toast(t){const e=$("#ncwaRoot .toast");e.textContent=t;e.style.display="block";clearTimeout(toast._t);toast._t=setTimeout(()=>e.style.display="none",3200)}
+  function prev(){const t=$("#ncwaTxt").value,F=[...document.querySelectorAll("#ncwaRoot .fotos input:checked")].map(i=>i.dataset.src);
+    const fmt=s=>s.replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])).replace(/\*([^*\n]+)\*/g,"<b>$1</b>").replace(/_([^_\n]+)_/g,"<i>$1</i>");
+    $("#ncwaPrev").innerHTML=`<div class="bub">${F[0]?`<img src="${F[0]}" alt="">`:""}<div class="t">${fmt(t)}</div></div>${F.length>1?`<div style="font-size:12px;color:#9fb0c0;margin-top:6px">+ ${F.length-1} foto(s)</div>`:""}`}
+  function regerar(){ST.parada=$("#ncwaParada").checked;ST.reinc=$("#ncwaReinc").checked;ST.urg=$("#ncwaUrg").checked;ST.obs=$("#ncwaObs").value;$("#ncwaTxt").value=montar(NC);prev()}
+  async function blobDe(src){
+    try{const r=await fetch(src,{mode:"cors"});if(r.ok)return await r.blob()}catch(e){}
+    return await new Promise(res=>{const im=new Image();im.crossOrigin="anonymous";im.onload=()=>{try{const c=document.createElement("canvas");c.width=im.naturalWidth;c.height=im.naturalHeight;c.getContext("2d").drawImage(im,0,0);c.toBlob(b=>res(b),"image/jpeg",0.9)}catch(e){res(null)}};im.onerror=()=>res(null);im.src=src+(src.includes("?")?"&":"?")+"cb="+Date.now()})}
+  async function pngDe(b){return await new Promise(res=>{const u=URL.createObjectURL(b),im=new Image();im.onload=()=>{const c=document.createElement("canvas");c.width=im.naturalWidth;c.height=im.naturalHeight;c.getContext("2d").drawImage(im,0,0);URL.revokeObjectURL(u);c.toBlob(x=>res(x),"image/png")};im.onerror=()=>res(null);im.src=u})}
+  const sels=()=>[...document.querySelectorAll("#ncwaRoot .fotos input:checked")].map(i=>i.dataset.src);
+  async function copiarTexto(){try{await navigator.clipboard.writeText($("#ncwaTxt").value);toast("Texto copiado");return true}catch(e){$("#ncwaTxt").select();document.execCommand("copy");toast("Texto copiado");return true}}
+  async function compartilhar(){
+    const txt=$("#ncwaTxt").value;await copiarTexto();
+    const files=[];for(const [i,s] of sels().entries()){const b=await blobDe(s);if(b)files.push(new File([b],`NC_${NC.ncNumber||NC.piece||"foto"}_${i+1}.jpg`,{type:b.type||"image/jpeg"}))}
+    const d={text:txt,title:"Nova não conformidade"};if(files.length)d.files=files;
+    if(navigator.share&&(!files.length||(navigator.canShare&&navigator.canShare({files})))){try{await navigator.share(d);return}catch(e){if(e&&e.name==="AbortError")return}}
+    toast(files.length?"Este navegador não compartilha fotos. Use Copiar foto + Abrir WhatsApp.":"Abrindo o WhatsApp…");abrirWa()}
+  function abrirWa(){window.open("https://api.whatsapp.com/send?text="+encodeURIComponent($("#ncwaTxt").value),"_blank","noopener")}
+  async function copiarFoto(){const s=sels()[0]||fotosDe(NC)[0];if(!s)return toast("Esta NC não tem foto");const b=await blobDe(s);if(!b)return toast("Não consegui copiar a foto: use Baixar fotos");
+    try{const p=await pngDe(b);await navigator.clipboard.write([new ClipboardItem({"image/png":p})]);toast("Foto copiada: cole (Ctrl+V) no grupo do WhatsApp")}catch(e){toast("O navegador não deixou copiar a imagem: use Baixar fotos")}}
+  async function baixar(){const S=sels();if(!S.length)return toast("Marque as fotos");for(const [i,s] of S.entries()){const b=await blobDe(s);const a=document.createElement("a");a.href=b?URL.createObjectURL(b):s;a.download=`NC_${NC.ncNumber||NC.piece||"foto"}_${i+1}.jpg`;a.target="_blank";document.body.appendChild(a);a.click();setTimeout(()=>a.remove(),1500)}}
+  function abrir(nc){if(!nc)return;NC=nc;const txt=(String(nc.description||"")+" "+JSON.stringify(nc.qnote||{})).toLowerCase();
+    ST={parada:/parada de linha|parou a linha|linha parada/.test(txt),reinc:/reincid/.test(txt),urg:/maior|major|critical|cr[ií]tic/.test(((nc.qnote||{}).impacto||"")+" "+((nc.aqe||{}).prioridade||"")),obs:""};
+    let r=document.getElementById("ncwaRoot");if(!r){r=document.createElement("div");r.id="ncwaRoot";document.body.appendChild(r)}
+    const F=fotosDe(nc);
+    r.innerHTML=`<div class="w" role="dialog" aria-modal="true" aria-label="Mensagem da NC para o WhatsApp"><header><h3>Mensagem para o WhatsApp · ${nc.ncNumber||nc.piece||"NC"}</h3><button type="button" data-ncwax aria-label="Fechar">✕</button></header>
+      <div class="b"><div class="ed">
+        <div class="opts"><label><input type="checkbox" id="ncwaParada" ${ST.parada?"checked":""}> Houve parada de linha</label><label><input type="checkbox" id="ncwaReinc" ${ST.reinc?"checked":""}> Reincidência</label><label><input type="checkbox" id="ncwaUrg" ${ST.urg?"checked":""}> Prioridade alta</label></div>
+        <input class="obs" id="ncwaObs" placeholder="Observação extra (opcional): ex.: estoque em contenção, cliente pediu retorno até 16h">
+        <label for="ncwaTxt">Mensagem (pode editar antes de enviar)</label><textarea id="ncwaTxt"></textarea></div>
+       <div><label style="font-size:12px;color:#9fb0c0">Fotos que vão junto</label><div class="fotos">${F.length?F.map((s,i)=>`<label title="Foto ${i+1}"><input type="checkbox" data-src="${s}" ${i<3?"checked":""}><img src="${s}" alt="Foto ${i+1}"></label>`).join(""):'<span style="color:#9fb0c0;font-size:13px">Esta NC não tem foto cadastrada.</span>'}</div>
+        <label style="font-size:12px;color:#9fb0c0">Como vai aparecer no grupo</label><div class="pv" id="ncwaPrev"></div></div></div>
+      <footer><button type="button" class="pri" data-ncwa="share">Compartilhar com fotos</button><button type="button" data-ncwa="wa">Abrir WhatsApp (só texto)</button><button type="button" data-ncwa="txt">Copiar texto</button><button type="button" data-ncwa="foto">Copiar foto</button><button type="button" data-ncwa="dl">Baixar fotos</button>
+       <span class="hint">"Compartilhar com fotos" abre a janela de compartilhar do Windows ou do celular: escolha o WhatsApp e o grupo; o texto também fica copiado para colar como legenda. No computador sem essa opção: clique em Copiar foto, cole no grupo, depois Copiar texto e cole como legenda.</span></footer>
+      <div class="toast"></div></div>`;
+    r.classList.add("on");regerar()}
+  document.addEventListener("input",e=>{if(e.target.id==="ncwaTxt")prev();else if(e.target.id==="ncwaObs")regerar()});
+  document.addEventListener("change",e=>{if(["ncwaParada","ncwaReinc","ncwaUrg"].includes(e.target.id))regerar();else if(e.target.closest&&e.target.closest("#ncwaRoot .fotos"))regerar()});
+  document.addEventListener("click",e=>{const t=e.target.closest("[data-ncwa],[data-ncwax],#ncwaOpen,[data-ncwaopen]");if(!t){if(e.target.id==="ncwaRoot")e.target.classList.remove("on");return}
+    if(t.id==="ncwaOpen"){abrir(window._ncDetailCurrent||(typeof _ncDetailCurrent!=="undefined"?_ncDetailCurrent:null));return}
+    if(t.dataset.ncwaopen){const k=(typeof currentTenantKey!=="undefined"&&currentTenantKey)||"";return}
+    if(t.hasAttribute("data-ncwax")){$("#ncwaRoot").classList.remove("on");return}
+    const a=t.dataset.ncwa;if(a==="share")compartilhar();else if(a==="wa")abrirWa();else if(a==="txt")copiarTexto();else if(a==="foto")copiarFoto();else if(a==="dl")baixar()});
+  document.addEventListener("keydown",e=>{if(e.key==="Escape"){const r=$("#ncwaRoot");if(r&&r.classList.contains("on")){r.classList.remove("on");e.stopPropagation()}}},true);
+  function botao(){const f=document.querySelector("#ncDetailBackdrop .nc-detail-footer");if(f&&!document.getElementById("ncwaOpen")){const b=document.createElement("button");b.type="button";b.id="ncwaOpen";b.className="ncwa-btn";b.innerHTML='<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.9 11.9 0 0 0 4.6 4c1.7.7 2.4.8 3.2.7a2.8 2.8 0 0 0 1.8-1.3 2.3 2.3 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3Z"/></svg> Mensagem WhatsApp';f.insertBefore(b,f.firstChild)}}
+  botao();document.addEventListener("DOMContentLoaded",botao);
+  window.ncWhatsAbrir=abrir;
 })();
 </script>
 </body>
