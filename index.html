@@ -18526,38 +18526,21 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
   function fotosDe(nc){return ((nc.photos&&nc.photos.length)?nc.photos:(nc.photo?[nc.photo]:[])).filter(Boolean)}
   function nomePeca(nc){return limpa((nc.qnote&&nc.qnote.nomePeca)||(nc.aqe&&nc.aqe.nomePeca)||nc.pieceName||"")}
   function montar(nc){
-    const q=nc.qnote||{},a=nc.aqe||{},F=fotosDe(nc),sel=[...document.querySelectorAll("#ncwaRoot .fotos input:checked")].length;
-    const L=[];
-    L.push("⚠️ *NOVA NÃO CONFORMIDADE NO CLIENTE* ⚠️");
+    const q=nc.qnote||{},F=fotosDe(nc),sel=[...document.querySelectorAll("#ncwaRoot .fotos input:checked")].length;
+    const desc=limpa(nc.description),d=desc.length>220?desc.slice(0,217)+"...":desc;
+    const L=["⚠️ *Nova não conformidade no cliente* ⚠️"];
+    if(ST.parada)L.push("🚨 *Houve parada de linha por conta da NC*");
     if(ST.reinc)L.push("🔁 *REINCIDÊNCIA*");
-    if(ST.parada)L.push("🚨 *Houve parada de linha no cliente por conta da não conformidade*");
-    if(ST.urg&&!ST.parada)L.push("🚨 *Prioridade alta: tratar hoje*");
     L.push("");
-    L.push(`🏭 *Cliente:* ${nc.customer||"—"}`);
-    const num=[nc.ncNumber?`*NC:* ${nc.ncNumber}`:"",nc.rncNumber?`*RNC:* ${String(nc.rncNumber).replace(/^\s*RNC\s*/i,"")}`:""].filter(Boolean).join("  ·  ");
-    if(num)L.push(`🔢 ${num}`);
-    L.push(`📅 *Data:* ${br(nc.date)||"—"}`);
-    L.push(`🔩 *Item:* ${nc.piece||"—"}${nomePeca(nc)?" – "+nomePeca(nc):""}`);
-    const qtd=nc.qty?`${nc.qty} peça${Number(nc.qty)>1?"s":""} NC`:"—";
-    const est=q.estoqueCliente||q.qtdRejeitada||"";
-    L.push(`📦 *Quantidade:* ${qtd}${q.inspecionadas?` (de ${q.inspecionadas} inspecionadas)`:""}`);
-    if(nc.failureMode)L.push(`❌ *Falha:* ${nc.failureMode}`);
-    if(q.impacto)L.push(`📊 *Impacto:* ${q.impacto}`);
-    if(a.prioridade)L.push(`📊 *Prioridade AQE:* ${a.prioridade}${a.status?" · "+a.status:""}`);
+    L.push(`*Cliente:* ${nc.customer||"—"}`);
+    L.push(`*Item:* ${nc.piece||"—"}${nomePeca(nc)?" – "+nomePeca(nc):""}`);
+    L.push(`*Quant.:* ${nc.qty?nc.qty+" peça"+(Number(nc.qty)>1?"s":""):"—"}`);
+    L.push(`*Falha:* ${d||nc.failureMode||"—"}`);
+    const num=[nc.ncNumber?"NC "+nc.ncNumber:"",nc.rncNumber?"RNC "+String(nc.rncNumber).replace(/^\s*RNC\s*/i,""):""].filter(Boolean).join(" · ");
+    if(num)L.push(`*Ref.:* ${num}`);
+    if(ST.obs)L.push(`*Obs.:* ${limpa(ST.obs)}`);
     L.push("");
-    L.push("📝 *Descrição da falha:*");
-    L.push(limpa(nc.description)||"—");
-    if(q.disposicao){L.push("");L.push(`📌 *Disposição do cliente:* ${limpa(q.disposicao)}`)}
-    if(ST.obs){L.push("");L.push(`💬 ${limpa(ST.obs)}`)}
-    L.push("");
-    L.push("✅ *Ações imediatas:*");
-    L.push(`1. Segregar e bloquear todo o estoque do item ${nc.piece||""} (expedição, WIP e produto acabado)`.replace("  "," "));
-    L.push("2. Inspeção 100% das peças antes da próxima expedição");
-    L.push("3. Informar à Qualidade o lote, turno e operador de fabricação");
-    L.push("4. Nenhuma peça sai sem liberação da Qualidade");
-    L.push("");
-    if(F.length)L.push(sel?"📸 Fotos da falha em anexo.":"📸 Fotos da falha no portal.");
-    L.push("_Qualidade Magius · Débora Cristina_");
+    L.push(`👉 Segregar e verificar estoque e WIP do ${nc.piece||"item"}. Nada sai sem liberação da Qualidade.`);
     return L.join("\n");
   }
   function toast(t){const e=$("#ncwaRoot .toast");e.textContent=t;e.style.display="block";clearTimeout(toast._t);toast._t=setTimeout(()=>e.style.display="none",3200)}
@@ -18587,7 +18570,7 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
     const F=fotosDe(nc);
     r.innerHTML=`<div class="w" role="dialog" aria-modal="true" aria-label="Mensagem da NC para o WhatsApp"><header><h3>Mensagem para o WhatsApp · ${nc.ncNumber||nc.piece||"NC"}</h3><button type="button" data-ncwax aria-label="Fechar">✕</button></header>
       <div class="b"><div class="ed">
-        <div class="opts"><label><input type="checkbox" id="ncwaParada" ${ST.parada?"checked":""}> Houve parada de linha</label><label><input type="checkbox" id="ncwaReinc" ${ST.reinc?"checked":""}> Reincidência</label><label><input type="checkbox" id="ncwaUrg" ${ST.urg?"checked":""}> Prioridade alta</label></div>
+        <div class="opts"><label><input type="checkbox" id="ncwaParada" ${ST.parada?"checked":""}> Houve parada de linha</label><label><input type="checkbox" id="ncwaReinc" ${ST.reinc?"checked":""}> Reincidência</label><input type="checkbox" id="ncwaUrg" hidden></div>
         <input class="obs" id="ncwaObs" placeholder="Observação extra (opcional): ex.: estoque em contenção, cliente pediu retorno até 16h">
         <label for="ncwaTxt">Mensagem (pode editar antes de enviar)</label><textarea id="ncwaTxt"></textarea></div>
        <div><label style="font-size:12px;color:#9fb0c0">Fotos que vão junto</label><div class="fotos">${F.length?F.map((s,i)=>`<label title="Foto ${i+1}"><input type="checkbox" data-src="${s}" ${i<3?"checked":""}><img src="${s}" alt="Foto ${i+1}"></label>`).join(""):'<span style="color:#9fb0c0;font-size:13px">Esta NC não tem foto cadastrada.</span>'}</div>
