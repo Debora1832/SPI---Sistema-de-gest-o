@@ -18554,12 +18554,18 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
   async function pngDe(b){return await new Promise(res=>{const u=URL.createObjectURL(b),im=new Image();im.onload=()=>{const c=document.createElement("canvas");c.width=im.naturalWidth;c.height=im.naturalHeight;c.getContext("2d").drawImage(im,0,0);URL.revokeObjectURL(u);c.toBlob(x=>res(x),"image/png")};im.onerror=()=>res(null);im.src=u})}
   const sels=()=>[...document.querySelectorAll("#ncwaRoot .fotos input:checked")].map(i=>i.dataset.src);
   async function copiarTexto(){try{await navigator.clipboard.writeText($("#ncwaTxt").value);toast("Texto copiado");return true}catch(e){$("#ncwaTxt").select();document.execCommand("copy");toast("Texto copiado");return true}}
+  const CACHE=new Map();
+  function preload(){for(const s of sels())if(!CACHE.has(s))CACHE.set(s,blobDe(s))}
   async function compartilhar(){
-    const txt=$("#ncwaTxt").value;await copiarTexto();
-    const files=[];for(const [i,s] of sels().entries()){const b=await blobDe(s);if(b)files.push(new File([b],`NC_${NC.ncNumber||NC.piece||"foto"}_${i+1}.jpg`,{type:b.type||"image/jpeg"}))}
+    const txt=$("#ncwaTxt").value,S=sels();
+    try{navigator.clipboard.writeText(txt).catch(()=>{})}catch(e){}
+    preload();const blobs=await Promise.all(S.map(s=>CACHE.get(s)));
+    const files=[];blobs.forEach((b,i)=>{if(b)files.push(new File([b],`NC_${NC.ncNumber||NC.piece||"foto"}_${i+1}.jpg`,{type:b.type||"image/jpeg"}))});
+    if(S.length&&!files.length){toast("O navegador não conseguiu ler as fotos do armazenamento. Use Baixar fotos e anexe no WhatsApp (texto já copiado).");return}
     const d={text:txt,title:"Nova não conformidade"};if(files.length)d.files=files;
-    if(navigator.share&&(!files.length||(navigator.canShare&&navigator.canShare({files})))){try{await navigator.share(d);return}catch(e){if(e&&e.name==="AbortError")return}}
-    toast(files.length?"Este navegador não compartilha fotos. Use Copiar foto + Abrir WhatsApp.":"Abrindo o WhatsApp…");abrirWa()}
+    if(navigator.share&&(!files.length||(navigator.canShare&&navigator.canShare({files})))){try{await navigator.share(d);return}catch(e){if(e&&e.name==="AbortError")return;if(files.length){toast("Clique de novo em Compartilhar com fotos (o navegador bloqueou a 1ª tentativa)");return}}}
+    if(files.length){toast("Este navegador não compartilha fotos. Use Copiar foto + Abrir WhatsApp (texto já copiado).");return}
+    toast("Abrindo o WhatsApp…");abrirWa()}
   function abrirWa(){window.open("https://api.whatsapp.com/send?text="+encodeURIComponent($("#ncwaTxt").value),"_blank","noopener")}
   async function copiarFoto(){const s=sels()[0]||fotosDe(NC)[0];if(!s)return toast("Esta NC não tem foto");const b=await blobDe(s);if(!b)return toast("Não consegui copiar a foto: use Baixar fotos");
     try{const p=await pngDe(b);await navigator.clipboard.write([new ClipboardItem({"image/png":p})]);toast("Foto copiada: cole (Ctrl+V) no grupo do WhatsApp")}catch(e){toast("O navegador não deixou copiar a imagem: use Baixar fotos")}}
@@ -18578,9 +18584,9 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
       <footer><button type="button" class="pri" data-ncwa="share">Compartilhar com fotos</button><button type="button" data-ncwa="wa">Abrir WhatsApp (só texto)</button><button type="button" data-ncwa="txt">Copiar texto</button><button type="button" data-ncwa="foto">Copiar foto</button><button type="button" data-ncwa="dl">Baixar fotos</button>
        <span class="hint">"Compartilhar com fotos" abre a janela de compartilhar do Windows ou do celular: escolha o WhatsApp e o grupo; o texto também fica copiado para colar como legenda. No computador sem essa opção: clique em Copiar foto, cole no grupo, depois Copiar texto e cole como legenda.</span></footer>
       <div class="toast"></div></div>`;
-    r.classList.add("on");regerar()}
+    r.classList.add("on");regerar();preload()}
   document.addEventListener("input",e=>{if(e.target.id==="ncwaTxt")prev();else if(e.target.id==="ncwaObs")regerar()});
-  document.addEventListener("change",e=>{if(["ncwaParada","ncwaReinc","ncwaUrg"].includes(e.target.id))regerar();else if(e.target.closest&&e.target.closest("#ncwaRoot .fotos"))regerar()});
+  document.addEventListener("change",e=>{if(["ncwaParada","ncwaReinc","ncwaUrg"].includes(e.target.id))regerar();else if(e.target.closest&&e.target.closest("#ncwaRoot .fotos")){regerar();preload()}});
   document.addEventListener("click",e=>{const t=e.target.closest("[data-ncwa],[data-ncwax],#ncwaOpen,[data-ncwaopen]");if(!t){if(e.target.id==="ncwaRoot")e.target.classList.remove("on");return}
     if(t.id==="ncwaOpen"){abrir(window._ncDetailCurrent||(typeof _ncDetailCurrent!=="undefined"?_ncDetailCurrent:null));return}
     if(t.dataset.ncwaopen){const k=(typeof currentTenantKey!=="undefined"&&currentTenantKey)||"";return}
